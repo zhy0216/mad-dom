@@ -27,7 +27,9 @@
     "spike:build": "bash spikes/native-binding/build.sh",
     "spike:test": "bun test spikes/native-binding",
     "spike2:build": "cd spikes/parser-selector-string && cargo build",
-    "spike2:test": "cd spikes/parser-selector-string && cargo test"
+    "spike2:test": "cd spikes/parser-selector-string && cargo test",
+    "compat:snapshot": "bun compat/public-api/generate-snapshot.js",
+    "compat:snapshot:test": "bun test tests/compat"
   },
   "keywords": [
     "bun",
@@ -44,5 +46,8 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/",
     "tag": "next"
+  },
+  "devDependencies": {
+    "happy-dom": "20.11.11"
   }
 }
