@@ -1,4 +1,6 @@
 pub mod arena;
+pub mod dom;
+pub mod error;
 
 pub fn core_identity() -> &'static str {
     "mad-dom-core"
