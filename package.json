@@ -23,13 +23,14 @@
   "scripts": {
     "check": "bun --check index.js",
     "test": "bun test tests/bun",
-    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run test",
+    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run compat:types && npm run test",
     "spike:build": "bash spikes/native-binding/build.sh",
     "spike:test": "bun test spikes/native-binding",
     "spike2:build": "cd spikes/parser-selector-string && cargo build",
     "spike2:test": "cd spikes/parser-selector-string && cargo test",
     "compat:snapshot": "bun compat/public-api/generate-snapshot.js",
-    "compat:snapshot:test": "bun test tests/compat"
+    "compat:snapshot:test": "bun test tests/compat",
+    "compat:types": "bun tests/compat/types/run.mjs"
   },
   "keywords": [
     "bun",
@@ -48,6 +49,7 @@
     "tag": "next"
   },
   "devDependencies": {
-    "happy-dom": "20.11.11"
+    "happy-dom": "20.11.11",
+    "typescript": "5.9.3"
   }
 }

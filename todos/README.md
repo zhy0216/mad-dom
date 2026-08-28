@@ -36,7 +36,7 @@ T02 将建立统一校验命令 `npm run validate`（依次覆盖 JavaScript 检
 | 06 | P0 | [06-native-build-adr.md](done/06-native-build-adr.md) | M0/M9 | T04 | 已完成 |
 | 07 | P0 | [07-happy-dom-baseline-manifest.md](done/07-happy-dom-baseline-manifest.md) | M1 | T03 | 已完成 |
 | 08 | P0 | [08-public-api-snapshot.md](done/08-public-api-snapshot.md) | M1 | T07 | 已完成 |
-| 09 | P0 | [09-type-compatibility-harness.md](09-type-compatibility-harness.md) | M1 | T07 | 待办 |
+| 09 | P0 | [09-type-compatibility-harness.md](done/09-type-compatibility-harness.md) | M1 | T07 | 已完成 |
 | 10 | P0 | [10-differential-runner.md](10-differential-runner.md) | M1 | T07 | 待办 |
 | 11 | P0 | [11-compatibility-ledger-and-provenance.md](11-compatibility-ledger-and-provenance.md) | M1 | T08, T09, T10 | 待办 |
 | 12 | P0 | [12-generational-arena.md](12-generational-arena.md) | M2 | T01 | 待办 |
