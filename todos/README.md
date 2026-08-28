@@ -28,7 +28,7 @@ T02 将建立统一校验命令 `npm run validate`（依次覆盖 JavaScript 检
 
 | 顺序 | 优先级 | TODO 文件 | 里程碑 | 依赖 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| 01 | P0 | [01-repository-workspace.md](01-repository-workspace.md) | M0 | 无 | 待办 |
+| 01 | P0 | [01-repository-workspace.md](done/01-repository-workspace.md) | M0 | 无 | 已完成 |
 | 02 | P0 | [02-validation-and-ci.md](02-validation-and-ci.md) | M0 | T01 | 待办 |
 | 03 | P0 | [03-compatibility-baseline-adr.md](03-compatibility-baseline-adr.md) | M0/M1 | T01 | 待办 |
 | 04 | P0 | [04-native-binding-spike.md](04-native-binding-spike.md) | M0 | T01 | 待办 |
