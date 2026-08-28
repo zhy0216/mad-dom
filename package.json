@@ -23,7 +23,7 @@
   "scripts": {
     "check": "bun --check index.js",
     "test": "bun test tests/bun",
-    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run compat:types && npm run test",
+    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run compat:types && npm run test && npm run compat:ledger",
     "spike:build": "bash spikes/native-binding/build.sh",
     "spike:test": "bun test spikes/native-binding",
     "spike2:build": "cd spikes/parser-selector-string && cargo build",
@@ -32,7 +32,10 @@
     "compat:snapshot:test": "bun test tests/compat",
     "compat:types": "bun tests/compat/types/run.mjs",
     "compat:differential": "bun tests/compat/runner/run.js --report",
-    "compat:differential:selftest": "bun tests/compat/runner/run.js --selftest"
+    "compat:differential:selftest": "bun tests/compat/runner/run.js --selftest",
+    "compat:ledger": "bun compat/validate-ledger.js",
+    "compat:ledger:selftest": "bun compat/validate-ledger.js --self-test",
+    "compat:ledger:report": "bun compat/ledger-report.js --json"
   },
   "keywords": [
     "bun",

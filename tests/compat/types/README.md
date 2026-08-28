@@ -13,7 +13,6 @@ tests/compat/types/
   tsconfig.base.json          共享编译选项（strict、noEmit、moduleResolution bundler、types: []）
   happy-dom/tsconfig.json     把虚拟模块 dom-under-test 映射到 node_modules/happy-dom/lib/index.d.ts
   mad-dom/tsconfig.json       把虚拟模块 dom-under-test 映射到仓库根 index.d.ts
-  expected-divergences.json   当前 MAD DOM 类型面已知缺口的记录（known-gap 清单）
   fixtures/positive/*.ts      正向 fixture：happy-dom 接受的公开用法
   fixtures/negative/*.ts      负向 fixture：两个目标都必须拒绝的用法（行内 @ts-expect-error 标记）
   harness.test.js             bun test 集成：运行驱动器与自证场景
@@ -25,8 +24,9 @@ tests/compat/types/
   禁止深层导入、`PropertySymbol` 内部用法与 `any` 断言逃逸。
 - 两套 tsconfig 都只用包入口声明（happy-dom 的 `lib/index.d.ts`、MAD DOM 的根
   `index.d.ts`），不引用 happy-dom 内部深层声明路径。
-- `expected-divergences.json` 是临时 known-gap 清单：[T11](../../../todos/11-compatibility-ledger-and-provenance.md)
-  的兼容清单将接手这些记录。
+- known-gap 记录已迁入 [T11](../../../todos/11-compatibility-ledger-and-provenance.md)
+  建立的兼容清单 `compat/ledger.json`（`hc-types-*` 条目）；字段语义与清单规则见
+  [compat/README.md](../../../compat/README.md)。
 
 ## 运行
 
@@ -45,15 +45,16 @@ bun test tests/compat/types         # harness.test.js（含 --self-test）
    "Unused '@ts-expect-error' directive"（TS2578）机制：被标记行一旦不再报错，
    TS2578 就会出现在标记行上并使运行失败——这证明负向断言确实在执行。
 2. **mad-dom 目标：** 每条诊断必须归入以下三类之一，否则失败：
-   - 命中 `expected-divergences.json` 中该 fixture 的诊断模式（code + message
-     子串 + 可选行号）；
+   - 命中 `compat/ledger.json` 中该 fixture 的 `hc-types-*` 条目诊断模式
+     （code + message 子串 + 可选行号）；
    - 负向 fixture 被标记行上的真实拒绝（mad-dom 拒绝错误用法，正是期望行为）；
    - 模块级缺口规则（见下）吸收的 TS2578。
 3. **硬门禁（ADR-0002 第 4 节）：** happy-dom 接受、mad-dom 拒绝且未被清单覆盖
-   → exit 1。修复方式只有两种：补齐 mad-dom 类型，或先在该 fixture 的清单条目中
-   记录缺口（含 reason 与 addedIn）。
-4. **过期条目：** 清单中每条模式都必须命中至少一条真实诊断。MAD DOM 类型补齐后
-   模式不再命中 → exit 1，必须在同一提交中删除该条目。
+   → exit 1。修复方式只有两种：补齐 mad-dom 类型，或先在 `compat/ledger.json`
+   中为该 fixture 记录缺口（`hc-types-*` 条目，含 status/reason/recordedAt/addedIn）。
+4. **过期模式：** 清单中每条模式都必须命中至少一条真实诊断。MAD DOM 类型补齐后
+   模式不再命中 → exit 1，必须在同一提交中把对应 `hc-types-*` 条目翻转为
+   `pass`（并删除 reason/recordedAt）。
 
 ### 模块级缺口规则（负向 fixture）
 
@@ -65,17 +66,24 @@ TS2305/TS2724/TS2307 等），负向 fixture 的被标记行在 mad-dom 侧表�
 必须在 mad-dom 侧真实报错，任何"mad-dom 接受了错误用法"的情况都要以清单条目
 显式记录（宽松方向偏差，ADR-0002 第 4 节判定规则的记录项）。
 
-## expected-divergences.json 升级流程
+## hc-types-* 清单条目升级流程
 
-- 字段：`id`（稳定、不复用）、`fixture`（相对 fixtures/ 的路径）、`reason`、
-  `addedIn`（加入时的 TODO id）、`diagnostics`（期望的诊断模式数组：
-  `code` + `messageIncludes` + 可选 `line`，至少一项）。
+T09 的临时 known-gap 清单已迁入 [T11](../../../todos/11-compatibility-ledger-and-provenance.md)
+建立的兼容清单 `compat/ledger.json`，类型面记录以 `hc-types-*` 条目表达；完整的
+清单 schema、字段语义与门禁规则见 [compat/README.md](../../../compat/README.md)。
+
+- 字段：`id`（`hc-types-<capability>-<case>`，稳定、不复用）、`suite: "types"`、
+  `fixture`（相对 fixtures/ 的 posix 路径）、`status`（`known-gap` 时必须带
+  `reason` 与 `recordedAt`；`pass` 时两者必须缺省）、`addedIn`（加入时的 TODO id）、
+  `diagnostics`（期望的诊断模式数组：`code` + `messageIncludes` + 可选 `line`，
+  至少一项；仅 `known-gap` 允许携带）。
 - 新增：MAD DOM 拒绝了 happy-dom 接受的用法而短期内不修类型时，先加条目（含
-  原因）再合入；驱动器校验 schema（未知字段拒绝、id 唯一、fixture 必须存在）。
-- 删除：类型实现补齐导致模式过期（stale）时，必须在同一提交中删除对应条目；
-  否则驱动器 exit 1。这保证清单只缩不减时是显式决定。
-- T11 的兼容清单落地后，本文件改为由 ledger 生成或迁移，字段语义向
-  `hc-types-*` 测试 ID 对齐。
+  原因）再合入；`compat/validate-ledger.js` 校验完整 schema（未知字段拒绝、
+  id 唯一、fixture 必须存在），本驱动器只对其消费的字段做轻量结构检查。
+- 翻转：类型实现补齐导致模式过期（stale）时，必须在同一提交中把条目改为
+  `pass`（删除 reason/recordedAt/diagnostics）；否则驱动器 exit 1（stale），
+  退化门禁也会把"仍标 known-gap 但已转绿"的条目判为过期。这保证清单只缩不减
+  是显式决定。
 
 ## 自证（验收证据）
 
@@ -83,9 +91,10 @@ TS2305/TS2724/TS2307 等），负向 fixture 的被标记行在 mad-dom 侧表�
 回真实仓库，两套 tsconfig 的路径改写为绝对路径），然后验证三个篡改场景都以
 exit 1 失败：
 
-- **A**：从清单删除任一条目 → 硬门禁失败（模拟 "MAD DOM 拒绝 happy-dom 接受
-  的公开用法时测试失败"）；
-- **B**：把某条模式改成永不匹配 → stale entry 失败（过期条目不可静默残留）；
+- **A**：从 `compat/ledger.json` 临时副本删除任一 `hc-types-*` 条目 → 硬门禁
+  失败（模拟 "MAD DOM 拒绝 happy-dom 接受的公开用法时测试失败"）；
+- **B**：把某条 `hc-types-*` 模式改成永不匹配 → stale entry 失败（过期条目不可
+  静默残留）；
 - **C**：删除负向 fixture 的某个 `@ts-expect-error` 标记 → happy-dom 目标出现
   未抑制诊断并失败（证明负向检测真实执行）。
 

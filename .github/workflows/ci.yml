@@ -39,5 +39,8 @@ jobs:
       - name: Run Bun tests
         run: bun test tests/bun
 
+      - name: Validate compatibility ledger (regression gate)
+        run: npm run compat:ledger
+
       - name: Smoke test package packing
         run: npm pack --dry-run

@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1.0.0",
+  "note": "Machine-readable compatibility ledger: every compatibility scenario is tracked as pass / known-gap / not-applicable under a permanent hc-<suite>-<capability>-<case> id. Status, reason and recordedAt semantics follow ADR-0002 section 7; the ledger was established by T11 and absorbed the T09 known-gap records (tests/compat/types/expected-divergences.json).",
+  "entries": [
+    {
+      "id": "hc-diff-node-create-append-serialize",
+      "suite": "diff",
+      "status": "known-gap",
+      "subsystem": "facade",
+      "scenario": "dom-create-append-serialize",
+      "reason": "MAD DOM is in pre-alpha development and createWindow() throws during scenario setup with Error(\"mad-dom is in pre-alpha development and does not implement Window yet.\"), so the mad-dom side records no window, no appended node and no serialization output while the happy-dom side records the full observation. First presented by the T10 real-pair runner; collected into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T10"
+    },
+    {
+      "id": "hc-diff-selector-query-identity",
+      "suite": "diff",
+      "status": "known-gap",
+      "subsystem": "facade",
+      "scenario": "dom-query-selector-identity",
+      "reason": "Same setup-phase createWindow() throw as the pre-alpha facade gap: querySelectorAll results, element identity across repeated queries and click bubbling order are observable only on the happy-dom side. First presented by the T10 real-pair runner; collected into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T10"
+    },
+    {
+      "id": "hc-types-element-enums-and-overloads",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/enums-and-overloads.ts",
+      "reason": "MAD DOM does not export Window, CSSRule or EventPhaseEnum yet; enum members and tag-name overload shapes cannot be checked. First recorded in T09 as div-types-enums-and-overloads; migrated into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T09",
+      "diagnostics": [
+        { "code": 2305, "messageIncludes": "no exported member 'CSSRule'" },
+        { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
+        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
+      ]
+    },
+    {
+      "id": "hc-types-element-invalid-members",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "negative/invalid-members.ts",
+      "reason": "Module-level gap: MAD DOM does not export Window, so the negative marked lines currently fall through as unused @ts-expect-error directives (TS2578) on the mad-dom target. Recorded per ADR-0002 section 4 instead of forcing a pass; once the import resolves, the marked lines must genuinely error on mad-dom. First recorded in T09 as div-types-negative-invalid-members; migrated into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T09",
+      "diagnostics": [
+        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
+      ]
+    },
+    {
+      "id": "hc-types-element-wrong-argument-types",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "negative/wrong-argument-types.ts",
+      "reason": "Module-level gap: MAD DOM does not export Window, so the negative marked lines currently fall through as unused @ts-expect-error directives (TS2578) on the mad-dom target. Recorded per ADR-0002 section 4 instead of forcing a pass; once the import resolves, the marked lines must genuinely error on mad-dom. First recorded in T09 as div-types-negative-wrong-argument-types; migrated into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T09",
+      "diagnostics": [
+        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
+      ]
+    },
+    {
+      "id": "hc-types-event-callbacks",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/event-callbacks.ts",
+      "reason": "MAD DOM does not export Window, Event or EventPhaseEnum yet; the addEventListener callback parameter degrades to implicit any (TS7006) while the module-level gap exists. First recorded in T09 as div-types-event-callbacks; migrated into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T09",
+      "diagnostics": [
+        { "code": 2305, "messageIncludes": "no exported member 'Event'" },
+        { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
+        { "code": 2305, "messageIncludes": "no exported member 'Window'" },
+        { "code": 7006, "messageIncludes": "Parameter 'event' implicitly has an 'any' type" }
+      ]
+    },
+    {
+      "id": "hc-types-event-constructor-options",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/constructor-options.ts",
+      "reason": "MAD DOM does not export CustomEvent or Window yet; both constructor usages are rejected via the missing imports. First recorded in T09 as div-types-constructor-options; migrated into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T09",
+      "diagnostics": [
+        { "code": 2305, "messageIncludes": "no exported member 'CustomEvent'" },
+        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
+      ]
+    },
+    {
+      "id": "hc-types-event-type-exports",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/type-exports.ts",
+      "reason": "MAD DOM does not export the Event value or the IEventInit/TEventListener type exports; annotations that reference them degrade to implicit any (TS7006) while the module-level gap exists. First recorded in T09 as div-types-type-exports; migrated into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T09",
+      "diagnostics": [
+        { "code": 2305, "messageIncludes": "no exported member 'IEventInit'" },
+        { "code": 2305, "messageIncludes": "no exported member 'TEventListener'" },
+        { "code": 2305, "messageIncludes": "no exported member 'Event'" },
+        { "code": 7006, "messageIncludes": "Parameter 'event' implicitly has an 'any' type" }
+      ]
+    },
+    {
+      "id": "hc-types-window-document-basics",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/window-document-basics.ts",
+      "reason": "MAD DOM does not export Window yet; the whole fixture degrades because the Window value import is missing (pre-alpha type surface). First recorded in T09 as div-types-window-document-basics; migrated into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T09",
+      "diagnostics": [
+        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
+      ]
+    }
+  ]
+}

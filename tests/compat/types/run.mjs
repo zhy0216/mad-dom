@@ -11,14 +11,17 @@
 //     rely on tsc's "Unused '@ts-expect-error' directive" (TS2578): a marked
 //     line that stops erroring surfaces as TS2578 and fails the run, which
 //     proves the negative assertions really execute.
-//   - mad-dom target: every diagnostic must either match an entry in
-//     expected-divergences.json, be a genuine rejection of a negative
-//     fixture's marked line, or — while the module-level import gap persists
-//     (dom-under-test names missing on import lines) — be an absorbed TS2578.
-//     Anything else is the ADR-0002 hard gate: mad-dom accepts nothing that
-//     happy-dom accepts unless the gap is recorded first.
+//   - mad-dom target: every diagnostic must either match the diagnostics
+//     patterns of an hc-types-* entry in compat/ledger.json (the T11
+//     compatibility ledger, which owns the known-gap records since T09's
+//     expected-divergences.json was migrated), be a genuine rejection of a
+//     negative fixture's marked line, or — while the module-level import gap
+//     persists (dom-under-test names missing on import lines) — be an
+//     absorbed TS2578. Anything else is the ADR-0002 hard gate: mad-dom
+//     accepts nothing that happy-dom accepts unless the gap is recorded
+//     first.
 //   - every divergence pattern must match at least one diagnostic; stale
-//     entries fail, so the list shrinks as MAD DOM's type surface grows.
+//     patterns fail, so the ledger shrinks as MAD DOM's type surface grows.
 //
 // Usage: bun tests/compat/types/run.mjs [--json] [--self-test]
 // Exit codes: 0 = pass, 1 = compatibility failure, 2 = harness/config error.
@@ -41,7 +44,10 @@ import { fileURLToPath } from "node:url";
 const TYPES_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(TYPES_DIR, "..", "..", "..");
 const FIXTURES_DIR = join(TYPES_DIR, "fixtures");
-const DIVERGENCES_PATH = join(TYPES_DIR, "expected-divergences.json");
+// Since T11 the known-gap records live in the compatibility ledger; this
+// harness only derives its hc-types-* entries from it (full schema validation
+// belongs to compat/validate-ledger.js).
+const LEDGER_PATH = join(REPO_ROOT, "compat", "ledger.json");
 const TSC_ENTRY = join(REPO_ROOT, "node_modules", "typescript", "bin", "tsc");
 
 const TARGETS = [
@@ -53,7 +59,6 @@ const DIAGNOSTIC_LINE = /^(.+?)\((\d+),(\d+)\): error (TS\d+): (.+)$/;
 const EXPECT_ERROR_DIRECTIVE = /\/\/\s*@ts-expect-error\b/;
 const UNUSED_DIRECTIVE_CODE = 2578;
 const IMPORT_GAP_CODES = new Set([2305, 2306, 2307, 2724, 2792]);
-const DIVERGENCES_SCHEMA_VERSION = "1.0.0";
 const MAX_BUFFER = 32 * 1024 * 1024;
 
 function harnessError(message) {
@@ -148,80 +153,55 @@ function matchesPattern(diagnostic, pattern) {
   return true;
 }
 
-function validateDivergences(manifest, fixtureKeys) {
+// Light structural check on the hc-types-* entries derived from the ledger.
+// The full ledger schema (ids, statuses, reasons, recordedAt, …) is owned by
+// compat/validate-ledger.js; this harness only guards the fields it consumes,
+// plus the two checks the original T09 divergence list performed itself:
+// fixtures must exist and entry ids must be unique.
+function describeLedgerTypesEntryProblems(entries, fixtureKeys) {
   const problems = [];
-  const check = (condition, message) => {
-    if (!condition) problems.push(message);
-  };
-
-  check(
-    manifest !== null && typeof manifest === "object" && !Array.isArray(manifest),
-    "root must be a JSON object",
-  );
-  if (problems.length > 0) return problems;
-
-  check(
-    manifest.schemaVersion === DIVERGENCES_SCHEMA_VERSION,
-    `schemaVersion must be ${JSON.stringify(DIVERGENCES_SCHEMA_VERSION)}`,
-  );
-  check(Array.isArray(manifest.entries), "entries must be an array");
-  for (const key of Object.keys(manifest)) {
-    if (!["schemaVersion", "note", "entries"].includes(key)) problems.push(`unknown root field ${JSON.stringify(key)}`);
-  }
-  if (!Array.isArray(manifest.entries)) return problems;
-
   const seenIds = new Set();
-  manifest.entries.forEach((entry, index) => {
-    const at = `entries[${index}]`;
-    check(entry !== null && typeof entry === "object" && !Array.isArray(entry), `${at} must be an object`);
-    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) return;
-
-    for (const key of Object.keys(entry)) {
-      if (!["id", "fixture", "reason", "addedIn", "diagnostics"].includes(key)) {
-        problems.push(`${at}: unknown field ${JSON.stringify(key)}`);
+  entries.forEach((entry, index) => {
+    const at = `hc-types entries[${index}] (${entry?.id ?? "unknown id"})`;
+    if (typeof entry?.id === "string") {
+      if (seenIds.has(entry.id)) {
+        problems.push(`${at}: id ${JSON.stringify(entry.id)} is duplicated`);
       }
-    }
-    check(typeof entry.id === "string" && entry.id.trim() !== "", `${at}.id must be a non-empty string`);
-    if (typeof entry.id === "string") {
-      check(!seenIds.has(entry.id), `${at}.id ${JSON.stringify(entry.id)} is duplicated`);
       seenIds.add(entry.id);
     }
-    check(
-      typeof entry.fixture === "string" && fixtureKeys.includes(entry.fixture),
-      `${at}.fixture must reference an existing fixture, got ${JSON.stringify(entry.fixture)}`,
-    );
-    check(typeof entry.reason === "string" && entry.reason.trim() !== "", `${at}.reason must be a non-empty string`);
-    check(typeof entry.addedIn === "string" && entry.addedIn.trim() !== "", `${at}.addedIn must be a non-empty string`);
-    check(Array.isArray(entry.diagnostics) && entry.diagnostics.length > 0, `${at}.diagnostics must be a non-empty array`);
-
-    if (Array.isArray(entry.diagnostics)) {
-      entry.diagnostics.forEach((pattern, patternIndex) => {
-        const atPattern = `${at}.diagnostics[${patternIndex}]`;
-        check(pattern !== null && typeof pattern === "object" && !Array.isArray(pattern), `${atPattern} must be an object`);
-        if (pattern === null || typeof pattern !== "object" || Array.isArray(pattern)) return;
-        for (const key of Object.keys(pattern)) {
-          if (!["code", "messageIncludes", "line"].includes(key)) {
-            problems.push(`${atPattern}: unknown field ${JSON.stringify(key)}`);
-          }
-        }
-        check(
-          Number.isInteger(pattern.code) && pattern.code > 0,
-          `${atPattern}.code must be a positive integer when present`,
-        );
-        check(
-          pattern.messageIncludes === undefined || (typeof pattern.messageIncludes === "string" && pattern.messageIncludes !== ""),
-          `${atPattern}.messageIncludes must be a non-empty string when present`,
-        );
-        check(
-          pattern.line === undefined || (Number.isInteger(pattern.line) && pattern.line > 0),
-          `${atPattern}.line must be a positive integer when present`,
-        );
-        check(
-          pattern.code !== undefined || pattern.messageIncludes !== undefined || pattern.line !== undefined,
-          `${atPattern} must set at least one of code / messageIncludes / line`,
-        );
-      });
+    if (typeof entry?.fixture !== "string" || entry.fixture.trim() === "") {
+      problems.push(`${at}: fixture must be a non-empty string`);
+    } else if (!fixtureKeys.includes(entry.fixture)) {
+      problems.push(`${at}: fixture must reference an existing fixture, got ${JSON.stringify(entry.fixture)}`);
     }
+    if (!Array.isArray(entry?.diagnostics)) {
+      problems.push(`${at}: diagnostics must be an array of diagnostic patterns`);
+      return;
+    }
+    entry.diagnostics.forEach((pattern, patternIndex) => {
+      const atPattern = `${at}.diagnostics[${patternIndex}]`;
+      if (pattern === null || typeof pattern !== "object" || Array.isArray(pattern)) {
+        problems.push(`${atPattern} must be an object`);
+        return;
+      }
+      for (const key of Object.keys(pattern)) {
+        if (!["code", "messageIncludes", "line"].includes(key)) {
+          problems.push(`${atPattern}: unknown field ${JSON.stringify(key)}`);
+        }
+      }
+      if (pattern.code !== undefined && !(Number.isInteger(pattern.code) && pattern.code > 0)) {
+        problems.push(`${atPattern}.code must be a positive integer when present`);
+      }
+      if (pattern.line !== undefined && !(Number.isInteger(pattern.line) && pattern.line > 0)) {
+        problems.push(`${atPattern}.line must be a positive integer when present`);
+      }
+      if (pattern.messageIncludes !== undefined && !(typeof pattern.messageIncludes === "string" && pattern.messageIncludes !== "")) {
+        problems.push(`${atPattern}.messageIncludes must be a non-empty string when present`);
+      }
+      if (pattern.code === undefined && pattern.messageIncludes === undefined && pattern.line === undefined) {
+        problems.push(`${atPattern} must set at least one of code / messageIncludes / line`);
+      }
+    });
   });
   return problems;
 }
@@ -308,7 +288,7 @@ function judgeFixture(fixture, happyDomDiagnostics, madDomDiagnostics, entriesFo
   for (const diagnostic of uncovered) {
     failures.push(
       fixture.kind === "positive"
-        ? `hard gate: mad-dom rejects a public usage that the happy-dom target accepts: ${describeDiagnostic(diagnostic)} — fix the mad-dom types or record the gap in expected-divergences.json first`
+        ? `hard gate: mad-dom rejects a public usage that the happy-dom target accepts: ${describeDiagnostic(diagnostic)} — fix the mad-dom types or record the gap in compat/ledger.json first`
         : `unexpected diagnostic on the mad-dom target (not a marked-line rejection): ${describeDiagnostic(diagnostic)}`,
     );
   }
@@ -356,7 +336,7 @@ function printSummary({ typescriptVersion, happyDomVersion, madDomVersion, rows,
       ` (${rows.filter((row) => row.kind === "positive").length} positive, ${rows.filter((row) => row.kind === "negative").length} negative)`,
   );
   console.log(
-    `divergences: ${entries.length} entries / ${patternTotal} patterns (every pattern must match a live diagnostic)`,
+    `divergences: ${entries.length} hc-types entries / ${patternTotal} patterns (every pattern must match a live diagnostic; source: compat/ledger.json)`,
   );
   if (strayDiagnostics.length > 0) {
     console.log(`stray diagnostics outside tests/compat/types/fixtures: ${strayDiagnostics.length}`);
@@ -385,16 +365,22 @@ function main() {
     }
   }
 
-  let divergences;
+  let ledger;
   try {
-    divergences = JSON.parse(readFileSync(DIVERGENCES_PATH, "utf8"));
+    ledger = JSON.parse(readFileSync(LEDGER_PATH, "utf8"));
   } catch (error) {
-    harnessError(`cannot parse ${DIVERGENCES_PATH}: ${error.message}`);
+    harnessError(`cannot parse ${toPosix(relative(REPO_ROOT, LEDGER_PATH))}: ${error.message}`);
   }
-  const divergenceProblems = validateDivergences(divergences, fixtureKeys);
-  if (divergenceProblems.length > 0) {
-    console.error(`invalid ${toPosix(relative(REPO_ROOT, DIVERGENCES_PATH))}:`);
-    for (const problem of divergenceProblems) console.error(`  - ${problem}`);
+  if (ledger === null || typeof ledger !== "object" || !Array.isArray(ledger.entries)) {
+    harnessError("compat/ledger.json must be an object with an entries array (run compat/validate-ledger.js for details)");
+  }
+  // The harness only consumes suite="types" entries; the ledger validator owns
+  // the complete schema.
+  const typesEntries = ledger.entries.filter((entry) => entry.suite === "types");
+  const entryProblems = describeLedgerTypesEntryProblems(typesEntries, fixtureKeys);
+  if (entryProblems.length > 0) {
+    console.error(`invalid hc-types entries in ${toPosix(relative(REPO_ROOT, LEDGER_PATH))}:`);
+    for (const problem of entryProblems) console.error(`  - ${problem}`);
     process.exit(2);
   }
 
@@ -420,7 +406,7 @@ function main() {
   const rows = [];
   for (const key of fixtureKeys) {
     const kind = fixtureKind(key);
-    const entriesForFixture = divergences.entries.filter((entry) => entry.fixture === key);
+    const entriesForFixture = typesEntries.filter((entry) => entry.fixture === key);
     const judgment = judgeFixture(
       { key, kind },
       targetResults["happy-dom"].get(key),
@@ -457,7 +443,7 @@ function main() {
   const happyDomVersion = readPackageVersion(join(REPO_ROOT, "node_modules", "happy-dom", "package.json"));
   const madDomVersion = readPackageVersion(join(REPO_ROOT, "package.json"));
 
-  printSummary({ typescriptVersion, happyDomVersion, madDomVersion, rows, strayDiagnostics, entries: divergences.entries });
+  printSummary({ typescriptVersion, happyDomVersion, madDomVersion, rows, strayDiagnostics, entries: typesEntries });
 
   if (!ok) {
     console.error("");
@@ -474,7 +460,7 @@ function main() {
           typescript: typescriptVersion,
           happyDom: happyDomVersion,
           madDom: madDomVersion,
-          divergences: { entries: divergences.entries.length, patterns: divergences.entries.reduce((sum, entry) => sum + entry.diagnostics.length, 0) },
+          divergences: { entries: typesEntries.length, patterns: typesEntries.reduce((sum, entry) => sum + entry.diagnostics.length, 0) },
           targets: Object.fromEntries(
             TARGETS.map((target) => [target.id, { tsconfig: toPosix(relative(REPO_ROOT, target.config)) }]),
           ),
@@ -492,7 +478,7 @@ function main() {
   }
   if (!jsonMode) {
     console.log(
-      "result: PASS — hard gate holds: everything the happy-dom target accepts is either accepted by mad-dom or covered by expected-divergences.json",
+      "result: PASS — hard gate holds: everything the happy-dom target accepts is either accepted by mad-dom or recorded as a known gap in compat/ledger.json",
     );
   }
   process.exit(0);
@@ -502,6 +488,11 @@ function copyHarnessTo(tempRoot) {
   const harnessDir = join(tempRoot, "tests", "compat", "types");
   mkdirSync(join(tempRoot, "tests", "compat"), { recursive: true });
   cpSync(TYPES_DIR, harnessDir, { recursive: true });
+  // The harness derives its hc-types entries from the compatibility ledger;
+  // the copy needs the ledger at <tempRoot>/compat/ledger.json so tamper
+  // scenarios mutate the copy, never the repository file.
+  mkdirSync(join(tempRoot, "compat"), { recursive: true });
+  cpSync(LEDGER_PATH, join(tempRoot, "compat", "ledger.json"));
   symlinkSync(join(REPO_ROOT, "node_modules"), join(tempRoot, "node_modules"), "dir");
   // The copies live outside the repo, so the relative tsconfig paths into the
   // repo tree are rewritten to absolute paths at the real locations. This
@@ -530,7 +521,7 @@ function withFreshCopy(mutate) {
   const tempRoot = mkdtempSync(join(tmpdir(), "mad-dom-types-selftest-"));
   try {
     const harnessDir = copyHarnessTo(tempRoot);
-    mutate(harnessDir);
+    mutate(harnessDir, tempRoot);
     return runCopiedHarness(harnessDir);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
@@ -546,26 +537,34 @@ function runSelfTest(fixtureKeys) {
   const scenarios = [];
 
   scenarios.push({
-    name: "A: removing a divergence entry trips the hard gate (mad-dom must not silently reject what happy-dom accepts)",
+    name: "A: removing an hc-types ledger entry trips the hard gate (mad-dom must not silently reject what happy-dom accepts)",
     run: () =>
-      withFreshCopy((harnessDir) => {
-        const path = join(harnessDir, "expected-divergences.json");
+      withFreshCopy((harnessDir, tempRoot) => {
+        const path = join(tempRoot, "compat", "ledger.json");
         const original = readFileSync(path, "utf8");
         const manifest = JSON.parse(original);
-        manifest.entries.shift();
+        // Delete the first types entry, not entries[0]: the ledger opens with
+        // diff entries, and removing one of those would fail scenario mapping
+        // in the ledger gate instead of the hard gate exercised here.
+        const typesIndex = manifest.entries.findIndex((entry) => entry.suite === "types");
+        if (typesIndex === -1) {
+          throw new Error("self-test could not find an hc-types entry to delete from the copied ledger");
+        }
+        manifest.entries.splice(typesIndex, 1);
         writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
       }),
     expect: (result) => result.exitCode === 1 && /hard gate: mad-dom rejects/.test(result.output),
   });
 
   scenarios.push({
-    name: "B: a divergence pattern that matches nothing is stale and fails",
+    name: "B: an hc-types ledger pattern that matches nothing is stale and fails",
     run: () =>
-      withFreshCopy((harnessDir) => {
-        const path = join(harnessDir, "expected-divergences.json");
+      withFreshCopy((harnessDir, tempRoot) => {
+        const path = join(tempRoot, "compat", "ledger.json");
         const original = readFileSync(path, "utf8");
         const manifest = JSON.parse(original);
-        manifest.entries[0].diagnostics[0].messageIncludes = "__never-matches__";
+        const entry = manifest.entries.find((item) => item.suite === "types" && Array.isArray(item.diagnostics));
+        entry.diagnostics[0].messageIncludes = "__never-matches__";
         writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
       }),
     expect: (result) => result.exitCode === 1 && /stale divergence entry/.test(result.output),

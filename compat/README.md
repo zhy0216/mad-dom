@@ -49,6 +49,73 @@ bun compat/validate-baseline.js <path/to/manifest.json>
 
 生成与验证只针对锁定的 npm 版本与上游 tag（如 `v20.11.11` 对应 commit `64e2c774…`）；不读取上游 `main` 分支或未发布提交，上游 main 不作为发布门禁。
 
+## 兼容清单（T11）
+
+[T11](../todos/11-compatibility-ledger-and-provenance.md) 落地
+[ADR-0002 第 7 节](../adr/0002-happy-dom-compatibility-baseline-and-differential-protocol.md)
+的稳定测试 ID 与兼容清单规则：每个兼容场景记录为 `pass` / `known-gap` /
+`not-applicable`，永久的 `hc-*` ID 使历史结论可追溯。
+
+### 文件
+
+| 文件 | 职责 |
+| --- | --- |
+| `ledger.json` | 兼容清单本体：每个场景一条 `hc-*` 条目，含状态、原因、子系统与时间 |
+| `upstream-map.json` | 上游移植用例的 provenance 映射（上游路径、commit、许可证、本地 ID） |
+| `validate-ledger.js` | 退化门禁：schema 校验 + 交叉验证 + 活体差分运行比对（`ledger-lib.js` 为其纯函数库） |
+| `ledger-report.js` | 离线汇总报告：按 subsystem/suite 的状态计数（不运行门禁） |
+
+### 字段语义
+
+| 字段 | 含义 |
+| --- | --- |
+| `id` | `hc-<suite>-<capability>-<case>`，全小写 kebab-case（ADR-0002 §7.1）；一经分配不可复用或重命名 |
+| `suite` | `api`（快照）/ `types`（类型 fixture）/ `diff`（黑盒差分）/ `up`（上游移植用例）；必须与 id 前缀一致 |
+| `status` | `pass` / `known-gap` / `not-applicable`；diff 套件只允许前两者（真实目标对场景必然产生可观察结果） |
+| `subsystem` | `core`（Rust 内核）/ `bindings`（原生绑定面）/ `facade`（JS facade 与 Window-Document-Element 公开 API）/ `types`（TypeScript 类型面）/ `tooling`（测试基础设施自身） |
+| `reason` / `recordedAt` | 仅 `known-gap` 与 `not-applicable` 必填（非空字符串 / ISO 8601 UTC）；`pass` 必须缺省，不得伪造解释 |
+| `addedIn` | 首次记录该条目的 TODO id |
+| 套件专属引用 | diff → `scenario`（runner 场景 id，一一对应）；types → `fixture` + `diagnostics`；up → `upstreamRef`；api 无专属字段（快照为全表面单次比较，粒度推迟） |
+
+### 退化门禁规则
+
+- 已有 `pass` 条目不得退化：`validate-ledger.js` 以 report 模式活体运行差分
+  runner，`pass` 场景出现任何差异路径 → exit 1（CI 失败）；
+- `known-gap` 场景转绿同样必须显式收口：差异归零 → 判为过期条目，要求在同一
+  提交中翻转为 `pass`（删除 reason/recordedAt），保持清单诚实；
+- 新增 `known-gap` 必须在 PR 中显式更新清单（ADR-0002 §7.5）；
+- runner 的 mock 自测场景（`selftest-*`）不属于清单范围：它们是 runner 自身的
+  基础设施自证，不是 happy-dom vs mad-dom 的兼容性问题，由
+  `compat:differential:selftest` 直接以严格退出码把守。
+
+### upstream-map 规则
+
+- 上游许可证固定 `MIT`（happy-dom 上游许可）；来源映射锚定 ADR-0002 第 1 节的
+  锁定 commit（`64e2c774…`，并与 `happy-dom-baseline.json` 交叉核对，防两份
+  provenance 锚点分叉）；
+- 只移植依赖公开 API 的用例；`localPath` 文件做机械扫描，出现
+  `happy-dom/lib/`、`happy-dom/es/`、`happy-dom/dist/`、`happy-dom/src/` 或
+  `PropertySymbol` 即校验失败（公开面只允许包入口导入）；
+- `localId` 与 ledger 中 `suite: "up"` 的条目双向一致。
+
+### 运行
+
+```sh
+npm run compat:ledger           # 门禁：schema + 交叉验证 + 活体退化检查
+npm run compat:ledger:selftest  # 在 /tmp 临时副本上演练 6 个篡改场景
+npm run compat:ledger:report    # 离线汇总报告（--json）
+```
+
+退出码：`0` 通过；`1` 门禁失败（pass 退化或条目过期）；`2` schema/配置/基础设施
+错误。`validate-ledger.js --json` 在 stdout 输出机器可读门禁文档
+（`mad-dom-compat-ledger-gate/1`）。
+
+### CI
+
+`.github/workflows/ci.yml` 在 "Run Bun tests" 之后运行
+`Validate compatibility ledger (regression gate)` 步骤（`npm run compat:ledger`）：
+模拟 pass 退化（如把 known-gap 条目改成 pass）会让该步骤以 exit 1 失败。
+
 ## 边界
 
 T07 不生成公开 API 快照（`public-api/` 归 [T08](../todos/08-public-api-snapshot.md) 所有），不安装 happy-dom，也不提供快照生成器。
