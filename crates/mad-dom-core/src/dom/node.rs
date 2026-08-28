@@ -145,6 +145,15 @@ impl Node {
         &self.data
     }
 
+    /// Consumes the node and returns its payload, dropping the tree relations.
+    ///
+    /// Used by the cross-document adoption path
+    /// ([`Document::adopt_node`](super::Document::adopt_node)) to move a
+    /// node's data out of its source arena and into the target arena.
+    pub(crate) fn into_data(self) -> NodeData {
+        self.data
+    }
+
     /// Returns the node's [`NodeType`].
     pub fn node_type(&self) -> NodeType {
         self.data.node_type()
@@ -178,5 +187,19 @@ impl Node {
     /// Returns the node's next sibling, if any. Only reachable inside the crate.
     pub(crate) fn next_sibling(&self) -> Option<NodeId> {
         self.next_sibling
+    }
+}
+
+#[cfg(test)]
+impl Node {
+    /// Test-only: appends an attribute to an element node.
+    ///
+    /// The public creation helpers start elements with an empty attribute
+    /// list, so clone/import tests use this to seed attributes and verify that
+    /// attribute data is copied by value into clones.
+    pub(crate) fn push_attribute_for_test(&mut self, name: &str, value: &str) {
+        if let NodeData::Element { attributes, .. } = &mut self.data {
+            attributes.push((name.to_string(), value.to_string()));
+        }
     }
 }

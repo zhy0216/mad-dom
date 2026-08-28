@@ -3,8 +3,11 @@
 //! [`Document::append_child`], [`Document::insert_before`],
 //! [`Document::remove_child`] and [`Document::replace_child`] are the only
 //! public entry points that write the tree relations stored on
-//! [`Node`](super::node::Node). Every other way into the tree — the
-//! [`Document`](super::Document) navigation API and
+//! [`Node`](super::node::Node) while mutating an existing tree. The clone
+//! family in the sibling `cross_document` module ([`Document::clone_node`],
+//! [`Document::import_node`], [`Document::adopt_node`]) also writes relations
+//! while building its freshly allocated trees. Every other way into the tree —
+//! the [`Document`](super::Document) navigation API and
 //! [`Document::check_invariants`] — is read-only, and the relation fields
 //! themselves are `pub(crate)`, so callers outside this crate cannot bypass
 //! the mutation API to corrupt the tree.
@@ -416,7 +419,11 @@ impl Document {
 
     /// Removes `node` from its current parent's child list and clears its own
     /// relation fields. `node` must be live and must belong to this document.
-    fn detach(&mut self, node: NodeId) {
+    ///
+    /// `pub(crate)` because the cross-document adoption path
+    /// ([`Document::adopt_node`]) uses it to free a migrated node from its
+    /// source tree before moving the node's data out of the source arena.
+    pub(crate) fn detach(&mut self, node: NodeId) {
         let old_parent = self.get(node).expect("detaching a live node").parent();
         let prev = self
             .get(node)

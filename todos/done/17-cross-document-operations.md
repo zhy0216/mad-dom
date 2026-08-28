@@ -1,6 +1,6 @@
 # 17 实现 clone、import 与 adopt 的 Core 操作
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M2
 - 条目 ID：`T17`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T17 — 实现 clone、import 与 adopt 的 Core 操作**
+- [x] **T17 — 实现 clone、import 与 adopt 的 Core 操作**
   - 实现：
     - 实现 shallow/deep clone。
     - 实现 import 到目标文档并分配全新 NodeId。

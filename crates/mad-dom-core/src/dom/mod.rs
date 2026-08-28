@@ -7,8 +7,10 @@
 //! handles. Tree relations (T14) are stored on each node but only readable
 //! through [`Document`]'s navigation API, and their integrity can be checked
 //! with [`Document::check_invariants`]; the unified mutation API (T15/T16)
-//! lives in the sibling `mutation` module.
+//! lives in the sibling `mutation` module, and the clone/import/adopt family
+//! (T17) in the sibling `cross_document` module.
 
+mod cross_document;
 mod document;
 mod mutation;
 mod node;

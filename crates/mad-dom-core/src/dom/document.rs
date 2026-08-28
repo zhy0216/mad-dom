@@ -228,6 +228,26 @@ impl Document {
         self.arena.get_mut(id).map_err(CoreError::from)
     }
 
+    /// Crate-internal: allocates a fresh node carrying `data` into this
+    /// document's arena.
+    ///
+    /// Used by the clone/import/adopt operations (T17), which hand every new
+    /// node a brand-new [`NodeId`] from the target document's arena instead of
+    /// reusing a handle from another document.
+    pub(crate) fn allocate_node(&mut self, data: NodeData) -> NodeId {
+        self.arena.allocate(self.id, Node::new(data))
+    }
+
+    /// Crate-internal: removes the live node for `id` from this document's
+    /// arena, freeing its slot.
+    ///
+    /// Used by adoption so a migrated node's old handle becomes stale and can
+    /// never be reused to reach the node again.
+    pub(crate) fn remove_node(&mut self, id: NodeId) -> Result<Node, CoreError> {
+        self.expect_same_document(id)?;
+        self.arena.remove(id).map_err(CoreError::from)
+    }
+
     /// Crate-internal: number of live nodes in the arena.
     ///
     /// Used by the debug-only invariant verification to cap the parent-chain
