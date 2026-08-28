@@ -381,4 +381,106 @@ mod tests {
         assert_eq!(arena.len(), 1);
         assert_eq!(arena.get(id).unwrap(), &"value");
     }
+
+    /// Tiny deterministic PRNG (LCG) for the property tests below, so every
+    /// run is reproducible from its fixed seed.
+    struct Lcg(u64);
+
+    impl Lcg {
+        fn next(&mut self) -> u64 {
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            self.0 >> 33
+        }
+
+        fn idx(&mut self, n: usize) -> usize {
+            assert!(n > 0);
+            (self.next() % n as u64) as usize
+        }
+    }
+
+    /// Random allocate/remove/reuse stream: every live handle reads exactly its
+    /// own value, every removed handle is rejected, and removing a value then
+    /// reusing its slot can never make an old handle read the new value.
+    #[test]
+    fn property_random_alloc_remove_reuse_never_aliases() {
+        let mut rng = Lcg(0xDEAD_BEEF_CAFE_F00D);
+        let mut arena: Arena<u64> = Arena::new();
+        let mut live: Vec<(NodeId, u64)> = Vec::new();
+        let mut removed: Vec<NodeId> = Vec::new();
+        let mut previous_allocated = 0u64;
+        for step in 0..3000 {
+            if live.is_empty() || rng.idx(3) > 0 {
+                let value = rng.next();
+                let id = arena.allocate(0, value);
+                live.push((id, value));
+            } else {
+                let i = rng.idx(live.len());
+                let (id, value) = live.swap_remove(i);
+                assert_eq!(
+                    arena.remove(id).unwrap(),
+                    value,
+                    "step {step}: remove returned the wrong value"
+                );
+                removed.push(id);
+            }
+
+            for &(id, value) in &live {
+                assert_eq!(
+                    arena.get(id).unwrap(),
+                    &value,
+                    "step {step}: live handle {id} misread"
+                );
+            }
+            for &id in &removed {
+                assert!(
+                    arena.get(id).is_err(),
+                    "step {step}: removed handle {id} became readable after reuse"
+                );
+            }
+            assert_eq!(arena.len(), live.len(), "step {step}: live count drift");
+            assert!(
+                arena.allocated() >= previous_allocated,
+                "step {step}: allocation counter regressed"
+            );
+            previous_allocated = arena.allocated();
+            assert!(
+                arena.capacity() >= live.len(),
+                "step {step}: capacity shrank below the live count"
+            );
+        }
+    }
+
+    /// Fabricated generation defects (a handle that names the same slot with a
+    /// wrong generation) are always rejected rather than silently reading the
+    /// slot's occupant.
+    #[test]
+    fn property_fabricated_generation_defects_are_rejected() {
+        let mut rng = Lcg(0xFAB0_0000_0000_0000);
+        let mut arena: Arena<u64> = Arena::new();
+        let mut live: Vec<NodeId> = Vec::new();
+        for _ in 0..2000 {
+            if !live.is_empty() && rng.idx(5) == 0 {
+                let i = rng.idx(live.len());
+                arena.remove(live.swap_remove(i)).unwrap();
+            }
+            let id = arena.allocate(0, rng.next());
+            live.push(id);
+
+            // Same slot, wrong generation: must be rejected.
+            let wrong_generation = NodeId::new(0, id.slot(), id.generation().wrapping_add(1));
+            assert!(
+                arena.get(wrong_generation).is_err(),
+                "fabricated generation defect on {id} was not rejected"
+            );
+            // Out-of-bounds fabrication: always rejected as such.
+            let out_of_bounds = NodeId::new(0, u32::MAX, 0);
+            assert!(matches!(
+                arena.get(out_of_bounds),
+                Err(ArenaError::OutOfBounds { .. })
+            ));
+        }
+    }
 }
