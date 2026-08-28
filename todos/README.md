@@ -34,7 +34,7 @@ T02 将建立统一校验命令 `npm run validate`（依次覆盖 JavaScript 检
 | 04 | P0 | [04-native-binding-spike.md](done/04-native-binding-spike.md) | M0 | T01 | 已完成 |
 | 05 | P0 | [05-parser-selector-string-adr.md](done/05-parser-selector-string-adr.md) | M0 | T01 | 已完成 |
 | 06 | P0 | [06-native-build-adr.md](done/06-native-build-adr.md) | M0/M9 | T04 | 已完成 |
-| 07 | P0 | [07-happy-dom-baseline-manifest.md](07-happy-dom-baseline-manifest.md) | M1 | T03 | 待办 |
+| 07 | P0 | [07-happy-dom-baseline-manifest.md](done/07-happy-dom-baseline-manifest.md) | M1 | T03 | 已完成 |
 | 08 | P0 | [08-public-api-snapshot.md](08-public-api-snapshot.md) | M1 | T07 | 待办 |
 | 09 | P0 | [09-type-compatibility-harness.md](09-type-compatibility-harness.md) | M1 | T07 | 待办 |
 | 10 | P0 | [10-differential-runner.md](10-differential-runner.md) | M1 | T07 | 待办 |
