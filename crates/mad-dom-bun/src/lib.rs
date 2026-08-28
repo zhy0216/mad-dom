@@ -1,6 +1,61 @@
-pub fn binding_identity() -> &'static str {
-    "mad-dom-bun"
-}
+//! Production Bun / JavaScriptCore native binding for MAD DOM (T19).
+//!
+//! # Role
+//!
+//! This crate is the thin production FFI layer between JavaScript (loaded by
+//! Bun through Node-API) and the runtime-agnostic Rust DOM Core
+//! ([`mad_dom_core`]). Following ADR-0001 (three-layer architecture),
+//! ADR-0003 (binding technology) and ADR-0005 (native build & release
+//! architecture), it performs *only*:
+//!
+//! * value conversion (strings, numbers, arrays, `null`);
+//! * opaque-handle wrapping — JS objects that carry a Core
+//!   [`NodeId`](mad_dom_core::arena::NodeId) plus a document ownership
+//!   reference (see [`handle`]);
+//! * lifecycle — document creation, explicit `destroy()` and GC-driven
+//!   destruction;
+//! * minimal error mapping (see [`error`]);
+//! * the ABI probe ([`api::abi_version`]).
+//!
+//! It deliberately does **not** copy tree state and does not implement any DOM
+//! rule: every structural operation is delegated verbatim to
+//! [`Document`](mad_dom_core::dom::Document). No second authoritative DOM
+//! state exists on this side of the boundary (ADR-0001 §2 "Core 优先").
+//!
+//! # Safety model
+//!
+//! * **All FFI/`unsafe` lives inside the `napi` / `napi-sys` crates.** The
+//!   handwritten code in this crate contains no `unsafe` blocks; the only FFI
+//!   surface is the `#[napi]`-annotated entries in [`handle`] and [`api`].
+//! * **Panic containment**: every `#[napi]` entry point is marked
+//!   `#[napi(catch_unwind)]`, so a Rust panic is converted into a JavaScript
+//!   `Error` instead of unwinding across the FFI boundary (which would abort
+//!   the process). This requires the `panic = unwind` profile; it must never
+//!   be switched to `panic = abort` (ADR-0005 §1).
+//! * **No raw pointers cross the boundary.** JavaScript only ever receives
+//!   opaque class instances ([`handle::DocumentHandle`],
+//!   [`handle::NodeHandle`]) and primitives. A node handle stores a Core
+//!   [`NodeId`](mad_dom_core::arena::NodeId) plus an `Arc` document ownership
+//!   reference — never a pointer into the arena.
+//! * **Handle opacity**: [`NodeId`](mad_dom_core::arena::NodeId) values are
+//!   created and validated only inside `mad-dom-core`; the binding stores and
+//!   forwards them verbatim and can neither fabricate nor decompose one.
+//!   Cross-document misuse is rejected by Core with
+//!   [`CoreError::WrongDocument`](mad_dom_core::error::CoreError::WrongDocument).
+//! * **Document liveness**: every node wrapper holds an `Arc` to the shared
+//!   document state, so any reachable node keeps its document's arena alive.
+//!   `destroy()` clears the document eagerly; operations afterwards fail with
+//!   a structured error instead of touching freed memory.
+//! * **No cross-thread sharing**: this binding targets Bun's single JS thread.
+//!   The shared document is guarded by a `Mutex` both to satisfy napi's
+//!   `Send + Sync` class bound and to make any accidental concurrent use fail
+//!   safe rather than race.
+
+mod api;
+mod error;
+mod handle;
+
+pub use api::{abi_version, binding_identity, create_document, live_document_count};
 
 #[cfg(test)]
 mod tests {

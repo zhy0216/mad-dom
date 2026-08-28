@@ -24,6 +24,8 @@
     "check": "bun --check index.js",
     "test": "bun test tests/bun",
     "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run compat:types && npm run test && npm run compat:ledger",
+    "dev:build": "bash crates/mad-dom-bun/build.sh",
+    "test:native": "bun test tests/bun/native.test.js",
     "spike:build": "bash spikes/native-binding/build.sh",
     "spike:test": "bun test spikes/native-binding",
     "spike2:build": "cd spikes/parser-selector-string && cargo build",

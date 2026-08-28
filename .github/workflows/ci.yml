@@ -36,7 +36,10 @@ jobs:
       - name: Run Rust tests
         run: cargo test --workspace
 
-      - name: Run Bun tests
+      - name: Build native binding (dev artifact)
+        run: npm run dev:build
+
+      - name: Run Bun tests (including native binding smoke tests)
         run: bun test tests/bun
 
       - name: Validate compatibility ledger (regression gate)

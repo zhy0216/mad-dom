@@ -22,6 +22,26 @@ Do not use this release in production.
 
 Development uses Bun `1.4.0` (recorded in `.bun-version`) and Rust `1.93.1` (pinned in `rust-toolchain.toml`).
 
+### Native binding (T19+)
+
+The DOM Core runs in Rust; JavaScript reaches it through the Node-API binding
+in `crates/mad-dom-bun`. To build the local development artifact:
+
+```sh
+npm run dev:build
+```
+
+This compiles the binding for your local triple and writes the git-ignored
+artifact to `build/mad-dom.node`. The package entry (`index.js`) loads it on
+first use (or the artifact pointed to by `MAD_DOM_NATIVE_PATH`); without a
+built artifact the native-backed entry points fail fast with a
+`MAD_DOM_NATIVE_NOT_FOUND` error. The native smoke tests run once the artifact
+exists:
+
+```sh
+npm run test:native
+```
+
 The repository-level validation gate is:
 
 ```sh
@@ -36,5 +56,7 @@ Individual commands:
 - `cargo fmt --check` — Rust formatting check;
 - `cargo clippy --workspace --all-targets -- -D warnings` — Rust lint;
 - `cargo test --workspace` — Rust tests;
-- `bun test tests/bun` — Bun tests;
+- `bun test tests/bun` — Bun tests (native smoke tests skip when the dev artifact is absent);
+- `npm run dev:build` — build the local native artifact (`build/mad-dom.node`);
+- `npm run test:native` — native binding smoke tests;
 - `npm pack --dry-run` — package smoke test.

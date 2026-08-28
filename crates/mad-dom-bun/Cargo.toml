@@ -7,6 +7,16 @@ description = "Bun / JavaScriptCore native bindings for mad-dom."
 
 [lib]
 name = "mad_dom_bun"
+# `cdylib` is the Node-API artifact Bun dlopens; `rlib` lets `cargo test`
+# link the crate's own unit tests cleanly.
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 mad-dom-core = { workspace = true }
+# Node-API binding layer. The exact resolved versions are pinned in the
+# workspace Cargo.lock and were proven against Bun 1.4.0 by the T04 spike
+# (ADR-0003). The code only uses the Node-API level gated by the `napi4`
+# feature (class instances + GC finalizers), which Bun 1.4.0 implements;
+# `panic = unwind` must never be switched to abort (ADR-0005 §1).
+napi = { version = "3.12.2", features = ["napi4"] }
+napi-derive = "3.6.3"
