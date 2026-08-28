@@ -11,9 +11,9 @@
 //! * every relation field points at a live node of the same document.
 //!
 //! The walk is an iterative DFS with a visited set, so arbitrarily deep trees
-//! cannot overflow the call stack. The checker is intentionally the only
-//! consumer of the raw relation fields outside the document module itself; the
-//! public API exposes no way to write those fields.
+//! cannot overflow the call stack. Besides the document module itself, only
+//! the unified mutation API (`mutation` module) and in-crate tests consume the
+//! raw relation fields; the public API exposes no way to write those fields.
 
 use crate::arena::NodeId;
 use crate::error::CoreError;

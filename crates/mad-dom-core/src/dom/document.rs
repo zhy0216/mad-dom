@@ -9,8 +9,10 @@
 //! This module also hosts the read-only tree navigation API (T14): parent,
 //! first/last child, previous/next sibling, a `children` helper and descendant
 //! checks. Every read verifies same-document ownership first, so foreign
-//! handles fail with [`CoreError::WrongDocument`]. Mutation of the tree
-//! relations is deliberately out of scope (T15/T16).
+//! handles fail with [`CoreError::WrongDocument`]. Writing the tree relations
+//! is the job of the unified mutation API (T15/T16) in the sibling `mutation`
+//! module; this module only exposes the crate-internal [`Document::node_mut`]
+//! accessor that mutation and tests use.
 
 use crate::arena::{Arena, NodeId};
 use crate::error::CoreError;
@@ -214,19 +216,36 @@ impl Document {
             })
         }
     }
+
+    /// Crate-internal: returns a mutable reference to the node for `id`.
+    ///
+    /// Only code inside `mad-dom-core` can reach this, so the tree relation
+    /// fields stay write-only outside the crate. The unified mutation API
+    /// (T15) uses it to relink relations atomically; in-crate tests use it to
+    /// build trees and inject deliberate corruption for the invariant checker.
+    pub(crate) fn node_mut(&mut self, id: NodeId) -> Result<&mut Node, CoreError> {
+        self.expect_same_document(id)?;
+        self.arena.get_mut(id).map_err(CoreError::from)
+    }
+
+    /// Crate-internal: number of live nodes in the arena.
+    ///
+    /// Used by the debug-only invariant verification to cap the parent-chain
+    /// walk so a (buggy) cyclic tree cannot hang the check.
+    pub(crate) fn live_node_count(&self) -> usize {
+        self.arena.len()
+    }
 }
 
 #[cfg(test)]
 impl Document {
-    /// Test-only: returns a mutable reference to a node for `id`.
+    /// Test-only: allocates a `Document`-kind node so tests can exercise the
+    /// rules that reject `Document` nodes as parents or children.
     ///
-    /// Lets in-crate tests write the `pub(crate)` relation fields directly so
-    /// they can construct valid trees and inject deliberate corruption for the
-    /// invariant checker. Never compiled into non-test builds, so the relation
-    /// fields stay write-only from within the crate's own test suites.
-    pub(crate) fn node_mut(&mut self, id: NodeId) -> Result<&mut Node, CoreError> {
-        self.expect_same_document(id)?;
-        self.arena.get_mut(id).map_err(CoreError::from)
+    /// The public creation helpers deliberately never produce a `Document`
+    /// node; this exists solely to reach those rejection branches.
+    pub(crate) fn create_document_node_for_test(&mut self) -> NodeId {
+        self.arena.allocate(self.id, Node::new(NodeData::Document))
     }
 
     /// Test-only: appends `child` as the last child of `parent`, linking all
