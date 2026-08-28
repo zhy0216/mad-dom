@@ -20,6 +20,11 @@
     "LICENSE"
   ],
   "sideEffects": false,
+  "scripts": {
+    "check": "bun --check index.js",
+    "test": "bun test tests/bun",
+    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run test"
+  },
   "keywords": [
     "bun",
     "dom",

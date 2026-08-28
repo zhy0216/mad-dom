@@ -17,3 +17,24 @@ The intended architecture includes:
 - compatibility with DOM-oriented Bun tests.
 
 Do not use this release in production.
+
+## Development
+
+Development uses Bun `1.4.0` (recorded in `.bun-version`) and Rust `1.93.1` (pinned in `rust-toolchain.toml`).
+
+The repository-level validation gate is:
+
+```sh
+npm run validate
+```
+
+It runs, in order: the JavaScript entry check, `cargo fmt --check`, Clippy, `cargo test --workspace`, and the Bun tests.
+
+Individual commands:
+
+- `bun --check index.js` — JavaScript entry syntax check;
+- `cargo fmt --check` — Rust formatting check;
+- `cargo clippy --workspace --all-targets -- -D warnings` — Rust lint;
+- `cargo test --workspace` — Rust tests;
+- `bun test tests/bun` — Bun tests;
+- `npm pack --dry-run` — package smoke test.
