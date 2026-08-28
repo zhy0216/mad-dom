@@ -23,7 +23,9 @@
   "scripts": {
     "check": "bun --check index.js",
     "test": "bun test tests/bun",
-    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run test"
+    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run test",
+    "spike:build": "bash spikes/native-binding/build.sh",
+    "spike:test": "bun test spikes/native-binding"
   },
   "keywords": [
     "bun",
