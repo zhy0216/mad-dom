@@ -1,6 +1,6 @@
 # 16 实现 remove 与 replace mutation
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M2
 - 条目 ID：`T16`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T16 — 实现 remove 与 replace mutation**
+- [x] **T16 — 实现 remove 与 replace mutation**
   - 实现：
     - 实现 remove 与 replace，校验父子关系和 replacement 合法性。
     - 定义 detached node、arena 槽位释放和 wrapper 未来可观察行为的 Core 语义。

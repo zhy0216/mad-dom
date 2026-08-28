@@ -40,10 +40,10 @@ T02 将建立统一校验命令 `npm run validate`（依次覆盖 JavaScript 检
 | 10 | P0 | [10-differential-runner.md](done/10-differential-runner.md) | M1 | T07 | 已完成 |
 | 11 | P0 | [11-compatibility-ledger-and-provenance.md](done/11-compatibility-ledger-and-provenance.md) | M1 | T08, T09, T10 | 已完成 |
 | 12 | P0 | [12-generational-arena.md](done/12-generational-arena.md) | M2 | T01 | ✅ 已完成 |
-| 13 | P0 | [13-core-errors-and-node-model.md](13-core-errors-and-node-model.md) | M2 | T12 | 待办 |
-| 14 | P0 | [14-tree-relations.md](14-tree-relations.md) | M2 | T13 | 待办 |
-| 15 | P0 | [15-append-and-insert-mutations.md](15-append-and-insert-mutations.md) | M2 | T14 | 待办 |
-| 16 | P0 | [16-remove-and-replace-mutations.md](16-remove-and-replace-mutations.md) | M2 | T15 | 待办 |
+| 13 | P0 | [13-core-errors-and-node-model.md](done/13-core-errors-and-node-model.md) | M2 | T12 | 已完成 |
+| 14 | P0 | [14-tree-relations.md](done/14-tree-relations.md) | M2 | T13 | 已完成 |
+| 15 | P0 | [15-append-and-insert-mutations.md](done/15-append-and-insert-mutations.md) | M2 | T14 | 已完成 |
+| 16 | P0 | [16-remove-and-replace-mutations.md](done/16-remove-and-replace-mutations.md) | M2 | T15 | 已完成 |
 | 17 | P0 | [17-cross-document-operations.md](17-cross-document-operations.md) | M2 | T16 | 待办 |
 | 18 | P0 | [18-core-property-and-stress-tests.md](18-core-property-and-stress-tests.md) | M2 | T17 | 待办 |
 | 19 | P0 | [19-minimal-native-binding.md](19-minimal-native-binding.md) | M3 | T04, T17 | 待办 |

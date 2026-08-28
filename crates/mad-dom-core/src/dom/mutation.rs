@@ -1,13 +1,33 @@
-//! Unified tree mutation API (T15).
+//! Unified tree mutation API (T15/T16).
 //!
-//! [`Document::append_child`] and [`Document::insert_before`] are the only
+//! [`Document::append_child`], [`Document::insert_before`],
+//! [`Document::remove_child`] and [`Document::replace_child`] are the only
 //! public entry points that write the tree relations stored on
 //! [`Node`](super::node::Node). Every other way into the tree — the
 //! [`Document`](super::Document) navigation API and
 //! [`Document::check_invariants`] — is read-only, and the relation fields
 //! themselves are `pub(crate)`, so callers outside this crate cannot bypass
-//! the mutation API to corrupt the tree. T16 adds `remove`/`replace` in this
-//! module with the same validation-then-mutation discipline.
+//! the mutation API to corrupt the tree.
+//!
+//! # Detached nodes, arena slots and wrapper-observable behavior
+//!
+//! [`Document::remove_child`] and [`Document::replace_child`] *detach* a node
+//! from the tree: they clear its `parent`, `previous_sibling` and
+//! `next_sibling` fields (relinking the surviving siblings around the gap) but
+//! leave the node itself live in the arena. A detached node's [`NodeId`] stays
+//! valid — navigation reads return `None` for its parent and siblings — and it
+//! can be re-inserted at any time with `append_child`/`insert_before`,
+//! carrying its subtree with it.
+//!
+//! Detaching never releases the node's arena slot, and no Core API in this
+//! milestone destroys nodes, so a removed node can never be replaced by a
+//! different node in its slot. Slot release and reuse are reserved for a
+//! future destroy/GC path; [`Arena`](crate::arena::Arena) already guarantees
+//! that if a slot is ever released and reused, the generation bump makes any
+//! older handle stale instead of aliasing the new occupant. A future wrapper
+//! layer can rely on these rules: the JS `Node` wrapper for a detached node
+//! stays valid (it is merely disconnected from the tree), and no wrapper can
+//! ever be retroactively rebound to a different node.
 //!
 //! # Which nodes may be parents and children
 //!
@@ -56,6 +76,11 @@ fn hierarchy(message: impl Into<String>) -> CoreError {
         message: message.into(),
     }
 }
+
+/// What [`Document::validate_replace_child`] computes for the mutation phase:
+/// the sibling anchors the replacement will sit between, and (for a fragment
+/// replacement) the fragment's live children.
+type ReplaceAnchors = (Option<NodeId>, Option<NodeId>, Option<Vec<NodeId>>);
 
 impl Document {
     /// Inserts `child` as the last child of `parent`.
@@ -107,6 +132,164 @@ impl Document {
         self.pre_insert(parent, child, Some(reference))
     }
 
+    /// Removes `child` from `parent`'s child list and returns the removed
+    /// child.
+    ///
+    /// The removed node becomes detached: its `parent`, `previous_sibling`
+    /// and `next_sibling` fields are cleared, its subtree stays attached to
+    /// it, and its [`NodeId`] remains live and valid in this document's arena
+    /// (see the module docs for the full semantics). A detached node can be
+    /// re-inserted later with [`Document::append_child`] or
+    /// [`Document::insert_before`].
+    ///
+    /// # Errors
+    ///
+    /// * [`CoreError::WrongDocument`] when `parent` or `child` belongs to
+    ///   another document.
+    /// * [`CoreError::Arena`] when `parent` or `child` is a stale or invalid
+    ///   handle.
+    /// * [`CoreError::Hierarchy`] when `child` is not a child of `parent`
+    ///   (a detached node or a child of a different parent).
+    pub fn remove_child(&mut self, parent: NodeId, child: NodeId) -> Result<NodeId, CoreError> {
+        self.validate_remove_child(parent, child)?;
+        self.detach(child);
+        self.verify_invariants(parent);
+        self.verify_detached(child);
+        Ok(child)
+    }
+
+    /// Validates that `child` is a live child of `parent` without touching
+    /// the tree, so [`Document::remove_child`] can fail atomically.
+    fn validate_remove_child(&self, parent: NodeId, child: NodeId) -> Result<(), CoreError> {
+        self.get(parent)?;
+        if self.get(child)?.parent() != Some(parent) {
+            return Err(hierarchy("node is not a child of the given parent"));
+        }
+        Ok(())
+    }
+
+    /// Replaces `child` with `node` within `parent` and returns the removed
+    /// child.
+    ///
+    /// `node` is moved (or, for a `DocumentFragment`, its children are
+    /// spliced) into the position `child` occupied; `child` becomes detached
+    /// with the same validity semantics as [`Document::remove_child`]. The
+    /// replacement is validated against the same rules as an insertion:
+    /// `node` may not be a `Document` node, may not be `parent` itself or an
+    /// ancestor of it, and a fragment's children must not include `parent` or
+    /// an ancestor of it. Replacing a node with itself is a no-op, and so is
+    /// replacing it with an empty `DocumentFragment` (which merely removes
+    /// `child`).
+    ///
+    /// # Errors
+    ///
+    /// As for [`Document::remove_child`], plus:
+    ///
+    /// * [`CoreError::WrongDocument`] when `node` belongs to another
+    ///   document.
+    /// * [`CoreError::Hierarchy`] when `node` is a `Document` node, is
+    ///   `parent` itself or an ancestor of it, or a fragment child would
+    ///   become an ancestor of `parent`.
+    pub fn replace_child(
+        &mut self,
+        parent: NodeId,
+        child: NodeId,
+        node: NodeId,
+    ) -> Result<NodeId, CoreError> {
+        let (anchor_prev, anchor_next, fragment_children) =
+            self.validate_replace_child(parent, child, node)?;
+
+        // Replacing a node with itself never changes the tree (WHATWG
+        // `replace`).
+        if node == child {
+            return Ok(child);
+        }
+
+        // Mutation phase: every precondition was checked above, so from here
+        // on the operation cannot fail. `anchor_prev`/`anchor_next` were
+        // computed so that they never point at `node` itself even when `node`
+        // is one of `child`'s neighbours.
+        self.detach(child);
+        if let Some(children) = fragment_children {
+            if !children.is_empty() {
+                for &c in &children {
+                    self.detach(c);
+                }
+                self.link_detached_chain_between(parent, &children, anchor_prev, anchor_next);
+            }
+            // An empty fragment has nothing to insert; replacing with it just
+            // removes `child` (WHATWG `replace`).
+        } else {
+            self.detach(node);
+            self.link_detached_chain_between(parent, &[node], anchor_prev, anchor_next);
+        }
+
+        self.verify_invariants(parent);
+        self.verify_detached(child);
+        Ok(child)
+    }
+
+    /// Validates the arguments of [`Document::replace_child`] and computes
+    /// everything the mutation phase needs: the sibling anchors the
+    /// replacement will sit between, and (for a fragment replacement) the
+    /// fragment's live children.
+    ///
+    /// Returns a [`ReplaceAnchors`]. The anchors are `child`'s neighbours,
+    /// except when `node` is itself one of those neighbours — then the anchors
+    /// are taken from `node`'s own relations, so the mutation phase can detach
+    /// `node` and still know where to link it back.
+    fn validate_replace_child(
+        &self,
+        parent: NodeId,
+        child: NodeId,
+        node: NodeId,
+    ) -> Result<ReplaceAnchors, CoreError> {
+        // Establish document ownership of every handle before any structural
+        // check, so a replacement from another document fails with
+        // `WrongDocument` even when `child` is not a valid child of `parent`.
+        self.get(parent)?;
+        self.get(child)?;
+        self.get(node)?;
+
+        if self.get(child)?.parent() != Some(parent) {
+            return Err(hierarchy("child is not a child of the given parent"));
+        }
+        if self.get(node)?.node_type() == NodeType::Document {
+            return Err(hierarchy("a Document node cannot be inserted as a child"));
+        }
+
+        // Reject cycles: `node` may not be `parent` itself or one of its
+        // ancestors.
+        if node == parent || self.is_descendant_of(parent, node)? {
+            return Err(hierarchy(
+                "cannot replace a child with an ancestor of its parent",
+            ));
+        }
+
+        let prev = self.get(child)?.previous_sibling();
+        let next = self.get(child)?.next_sibling();
+
+        let fragment_children = if self.get(node)?.node_type() == NodeType::DocumentFragment {
+            Some(self.validate_fragment_children(parent, node)?)
+        } else {
+            None
+        };
+
+        // Adjacent-replacement handling: when `node` is currently one of
+        // `child`'s immediate siblings, the anchors must be taken from
+        // `node`'s own relations, otherwise after detaching `node` the anchors
+        // would point at a node that is no longer in the chain.
+        let (anchor_prev, anchor_next) = if Some(node) == prev {
+            (self.get(node)?.previous_sibling(), next)
+        } else if Some(node) == next {
+            (prev, self.get(node)?.next_sibling())
+        } else {
+            (prev, next)
+        };
+
+        Ok((anchor_prev, anchor_next, fragment_children))
+    }
+
     /// Shared implementation of the WHATWG `pre-insert` algorithm for
     /// `append_child` (`reference` = `None`) and `insert_before`
     /// (`reference` = `Some`).
@@ -143,15 +326,7 @@ impl Document {
         // For a fragment child, every one of its children is about to become a
         // child of `parent`; none of them may be `parent` or an ancestor of it.
         let fragment_children = if child_type == NodeType::DocumentFragment {
-            let children = self.children(child)?;
-            for &c in &children {
-                if c == parent || self.is_descendant_of(parent, c)? {
-                    return Err(hierarchy(
-                        "cannot insert a DocumentFragment into one of its own descendants",
-                    ));
-                }
-            }
-            children
+            self.validate_fragment_children(parent, child)?
         } else {
             Vec::new()
         };
@@ -217,6 +392,28 @@ impl Document {
         }
     }
 
+    /// Validates that none of `fragment`'s children is `parent` or an ancestor
+    /// of it (which would create a cycle), and returns the fragment's live
+    /// children.
+    ///
+    /// Shared by the fragment paths of `pre-insert` and `replace`; both pass
+    /// the same rule so insert and replace treat fragments identically.
+    fn validate_fragment_children(
+        &self,
+        parent: NodeId,
+        fragment: NodeId,
+    ) -> Result<Vec<NodeId>, CoreError> {
+        let children = self.children(fragment)?;
+        for &c in &children {
+            if c == parent || self.is_descendant_of(parent, c)? {
+                return Err(hierarchy(
+                    "cannot insert a DocumentFragment into one of its own descendants",
+                ));
+            }
+        }
+        Ok(children)
+    }
+
     /// Removes `node` from its current parent's child list and clears its own
     /// relation fields. `node` must be live and must belong to this document.
     fn detach(&mut self, node: NodeId) {
@@ -264,23 +461,40 @@ impl Document {
         nodes: &[NodeId],
         reference: Option<NodeId>,
     ) {
+        let prev = match reference {
+            Some(r) => self.get(r).expect("live reference").previous_sibling(),
+            None => self.get(parent).expect("live parent").last_child(),
+        };
+        self.link_detached_chain_between(parent, nodes, prev, reference);
+    }
+
+    /// Splices the already-detached `nodes` (in document order) into `parent`'s
+    /// child list between `prev` and `next_`, either of which may be `None` to
+    /// denote the start or end of the child list. `nodes` must be non-empty.
+    ///
+    /// This is the shared relinking primitive for every insertion point used by
+    /// the mutation API: `insert_detached_chain` (before a reference / at the
+    /// end) and `replace` (between two explicit sibling anchors).
+    fn link_detached_chain_between(
+        &mut self,
+        parent: NodeId,
+        nodes: &[NodeId],
+        prev: Option<NodeId>,
+        next_: Option<NodeId>,
+    ) {
         debug_assert!(
             !nodes.is_empty(),
             "empty chains are short-circuited before reaching this point"
         );
         let first = nodes[0];
         let last = nodes[nodes.len() - 1];
-        let prev = match reference {
-            Some(r) => self.get(r).expect("live reference").previous_sibling(),
-            None => self.get(parent).expect("live parent").last_child(),
-        };
 
         for pair in nodes.windows(2) {
             self.node_mut(pair[0]).expect("live node").next_sibling = Some(pair[1]);
             self.node_mut(pair[1]).expect("live node").previous_sibling = Some(pair[0]);
         }
         self.node_mut(first).expect("live node").previous_sibling = prev;
-        self.node_mut(last).expect("live node").next_sibling = reference;
+        self.node_mut(last).expect("live node").next_sibling = next_;
         for &c in nodes {
             self.node_mut(c).expect("live node").parent = Some(parent);
         }
@@ -290,22 +504,16 @@ impl Document {
                 .expect("live previous sibling")
                 .next_sibling = Some(first);
         }
-        if let Some(r) = reference {
-            self.node_mut(r).expect("live reference").previous_sibling = Some(last);
+        if let Some(n) = next_ {
+            self.node_mut(n)
+                .expect("live next sibling")
+                .previous_sibling = Some(last);
         }
-
-        match reference {
-            Some(_) => {
-                if prev.is_none() {
-                    self.node_mut(parent).expect("live parent").first_child = Some(first);
-                }
-            }
-            None => {
-                if prev.is_none() {
-                    self.node_mut(parent).expect("live parent").first_child = Some(first);
-                }
-                self.node_mut(parent).expect("live parent").last_child = Some(last);
-            }
+        if prev.is_none() {
+            self.node_mut(parent).expect("live parent").first_child = Some(first);
+        }
+        if next_.is_none() {
+            self.node_mut(parent).expect("live parent").last_child = Some(last);
         }
     }
 
@@ -333,6 +541,25 @@ impl Document {
             }
             unreachable!(
                 "parent chain from {node} exceeds the live node count; the tree is cyclic"
+            );
+        }
+    }
+
+    /// In debug builds, verifies that a node just detached by a mutation really
+    /// is detached (no parent) and that its subtree still satisfies the tree
+    /// invariants.
+    fn verify_detached(&self, node: NodeId) {
+        #[cfg(debug_assertions)]
+        {
+            debug_assert_eq!(
+                self.get(node).ok().and_then(|n| n.parent()),
+                None,
+                "mutation left a detached node with a parent"
+            );
+            debug_assert_eq!(
+                self.check_invariants(node),
+                Ok(()),
+                "mutation left a detached subtree inconsistent"
             );
         }
     }
@@ -1064,5 +1291,643 @@ mod tests {
         assert_eq!(doc.next_sibling(text).unwrap(), Some(el));
         assert_eq!(doc.previous_sibling(comment).unwrap(), Some(el));
         assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    // ---- remove_child ----
+
+    #[test]
+    fn remove_child_middle_detaches_and_relinks_siblings() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+
+        assert_eq!(doc.remove_child(parent, b).unwrap(), b);
+        assert_eq!(children(&doc, parent), vec![a, c]);
+        assert_eq!(doc.first_child(parent).unwrap(), Some(a));
+        assert_eq!(doc.last_child(parent).unwrap(), Some(c));
+        assert_eq!(doc.previous_sibling(a).unwrap(), None);
+        assert_eq!(doc.next_sibling(a).unwrap(), Some(c));
+        assert_eq!(doc.previous_sibling(c).unwrap(), Some(a));
+        assert_eq!(doc.next_sibling(c).unwrap(), None);
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.previous_sibling(b).unwrap(), None);
+        assert_eq!(doc.next_sibling(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn remove_child_first_updates_first_child() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+
+        doc.remove_child(parent, a).unwrap();
+        assert_eq!(children(&doc, parent), vec![b]);
+        assert_eq!(doc.first_child(parent).unwrap(), Some(b));
+        assert_eq!(doc.last_child(parent).unwrap(), Some(b));
+        assert_eq!(doc.previous_sibling(b).unwrap(), None);
+        assert_eq!(doc.next_sibling(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn remove_child_last_updates_last_child() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+
+        doc.remove_child(parent, b).unwrap();
+        assert_eq!(children(&doc, parent), vec![a]);
+        assert_eq!(doc.first_child(parent).unwrap(), Some(a));
+        assert_eq!(doc.last_child(parent).unwrap(), Some(a));
+        assert_eq!(doc.previous_sibling(a).unwrap(), None);
+        assert_eq!(doc.next_sibling(a).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn remove_child_only_child_leaves_parent_empty() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let only = doc.create_element("only").unwrap();
+        doc.append_child(parent, only).unwrap();
+
+        doc.remove_child(parent, only).unwrap();
+        assert_eq!(children(&doc, parent), Vec::<NodeId>::new());
+        assert_eq!(doc.first_child(parent).unwrap(), None);
+        assert_eq!(doc.last_child(parent).unwrap(), None);
+        assert_eq!(doc.parent(only).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn remove_child_keeps_subtree_with_the_node() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(b, c).unwrap();
+
+        doc.remove_child(parent, b).unwrap();
+        assert_eq!(children(&doc, parent), Vec::<NodeId>::new());
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.parent(c).unwrap(), Some(b));
+        assert_eq!(doc.first_child(b).unwrap(), Some(c));
+        assert_eq!(doc.last_child(b).unwrap(), Some(c));
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+        assert_eq!(doc.check_invariants(b).unwrap(), ());
+    }
+
+    #[test]
+    fn removed_handle_stays_live_and_can_be_reinserted() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+
+        doc.remove_child(parent, a).unwrap();
+        assert!(doc.get(a).is_ok(), "removed handle stays live");
+        assert_eq!(doc.parent(a).unwrap(), None);
+
+        doc.append_child(parent, a).unwrap();
+        assert_eq!(children(&doc, parent), vec![b, c, a]);
+        assert_eq!(doc.parent(a).unwrap(), Some(parent));
+        assert_eq!(doc.previous_sibling(a).unwrap(), Some(c));
+        assert_eq!(doc.next_sibling(a).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn remove_does_not_release_the_arena_slot() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+
+        doc.remove_child(parent, a).unwrap();
+        let fresh = doc.create_element("fresh").unwrap();
+        assert_ne!(fresh.slot(), a.slot(), "removal never releases the slot");
+        assert_eq!(doc.node_name(a).unwrap(), "a");
+        assert_eq!(doc.node_name(fresh).unwrap(), "fresh");
+        assert_eq!(doc.parent(a).unwrap(), None);
+        assert_eq!(doc.parent(fresh).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    // ---- remove_child: rejected operations (tree unchanged) ----
+
+    #[test]
+    fn remove_child_detached_node_rejected() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        doc.append_child(parent, a).unwrap();
+        let detached = doc.create_element("x").unwrap();
+
+        assert_hierarchy(doc.remove_child(parent, detached).unwrap_err());
+        assert_eq!(children(&doc, parent), vec![a]);
+        assert_eq!(doc.parent(detached).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn remove_child_child_of_another_parent_rejected() {
+        let mut doc = Document::new();
+        let p = doc.create_element("p").unwrap();
+        let other = doc.create_element("other").unwrap();
+        let a = doc.create_element("a").unwrap();
+        doc.append_child(p, a).unwrap();
+
+        assert_hierarchy(doc.remove_child(other, a).unwrap_err());
+        assert_eq!(children(&doc, p), vec![a]);
+        assert_eq!(children(&doc, other), Vec::<NodeId>::new());
+        assert_eq!(doc.parent(a).unwrap(), Some(p));
+        assert_eq!(doc.check_invariants(p).unwrap(), ());
+    }
+
+    #[test]
+    fn remove_child_wrong_document_rejected() {
+        let mut a = Document::new();
+        let mut b = Document::new();
+        let parent = a.create_element("div").unwrap();
+        let child = b.create_element("c").unwrap();
+
+        assert!(matches!(
+            a.remove_child(parent, child),
+            Err(CoreError::WrongDocument { .. })
+        ));
+        assert_eq!(a.first_child(parent).unwrap(), None);
+        assert_eq!(b.parent(child).unwrap(), None);
+        assert_eq!(a.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn remove_child_invalid_handle_rejected() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let bogus = NodeId::new(doc.id(), u32::MAX, 0);
+
+        assert!(matches!(
+            doc.remove_child(parent, bogus),
+            Err(CoreError::Arena(_))
+        ));
+        assert_eq!(doc.first_child(parent).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    // ---- replace_child: basic replacement ----
+
+    #[test]
+    fn replace_child_with_detached_node() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        let d = doc.create_element("d").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+
+        assert_eq!(doc.replace_child(parent, b, d).unwrap(), b);
+        assert_eq!(children(&doc, parent), vec![a, d, c]);
+        assert_eq!(doc.parent(d).unwrap(), Some(parent));
+        assert_eq!(doc.previous_sibling(d).unwrap(), Some(a));
+        assert_eq!(doc.next_sibling(d).unwrap(), Some(c));
+        assert_eq!(doc.previous_sibling(c).unwrap(), Some(d));
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.previous_sibling(b).unwrap(), None);
+        assert_eq!(doc.next_sibling(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_first_and_last_positions() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        let d = doc.create_element("d").unwrap();
+        let e = doc.create_element("e").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+
+        doc.replace_child(parent, a, d).unwrap();
+        assert_eq!(children(&doc, parent), vec![d, b, c]);
+        assert_eq!(doc.first_child(parent).unwrap(), Some(d));
+        assert_eq!(doc.previous_sibling(d).unwrap(), None);
+        doc.replace_child(parent, c, e).unwrap();
+        assert_eq!(children(&doc, parent), vec![d, b, e]);
+        assert_eq!(doc.last_child(parent).unwrap(), Some(e));
+        assert_eq!(doc.next_sibling(e).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_only_child() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let only = doc.create_element("only").unwrap();
+        let d = doc.create_element("d").unwrap();
+        doc.append_child(parent, only).unwrap();
+
+        doc.replace_child(parent, only, d).unwrap();
+        assert_eq!(children(&doc, parent), vec![d]);
+        assert_eq!(doc.first_child(parent).unwrap(), Some(d));
+        assert_eq!(doc.last_child(parent).unwrap(), Some(d));
+        assert_eq!(doc.parent(only).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    // ---- replace_child: self and adjacent replacement ----
+
+    #[test]
+    fn replace_child_self_is_no_op() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+
+        assert_eq!(doc.replace_child(parent, b, b).unwrap(), b);
+        assert_eq!(children(&doc, parent), vec![a, b, c]);
+        assert_eq!(doc.parent(b).unwrap(), Some(parent));
+        assert_eq!(doc.previous_sibling(b).unwrap(), Some(a));
+        assert_eq!(doc.next_sibling(b).unwrap(), Some(c));
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_with_previous_sibling() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+
+        doc.replace_child(parent, b, a).unwrap();
+        assert_eq!(children(&doc, parent), vec![a, c]);
+        assert_eq!(doc.first_child(parent).unwrap(), Some(a));
+        assert_eq!(doc.previous_sibling(a).unwrap(), None);
+        assert_eq!(doc.next_sibling(a).unwrap(), Some(c));
+        assert_eq!(doc.previous_sibling(c).unwrap(), Some(a));
+        assert_eq!(doc.next_sibling(c).unwrap(), None);
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_with_next_sibling() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+
+        doc.replace_child(parent, b, c).unwrap();
+        assert_eq!(children(&doc, parent), vec![a, c]);
+        assert_eq!(doc.last_child(parent).unwrap(), Some(c));
+        assert_eq!(doc.previous_sibling(c).unwrap(), Some(a));
+        assert_eq!(doc.next_sibling(c).unwrap(), None);
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_adjacent_at_head() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+
+        doc.replace_child(parent, a, b).unwrap();
+        assert_eq!(children(&doc, parent), vec![b]);
+        assert_eq!(doc.first_child(parent).unwrap(), Some(b));
+        assert_eq!(doc.last_child(parent).unwrap(), Some(b));
+        assert_eq!(doc.parent(a).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_adjacent_at_tail() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+
+        doc.replace_child(parent, b, a).unwrap();
+        assert_eq!(children(&doc, parent), vec![a]);
+        assert_eq!(doc.first_child(parent).unwrap(), Some(a));
+        assert_eq!(doc.last_child(parent).unwrap(), Some(a));
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    // ---- replace_child: moving and subtree cases ----
+
+    #[test]
+    fn replace_child_moves_node_from_other_parent() {
+        let mut doc = Document::new();
+        let p1 = doc.create_element("p1").unwrap();
+        let p2 = doc.create_element("p2").unwrap();
+        let x = doc.create_element("x").unwrap();
+        let y = doc.create_element("y").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        doc.append_child(p1, x).unwrap();
+        doc.append_child(p1, y).unwrap();
+        doc.append_child(p2, a).unwrap();
+        doc.append_child(p2, b).unwrap();
+
+        doc.replace_child(p2, a, y).unwrap();
+        assert_eq!(children(&doc, p2), vec![y, b]);
+        assert_eq!(children(&doc, p1), vec![x]);
+        assert_eq!(doc.parent(y).unwrap(), Some(p2));
+        assert_eq!(doc.previous_sibling(y).unwrap(), None);
+        assert_eq!(doc.next_sibling(y).unwrap(), Some(b));
+        assert_eq!(doc.parent(a).unwrap(), None);
+        assert_eq!(doc.check_invariants(p2).unwrap(), ());
+        assert_eq!(doc.check_invariants(p1).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_with_descendant_of_child() {
+        let mut doc = Document::new();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(a, b).unwrap();
+        doc.append_child(b, c).unwrap();
+
+        doc.replace_child(a, b, c).unwrap();
+        assert_eq!(children(&doc, a), vec![c]);
+        assert_eq!(doc.parent(c).unwrap(), Some(a));
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.first_child(b).unwrap(), None);
+        assert_eq!(doc.last_child(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(a).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_with_fragment() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+        let frag = doc.create_document_fragment().unwrap();
+        let x = doc.create_element("x").unwrap();
+        let y = doc.create_element("y").unwrap();
+        doc.append_child(frag, x).unwrap();
+        doc.append_child(frag, y).unwrap();
+
+        doc.replace_child(parent, b, frag).unwrap();
+        assert_eq!(children(&doc, parent), vec![a, x, y, c]);
+        assert_eq!(children(&doc, frag), Vec::<NodeId>::new());
+        assert_eq!(doc.parent(x).unwrap(), Some(parent));
+        assert_eq!(doc.next_sibling(x).unwrap(), Some(y));
+        assert_eq!(doc.previous_sibling(y).unwrap(), Some(x));
+        assert_eq!(doc.next_sibling(y).unwrap(), Some(c));
+        assert_eq!(doc.previous_sibling(c).unwrap(), Some(y));
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_with_empty_fragment_removes_child() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        let frag = doc.create_document_fragment().unwrap();
+
+        doc.replace_child(parent, b, frag).unwrap();
+        assert_eq!(children(&doc, parent), vec![a]);
+        assert_eq!(doc.last_child(parent).unwrap(), Some(a));
+        assert_eq!(doc.parent(b).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replaced_child_handle_stays_live_and_can_be_reinserted() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        let d = doc.create_element("d").unwrap();
+        doc.append_child(parent, a).unwrap();
+        doc.append_child(parent, b).unwrap();
+        doc.append_child(parent, c).unwrap();
+
+        doc.replace_child(parent, b, d).unwrap();
+        assert!(doc.get(b).is_ok(), "replaced handle stays live");
+
+        doc.insert_before(parent, b, c).unwrap();
+        assert_eq!(children(&doc, parent), vec![a, d, b, c]);
+        assert_eq!(doc.parent(b).unwrap(), Some(parent));
+        assert_eq!(doc.previous_sibling(b).unwrap(), Some(d));
+        assert_eq!(doc.next_sibling(b).unwrap(), Some(c));
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    // ---- replace_child: rejected operations (tree unchanged) ----
+
+    #[test]
+    fn replace_child_rejects_detached_child() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        doc.append_child(parent, a).unwrap();
+        let detached = doc.create_element("x").unwrap();
+        let node = doc.create_element("n").unwrap();
+
+        assert_hierarchy(doc.replace_child(parent, detached, node).unwrap_err());
+        assert_eq!(children(&doc, parent), vec![a]);
+        assert_eq!(doc.parent(detached).unwrap(), None);
+        assert_eq!(doc.parent(node).unwrap(), None);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_rejects_child_of_another_parent() {
+        let mut doc = Document::new();
+        let p = doc.create_element("p").unwrap();
+        let other = doc.create_element("other").unwrap();
+        let a = doc.create_element("a").unwrap();
+        doc.append_child(p, a).unwrap();
+        let node = doc.create_element("n").unwrap();
+
+        assert_hierarchy(doc.replace_child(other, a, node).unwrap_err());
+        assert_eq!(children(&doc, p), vec![a]);
+        assert_eq!(children(&doc, other), Vec::<NodeId>::new());
+        assert_eq!(doc.parent(a).unwrap(), Some(p));
+        assert_eq!(doc.parent(node).unwrap(), None);
+        assert_eq!(doc.check_invariants(p).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_rejects_parent_as_replacement() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        doc.append_child(parent, a).unwrap();
+
+        assert_hierarchy(doc.replace_child(parent, a, parent).unwrap_err());
+        assert_eq!(children(&doc, parent), vec![a]);
+        assert_eq!(doc.parent(a).unwrap(), Some(parent));
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_rejects_ancestor_as_replacement() {
+        let mut doc = Document::new();
+        let a = doc.create_element("a").unwrap();
+        let b = doc.create_element("b").unwrap();
+        let c = doc.create_element("c").unwrap();
+        doc.append_child(a, b).unwrap();
+        doc.append_child(b, c).unwrap();
+        let leaf = doc.create_element("leaf").unwrap();
+        doc.append_child(c, leaf).unwrap();
+
+        assert_hierarchy(doc.replace_child(c, leaf, a).unwrap_err());
+        assert_eq!(children(&doc, a), vec![b]);
+        assert_eq!(children(&doc, b), vec![c]);
+        assert_eq!(children(&doc, c), vec![leaf]);
+        assert_eq!(doc.parent(leaf).unwrap(), Some(c));
+        assert_eq!(doc.check_invariants(a).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_rejects_document_replacement() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        doc.append_child(parent, a).unwrap();
+        let doc_node = doc.create_document_node_for_test();
+
+        assert_hierarchy(doc.replace_child(parent, a, doc_node).unwrap_err());
+        assert_eq!(children(&doc, parent), vec![a]);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_rejects_fragment_with_ancestor_child() {
+        let mut doc = Document::new();
+        let frag = doc.create_document_fragment().unwrap();
+        let div = doc.create_element("div").unwrap();
+        let p = doc.create_element("p").unwrap();
+        doc.append_child(frag, div).unwrap();
+        doc.append_child(div, p).unwrap();
+        let leaf = doc.create_element("leaf").unwrap();
+        doc.append_child(p, leaf).unwrap();
+
+        assert_hierarchy(doc.replace_child(p, leaf, frag).unwrap_err());
+        assert_eq!(children(&doc, frag), vec![div]);
+        assert_eq!(children(&doc, p), vec![leaf]);
+        assert_eq!(doc.parent(div).unwrap(), Some(frag));
+        assert_eq!(doc.check_invariants(frag).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_wrong_document_rejected() {
+        let mut a = Document::new();
+        let mut b = Document::new();
+        let parent = a.create_element("div").unwrap();
+        let child = a.create_element("c").unwrap();
+        a.append_child(parent, child).unwrap();
+        let foreign = b.create_element("f").unwrap();
+
+        assert!(matches!(
+            a.replace_child(parent, child, foreign),
+            Err(CoreError::WrongDocument { .. })
+        ));
+        assert!(matches!(
+            b.replace_child(foreign, foreign, child),
+            Err(CoreError::WrongDocument { .. })
+        ));
+        assert_eq!(children(&a, parent), vec![child]);
+        assert_eq!(a.parent(child).unwrap(), Some(parent));
+        assert_eq!(b.parent(foreign).unwrap(), None);
+        assert_eq!(a.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn replace_child_invalid_handle_rejected() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let a = doc.create_element("a").unwrap();
+        doc.append_child(parent, a).unwrap();
+        let bogus = NodeId::new(doc.id(), u32::MAX, 0);
+
+        assert!(matches!(
+            doc.replace_child(parent, a, bogus),
+            Err(CoreError::Arena(_))
+        ));
+        assert_eq!(children(&doc, parent), vec![a]);
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    // ---- sequences keep invariants ----
+
+    #[test]
+    fn a_sequence_of_removes_and_replaces_keeps_invariants() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("div").unwrap();
+        let ids: Vec<NodeId> = (0..6).map(|_| doc.create_element("n").unwrap()).collect();
+        for &c in &ids {
+            doc.append_child(parent, c).unwrap();
+        }
+
+        doc.remove_child(parent, ids[1]).unwrap();
+        doc.check_invariants(parent).unwrap();
+        doc.replace_child(parent, ids[3], ids[5]).unwrap();
+        doc.check_invariants(parent).unwrap();
+        doc.replace_child(parent, ids[0], ids[2]).unwrap();
+        doc.check_invariants(parent).unwrap();
+        doc.remove_child(parent, ids[4]).unwrap();
+        doc.check_invariants(parent).unwrap();
+        doc.append_child(parent, ids[1]).unwrap();
+        doc.check_invariants(parent).unwrap();
+
+        assert_eq!(children(&doc, parent), vec![ids[2], ids[5], ids[1]]);
     }
 }
