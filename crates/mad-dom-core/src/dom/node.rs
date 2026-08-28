@@ -1,9 +1,13 @@
-//! Node type enumeration and per-type data storage.
-//!
-//! This module holds the *data* model only: the kind of a node, its name, its
-//! text and its attribute storage. It deliberately contains no runtime
-//! objects, no tree relations and no mutation methods — those arrive with tree
-//! navigation (T14) and the unified mutation API (T15/T16).
+//! Node type enumeration, per-type data storage and tree relations.//!
+//! This module holds the *data* model of a node: its kind, its name, its text,
+//! its attribute storage, and the tree relations linking it to its parent,
+//! children and siblings (T14). The relation fields are `pub(crate)`: only code
+//! inside `mad-dom-core` can read or write them, so the binding layer cannot
+//! corrupt the tree directly. Mutation of those fields is deliberately left to
+//! the unified mutation API (T15/T16); this milestone only establishes the
+//! storage, read-only navigation and an invariant checker.
+
+use crate::arena::NodeId;
 
 /// The kind of a node, mirroring the WHATWG `Node.nodeType` values for the
 /// first batch of node types.
@@ -100,21 +104,40 @@ impl NodeData {
     }
 }
 
-/// A single node in a document: a wrapper around [`NodeData`].
+/// A single node in a document: its data plus its tree relations.
 ///
 /// Nodes live in the owning [`Document`](super::Document)'s arena and are
-/// addressed through opaque [`NodeId`](crate::arena::NodeId) handles. This
-/// struct carries no tree relation fields yet (T14) and no mutation methods
-/// (T15/T16).
+/// addressed through opaque [`NodeId`](crate::arena::NodeId) handles. The tree
+/// relation fields are `pub(crate)` (T14): code outside this crate can read
+/// relations only through the read-only [`Document`](super::Document)
+/// navigation API and can never modify them, so the tree cannot be corrupted
+/// from the binding layer. Mutation is added by T15/T16.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     data: NodeData,
+    /// The node's parent, if any.
+    pub(crate) parent: Option<NodeId>,
+    /// The node's first child, if any.
+    pub(crate) first_child: Option<NodeId>,
+    /// The node's last child, if any.
+    pub(crate) last_child: Option<NodeId>,
+    /// The node's previous sibling, if any.
+    pub(crate) previous_sibling: Option<NodeId>,
+    /// The node's next sibling, if any.
+    pub(crate) next_sibling: Option<NodeId>,
 }
 
 impl Node {
     /// Creates a node holding `data`. Only reachable inside the crate.
     pub(crate) fn new(data: NodeData) -> Self {
-        Self { data }
+        Self {
+            data,
+            parent: None,
+            first_child: None,
+            last_child: None,
+            previous_sibling: None,
+            next_sibling: None,
+        }
     }
 
     /// Returns the node's payload.
@@ -130,5 +153,30 @@ impl Node {
     /// Returns the node's WHATWG `nodeName`.
     pub fn node_name(&self) -> &str {
         self.data.node_name()
+    }
+
+    /// Returns the node's parent, if any. Only reachable inside the crate.
+    pub(crate) fn parent(&self) -> Option<NodeId> {
+        self.parent
+    }
+
+    /// Returns the node's first child, if any. Only reachable inside the crate.
+    pub(crate) fn first_child(&self) -> Option<NodeId> {
+        self.first_child
+    }
+
+    /// Returns the node's last child, if any. Only reachable inside the crate.
+    pub(crate) fn last_child(&self) -> Option<NodeId> {
+        self.last_child
+    }
+
+    /// Returns the node's previous sibling, if any. Only reachable inside the crate.
+    pub(crate) fn previous_sibling(&self) -> Option<NodeId> {
+        self.previous_sibling
+    }
+
+    /// Returns the node's next sibling, if any. Only reachable inside the crate.
+    pub(crate) fn next_sibling(&self) -> Option<NodeId> {
+        self.next_sibling
     }
 }

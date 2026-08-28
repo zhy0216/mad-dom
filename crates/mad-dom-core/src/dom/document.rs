@@ -5,6 +5,12 @@
 //! arena carry that document id, so a handle obtained from one document can be
 //! recognised — and rejected — by another document instead of being silently
 //! misread as one of its own nodes.
+//!
+//! This module also hosts the read-only tree navigation API (T14): parent,
+//! first/last child, previous/next sibling, a `children` helper and descendant
+//! checks. Every read verifies same-document ownership first, so foreign
+//! handles fail with [`CoreError::WrongDocument`]. Mutation of the tree
+//! relations is deliberately out of scope (T15/T16).
 
 use crate::arena::{Arena, NodeId};
 use crate::error::CoreError;
@@ -116,6 +122,87 @@ impl Document {
         Ok(self.get(id)?.node_name())
     }
 
+    /// Returns the parent of the node for `id`, if any.
+    ///
+    /// Errors with [`CoreError::WrongDocument`] when `id` belongs to another
+    /// document, and with [`CoreError::Arena`] when the handle is stale or
+    /// invalid. This is a pure read; it never modifies the tree.
+    pub fn parent(&self, id: NodeId) -> Result<Option<NodeId>, CoreError> {
+        Ok(self.get(id)?.parent())
+    }
+
+    /// Returns the first child of the node for `id`, if any.
+    ///
+    /// See [`Document::parent`] for the error conditions.
+    pub fn first_child(&self, id: NodeId) -> Result<Option<NodeId>, CoreError> {
+        Ok(self.get(id)?.first_child())
+    }
+
+    /// Returns the last child of the node for `id`, if any.
+    ///
+    /// See [`Document::parent`] for the error conditions.
+    pub fn last_child(&self, id: NodeId) -> Result<Option<NodeId>, CoreError> {
+        Ok(self.get(id)?.last_child())
+    }
+
+    /// Returns the previous sibling of the node for `id`, if any.
+    ///
+    /// See [`Document::parent`] for the error conditions.
+    pub fn previous_sibling(&self, id: NodeId) -> Result<Option<NodeId>, CoreError> {
+        Ok(self.get(id)?.previous_sibling())
+    }
+
+    /// Returns the next sibling of the node for `id`, if any.
+    ///
+    /// See [`Document::parent`] for the error conditions.
+    pub fn next_sibling(&self, id: NodeId) -> Result<Option<NodeId>, CoreError> {
+        Ok(self.get(id)?.next_sibling())
+    }
+
+    /// Returns the child handles of the node for `id`, in document order.
+    ///
+    /// This is a read-only helper that walks the `first_child`/`next_sibling`
+    /// chain. See [`Document::parent`] for the error conditions. Callers must
+    /// pass a node whose tree satisfies the invariants enforced by the mutation
+    /// API and verified by [`Document::check_invariants`]; this milestone
+    /// exposes no way for external code to corrupt those relations.
+    pub fn children(&self, id: NodeId) -> Result<Vec<NodeId>, CoreError> {
+        let node = self.get(id)?;
+        let mut out = Vec::new();
+        let mut cur = node.first_child();
+        while let Some(child) = cur {
+            out.push(child);
+            cur = self.get(child)?.next_sibling();
+        }
+        Ok(out)
+    }
+
+    /// Returns whether `node` is a proper descendant of `ancestor`.
+    ///
+    /// A node is never considered a descendant of itself. Walks up the parent
+    /// chain from `node`, so it terminates even in the presence of a corrupted
+    /// (cyclic) tree by capping the walk at the number of live nodes. Errors
+    /// with [`CoreError::WrongDocument`] when either handle belongs to another
+    /// document, and with [`CoreError::Arena`] when a handle is stale.
+    pub fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> Result<bool, CoreError> {
+        self.get(node)?;
+        self.get(ancestor)?;
+        if node == ancestor {
+            return Ok(false);
+        }
+        let mut cur = node;
+        // A parent chain in a valid tree has at most `len - 1` edges; capping
+        // the walk guarantees termination on corrupted input instead of looping.
+        for _ in 0..=self.arena.len() {
+            match self.get(cur)?.parent() {
+                None => return Ok(false),
+                Some(p) if p == ancestor => return Ok(true),
+                Some(p) => cur = p,
+            }
+        }
+        Ok(false)
+    }
+
     /// Rejects handles that do not belong to this document.
     fn expect_same_document(&self, id: NodeId) -> Result<(), CoreError> {
         if id.document_id() == self.id {
@@ -126,6 +213,41 @@ impl Document {
                 expected_document: self.id,
             })
         }
+    }
+}
+
+#[cfg(test)]
+impl Document {
+    /// Test-only: returns a mutable reference to a node for `id`.
+    ///
+    /// Lets in-crate tests write the `pub(crate)` relation fields directly so
+    /// they can construct valid trees and inject deliberate corruption for the
+    /// invariant checker. Never compiled into non-test builds, so the relation
+    /// fields stay write-only from within the crate's own test suites.
+    pub(crate) fn node_mut(&mut self, id: NodeId) -> Result<&mut Node, CoreError> {
+        self.expect_same_document(id)?;
+        self.arena.get_mut(id).map_err(CoreError::from)
+    }
+
+    /// Test-only: appends `child` as the last child of `parent`, linking all
+    /// five relation fields consistently.
+    ///
+    /// `child` must currently be detached; the helper keeps the tree valid so
+    /// tests can build deep and wide trees before exercising navigation or the
+    /// invariant checker.
+    pub(crate) fn append_child_for_test(&mut self, parent: NodeId, child: NodeId) {
+        let last = self.get(parent).expect("live parent").last_child();
+        self.node_mut(child).expect("live child").parent = Some(parent);
+        self.node_mut(child).expect("live child").previous_sibling = last;
+        match last {
+            Some(l) => {
+                self.node_mut(l).expect("live last child").next_sibling = Some(child);
+            }
+            None => {
+                self.node_mut(parent).expect("live parent").first_child = Some(child);
+            }
+        }
+        self.node_mut(parent).expect("live parent").last_child = Some(child);
     }
 }
 
