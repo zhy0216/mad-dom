@@ -1937,4 +1937,121 @@ mod tests {
 
         assert_eq!(children(&doc, parent), vec![ids[2], ids[5], ids[1]]);
     }
+
+    /// Walks from `node` to the top of its tree and returns that root.
+    fn top_of(doc: &Document, mut node: NodeId) -> NodeId {
+        while let Some(p) = doc.parent(node).unwrap() {
+            node = p;
+        }
+        node
+    }
+
+    /// Tiny deterministic PRNG (LCG) for the property-style test below.
+    struct Lcg(u64);
+
+    impl Lcg {
+        fn next(&mut self) -> u64 {
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            self.0 >> 33
+        }
+
+        fn idx(&mut self, n: usize) -> usize {
+            assert!(n > 0);
+            (self.next() % n as u64) as usize
+        }
+    }
+
+    /// Property-style check that the invariant checker the property suite
+    /// relies on really can fail: a randomly built tree passes
+    /// `check_invariants`, but deliberately corrupting one relation makes it
+    /// fail. A real relinking bug in the mutation API can therefore never hide
+    /// from the property tests.
+    #[test]
+    fn random_tree_then_injected_relation_defect_fails_invariants() {
+        for seed in 0..8u64 {
+            let mut rng = Lcg(0xC0FF_EE00_0000_0000 ^ seed.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+            let mut doc = Document::new();
+            let mut pool: Vec<NodeId> = Vec::new();
+
+            // 1. Build a random tree through the public mutation API.
+            for _ in 0..64 {
+                let node = doc.create_element("n").unwrap();
+                pool.push(node);
+                if pool.len() > 1 {
+                    let parent = pool[rng.idx(pool.len())];
+                    if parent != node {
+                        doc.append_child(parent, node).unwrap();
+                    }
+                }
+            }
+            let roots: Vec<NodeId> = pool
+                .iter()
+                .copied()
+                .filter(|n| doc.parent(*n).unwrap().is_none())
+                .collect();
+            assert!(!roots.is_empty(), "seed {seed}: expected at least one root");
+            for r in &roots {
+                assert!(
+                    doc.check_invariants(*r).is_ok(),
+                    "seed {seed}: valid tree failed the checker"
+                );
+            }
+
+            // 2. Inject one guaranteed-detectable relation defect.
+            let parent_kinds: Vec<NodeId> = pool
+                .iter()
+                .copied()
+                .filter(|n| doc.first_child(*n).unwrap().is_some())
+                .collect();
+            let non_roots: Vec<NodeId> = pool
+                .iter()
+                .copied()
+                .filter(|n| doc.parent(*n).unwrap().is_some())
+                .collect();
+            match rng.idx(3) {
+                0 => {
+                    // Break a child's parent back-pointer.
+                    assert!(!non_roots.is_empty(), "seed {seed}: tree too shallow");
+                    let victim = non_roots[rng.idx(non_roots.len())];
+                    let root = top_of(&doc, victim);
+                    let old_parent = doc.parent(victim).unwrap().unwrap();
+                    let other = pool
+                        .iter()
+                        .copied()
+                        .find(|o| *o != victim && *o != old_parent)
+                        .expect("pool has enough distinct nodes");
+                    doc.node_mut(victim).unwrap().parent = Some(other);
+                    assert!(
+                        doc.check_invariants(root).is_err(),
+                        "seed {seed}: broken parent back-pointer not detected"
+                    );
+                }
+                1 => {
+                    // Drop last_child on a node that has children.
+                    assert!(!parent_kinds.is_empty(), "seed {seed}: tree too shallow");
+                    let victim = parent_kinds[rng.idx(parent_kinds.len())];
+                    let root = top_of(&doc, victim);
+                    doc.node_mut(victim).unwrap().last_child = None;
+                    assert!(
+                        doc.check_invariants(root).is_err(),
+                        "seed {seed}: broken last_child not detected"
+                    );
+                }
+                _ => {
+                    // Drop first_child on a node that has children.
+                    assert!(!parent_kinds.is_empty(), "seed {seed}: tree too shallow");
+                    let victim = parent_kinds[rng.idx(parent_kinds.len())];
+                    let root = top_of(&doc, victim);
+                    doc.node_mut(victim).unwrap().first_child = None;
+                    assert!(
+                        doc.check_invariants(root).is_err(),
+                        "seed {seed}: broken first_child not detected"
+                    );
+                }
+            }
+        }
+    }
 }
