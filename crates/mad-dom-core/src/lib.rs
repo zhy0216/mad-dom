@@ -1,3 +1,5 @@
+pub mod arena;
+
 pub fn core_identity() -> &'static str {
     "mad-dom-core"
 }

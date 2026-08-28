@@ -39,7 +39,7 @@ T02 将建立统一校验命令 `npm run validate`（依次覆盖 JavaScript 检
 | 09 | P0 | [09-type-compatibility-harness.md](done/09-type-compatibility-harness.md) | M1 | T07 | 已完成 |
 | 10 | P0 | [10-differential-runner.md](done/10-differential-runner.md) | M1 | T07 | 已完成 |
 | 11 | P0 | [11-compatibility-ledger-and-provenance.md](done/11-compatibility-ledger-and-provenance.md) | M1 | T08, T09, T10 | 已完成 |
-| 12 | P0 | [12-generational-arena.md](12-generational-arena.md) | M2 | T01 | 待办 |
+| 12 | P0 | [12-generational-arena.md](done/12-generational-arena.md) | M2 | T01 | ✅ 已完成 |
 | 13 | P0 | [13-core-errors-and-node-model.md](13-core-errors-and-node-model.md) | M2 | T12 | 待办 |
 | 14 | P0 | [14-tree-relations.md](14-tree-relations.md) | M2 | T13 | 待办 |
 | 15 | P0 | [15-append-and-insert-mutations.md](15-append-and-insert-mutations.md) | M2 | T14 | 待办 |
