@@ -1,6 +1,6 @@
 # 12 实现 generational arena
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M2
 - 条目 ID：`T12`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T12 — 实现 generational arena**
+- [x] **T12 — 实现 generational arena**
   - 实现：
     - 定义 `NodeId { slot, generation }`，对 crate 外隐藏内部字段。
     - 实现 allocate/get/get_mut/remove/reuse 与容量观测。

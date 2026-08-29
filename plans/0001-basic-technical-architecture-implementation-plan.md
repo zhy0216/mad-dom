@@ -49,6 +49,8 @@ M0 决策与工程基线
 
 M1 与 M2 可以并行推进；M3 依赖绑定技术 ADR；M4 依赖 M2、M3 和最小 JavaScript facade。后续能力必须持续接入 M1 建立的兼容门禁。
 
+执行时，M3/M4 的大范围工作项按 `todos/README.md` 拆成可独立 worktree 的 contract 子任务和串行集成闸门；大节中的能力清单是验收范围，不代表单个 commit 或可无条件并发的任务。
+
 ## 4. 里程碑
 
 ### M0：固定决策与工程基线
@@ -365,20 +367,30 @@ M1 与 M2 可以并行推进；M3 依赖绑定技术 ADR；M4 依赖 M2、M3 和
 | FFI 调用过细抵消原生性能收益 | 先测量跨边界成本，再为热点增加批量查询/变更 API，且保持业务规则仍在 Core |
 | 跨平台原生发布拖慢核心开发 | 核心和绑定先以开发平台验证；平台矩阵和拆包通过独立 ADR 后进入 M9 |
 
-## 8. 建议的首批 issue 拆分
+## 8. 建议的首批 issue / TODO 拆分
 
-1. 建立 Cargo workspace 与 `mad-dom-core`/`mad-dom-bun` crate 骨架；
-2. 编写 happy-dom 基线与差分协议 ADR；
-3. 生成 happy-dom 公开导出和原型描述符快照；
-4. 验证 Bun ↔ Rust 最小调用、错误和 GC 链路并编写绑定 ADR；
-5. 实现 `NodeId` 与 generational arena；
-6. 实现基础节点模型和 mutation 不变量；
-7. 为 arena 与 mutation 引入属性测试和可重放种子；
-8. 实现文档所有权、wrapper cache 与异常映射；
-9. 交付 `createWindow()` 到基础树变更的首个端到端切片；
-10. 建立 API/类型/黑盒差分 CI 门禁；
-11. 评估 HTML、选择器和字符串存储并形成 ADR；
-12. 实现解析/序列化切片和选择器/查询切片。
+本地 `todos/README.md` 是调度真相源；Issue（若建立）只镜像下表，不承载另一套依赖或状态。每个带后缀条目对应一个独立 worktree/commit；不带后缀的 T21–T25 是串行集成闸门，负责共享入口和兼容清单。
+
+```text
+T20 (done)
+ └─ T20A seam
+    ├─ T21A error taxonomy ─┐
+    └─ T21B affinity guard ─┴─> T21 gate
+                                  └─> T22A native Window/Document
+                                        └─> T22B JS facade ─> T22 gate
+                                              └─> T23A native node contract
+                                                    └─> T23B facade node ─> T23 gate
+                                                          ├─ T24A append/insert ─┐
+                                                          └─ T24B remove/replace ─┴─> T24C facade mutation ─> T24 gate
+                                                                                       ├─ T25A Core payload seam ─┬─ T25B attributes ─┐
+                                                                                       │                          └─ T25C textContent ─┤
+                                                                                       └─ T25D live childNodes ──────────────────────────┤
+                                                                                                                                           └─> T25E binding/facade ─> T25 gate
+```
+
+首批并发窗口为 `T21A || T21B`（最多 2 个）；之后 `T24A || T24B`、`T25A || T25D`、以及 T25A 完成后的 `T25B || T25C` 可在各自 contract 冻结后并发。每个窗口最多 5 个任务，完成一个任务后才按依赖补位。共享 `handle.rs`、`lib.rs`、`api.rs`、根 `index.*`、`todos/README.md`、compat ledger 和既有集成 fixture 只能由对应集成闸门串行修改。
+
+完成 T25 闸门后，T26（HTML parser）、T30（selector）和 T37（event target）可作为下一组候选；T26 完成后 T27/T28 可并发。其余能力继续按 `todos/README.md` 的依赖图调度。
 
 ## 9. ADR-0001 完成定义
 

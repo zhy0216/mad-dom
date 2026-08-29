@@ -1,6 +1,6 @@
 # 02 建立统一校验命令与基础 CI
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M0
 - 条目 ID：`T02`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T02 — 建立统一校验命令与基础 CI**
+- [x] **T02 — 建立统一校验命令与基础 CI**
   - 实现：
     - 在 `package.json` 增加格式清晰的 check/test/validate scripts，并补最小 Bun smoke test。
     - 将 `npm run validate` 固定为仓库级门禁，至少依次执行 JavaScript 检查、`cargo fmt --check`、Clippy、`cargo test --workspace` 和 Bun 测试。

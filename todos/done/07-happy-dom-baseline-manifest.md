@@ -1,6 +1,6 @@
 # 07 建立 happy-dom 基线清单
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M1
 - 条目 ID：`T07`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T07 — 建立 happy-dom 基线清单**
+- [x] **T07 — 建立 happy-dom 基线清单**
   - 实现：
     - 创建 `compat/happy-dom-baseline.json`，记录 npm 版本、commit、Bun 版本、生成器版本和生成时间。
     - 增加 schema/校验脚本，验证版本和 commit 不为空且格式正确。

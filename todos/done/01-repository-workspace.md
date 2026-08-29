@@ -1,6 +1,6 @@
 # 01 建立 Cargo workspace 与目录骨架
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M0
 - 条目 ID：`T01`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T01 — 建立 Cargo workspace 与目录骨架**
+- [x] **T01 — 建立 Cargo workspace 与目录骨架**
   - 实现：
     - 创建根 `Cargo.toml`、`crates/mad-dom-core` 与 `crates/mad-dom-bun`。
     - 创建 `js/`、`compat/`、`tests/rust`、`tests/bun`、`tests/compat`、`tests/wpt` 目录骨架。

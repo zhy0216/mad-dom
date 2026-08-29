@@ -1,6 +1,6 @@
 # 15 实现 append 与 insert_before mutation
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M2
 - 条目 ID：`T15`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T15 — 实现 append 与 insert_before mutation**
+- [x] **T15 — 实现 append 与 insert_before mutation**
   - 实现：
     - 实现 append 与 insert_before，包括从原父节点脱离。
     - 拒绝祖先插入后代、无效 reference node 和错误文档。
