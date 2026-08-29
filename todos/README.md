@@ -200,7 +200,7 @@ git diff --check
 | 19 | P0 | [19-minimal-native-binding.md](done/19-minimal-native-binding.md) | M3 | T04, T17 | 已完成 |
 | 20 | P0 | [20-wrapper-identity-and-gc.md](done/20-wrapper-identity-and-gc.md) | M3 | T19 | 已完成 |
 | 20A | P0 | [20a-binding-extension-seam.md](done/20a-binding-extension-seam.md) | M3/M4 | T20 | 已完成 |
-| 21A | P0 | [21a-error-taxonomy.md](21a-error-taxonomy.md) | M3 | T20A | 待办 |
+| 21A | P0 | [21a-error-taxonomy.md](done/21a-error-taxonomy.md) | M3 | T20A | 已完成 |
 | 21B | P0 | [21b-affinity-guard.md](done/21b-affinity-guard.md) | M3 | T20A | 已完成 |
 | 21 | P0 | [21-native-error-and-safety-boundary.md](21-native-error-and-safety-boundary.md) | M3 | T21A, T21B | 待办 |
 | 22A | P0 | [22a-native-window-document.md](22a-native-window-document.md) | M4 | T21 | 待办 |
