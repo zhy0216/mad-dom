@@ -173,20 +173,26 @@ describe("facade construction restrictions (T22B)", () => {
 });
 
 describe("facade registry (T22B)", () => {
-  test("installExtensions tolerates a plain ctx and placeholder modules without install", () => {
+  test("installExtensions tolerates a plain ctx and drives every implemented extension", () => {
     const calls = [];
     const mockCtx = {
       wrap() {
-        throw new Error("wrap must not fire while all extensions are placeholders");
+        throw new Error("wrap must not fire during install");
       },
       defineMethod: (...args) => calls.push(["method", ...args]),
       defineAccessor: (...args) => calls.push(["accessor", ...args]),
       documentContext: Object.freeze({ handleOf: () => null }),
-      registerHandleType: () => calls.push(["registerHandleType"]),
+      registerHandleType: (...args) => calls.push(["registerHandleType", ...args]),
     };
     expect(() => installExtensions(mockCtx)).not.toThrow();
-    // None of the current extensions export `install` yet, so nothing fires.
-    expect(calls).toEqual([]);
+    // node.js (T23B) now exports `install` and is picked up automatically; the
+    // other capability extensions are still placeholders and stay silent. The
+    // exact node surface it registers is pinned in facade-node.test.js; here we
+    // only pin that the registry drives it through `ctx` without further edits.
+    const registered = calls.filter(([kind]) => kind === "registerHandleType");
+    expect(registered).toEqual([["registerHandleType", "NodeHandle", expect.any(Function)]]);
+    expect(calls.some(([kind, target]) => kind === "method" && target === Document.prototype)).toBe(true);
+    expect(calls.length).toBeGreaterThan(0);
   });
 });
 
