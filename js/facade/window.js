@@ -38,7 +38,7 @@
 //     handle is opaque, a Core `NodeId` never crosses this seam;
 //   - `ctx.registerHandleType(name, makeWrapper)` — wrapper-type registry.
 //
-// The `seam` metadata below stays `"placeholder"` until the T22 gate flips it;
+// The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
 // tests/bun/seam.test.js pins that shape.
 
 import { createRequire } from "node:module";
@@ -52,7 +52,7 @@ export const seam = Object.freeze({
   id: "facade/window",
   owner: "T22B",
   gate: "T22",
-  status: "placeholder",
+  status: "implemented",
 });
 
 // --- Native binding loader (dev form, T19 / ADR-0005 §3) -----------------

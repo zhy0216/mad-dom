@@ -8,7 +8,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-create-append-serialize",
-      "reason": "MAD DOM is in pre-alpha development and createWindow() throws during scenario setup with Error(\"mad-dom is in pre-alpha development and does not implement Window yet.\"), so the mad-dom side records no window, no appended node and no serialization output while the happy-dom side records the full observation. First presented by the T10 real-pair runner; collected into the compatibility ledger by T11.",
+      "reason": "Since T22, MAD DOM's createWindow() succeeds, but the Window/Document facade only forwards lifecycle — the node surface (createElement, createTextNode, body, serialization) is not implemented yet, so the mad-dom side records a facade-phase TypeError while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
     },
@@ -18,7 +18,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-query-selector-identity",
-      "reason": "Same setup-phase createWindow() throw as the pre-alpha facade gap: querySelectorAll results, element identity across repeated queries and click bubbling order are observable only on the happy-dom side. First presented by the T10 real-pair runner; collected into the compatibility ledger by T11.",
+      "reason": "Since T22, MAD DOM's createWindow() succeeds, but the Window/Document facade lacks the node surface (body, querySelectorAll, getElementById, events), so the mad-dom side records a facade-phase TypeError while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
     },
@@ -28,39 +28,15 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/enums-and-overloads.ts",
-      "reason": "MAD DOM does not export Window, CSSRule or EventPhaseEnum yet; enum members and tag-name overload shapes cannot be checked. First recorded in T09 as div-types-enums-and-overloads; migrated into the compatibility ledger by T11.",
+      "reason": "MAD DOM still does not export CSSRule or EventPhaseEnum, and its Window is not user-constructible (it needs a genuine native handle) while its Document lacks the node surface: tag-name overloads and NodeList iteration cannot be checked yet. Updated by T22 when Window became an exported, non-constructible class.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2305, "messageIncludes": "no exported member 'CSSRule'" },
         { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
-        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
-      ]
-    },
-    {
-      "id": "hc-types-element-invalid-members",
-      "suite": "types",
-      "status": "known-gap",
-      "subsystem": "types",
-      "fixture": "negative/invalid-members.ts",
-      "reason": "Module-level gap: MAD DOM does not export Window, so the negative marked lines currently fall through as unused @ts-expect-error directives (TS2578) on the mad-dom target. Recorded per ADR-0002 section 4 instead of forcing a pass; once the import resolves, the marked lines must genuinely error on mad-dom. First recorded in T09 as div-types-negative-invalid-members; migrated into the compatibility ledger by T11.",
-      "recordedAt": "2026-08-28T00:00:00Z",
-      "addedIn": "T09",
-      "diagnostics": [
-        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
-      ]
-    },
-    {
-      "id": "hc-types-element-wrong-argument-types",
-      "suite": "types",
-      "status": "known-gap",
-      "subsystem": "types",
-      "fixture": "negative/wrong-argument-types.ts",
-      "reason": "Module-level gap: MAD DOM does not export Window, so the negative marked lines currently fall through as unused @ts-expect-error directives (TS2578) on the mad-dom target. Recorded per ADR-0002 section 4 instead of forcing a pass; once the import resolves, the marked lines must genuinely error on mad-dom. First recorded in T09 as div-types-negative-wrong-argument-types; migrated into the compatibility ledger by T11.",
-      "recordedAt": "2026-08-28T00:00:00Z",
-      "addedIn": "T09",
-      "diagnostics": [
-        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
+        { "code": 2554, "line": 7 },
+        { "code": 2339, "messageIncludes": "Property 'createElement' does not exist" },
+        { "code": 2339, "messageIncludes": "Property 'querySelectorAll' does not exist" }
       ]
     },
     {
@@ -69,13 +45,14 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/event-callbacks.ts",
-      "reason": "MAD DOM does not export Window, Event or EventPhaseEnum yet; the addEventListener callback parameter degrades to implicit any (TS7006) while the module-level gap exists. First recorded in T09 as div-types-event-callbacks; migrated into the compatibility ledger by T11.",
+      "reason": "MAD DOM still does not export Event or EventPhaseEnum, and its Window is not user-constructible while its Document lacks addEventListener: listener parameter typing and enum comparison in event handlers cannot be checked yet. Updated by T22 when Window became an exported, non-constructible class.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2305, "messageIncludes": "no exported member 'Event'" },
         { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
-        { "code": 2305, "messageIncludes": "no exported member 'Window'" },
+        { "code": 2554, "line": 7 },
+        { "code": 2339, "messageIncludes": "Property 'addEventListener' does not exist" },
         { "code": 7006, "messageIncludes": "Parameter 'event' implicitly has an 'any' type" }
       ]
     },
@@ -85,12 +62,13 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/constructor-options.ts",
-      "reason": "MAD DOM does not export CustomEvent or Window yet; both constructor usages are rejected via the missing imports. First recorded in T09 as div-types-constructor-options; migrated into the compatibility ledger by T11.",
+      "reason": "MAD DOM does not export CustomEvent, and its Window is not user-constructible: the option-object constructor signature and the DetachedWindowAPI accessor are rejected. Updated by T22 when Window became an exported, non-constructible class.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2305, "messageIncludes": "no exported member 'CustomEvent'" },
-        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
+        { "code": 2353, "line": 7 },
+        { "code": 2339, "messageIncludes": "Property 'happyDOM' does not exist" }
       ]
     },
     {
@@ -115,11 +93,15 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/window-document-basics.ts",
-      "reason": "MAD DOM does not export Window yet; the whole fixture degrades because the Window value import is missing (pre-alpha type surface). First recorded in T09 as div-types-window-document-basics; migrated into the compatibility ledger by T11.",
+      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle) and its Document lacks the node surface (createElement, querySelectorAll, title, body): the happy-dom-style window/double construction and element basics are rejected on the mad-dom target. Updated by T22 when Window became an exported, non-constructible class.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
-        { "code": 2305, "messageIncludes": "no exported member 'Window'" }
+        { "code": 2353, "line": 7 },
+        { "code": 2339, "messageIncludes": "Property 'createElement' does not exist" },
+        { "code": 2339, "messageIncludes": "Property 'querySelectorAll' does not exist" },
+        { "code": 2339, "messageIncludes": "Property 'title' does not exist" },
+        { "code": 2339, "messageIncludes": "Property 'body' does not exist" }
       ]
     }
   ]

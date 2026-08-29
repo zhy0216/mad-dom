@@ -23,6 +23,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { isNativeAvailable } from "../../index.js";
 
 const COMPAT_DIR = import.meta.dir;
 const RUNNER = join(COMPAT_DIR, "runner", "run.js");
@@ -30,11 +31,12 @@ const REPO_ROOT = resolve(COMPAT_DIR, "..", "..");
 const DIVERGENT_DIR = join(COMPAT_DIR, "scenarios", "selftest", "divergent");
 const DOM_DIR = join(COMPAT_DIR, "scenarios", "dom");
 const RECORD_SCHEMA = "mad-dom-diff-record/1";
-const MAD_DOM_SETUP_ERROR = {
-  name: "Error",
-  message: "mad-dom is in pre-alpha development and does not implement Window yet.",
-  phase: "setup",
-};
+
+// The real differential runs against the built mad-dom entry. Since T22,
+// createWindow() no longer throws a setup placeholder; with the dev artifact
+// the window is acquired and the (still missing) node surface fails during
+// the scenario body, so the recorded gap shape depends on the artifact.
+const nativeAvailable = isNativeAvailable();
 
 function runRunner(args, timeoutMs = 180_000) {
   return spawnSync(process.execPath, [RUNNER, ...args], {
@@ -335,25 +337,41 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     }
   });
 
-  test("mad-dom's setup-phase createWindow throw is reported verbatim", () => {
+  test("mad-dom's window facade gap is reported verbatim", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-create-append-serialize");
     const byPath = differencesByPath(scenario.differences);
 
-    expect(byPath["errors[0]"]).toMatchObject({ kind: "right-only", right: MAD_DOM_SETUP_ERROR });
-
     const madRecord = scenario.sides["mad-dom"].record;
-    expect(madRecord.errors).toEqual([MAD_DOM_SETUP_ERROR]);
+    // Since T22, createWindow() is exported and no longer a setup placeholder.
+    expect(madRecord.values["entry-create-window-type"]).toEqual({ type: "string", value: "function" });
+    expect(madRecord.values["entry-window-type"]).toEqual({ type: "string", value: "function" });
+    expect(byPath["values.entry-create-window-type.value"]).toEqual({
+      path: "values.entry-create-window-type.value",
+      kind: "changed",
+      left: "undefined",
+      right: "function",
+    });
+    expect(byPath["values.entry-window-type"]).toBeUndefined();
+
+    // The gap moved from the setup phase to the facade surface: with the dev
+    // artifact the window is acquired and the missing node surface fails in
+    // the scenario body; without one, loading the native binding fails lazily
+    // at createWindow().
+    expect(madRecord.errors).toHaveLength(1);
+    if (nativeAvailable) {
+      expect(madRecord.errors[0].name).toBe("TypeError");
+      expect(madRecord.errors[0].message).toContain("document.createElement is not a function");
+      expect(madRecord.errors[0].phase).toBe("facade");
+    } else {
+      expect(madRecord.errors[0].name).toBe("Error");
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+    }
+    expect(byPath["errors[0]"]).toMatchObject({ kind: "right-only", right: madRecord.errors[0] });
+
     expect(madRecord.snapshots).toEqual({});
     expect(madRecord.events).toEqual([]);
-    expect(madRecord.values["entry-create-window-type"]).toEqual({ type: "string", value: "function" });
-    expect(madRecord.values["entry-window-type"]).toEqual({ type: "string", value: "undefined" });
 
-    expect(byPath["values.entry-window-type.value"]).toEqual({
-      path: "values.entry-window-type.value",
-      kind: "changed",
-      left: "function",
-      right: "undefined",
-    });
     expect(byPath["snapshots.body"].kind).toBe("left-only");
     expect(byPath["snapshots.body"].left.nodeType).toBe(1);
     expect(byPath["snapshots.body"].left.nodeName).toBe("BODY");

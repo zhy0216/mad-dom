@@ -18,14 +18,14 @@
 // user-visible constructor that mints a document out of thin air — windows are
 // created through `createWindow()` (js/facade/window.js).
 //
-// The `seam` metadata below stays `"placeholder"` until the T22 gate flips it;
+// The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
 // tests/bun/seam.test.js pins that shape.
 
 export const seam = Object.freeze({
   id: "facade/document",
   owner: "T22B",
   gate: "T22",
-  status: "placeholder",
+  status: "implemented",
 });
 
 // Native handle behind each Document facade. Weak so a facade never pins its

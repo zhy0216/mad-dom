@@ -22,6 +22,22 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/child-nodelist.js", owner: "T25D" },
 ];
 
+// The T22B-owned files are implemented and their seam status is flipped to
+// "implemented"; the capability extensions are still placeholders until their
+// owning gates land.
+const IMPLEMENTED_FACADE_FILES = [
+  { path: "window.js", owner: "T22B" },
+  { path: "document.js", owner: "T22B" },
+  { path: "extensions/index.js", owner: "T22B" },
+];
+const PLACEHOLDER_FACADE_FILES = [
+  { path: "extensions/node.js", owner: "T23B" },
+  { path: "extensions/mutation.js", owner: "T24C" },
+  { path: "extensions/attributes.js", owner: "T25E" },
+  { path: "extensions/text-content.js", owner: "T25E" },
+  { path: "extensions/child-nodelist.js", owner: "T25D" },
+];
+
 describe("cross-layer extension seam (T20A)", () => {
   test("js/facade contract and placeholder files exist", () => {
     for (const file of OWNED_FACADE_FILES) {
@@ -37,15 +53,28 @@ describe("cross-layer extension seam (T20A)", () => {
     }
   });
 
-  test("every facade placeholder is a valid ESM module with frozen seam metadata", async () => {
+  test("every facade module is a valid ESM module with frozen seam metadata", async () => {
     for (const file of OWNED_FACADE_FILES) {
       if (!file.path.endsWith(".js")) continue;
       const mod = await import(`${FACADE}/${file.path}`);
       expect(mod.seam, `${file.path} must export frozen seam metadata`).toBeDefined();
       expect(mod.seam.owner, `${file.path} owner`).toBe(file.owner);
       expect(mod.seam.gate, `${file.path} gate`).toBeDefined();
-      expect(mod.seam.status, `${file.path} status`).toBe("placeholder");
       expect(Object.isFrozen(mod.seam), `${file.path} seam must be frozen`).toBe(true);
+    }
+  });
+
+  test("T22B-owned facade files are flipped to implemented by the T22 gate", async () => {
+    for (const file of IMPLEMENTED_FACADE_FILES) {
+      const mod = await import(`${FACADE}/${file.path}`);
+      expect(mod.seam.status, `${file.path} status`).toBe("implemented");
+    }
+  });
+
+  test("capability extensions stay placeholder until their owning gate lands", async () => {
+    for (const file of PLACEHOLDER_FACADE_FILES) {
+      const mod = await import(`${FACADE}/${file.path}`);
+      expect(mod.seam.status, `${file.path} status`).toBe("placeholder");
     }
   });
 });

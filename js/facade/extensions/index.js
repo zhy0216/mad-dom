@@ -21,7 +21,7 @@
 // nothing in this registry needs to change (T22B acceptance: later facade
 // subtasks only add or modify their own extension file).
 //
-// The `seam` metadata below stays `"placeholder"` until the T22 gate flips it;
+// The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
 // tests/bun/seam.test.js pins that shape.
 
 import * as attributesExtension from "./attributes.js";
@@ -34,7 +34,7 @@ export const seam = Object.freeze({
   id: "facade/extensions/index",
   owner: "T22B",
   gate: "T22",
-  status: "placeholder",
+  status: "implemented",
 });
 
 const EXTENSIONS = [

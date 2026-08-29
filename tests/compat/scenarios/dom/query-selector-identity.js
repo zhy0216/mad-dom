@@ -1,7 +1,8 @@
 // Real differential scenario (T10): selector queries, returned-element
 // identity relations and event delivery order through the public entry of
-// each implementation. Same setup probe and same expected mad-dom setup gap
-// as dom-create-append-serialize.
+// each implementation. Same setup probe and same mad-dom facade gap as
+// dom-create-append-serialize: since T22 the window acquisition succeeds but
+// the node surface (body, querySelectorAll, ...) is not implemented yet.
 export const id = "dom-query-selector-identity";
 export const description = "real differential: querySelectorAll results, element identity across re-queries and bubbling click order";
 export const targets = "real";
@@ -20,19 +21,23 @@ export async function run(api) {
   }
 
   const document = window.document;
-  document.body.innerHTML = '<ul id="list"><li class="item">first</li><li class="item">second</li></ul>';
+  try {
+    document.body.innerHTML = '<ul id="list"><li class="item">first</li><li class="item">second</li></ul>';
 
-  const items = document.querySelectorAll("li.item");
-  api.record.value("item-count", items.length);
-  api.record.identity("requery-returns-same-element", items[0], document.querySelectorAll("li.item")[0]);
-  api.record.identity("body-first-child-is-list", document.body.firstChild, document.getElementById("list"));
-  api.record.snapshot("list", document.getElementById("list"));
+    const items = document.querySelectorAll("li.item");
+    api.record.value("item-count", items.length);
+    api.record.identity("requery-returns-same-element", items[0], document.querySelectorAll("li.item")[0]);
+    api.record.identity("body-first-child-is-list", document.body.firstChild, document.getElementById("list"));
+    api.record.snapshot("list", document.getElementById("list"));
 
-  document.body.addEventListener("click", (event) =>
-    api.record.event("click", { target: "body", defaultPrevented: event.defaultPrevented }),
-  );
-  items[0].addEventListener("click", (event) =>
-    api.record.event("click", { target: "li.item:first", defaultPrevented: event.defaultPrevented }),
-  );
-  items[0].click();
+    document.body.addEventListener("click", (event) =>
+      api.record.event("click", { target: "body", defaultPrevented: event.defaultPrevented }),
+    );
+    items[0].addEventListener("click", (event) =>
+      api.record.event("click", { target: "li.item:first", defaultPrevented: event.defaultPrevented }),
+    );
+    items[0].click();
+  } catch (error) {
+    api.record.error(error, "facade");
+  }
 }
