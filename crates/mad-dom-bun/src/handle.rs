@@ -13,6 +13,31 @@
 //! [`Arc`] that node handles clone, so dropping the last handle (document or
 //! node) drops the Core document and its arena.
 //!
+//! # Wrapper identity and lifetime (T20)
+//!
+//! Every document owns a weak wrapper cache ([`SharedDocument::wrappers`])
+//! mapping a Core [`NodeId`] to the JS wrapper object created for it. All
+//! wrapper-producing paths funnel through [`SharedDocument::wrap_node`], which
+//! returns the cached wrapper when one is still alive, so repeated reads of
+//! the same node hand JavaScript one and the same object (strict equality).
+//! The cache is *weak*: entries never keep a wrapper alive. When JavaScript
+//! collects a wrapper, its finalizer drops the Rust [`NodeHandle`], whose
+//! [`Drop`] evicts the cache entry. One transient gap — see
+//! [`SharedDocument::wrap_node`]: between a wrapper's collection and its
+//! finalizer, a cache hit hands JavaScript `undefined` instead of an object.
+//! This keeps the cache bounded without pinning wrapper objects — no
+//! strong cache that would let every wrapper live forever.
+//!
+//! # Ownership chain
+//!
+//! The Window→Document link proper lands with T22. Until then the chain is:
+//! [`DocumentHandle`] holds a strong [`Arc`] to [`SharedDocument`] (which owns
+//! the Core document and arena), and every node wrapper ([`NodeHandle`])
+//! clones that same strong [`Arc`]. Any reachable wrapper therefore keeps the
+//! whole arena alive; dropping the last reachable handle frees it. T22's
+//! Window will simply reuse the same strong-reference chain — nothing in this
+//! module changes for it beyond an additional `Arc` holder.
+//!
 //! # Safety preconditions (this module is FFI surface)
 //!
 //! * Every `#[napi]` method is marked `#[napi(catch_unwind)]`, so a Rust panic
@@ -22,17 +47,23 @@
 //! * A [`NodeId`] extracted from a node handle is only passed back to the Core
 //!   document that created it; Core rejects foreign or stale handles with a
 //!   structured error before any memory is touched.
-//! * The [`Mutex`] is never left poisoned: a poisoned lock is recovered with
-//!   [`Mutex::into_inner`], so a panicking entry cannot wedge a document.
+//! * The [`Mutex`]es are never left poisoned: a poisoned lock is recovered
+//!   with [`Mutex::into_inner`], so a panicking entry cannot wedge a document.
+//! * [`NodeHandle`] field construction happens only inside
+//!   [`SharedDocument::wrap_node`] (plus the `cfg(test)` helper), the single
+//!   point where wrapper identity is minted — at most one live JS wrapper per
+//!   document and node.
 //!
 //! No `unsafe` is written in this module; FFI/unsafe is confined to the `napi`
 //! crates.
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use mad_dom_core::arena::NodeId;
 use mad_dom_core::dom::{Document, NodeType};
+use napi::bindgen_prelude::{JavaScriptClassExt, Reference, WeakReference};
 use napi::Env;
 use napi_derive::napi;
 
@@ -63,8 +94,66 @@ impl Drop for LiveDocument {
 ///
 /// `None` once the document has been explicitly destroyed, which eagerly drops
 /// the Core [`Document`] and its arena while node handles may still be alive.
+///
+/// `wrappers` is the per-document weak wrapper cache (T20): a [`NodeId`] maps
+/// to the [`WeakReference`] of the JS wrapper last created for it. Entries do
+/// *not* keep wrappers alive — JavaScript solely owns each wrapper object.
+/// An entry is evicted when the napi finalizer drops its wrapper's Rust value
+/// (the `Drop for NodeHandle` path); see [`SharedDocument::wrap_node`] for
+/// the "collected but not yet finalized" window semantics.
 struct SharedDocument {
     document: Mutex<Option<LiveDocument>>,
+    wrappers: Mutex<HashMap<NodeId, WeakReference<NodeHandle>>>,
+}
+
+impl SharedDocument {
+    /// Returns the JS wrapper for `id`, creating (and caching) it on a miss.
+    ///
+    /// This is the single point where wrapper identity is minted: while a
+    /// wrapper object is alive, every read of `id` returns that same object,
+    /// so repeated reads compare strictly equal in JavaScript. The cache is
+    /// weak: once the wrapper's finalizer drops the Rust value, its [`Drop`]
+    /// evicts the entry and the next miss mints a fresh wrapper (overwriting
+    /// any residual entry).
+    ///
+    /// Known transient gap: in the "collected but not yet finalized" window,
+    /// `upgrade` still succeeds — it probes the finalize-callback `Arc`, not
+    /// object liveness — and returning that entry hands JavaScript `undefined`
+    /// (measured on Bun 1.4.0: `napi_get_reference_value` yields an empty
+    /// handle for a collected object). The finalizer turn evicts the entry and
+    /// normal behavior resumes. This is a correctness gap, not a memory-safety
+    /// issue; production code re-reading a node right after a GC in the same
+    /// event-loop turn may observe it, and a later milestone can harden it
+    /// (e.g. re-mint on an empty reference value). The Bun GC tests drain
+    /// finalizers before asserting, so they never observe the window.
+    ///
+    /// Construction of the [`NodeHandle`] value lives here (the uniqueness
+    /// invariant): the value is immediately boxed into the new JS object by
+    /// `into_reference`, so no intermediate handle can register or evict a
+    /// cache entry behind the wrapper's back.
+    fn wrap_node(self: &Arc<Self>, env: Env, id: NodeId) -> napi::Result<Reference<NodeHandle>> {
+        let cached = self
+            .wrappers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&id)
+            .cloned();
+        if let Some(weak) = cached {
+            if let Some(reference) = weak.upgrade(env)? {
+                return Ok(reference);
+            }
+        }
+        let reference = NodeHandle {
+            shared: Arc::clone(self),
+            id,
+        }
+        .into_reference(env)?;
+        self.wrappers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(id, reference.downgrade());
+        Ok(reference)
+    }
 }
 
 /// Runs `f` against the live Core document, or reports
@@ -110,6 +199,15 @@ pub struct DocumentHandle {
 
 impl DocumentHandle {
     /// Creates a fresh document with its own arena and bumps the live count.
+    ///
+    /// The `Arc` is the handle→document ownership token mandated by the T20
+    /// design; it is never actually used across threads (Bun drives this
+    /// binding from its single JS thread and napi class values are not
+    /// `Send`), so the weak [`WeakReference`] cache inside
+    /// [`SharedDocument`] legitimately makes the pointee `!Send + !Sync`.
+    /// The `napi` crate itself carries the same allow for its class
+    /// machinery.
+    #[allow(clippy::arc_with_non_send_sync)]
     pub(crate) fn new() -> Self {
         LIVE_DOCUMENT_COUNT.fetch_add(1, Ordering::SeqCst);
         Self {
@@ -117,6 +215,7 @@ impl DocumentHandle {
                 document: Mutex::new(Some(LiveDocument {
                     document: Document::new(),
                 })),
+                wrappers: Mutex::new(HashMap::new()),
             }),
         }
     }
@@ -129,57 +228,33 @@ impl DocumentHandle {
         with_document(&self.shared, f)
     }
 
-    /// Builds a fresh node handle sharing this document's ownership.
-    fn node_handle(&self, id: NodeId) -> NodeHandle {
-        NodeHandle {
-            shared: Arc::clone(&self.shared),
-            id,
-        }
-    }
-
     // --- pure helpers (tested without a JS runtime) ---
 
     pub(crate) fn create_element_inner(
         &self,
         name: &str,
-    ) -> std::result::Result<NodeHandle, BindingError> {
-        self.run(|doc| {
-            doc.create_element(name)
-                .map(|id| self.node_handle(id))
-                .map_err(BindingError::Core)
-        })
+    ) -> std::result::Result<NodeId, BindingError> {
+        self.run(|doc| doc.create_element(name).map_err(BindingError::Core))
     }
 
     pub(crate) fn create_text_inner(
         &self,
         data: &str,
-    ) -> std::result::Result<NodeHandle, BindingError> {
-        self.run(|doc| {
-            doc.create_text(data)
-                .map(|id| self.node_handle(id))
-                .map_err(BindingError::Core)
-        })
+    ) -> std::result::Result<NodeId, BindingError> {
+        self.run(|doc| doc.create_text(data).map_err(BindingError::Core))
     }
 
     pub(crate) fn create_comment_inner(
         &self,
         data: &str,
-    ) -> std::result::Result<NodeHandle, BindingError> {
-        self.run(|doc| {
-            doc.create_comment(data)
-                .map(|id| self.node_handle(id))
-                .map_err(BindingError::Core)
-        })
+    ) -> std::result::Result<NodeId, BindingError> {
+        self.run(|doc| doc.create_comment(data).map_err(BindingError::Core))
     }
 
     pub(crate) fn create_document_fragment_inner(
         &self,
-    ) -> std::result::Result<NodeHandle, BindingError> {
-        self.run(|doc| {
-            doc.create_document_fragment()
-                .map(|id| self.node_handle(id))
-                .map_err(BindingError::Core)
-        })
+    ) -> std::result::Result<NodeId, BindingError> {
+        self.run(|doc| doc.create_document_fragment().map_err(BindingError::Core))
     }
 
     pub(crate) fn append_child_inner(
@@ -233,6 +308,12 @@ impl DocumentHandle {
     /// Destroys the document eagerly, dropping its arena. Node handles keep
     /// their `Arc`, but every further operation fails with
     /// [`BindingError::Destroyed`].
+    ///
+    /// The wrapper cache is cleared with the document (T20): after this point
+    /// no new wrapper can be minted anyway — every binding operation fails
+    /// with [`BindingError::Destroyed`] before reaching
+    /// [`SharedDocument::wrap_node`] — so stale entries would never be read,
+    /// only leaked.
     pub(crate) fn destroy_inner(&self) {
         let mut guard = self
             .shared
@@ -240,33 +321,47 @@ impl DocumentHandle {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         *guard = None;
+        drop(guard);
+        self.shared
+            .wrappers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clear();
     }
 }
 
 #[napi]
 impl DocumentHandle {
     #[napi(catch_unwind)]
-    pub fn create_element(&self, env: Env, name: String) -> napi::Result<NodeHandle> {
-        self.create_element_inner(&name)
-            .map_err(|err| err.into_napi(&env))
+    pub fn create_element(&self, env: Env, name: String) -> napi::Result<Reference<NodeHandle>> {
+        let id = self
+            .create_element_inner(&name)
+            .map_err(|err| err.into_napi(&env))?;
+        self.shared.wrap_node(env, id)
     }
 
     #[napi(catch_unwind)]
-    pub fn create_text(&self, env: Env, data: String) -> napi::Result<NodeHandle> {
-        self.create_text_inner(&data)
-            .map_err(|err| err.into_napi(&env))
+    pub fn create_text(&self, env: Env, data: String) -> napi::Result<Reference<NodeHandle>> {
+        let id = self
+            .create_text_inner(&data)
+            .map_err(|err| err.into_napi(&env))?;
+        self.shared.wrap_node(env, id)
     }
 
     #[napi(catch_unwind)]
-    pub fn create_comment(&self, env: Env, data: String) -> napi::Result<NodeHandle> {
-        self.create_comment_inner(&data)
-            .map_err(|err| err.into_napi(&env))
+    pub fn create_comment(&self, env: Env, data: String) -> napi::Result<Reference<NodeHandle>> {
+        let id = self
+            .create_comment_inner(&data)
+            .map_err(|err| err.into_napi(&env))?;
+        self.shared.wrap_node(env, id)
     }
 
     #[napi(catch_unwind)]
-    pub fn create_document_fragment(&self, env: Env) -> napi::Result<NodeHandle> {
-        self.create_document_fragment_inner()
-            .map_err(|err| err.into_napi(&env))
+    pub fn create_document_fragment(&self, env: Env) -> napi::Result<Reference<NodeHandle>> {
+        let id = self
+            .create_document_fragment_inner()
+            .map_err(|err| err.into_napi(&env))?;
+        self.shared.wrap_node(env, id)
     }
 
     #[napi(catch_unwind)]
@@ -324,12 +419,42 @@ impl DocumentHandle {
 /// JavaScript-facing opaque wrapper for a Core node.
 ///
 /// Stores the Core [`NodeId`] and a document ownership reference — never a raw
-/// pointer. No wrapper cache exists yet (T20); every access constructs a fresh
-/// JS object, so two `NodeHandle`s for the same node compare by identity only.
+/// pointer. The ownership `Arc` is the wrapper→Document link: a reachable
+/// wrapper keeps its document's arena alive.
+///
+/// # Identity (T20)
+///
+/// Wrappers are minted only by [`SharedDocument::wrap_node`], which caches
+/// them weakly per document: while a wrapper object is alive, the same node
+/// always reads back as the same JS object (strict equality). A wrapper's
+/// value is dropped when JavaScript collects its object (the napi finalizer)
+/// or at process teardown; the [`Drop`] below evicts the cache entry so dead
+/// entries cannot accumulate and a recycled arena slot can never alias an old
+/// wrapper's identity.
 #[napi]
 pub struct NodeHandle {
     shared: Arc<SharedDocument>,
     id: NodeId,
+}
+
+impl Drop for NodeHandle {
+    /// Evicts this wrapper's cache entry.
+    ///
+    /// This [`Drop`] runs when the wrapper's JS object was collected (the napi
+    /// finalizer drops the wrapped Rust value) or at process teardown. The
+    /// cache holds at most one entry per [`NodeId`], and that entry belongs to
+    /// this very value — a replacement wrapper is only minted after this entry
+    /// upgraded to `None` (i.e. after this value was already dropped) — so
+    /// removing by id is correct. It keeps dead entries from accumulating and
+    /// guarantees identity never bleeds across reused arena slots once Core
+    /// enables slot recycling.
+    fn drop(&mut self) {
+        self.shared
+            .wrappers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&self.id);
+    }
 }
 
 impl NodeHandle {
@@ -339,14 +464,6 @@ impl NodeHandle {
         f: impl FnOnce(&mut Document) -> std::result::Result<T, BindingError>,
     ) -> std::result::Result<T, BindingError> {
         with_document(&self.shared, f)
-    }
-
-    /// Builds a fresh handle to `id` under the same document ownership.
-    fn wrap(&self, id: NodeId) -> NodeHandle {
-        NodeHandle {
-            shared: Arc::clone(&self.shared),
-            id,
-        }
     }
 
     // --- pure helpers (tested without a JS runtime) ---
@@ -367,60 +484,30 @@ impl NodeHandle {
         })
     }
 
-    pub(crate) fn parent_node_inner(
-        &self,
-    ) -> std::result::Result<Option<NodeHandle>, BindingError> {
-        self.run(|doc| {
-            doc.parent(self.id)
-                .map(|opt| opt.map(|id| self.wrap(id)))
-                .map_err(BindingError::Core)
-        })
+    pub(crate) fn parent_node_inner(&self) -> std::result::Result<Option<NodeId>, BindingError> {
+        self.run(|doc| doc.parent(self.id).map_err(BindingError::Core))
     }
 
-    pub(crate) fn first_child_inner(
-        &self,
-    ) -> std::result::Result<Option<NodeHandle>, BindingError> {
-        self.run(|doc| {
-            doc.first_child(self.id)
-                .map(|opt| opt.map(|id| self.wrap(id)))
-                .map_err(BindingError::Core)
-        })
+    pub(crate) fn first_child_inner(&self) -> std::result::Result<Option<NodeId>, BindingError> {
+        self.run(|doc| doc.first_child(self.id).map_err(BindingError::Core))
     }
 
-    pub(crate) fn last_child_inner(&self) -> std::result::Result<Option<NodeHandle>, BindingError> {
-        self.run(|doc| {
-            doc.last_child(self.id)
-                .map(|opt| opt.map(|id| self.wrap(id)))
-                .map_err(BindingError::Core)
-        })
+    pub(crate) fn last_child_inner(&self) -> std::result::Result<Option<NodeId>, BindingError> {
+        self.run(|doc| doc.last_child(self.id).map_err(BindingError::Core))
     }
 
     pub(crate) fn previous_sibling_inner(
         &self,
-    ) -> std::result::Result<Option<NodeHandle>, BindingError> {
-        self.run(|doc| {
-            doc.previous_sibling(self.id)
-                .map(|opt| opt.map(|id| self.wrap(id)))
-                .map_err(BindingError::Core)
-        })
+    ) -> std::result::Result<Option<NodeId>, BindingError> {
+        self.run(|doc| doc.previous_sibling(self.id).map_err(BindingError::Core))
     }
 
-    pub(crate) fn next_sibling_inner(
-        &self,
-    ) -> std::result::Result<Option<NodeHandle>, BindingError> {
-        self.run(|doc| {
-            doc.next_sibling(self.id)
-                .map(|opt| opt.map(|id| self.wrap(id)))
-                .map_err(BindingError::Core)
-        })
+    pub(crate) fn next_sibling_inner(&self) -> std::result::Result<Option<NodeId>, BindingError> {
+        self.run(|doc| doc.next_sibling(self.id).map_err(BindingError::Core))
     }
 
-    pub(crate) fn child_nodes_inner(&self) -> std::result::Result<Vec<NodeHandle>, BindingError> {
-        self.run(|doc| {
-            doc.children(self.id)
-                .map(|ids| ids.into_iter().map(|id| self.wrap(id)).collect())
-                .map_err(BindingError::Core)
-        })
+    pub(crate) fn child_nodes_inner(&self) -> std::result::Result<Vec<NodeId>, BindingError> {
+        self.run(|doc| doc.children(self.id).map_err(BindingError::Core))
     }
 }
 
@@ -437,34 +524,65 @@ impl NodeHandle {
     }
 
     #[napi(catch_unwind)]
-    pub fn parent_node(&self, env: Env) -> napi::Result<Option<NodeHandle>> {
-        self.parent_node_inner().map_err(|err| err.into_napi(&env))
+    pub fn parent_node(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        match self
+            .parent_node_inner()
+            .map_err(|err| err.into_napi(&env))?
+        {
+            None => Ok(None),
+            Some(id) => self.shared.wrap_node(env, id).map(Some),
+        }
     }
 
     #[napi(catch_unwind)]
-    pub fn first_child(&self, env: Env) -> napi::Result<Option<NodeHandle>> {
-        self.first_child_inner().map_err(|err| err.into_napi(&env))
+    pub fn first_child(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        match self
+            .first_child_inner()
+            .map_err(|err| err.into_napi(&env))?
+        {
+            None => Ok(None),
+            Some(id) => self.shared.wrap_node(env, id).map(Some),
+        }
     }
 
     #[napi(catch_unwind)]
-    pub fn last_child(&self, env: Env) -> napi::Result<Option<NodeHandle>> {
-        self.last_child_inner().map_err(|err| err.into_napi(&env))
+    pub fn last_child(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        match self.last_child_inner().map_err(|err| err.into_napi(&env))? {
+            None => Ok(None),
+            Some(id) => self.shared.wrap_node(env, id).map(Some),
+        }
     }
 
     #[napi(catch_unwind)]
-    pub fn previous_sibling(&self, env: Env) -> napi::Result<Option<NodeHandle>> {
-        self.previous_sibling_inner()
-            .map_err(|err| err.into_napi(&env))
+    pub fn previous_sibling(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        match self
+            .previous_sibling_inner()
+            .map_err(|err| err.into_napi(&env))?
+        {
+            None => Ok(None),
+            Some(id) => self.shared.wrap_node(env, id).map(Some),
+        }
     }
 
     #[napi(catch_unwind)]
-    pub fn next_sibling(&self, env: Env) -> napi::Result<Option<NodeHandle>> {
-        self.next_sibling_inner().map_err(|err| err.into_napi(&env))
+    pub fn next_sibling(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        match self
+            .next_sibling_inner()
+            .map_err(|err| err.into_napi(&env))?
+        {
+            None => Ok(None),
+            Some(id) => self.shared.wrap_node(env, id).map(Some),
+        }
     }
 
     #[napi(catch_unwind)]
-    pub fn child_nodes(&self, env: Env) -> napi::Result<Vec<NodeHandle>> {
-        self.child_nodes_inner().map_err(|err| err.into_napi(&env))
+    pub fn child_nodes(&self, env: Env) -> napi::Result<Vec<Reference<NodeHandle>>> {
+        let ids = self
+            .child_nodes_inner()
+            .map_err(|err| err.into_napi(&env))?;
+        ids.iter()
+            .map(|id| self.shared.wrap_node(env, *id))
+            .collect()
     }
 }
 
@@ -482,6 +600,24 @@ mod tests {
         TEST_LOCK
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// Builds a handle to `id` under `doc`'s ownership, without a JS runtime.
+    ///
+    /// The `#[napi]` runtime paths mint wrappers exclusively through
+    /// [`SharedDocument::wrap_node`] (it needs a live `Env`); this helper is
+    /// the test-only equivalent so the pure Core delegation and lifecycle
+    /// logic below stays testable. It is the only other place a `NodeHandle`
+    /// is constructed, per the uniqueness invariant — and because unit tests
+    /// never populate the wrapper cache (a [`WeakReference`] cannot be
+    /// fabricated without a JS runtime), the cache-evicting [`Drop`] is a
+    /// no-op here. Wrapper identity and cache behavior are exercised end to
+    /// end by `tests/bun/gc.test.js`.
+    fn wrap(doc: &DocumentHandle, id: NodeId) -> NodeHandle {
+        NodeHandle {
+            shared: Arc::clone(&doc.shared),
+            id,
+        }
     }
 
     fn live_before() -> u64 {
@@ -527,7 +663,7 @@ mod tests {
         let node;
         {
             let doc = DocumentHandle::new();
-            node = doc.create_element_inner("div").unwrap();
+            node = wrap(&doc, doc.create_element_inner("div").unwrap());
             assert_eq!(live_document_count(), before + 1);
         }
         assert_eq!(
@@ -547,19 +683,19 @@ mod tests {
     fn create_element_returns_typed_node() {
         let _guard = lock();
         let doc = DocumentHandle::new();
-        let el = doc.create_element_inner("div").unwrap();
+        let el = wrap(&doc, doc.create_element_inner("div").unwrap());
         assert_eq!(el.node_type_inner().unwrap(), 1);
         assert_eq!(el.node_name_inner().unwrap(), "div");
 
-        let text = doc.create_text_inner("hello").unwrap();
+        let text = wrap(&doc, doc.create_text_inner("hello").unwrap());
         assert_eq!(text.node_type_inner().unwrap(), 3);
         assert_eq!(text.node_name_inner().unwrap(), "#text");
 
-        let comment = doc.create_comment_inner("note").unwrap();
+        let comment = wrap(&doc, doc.create_comment_inner("note").unwrap());
         assert_eq!(comment.node_type_inner().unwrap(), 8);
         assert_eq!(comment.node_name_inner().unwrap(), "#comment");
 
-        let frag = doc.create_document_fragment_inner().unwrap();
+        let frag = wrap(&doc, doc.create_document_fragment_inner().unwrap());
         assert_eq!(frag.node_type_inner().unwrap(), 11);
         assert_eq!(frag.node_name_inner().unwrap(), "#document-fragment");
     }
@@ -568,52 +704,40 @@ mod tests {
     fn append_and_navigation_roundtrip() {
         let _guard = lock();
         let doc = DocumentHandle::new();
-        let parent = doc.create_element_inner("ul").unwrap();
-        let a = doc.create_element_inner("li").unwrap();
-        let b = doc.create_element_inner("li").unwrap();
-        let text = doc.create_text_inner("first").unwrap();
+        let parent = wrap(&doc, doc.create_element_inner("ul").unwrap());
+        let a = wrap(&doc, doc.create_element_inner("li").unwrap());
+        let b = wrap(&doc, doc.create_element_inner("li").unwrap());
+        let text = wrap(&doc, doc.create_text_inner("first").unwrap());
         doc.append_child_inner(&a, &text).unwrap();
         doc.append_child_inner(&parent, &a).unwrap();
         doc.append_child_inner(&parent, &b).unwrap();
 
         assert_eq!(
-            parent
-                .first_child_inner()
-                .unwrap()
-                .unwrap()
+            wrap(&doc, parent.first_child_inner().unwrap().unwrap())
                 .node_name_inner()
                 .unwrap(),
             "li"
         );
         assert_eq!(
-            parent
-                .last_child_inner()
-                .unwrap()
-                .unwrap()
+            wrap(&doc, parent.last_child_inner().unwrap().unwrap())
                 .node_name_inner()
                 .unwrap(),
             "li"
         );
         assert_eq!(
-            a.next_sibling_inner()
-                .unwrap()
-                .unwrap()
+            wrap(&doc, a.next_sibling_inner().unwrap().unwrap())
                 .node_name_inner()
                 .unwrap(),
             "li"
         );
         assert_eq!(
-            b.previous_sibling_inner()
-                .unwrap()
-                .unwrap()
+            wrap(&doc, b.previous_sibling_inner().unwrap().unwrap())
                 .node_name_inner()
                 .unwrap(),
             "li"
         );
         assert_eq!(
-            a.parent_node_inner()
-                .unwrap()
-                .unwrap()
+            wrap(&doc, a.parent_node_inner().unwrap().unwrap())
                 .node_name_inner()
                 .unwrap(),
             "ul"
@@ -627,10 +751,10 @@ mod tests {
     fn insert_remove_replace_roundtrip() {
         let _guard = lock();
         let doc = DocumentHandle::new();
-        let parent = doc.create_element_inner("div").unwrap();
-        let a = doc.create_element_inner("a").unwrap();
-        let b = doc.create_element_inner("b").unwrap();
-        let c = doc.create_element_inner("c").unwrap();
+        let parent = wrap(&doc, doc.create_element_inner("div").unwrap());
+        let a = wrap(&doc, doc.create_element_inner("a").unwrap());
+        let b = wrap(&doc, doc.create_element_inner("b").unwrap());
+        let c = wrap(&doc, doc.create_element_inner("c").unwrap());
         doc.append_child_inner(&parent, &a).unwrap();
         doc.append_child_inner(&parent, &c).unwrap();
         doc.insert_before_inner(&parent, &b, &c).unwrap();
@@ -643,13 +767,13 @@ mod tests {
             "removed node is detached"
         );
 
-        let d = doc.create_element_inner("d").unwrap();
+        let d = wrap(&doc, doc.create_element_inner("d").unwrap());
         doc.replace_child_inner(&parent, &b, &d).unwrap();
         let names: Vec<String> = parent
             .child_nodes_inner()
             .unwrap()
             .iter()
-            .map(|n| n.node_name_inner().unwrap())
+            .map(|id| wrap(&doc, *id).node_name_inner().unwrap())
             .collect();
         assert_eq!(names, vec!["d", "c"]);
     }
@@ -659,8 +783,8 @@ mod tests {
         let _guard = lock();
         let doc_a = DocumentHandle::new();
         let doc_b = DocumentHandle::new();
-        let el = doc_a.create_element_inner("div").unwrap();
-        let target = doc_b.create_element_inner("p").unwrap();
+        let el = wrap(&doc_a, doc_a.create_element_inner("div").unwrap());
+        let target = wrap(&doc_b, doc_b.create_element_inner("p").unwrap());
 
         let err = doc_b.append_child_inner(&target, &el).unwrap_err();
         assert!(matches!(
@@ -673,7 +797,7 @@ mod tests {
     fn destroyed_document_rejects_all_operations() {
         let _guard = lock();
         let doc = DocumentHandle::new();
-        let el = doc.create_element_inner("div").unwrap();
+        let el = wrap(&doc, doc.create_element_inner("div").unwrap());
         doc.destroy_inner();
 
         assert!(matches!(
@@ -689,5 +813,22 @@ mod tests {
             doc.append_child_inner(&el, &el),
             Err(BindingError::Destroyed)
         ));
+    }
+
+    #[test]
+    fn destroy_clears_the_wrapper_cache_map() {
+        // The cache itself can only be populated with a JS runtime (a
+        // `WeakReference` cannot be fabricated), so this only pins the
+        // observable pure part: destroying leaves an empty map behind that
+        // keeps working as a map.
+        let _guard = lock();
+        let doc = DocumentHandle::new();
+        doc.destroy_inner();
+        assert!(doc
+            .shared
+            .wrappers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .is_empty());
     }
 }

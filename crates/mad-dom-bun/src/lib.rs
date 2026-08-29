@@ -12,6 +12,9 @@
 //! * opaque-handle wrapping — JS objects that carry a Core
 //!   [`NodeId`](mad_dom_core::arena::NodeId) plus a document ownership
 //!   reference (see [`handle`]);
+//! * wrapper identity — a per-document *weak* wrapper cache (T20) so the same
+//!   node always reads back as the same JS object while it is alive, without
+//!   pinning wrappers against collection;
 //! * lifecycle — document creation, explicit `destroy()` and GC-driven
 //!   destruction;
 //! * minimal error mapping (see [`error`]);
@@ -46,10 +49,18 @@
 //!   document state, so any reachable node keeps its document's arena alive.
 //!   `destroy()` clears the document eagerly; operations afterwards fail with
 //!   a structured error instead of touching freed memory.
-//! * **No cross-thread sharing**: this binding targets Bun's single JS thread.
-//!   The shared document is guarded by a `Mutex` both to satisfy napi's
-//!   `Send + Sync` class bound and to make any accidental concurrent use fail
-//!   safe rather than race.
+//! * **Wrapper identity, not pinning (T20)**: each document keeps a *weak*
+//!   cache of its node wrappers, so repeated reads of a node yield one and
+//!   the same JS object, while a wrapper nobody references is collected
+//!   normally and its cache entry is evicted by the wrapper's finalizer. The
+//!   cache never strong-refs a wrapper object.
+//! * **Ownership chain**: the (T22) Window and every [`DocumentHandle`] /
+//!   [`NodeHandle`] hold the same strong `Arc` to the shared document state,
+//!   so any single reachable handle — document or node — keeps the whole
+//!   arena alive.
+//! * **No cross-thread sharing**: this binding targets Bun's single JS
+//!   thread. The shared document state is guarded by a `Mutex` so any
+//!   accidental concurrent use fails safe rather than race.
 
 mod api;
 mod error;

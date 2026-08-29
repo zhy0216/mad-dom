@@ -47,7 +47,7 @@ T02 将建立统一校验命令 `npm run validate`（依次覆盖 JavaScript 检
 | 17 | P0 | [17-cross-document-operations.md](done/17-cross-document-operations.md) | M2 | T16 | 已完成 |
 | 18 | P0 | [18-core-property-and-stress-tests.md](done/18-core-property-and-stress-tests.md) | M2 | T17 | 已完成 |
 | 19 | P0 | [19-minimal-native-binding.md](done/19-minimal-native-binding.md) | M3 | T04, T17 | 已完成 |
-| 20 | P0 | [20-wrapper-identity-and-gc.md](20-wrapper-identity-and-gc.md) | M3 | T19 | 待办 |
+| 20 | P0 | [20-wrapper-identity-and-gc.md](done/20-wrapper-identity-and-gc.md) | M3 | T19 | 已完成 |
 | 21 | P0 | [21-native-error-and-safety-boundary.md](21-native-error-and-safety-boundary.md) | M3 | T19, T20 | 待办 |
 | 22 | P0 | [22-window-document-facade.md](22-window-document-facade.md) | M4 | T19, T20, T21 | 待办 |
 | 23 | P0 | [23-basic-node-creation-and-navigation.md](23-basic-node-creation-and-navigation.md) | M4 | T22 | 待办 |

@@ -1,6 +1,6 @@
 # 20 实现 wrapper cache 与 GC 生命周期
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M3
 - 条目 ID：`T20`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T20 — 实现 wrapper cache 与 GC 生命周期**
+- [x] **T20 — 实现 wrapper cache 与 GC 生命周期**
   - 实现：
     - 实现每文档弱引用 wrapper cache。
     - 建立 Window→Document 和 wrapper→Document 所有权链。
