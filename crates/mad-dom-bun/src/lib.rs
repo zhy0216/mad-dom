@@ -60,10 +60,22 @@
 //!   arena alive.
 //! * **No cross-thread sharing**: this binding targets Bun's single JS
 //!   thread. The shared document state is guarded by a `Mutex` so any
-//!   accidental concurrent use fails safe rather than race.
+//!   accidental concurrent use fails safe rather than race. The isolate/
+//!   thread affinity guard lands in [`affinity`] (T21B, wired by T21).
+//!
+//! # Extension seam (T20A)
+//!
+//! M4 expands this binding in dedicated extension modules registered in
+//! [`extensions`], each owned by one subtask; the frozen seam contract and the
+//! ownership table live in [`extensions`] and [`handle`]. This crate root only
+//! declares the module boundaries — the shared files (`lib.rs`, [`handle`],
+//! [`api`], the registry) have a single integration owner (the T2x gates) and
+//! are never written by a subtask.
 
+mod affinity;
 mod api;
 mod error;
+mod extensions;
 mod handle;
 
 pub use api::{abi_version, binding_identity, create_document, live_document_count};

@@ -5,6 +5,11 @@
 //! to Core or to [`handle`](crate::handle). No DOM rule or tree state lives
 //! here.
 //!
+//! Ownership (T20A seam): this file is the stable root export surface of the
+//! native module and has a single integration owner (the T2x gates). It is
+//! not written by extension subtasks; new boundaries are implemented in
+//! [`extensions`](crate::extensions) and wired by their integration gate.
+//!
 //! # Safety preconditions (this module is FFI surface)
 //!
 //! * Every `#[napi]` entry point is marked `#[napi(catch_unwind)]` (crate

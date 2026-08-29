@@ -38,6 +38,36 @@
 //! Window will simply reuse the same strong-reference chain — nothing in this
 //! module changes for it beyond an additional `Arc` holder.
 //!
+//! # Extension seam (T20A)
+//!
+//! This module hosts the stable internal context that the M4 native extension
+//! modules (`crate::extensions`) and the affinity guard (`crate::affinity`)
+//! build on. The seam is frozen by T20A and records exactly what a subtask may
+//! use — no guessing of private fields:
+//!
+//! * **Document access** — [`SharedDocument`] plus [`with_document`]: the only
+//!   sanctioned way to reach the live Core [`Document`] (or observe
+//!   [`BindingError::Destroyed`]).
+//! * **NodeId validation** — ids are minted and validated only by Core; the
+//!   binding extracts an already-validated id with [`NodeHandle::id`] and
+//!   forwards it verbatim. Core rejects foreign/stale ids with a structured
+//!   error before touching memory.
+//! * **Wrapper factory** — [`SharedDocument::wrap_node`]: the single,
+//!   per-document weak-cache entry that mints `Reference<NodeHandle>` wrappers
+//!   with stable identity. Every wrapper-producing native path must funnel
+//!   through it.
+//! * **Lifecycle error outlet** — [`crate::error::BindingError`] and its
+//!   `into_napi` mapping; the affinity hook lands in [`crate::affinity`]
+//!   (owned by T21B, wired by T21).
+//! * **Core delegation** — extensions delegate every tree operation to Core
+//!   through [`with_document`]; they never keep a second DOM state and never
+//!   fabricate a [`NodeId`].
+//!
+//! Ownership: this file is shared and has a single integration owner (the
+//! T2x gates). Extension subtasks import the seam (`with_document`,
+//! [`SharedDocument::wrap_node`], the `shared`/`id` accessors, the error
+//! outlet) but must not modify this file.
+//!
 //! # Safety preconditions (this module is FFI surface)
 //!
 //! * Every `#[napi]` method is marked `#[napi(catch_unwind)]`, so a Rust panic
@@ -101,7 +131,7 @@ impl Drop for LiveDocument {
 /// An entry is evicted when the napi finalizer drops its wrapper's Rust value
 /// (the `Drop for NodeHandle` path); see [`SharedDocument::wrap_node`] for
 /// the "collected but not yet finalized" window semantics.
-struct SharedDocument {
+pub(crate) struct SharedDocument {
     document: Mutex<Option<LiveDocument>>,
     wrappers: Mutex<HashMap<NodeId, WeakReference<NodeHandle>>>,
 }
@@ -131,7 +161,11 @@ impl SharedDocument {
     /// invariant): the value is immediately boxed into the new JS object by
     /// `into_reference`, so no intermediate handle can register or evict a
     /// cache entry behind the wrapper's back.
-    fn wrap_node(self: &Arc<Self>, env: Env, id: NodeId) -> napi::Result<Reference<NodeHandle>> {
+    pub(crate) fn wrap_node(
+        self: &Arc<Self>,
+        env: Env,
+        id: NodeId,
+    ) -> napi::Result<Reference<NodeHandle>> {
         let cached = self
             .wrappers
             .lock()
@@ -161,7 +195,7 @@ impl SharedDocument {
 ///
 /// A poisoned lock (a panicking entry that held the guard) is recovered with
 /// [`Mutex::into_inner`] so the document stays usable instead of wedging.
-fn with_document<T>(
+pub(crate) fn with_document<T>(
     shared: &Arc<SharedDocument>,
     f: impl FnOnce(&mut Document) -> std::result::Result<T, BindingError>,
 ) -> std::result::Result<T, BindingError> {
@@ -226,6 +260,19 @@ impl DocumentHandle {
         f: impl FnOnce(&mut Document) -> std::result::Result<T, BindingError>,
     ) -> std::result::Result<T, BindingError> {
         with_document(&self.shared, f)
+    }
+
+    /// Returns the shared document context behind this handle.
+    ///
+    /// T20A seam accessor: extension modules reach the live Core [`Document`]
+    /// through [`with_document`](crate::handle::with_document) on this
+    /// context, never through the private field.
+    ///
+    /// Dormant until the first M4 extension lands; consumed by downstream
+    /// subtasks through the frozen seam, not by current production code.
+    #[allow(dead_code)]
+    pub(crate) fn shared(&self) -> &Arc<SharedDocument> {
+        &self.shared
     }
 
     // --- pure helpers (tested without a JS runtime) ---
@@ -464,6 +511,33 @@ impl NodeHandle {
         f: impl FnOnce(&mut Document) -> std::result::Result<T, BindingError>,
     ) -> std::result::Result<T, BindingError> {
         with_document(&self.shared, f)
+    }
+
+    /// Returns the shared document context behind this wrapper.
+    ///
+    /// T20A seam accessor: extension modules delegate to Core and mint
+    /// sibling wrappers through this context (`with_document`,
+    /// [`SharedDocument::wrap_node`]).
+    ///
+    /// Dormant until the first M4 extension lands; consumed by downstream
+    /// subtasks through the frozen seam, not by current production code.
+    #[allow(dead_code)]
+    pub(crate) fn shared(&self) -> &Arc<SharedDocument> {
+        &self.shared
+    }
+
+    /// Returns the Core [`NodeId`] carried by this wrapper.
+    ///
+    /// T20A seam accessor: the id was minted and is validated only by Core;
+    /// the binding stores and forwards it verbatim. Extensions pass it back
+    /// to the owning document and Core rejects foreign or stale ids with a
+    /// structured error.
+    ///
+    /// Dormant until the first M4 extension lands; consumed by downstream
+    /// subtasks through the frozen seam, not by current production code.
+    #[allow(dead_code)]
+    pub(crate) fn id(&self) -> NodeId {
+        self.id
     }
 
     // --- pure helpers (tested without a JS runtime) ---
