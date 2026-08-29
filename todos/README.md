@@ -206,7 +206,7 @@ git diff --check
 | 22A | P0 | [22a-native-window-document.md](done/22a-native-window-document.md) | M4 | T21 | 已完成 |
 | 22B | P0 | [22b-window-document-facade.md](done/22b-window-document-facade.md) | M4 | T22A | 已完成 |
 | 22 | P0 | [22-window-document-facade.md](done/22-window-document-facade.md) | M4 | T22A, T22B | 已完成 |
-| 23A | P0 | [23a-core-node-contract.md](23a-core-node-contract.md) | M4 | T22 | 待办 |
+| 23A | P0 | [23a-core-node-contract.md](done/23a-core-node-contract.md) | M4 | T22 | 已完成 |
 | 23B | P0 | [23b-facade-node-api.md](23b-facade-node-api.md) | M4 | T23A | 待办 |
 | 23 | P0 | [23-basic-node-creation-and-navigation.md](23-basic-node-creation-and-navigation.md) | M4 | T23A, T23B | 待办 |
 | 24A | P0 | [24a-native-append-insert.md](24a-native-append-insert.md) | M4 | T23 | 待办 |
