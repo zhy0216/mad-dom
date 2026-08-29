@@ -204,7 +204,7 @@ git diff --check
 | 21B | P0 | [21b-affinity-guard.md](done/21b-affinity-guard.md) | M3 | T20A | 已完成 |
 | 21 | P0 | [21-native-error-and-safety-boundary.md](done/21-native-error-and-safety-boundary.md) | M3 | T21A, T21B | 已完成 |
 | 22A | P0 | [22a-native-window-document.md](done/22a-native-window-document.md) | M4 | T21 | 已完成 |
-| 22B | P0 | [22b-window-document-facade.md](22b-window-document-facade.md) | M4 | T22A | 待办 |
+| 22B | P0 | [22b-window-document-facade.md](done/22b-window-document-facade.md) | M4 | T22A | 已完成 |
 | 22 | P0 | [22-window-document-facade.md](22-window-document-facade.md) | M4 | T22A, T22B | 待办 |
 | 23A | P0 | [23a-core-node-contract.md](23a-core-node-contract.md) | M4 | T22 | 待办 |
 | 23B | P0 | [23b-facade-node-api.md](23b-facade-node-api.md) | M4 | T23A | 待办 |
