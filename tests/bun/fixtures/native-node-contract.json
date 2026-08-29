@@ -1,0 +1,104 @@
+{
+  "schema": "mad-dom/native-node-contract/1",
+  "owner": "T23A",
+  "gate": "T23",
+  "status": "frozen",
+  "frozenFor": ["T23B"],
+  "base": "native-window-document.contract.json",
+  "role": "T23A audits the T19/T20 low-level node surface in crates/mad-dom-bun/src/handle.rs and freezes it here; it adds no new native export, so no symbol is duplicated (per the T20A seam rule)",
+  "creation": {
+    "DocumentHandle": {
+      "createElement": {
+        "params": ["name: string"],
+        "returns": "NodeHandle",
+        "behavior": "mints a detached Element; an invalid name throws ERR_MAD_DOM_INVALID_CHARACTER"
+      },
+      "createText": {
+        "params": ["data: string"],
+        "returns": "NodeHandle",
+        "behavior": "mints a detached Text node; frozen native implementation of the WHATWG document.createTextNode (the facade adapts the name; no native createTextNode symbol exists)"
+      }
+    }
+  },
+  "classes": {
+    "NodeHandle": {
+      "methods": {
+        "nodeType": {
+          "returns": "number",
+          "behavior": "WHATWG Node.nodeType (1 Element, 3 Text, 8 Comment, 9 Document, 11 DocumentFragment)"
+        },
+        "nodeName": {
+          "returns": "string",
+          "behavior": "lowercased tag for Element, otherwise #text / #comment / #document / #document-fragment"
+        },
+        "parentNode": {
+          "returns": "NodeHandle | null",
+          "identity": "stable",
+          "behavior": "null when the node is detached"
+        },
+        "firstChild": {
+          "returns": "NodeHandle | null",
+          "identity": "stable",
+          "behavior": "null when the node has no children"
+        },
+        "lastChild": {
+          "returns": "NodeHandle | null",
+          "identity": "stable",
+          "behavior": "null when the node has no children"
+        },
+        "previousSibling": {
+          "returns": "NodeHandle | null",
+          "identity": "stable",
+          "behavior": "null at the head of the sibling chain"
+        },
+        "nextSibling": {
+          "returns": "NodeHandle | null",
+          "identity": "stable",
+          "behavior": "null at the tail of the sibling chain"
+        },
+        "childNodes": {
+          "returns": "NodeHandle[]",
+          "identity": "stable per element",
+          "behavior": "ordered children; an empty array for a leaf node (the live childNodes facade is T25D's)"
+        }
+      }
+    }
+  },
+  "identity": {
+    "rule": "every wrapper-producing path funnels through crate::handle::SharedDocument::wrap_node (the per-document weak wrapper cache, T20): while a node wrapper is alive, repeated reads of the same node hand back one and the same JS object (strict equality)",
+    "distinct": "each createElement / createText call mints a fresh, distinct node"
+  },
+  "delegation": {
+    "rule": "extensions delegate every tree read to Core through crate::handle::with_document; no second DOM state; a Core NodeId is never fabricated and never crosses the boundary as a primitive"
+  },
+  "documentContext": {
+    "type": "Arc<SharedDocument>",
+    "documentAccess": "crate::handle::with_document",
+    "sharedAccessors": [
+      "crate::handle::DocumentHandle::shared",
+      "crate::handle::NodeHandle::shared",
+      "crate::handle::NodeHandle::id"
+    ],
+    "wrapperEntry": "crate::handle::SharedDocument::wrap_node",
+    "errorOutlet": "crate::error::BindingError::into_napi",
+    "affinityGuard": "crate::handle::check_affinity"
+  },
+  "errors": {
+    "destroyed": {
+      "code": "ERR_MAD_DOM_DOCUMENT_DESTROYED",
+      "name": "Error",
+      "message": "[ERR_MAD_DOM_DOCUMENT_DESTROYED] the document has been destroyed"
+    },
+    "invalidCharacter": {
+      "code": "ERR_MAD_DOM_INVALID_CHARACTER",
+      "name": "InvalidCharacterError"
+    },
+    "crossDocument": {
+      "code": "ERR_MAD_DOM_WRONG_DOCUMENT",
+      "name": "WrongDocumentError"
+    },
+    "affinity": {
+      "codePrefix": "ERR_MAD_DOM_AFFINITY_"
+    }
+  }
+}
