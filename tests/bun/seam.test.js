@@ -22,16 +22,16 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/child-nodelist.js", owner: "T25D" },
 ];
 
-// The T22B-owned files are implemented and their seam status is flipped to
-// "implemented"; the capability extensions are still placeholders until their
-// owning gates land.
+// The T22B-owned files and the node capability extension (T23B) are
+// implemented and their seam status is flipped to "implemented"; the remaining
+// capability extensions stay placeholders until their owning gates land.
 const IMPLEMENTED_FACADE_FILES = [
   { path: "window.js", owner: "T22B" },
   { path: "document.js", owner: "T22B" },
   { path: "extensions/index.js", owner: "T22B" },
+  { path: "extensions/node.js", owner: "T23B" },
 ];
 const PLACEHOLDER_FACADE_FILES = [
-  { path: "extensions/node.js", owner: "T23B" },
   { path: "extensions/mutation.js", owner: "T24C" },
   { path: "extensions/attributes.js", owner: "T25E" },
   { path: "extensions/text-content.js", owner: "T25E" },
@@ -64,7 +64,7 @@ describe("cross-layer extension seam (T20A)", () => {
     }
   });
 
-  test("T22B-owned facade files are flipped to implemented by the T22 gate", async () => {
+  test("implemented facade files (T22B + node capability) are flipped by their gates", async () => {
     for (const file of IMPLEMENTED_FACADE_FILES) {
       const mod = await import(`${FACADE}/${file.path}`);
       expect(mod.seam.status, `${file.path} status`).toBe("implemented");

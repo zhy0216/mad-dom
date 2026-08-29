@@ -115,8 +115,8 @@ describe("facade node export shapes (T23B)", () => {
     expect(Object.isFrozen(nodeSeam)).toBe(true);
   });
 
-  test("node.js seam stays placeholder until the T23 gate flips it", () => {
-    expect(nodeSeam.status).toBe("placeholder");
+  test("node.js seam is flipped to implemented by the T23 gate", () => {
+    expect(nodeSeam.status).toBe("implemented");
   });
 });
 

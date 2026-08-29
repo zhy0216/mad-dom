@@ -8,9 +8,19 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-create-append-serialize",
-      "reason": "Since T22, MAD DOM's createWindow() succeeds, but the Window/Document facade only forwards lifecycle — the node surface (createElement, createTextNode, body, serialization) is not implemented yet, so the mad-dom side records a facade-phase TypeError while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22; collected into the compatibility ledger by T11.",
+      "reason": "Since T23, MAD DOM's document.createElement / createTextNode and the Node navigation surface are implemented, but attributes (setAttribute), mutation (appendChild), body and serialization are not, so the mad-dom side records a facade-phase TypeError at section.setAttribute while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22/T23; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
+    },
+    {
+      "id": "hc-diff-node-navigation",
+      "suite": "diff",
+      "status": "known-gap",
+      "subsystem": "facade",
+      "scenario": "dom-node-navigation",
+      "reason": "Since T23, detached Element/Text creation and the Node navigation surface match happy-dom observation for observation — nodeType, text nodeName (#text), null parent/first/last/previous/next relations, empty childNodes and per-create distinctness all record identically. The only divergence is Element.nodeName casing: MAD DOM returns the frozen lowercased tag (T23A/T23B contract) while happy-dom returns the uppercased WHATWG tag name (\"div\" vs \"DIV\"). Tree-building is out of scope (facade mutation is T24C's), so relations are exercised on detached nodes.",
+      "recordedAt": "2026-08-28T00:00:00Z",
+      "addedIn": "T23"
     },
     {
       "id": "hc-diff-selector-query-identity",
@@ -28,14 +38,14 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/enums-and-overloads.ts",
-      "reason": "MAD DOM still does not export CSSRule or EventPhaseEnum, and its Window is not user-constructible (it needs a genuine native handle) while its Document lacks the node surface: tag-name overloads and NodeList iteration cannot be checked yet. Updated by T22 when Window became an exported, non-constructible class.",
+      "reason": "MAD DOM still does not export CSSRule or EventPhaseEnum, and its Window is not user-constructible (it needs a genuine native handle); Document.createElement is now typed (T23) but returns the minimal Element surface, so tag-name narrowing (tagName) and NodeList iteration cannot be checked yet. Updated by T22/T23.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2305, "messageIncludes": "no exported member 'CSSRule'" },
         { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
         { "code": 2554, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'createElement' does not exist" },
+        { "code": 2339, "messageIncludes": "Property 'tagName' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'querySelectorAll' does not exist" }
       ]
     },
@@ -93,12 +103,13 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/window-document-basics.ts",
-      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle) and its Document lacks the node surface (createElement, querySelectorAll, title, body): the happy-dom-style window/double construction and element basics are rejected on the mad-dom target. Updated by T22 when Window became an exported, non-constructible class.",
+      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); Document.createElement is now typed (T23) but returns the minimal Element surface, so setAttribute, id, querySelectorAll, title and body are still rejected on the mad-dom target. Updated by T22/T23.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2353, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'createElement' does not exist" },
+        { "code": 2339, "messageIncludes": "Property 'setAttribute' does not exist" },
+        { "code": 2339, "messageIncludes": "Property 'id' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'querySelectorAll' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'title' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'body' does not exist" }

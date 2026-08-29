@@ -325,7 +325,11 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     for (const scenario of report.scenarios.filter((item) => item.id.startsWith("selftest-"))) {
       expect(scenario.status).toBe("pass");
     }
-    for (const id of ["dom-create-append-serialize", "dom-query-selector-identity"]) {
+    for (const id of [
+      "dom-create-append-serialize",
+      "dom-node-navigation",
+      "dom-query-selector-identity",
+    ]) {
       const scenario = report.scenarios.find((item) => item.id === id);
       expect(scenario.status).toBe("differences-report");
       expect(scenario.reportOnly).toBe(true);
@@ -354,13 +358,13 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(byPath["values.entry-window-type"]).toBeUndefined();
 
     // The gap moved from the setup phase to the facade surface: with the dev
-    // artifact the window is acquired and the missing node surface fails in
-    // the scenario body; without one, loading the native binding fails lazily
-    // at createWindow().
+    // artifact the window is acquired, createElement (T23) succeeds and the
+    // missing attribute surface fails in the scenario body; without one,
+    // loading the native binding fails lazily at createWindow().
     expect(madRecord.errors).toHaveLength(1);
     if (nativeAvailable) {
       expect(madRecord.errors[0].name).toBe("TypeError");
-      expect(madRecord.errors[0].message).toContain("document.createElement is not a function");
+      expect(madRecord.errors[0].message).toContain("setAttribute is not a function");
       expect(madRecord.errors[0].phase).toBe("facade");
     } else {
       expect(madRecord.errors[0].name).toBe("Error");
@@ -397,6 +401,50 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(happyRecord.events.map((event) => event.name)).toEqual(["click", "click"]);
     expect(happyRecord.events[0].detail.entries.target).toEqual({ type: "string", value: "li.item:first" });
     expect(happyRecord.events[1].detail.entries.target).toEqual({ type: "string", value: "body" });
+  });
+
+  test("node navigation real scenario reports exactly the frozen nodeName casing gap", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-node-navigation");
+    expect(scenario.status).toBe("differences-report");
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].name).toBe("Error");
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T23 slice matches happy-dom except one value: Element.nodeName
+    // casing (MAD DOM freezes the lowercased tag, happy-dom uppercases it).
+    expect(scenario.differences).toHaveLength(1);
+    expect(scenario.differences[0]).toMatchObject({
+      path: "values.element-node-name.value",
+      kind: "changed",
+      left: "DIV",
+      right: "div",
+    });
+
+    expect(madRecord.errors).toEqual([]);
+    expect(madRecord.values["element-node-type"]).toEqual({ type: "number", value: 1 });
+    expect(madRecord.values["element-node-name"]).toEqual({ type: "string", value: "div" });
+    expect(madRecord.values["text-node-type"]).toEqual({ type: "number", value: 3 });
+    expect(madRecord.values["text-node-name"]).toEqual({ type: "string", value: "#text" });
+    for (const suffix of ["parent-node", "first-child", "last-child", "previous-sibling", "next-sibling"]) {
+      expect(madRecord.values[`element-${suffix}`]).toEqual({ type: "null" });
+      expect(madRecord.values[`text-${suffix}`]).toEqual({ type: "null" });
+    }
+    expect(madRecord.values["element-child-count"]).toEqual({ type: "number", value: 0 });
+    expect(madRecord.values["text-child-count"]).toEqual({ type: "number", value: 0 });
+    expect(madRecord.identity["distinct-elements"]).toBe(false);
+    expect(madRecord.identity["distinct-texts"]).toBe(false);
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.values["element-node-name"]).toEqual({ type: "string", value: "DIV" });
+    expect(happyRecord.values["text-node-name"]).toEqual({ type: "string", value: "#text" });
   });
 
   test("strict mode fails on the same real scenario (exit 1)", () => {

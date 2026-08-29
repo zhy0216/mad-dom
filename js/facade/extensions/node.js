@@ -22,9 +22,9 @@
 // behind it, a Core `NodeId` never crosses this seam as a primitive.
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
-// by exporting `install(ctx)`; nothing in the registry changes. The frozen
-// `seam` metadata stays `"placeholder"` until the T23 gate flips it to
-// `"implemented"` (tests/bun/seam.test.js pins that shape).
+// by exporting `install(ctx)`; nothing in the registry changes. The `seam`
+// metadata was flipped from `"placeholder"` to `"implemented"` by the T23 gate
+// (tests/bun/seam.test.js pins that shape).
 
 import { Document } from "../document.js";
 
@@ -32,7 +32,7 @@ export const seam = Object.freeze({
   id: "facade/extensions/node",
   owner: "T23B",
   gate: "T23",
-  status: "placeholder",
+  status: "implemented",
 });
 
 // Native NodeHandle behind each Node facade. Weak so a facade never pins its
