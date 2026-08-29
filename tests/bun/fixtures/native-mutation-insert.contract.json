@@ -1,0 +1,80 @@
+{
+  "schema": "mad-dom/native-mutation-insert-contract/1",
+  "owner": "T24A",
+  "gate": "T24",
+  "status": "frozen",
+  "frozenFor": ["T24B", "T24C"],
+  "base": "native-node-contract.json",
+  "role": "T24A audits the T19/T20 low-level append/insert surface in crates/mad-dom-bun/src/handle.rs and freezes it here; it adds no new native export, so no symbol is duplicated (per the T20A seam rule). Remove/replace belongs to T24B (mutation_remove_api); T24C builds the WHATWG Node.appendChild/insertBefore facade on this native surface",
+  "classes": {
+    "DocumentHandle": {
+      "methods": {
+        "appendChild": {
+          "params": ["parent: NodeHandle", "child: NodeHandle"],
+          "returns": "void",
+          "behavior": "inserts child as parent's last child through Core Document::append_child (the unified mutation entry); a child with a parent is moved, appending an already-last child is a no-op, and a DocumentFragment child is spliced (its children move, the fragment is emptied, an empty fragment is a no-op); returns undefined (the WHATWG return of the appended node is a facade adaptation)",
+          "delegation": "crate::handle::with_document -> Document::append_child(parent.id, child.id)"
+        },
+        "insertBefore": {
+          "params": ["parent: NodeHandle", "child: NodeHandle", "reference: NodeHandle"],
+          "returns": "void",
+          "behavior": "inserts child immediately before reference, which must be a child of parent, through Core Document::insert_before; moving, fragment splicing, self/reference no-ops and error rules follow appendChild; a reference that is not a child of parent fails with ERR_MAD_DOM_HIERARCHY; returns undefined (the WHATWG return of the inserted node is a facade adaptation)",
+          "delegation": "crate::handle::with_document -> Document::insert_before(parent.id, child.id, reference.id)"
+        }
+      }
+    }
+  },
+  "identity": {
+    "rule": "mutation returns void and mints no wrapper; the resulting tree is read exclusively through crate::handle::SharedDocument::wrap_node (the per-document weak wrapper cache, T20), so a moved or inserted node reads back as one and the same JS object while its wrapper is alive",
+    "distinct": "a fresh createElement/createText node is always a distinct node from any existing wrapper"
+  },
+  "delegation": {
+    "rule": "extensions delegate every tree operation to Core through crate::handle::with_document; no second DOM state; a Core NodeId is never fabricated and never crosses the boundary as a primitive; a failed operation leaves the tree byte-for-byte unchanged (Core validates every precondition before mutating)",
+    "noBindingTreeRules": "the binding only converts NodeHandle arguments to their Core NodeId and propagates Core errors; every structural check and relation write happens in mad-dom-core"
+  },
+  "documentContext": {
+    "type": "Arc<SharedDocument>",
+    "documentAccess": "crate::handle::with_document",
+    "sharedAccessors": [
+      "crate::handle::DocumentHandle::shared",
+      "crate::handle::NodeHandle::shared",
+      "crate::handle::NodeHandle::id"
+    ],
+    "wrapperEntry": "crate::handle::SharedDocument::wrap_node",
+    "errorOutlet": "crate::error::BindingError::into_napi",
+    "affinityGuard": "crate::handle::check_affinity"
+  },
+  "coverage": {
+    "detached": "a detached child (no parent) is appended as a normal child; appending a detached child with an existing subtree moves the whole subtree",
+    "moving": "appending/inserting a node that already has a parent detaches it first and re-attaches it (reorder within one parent, or move a subtree between parents)",
+    "documentFragment": "appending/inserting a DocumentFragment moves all its children to the target position and leaves the fragment empty; an empty fragment is a no-op",
+    "invalidHierarchy": "a Document parent/child, a node inserted into itself or into one of its descendants, and a fragment whose child is the parent or an ancestor of it all fail with ERR_MAD_DOM_HIERARCHY (HierarchyRequestError) without changing the tree",
+    "wrongReference": "insertBefore with a reference that is not a child of the parent (a live node in the wrong position, or a detached node) fails with ERR_MAD_DOM_HIERARCHY without changing the tree"
+  },
+  "errors": {
+    "destroyed": {
+      "code": "ERR_MAD_DOM_DOCUMENT_DESTROYED",
+      "name": "Error",
+      "message": "[ERR_MAD_DOM_DOCUMENT_DESTROYED] the document has been destroyed"
+    },
+    "hierarchy": {
+      "code": "ERR_MAD_DOM_HIERARCHY",
+      "name": "HierarchyRequestError"
+    },
+    "crossDocument": {
+      "code": "ERR_MAD_DOM_WRONG_DOCUMENT",
+      "name": "WrongDocumentError"
+    },
+    "invalidHandle": {
+      "code": "ERR_MAD_DOM_INVALID_HANDLE",
+      "name": "TypeError"
+    },
+    "staleHandle": {
+      "code": "ERR_MAD_DOM_STALE_HANDLE",
+      "name": "Error"
+    },
+    "affinity": {
+      "codePrefix": "ERR_MAD_DOM_AFFINITY_"
+    }
+  }
+}
