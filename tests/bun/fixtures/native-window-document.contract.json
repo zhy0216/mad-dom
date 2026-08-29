@@ -1,0 +1,50 @@
+{
+  "schema": "mad-dom/native-window-document-contract/1",
+  "owner": "T22A",
+  "gate": "T22",
+  "status": "frozen",
+  "frozenFor": ["T22B", "T23A", "T24A", "T24B"],
+  "exports": {
+    "createWindow": {
+      "type": "function",
+      "returns": "WindowHandle",
+      "behavior": "mints a fresh Core Document and hands it to the new Window as its strongly owned document"
+    }
+  },
+  "classes": {
+    "WindowHandle": {
+      "methods": {
+        "document": {
+          "returns": "DocumentHandle",
+          "identity": "stable",
+          "behavior": "the window's live Document; repeated reads hand back one and the same JS object"
+        },
+        "destroy": {
+          "returns": "void",
+          "behavior": "eagerly destroys the document; idempotent; after the call every Core-touching operation on any handle fails per T21, while document() keeps handing back the same (now-destroyed) handle"
+        }
+      },
+      "ownership": ["DocumentHandle"]
+    }
+  },
+  "documentContext": {
+    "type": "Arc<SharedDocument>",
+    "documentAccess": "crate::handle::with_document",
+    "sharedAccessors": [
+      "crate::handle::DocumentHandle::shared",
+      "crate::handle::NodeHandle::shared",
+      "crate::handle::NodeHandle::id"
+    ],
+    "wrapperEntry": "crate::handle::SharedDocument::wrap_node",
+    "errorOutlet": "crate::error::BindingError::into_napi",
+    "affinityGuard": "crate::handle::check_affinity",
+    "rule": "extensions delegate every tree operation to Core; no second DOM state; no fabricated NodeId"
+  },
+  "lifecycle": {
+    "destroyedError": {
+      "code": "ERR_MAD_DOM_DOCUMENT_DESTROYED",
+      "name": "Error",
+      "message": "[ERR_MAD_DOM_DOCUMENT_DESTROYED] the document has been destroyed"
+    }
+  }
+}
