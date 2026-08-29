@@ -209,7 +209,7 @@ git diff --check
 | 23A | P0 | [23a-core-node-contract.md](done/23a-core-node-contract.md) | M4 | T22 | 已完成 |
 | 23B | P0 | [23b-facade-node-api.md](done/23b-facade-node-api.md) | M4 | T23A | 已完成 |
 | 23 | P0 | [23-basic-node-creation-and-navigation.md](done/23-basic-node-creation-and-navigation.md) | M4 | T23A, T23B | 已完成 |
-| 24A | P0 | [24a-native-append-insert.md](24a-native-append-insert.md) | M4 | T23 | 待办 |
+| 24A | P0 | [24a-native-append-insert.md](done/24a-native-append-insert.md) | M4 | T23 | 已完成 |
 | 24B | P0 | [24b-native-remove-replace.md](24b-native-remove-replace.md) | M4 | T23 | 待办 |
 | 24C | P0 | [24c-facade-mutation.md](24c-facade-mutation.md) | M4 | T24A, T24B | 待办 |
 | 24 | P0 | [24-javascript-tree-mutations.md](24-javascript-tree-mutations.md) | M4 | T24A, T24B, T24C | 待办 |
