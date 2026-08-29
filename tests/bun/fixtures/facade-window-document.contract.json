@@ -1,0 +1,70 @@
+{
+  "schema": "mad-dom/facade-window-document-contract/1",
+  "owner": "T22B",
+  "gate": "T22",
+  "status": "frozen",
+  "frozenFor": ["T23B", "T24C", "T25D", "T25E"],
+  "base": "native-window-document.contract.json",
+  "exports": {
+    "window.js": ["createWindow", "Window", "seam"],
+    "document.js": ["Document", "seam"],
+    "extensions/index.js": ["installExtensions", "seam"]
+  },
+  "classes": {
+    "Window": {
+      "factory": "createWindow",
+      "prototypeOf": "Object",
+      "members": {
+        "document": {
+          "kind": "accessor",
+          "enumerable": false,
+          "configurable": false,
+          "set": null,
+          "identity": "stable",
+          "behavior": "the live Document facade of the window; repeated reads hand back one and the same object (T20 identity through the unique wrap entry)"
+        },
+        "destroy": {
+          "kind": "method",
+          "writable": false,
+          "enumerable": false,
+          "configurable": false,
+          "behavior": "forwards to the native WindowHandle.destroy: eagerly destroys the document, idempotent"
+        }
+      }
+    },
+    "Document": {
+      "factory": "Window.document",
+      "prototypeOf": "Object",
+      "members": {
+        "destroy": {
+          "kind": "method",
+          "writable": false,
+          "enumerable": false,
+          "configurable": false,
+          "behavior": "forwards to the native DocumentHandle.destroy: eagerly destroys the document, idempotent"
+        }
+      }
+    }
+  },
+  "construction": {
+    "rule": "Window and Document can only be constructed from a genuine native handle of the matching type; every other argument throws TypeError",
+    "Window": "requires a native WindowHandle (has document() and destroy())",
+    "Document": "requires a native DocumentHandle (has appendChild() and destroy())"
+  },
+  "conversionEntry": {
+    "ctx.wrap": "the single native handle -> facade wrapper conversion entry; all wrapper production goes through it; identity mirrors the native per-document weak cache"
+  },
+  "registry": {
+    "install": "each capability extension exports one named install(ctx); extensions/index.js calls it exactly once at facade initialization and skips modules that do not export install yet"
+  },
+  "lifecycle": {
+    "destroyForwards": "Window.destroy and Document.destroy reach the native handle",
+    "idempotent": "repeated destroy does not throw",
+    "accessorAfterDestroy": "window.document keeps returning the same object after destroy",
+    "destroyedError": {
+      "code": "ERR_MAD_DOM_DOCUMENT_DESTROYED",
+      "name": "Error",
+      "message": "[ERR_MAD_DOM_DOCUMENT_DESTROYED] the document has been destroyed"
+    }
+  }
+}
