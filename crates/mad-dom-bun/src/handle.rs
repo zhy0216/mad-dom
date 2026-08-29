@@ -72,6 +72,10 @@
 //!
 //! * Every `#[napi]` method is marked `#[napi(catch_unwind)]`, so a Rust panic
 //!   cannot unwind across the Node-API boundary (crate safety model).
+//! * Every entry checks the T21B affinity guard ([`check_affinity`]) first:
+//!   a call that cannot be attributed to the document's creating
+//!   thread/isolate fails with a structured `ERR_MAD_DOM_AFFINITY_*` error
+//!   before any Core state is touched. First phase: no cross-thread DOM.
 //! * All tree reads and writes delegate to Core. This module never re-
 //!   implements a DOM rule and keeps no second copy of tree state.
 //! * A [`NodeId`] extracted from a node handle is only passed back to the Core
@@ -94,9 +98,10 @@ use std::sync::{Arc, Mutex};
 use mad_dom_core::arena::NodeId;
 use mad_dom_core::dom::{Document, NodeType};
 use napi::bindgen_prelude::{JavaScriptClassExt, Reference, WeakReference};
-use napi::Env;
+use napi::{Env, Error as NapiError, Status};
 use napi_derive::napi;
 
+use crate::affinity::{AffinityError, AffinityToken};
 use crate::error::BindingError;
 
 /// Number of documents currently alive (created minus destroyed / collected).
@@ -134,6 +139,13 @@ impl Drop for LiveDocument {
 pub(crate) struct SharedDocument {
     document: Mutex<Option<LiveDocument>>,
     wrappers: Mutex<HashMap<NodeId, WeakReference<NodeHandle>>>,
+    /// The immutable T21B affinity token minted exactly once when this
+    /// document was created. Every native entry checks the current call
+    /// against it ([`check_affinity`]) before delegating to Core, so a call
+    /// from another thread/isolate fails with a structured
+    /// `ERR_MAD_DOM_AFFINITY_*` error instead of racing (first phase: no
+    /// cross-thread DOM).
+    affinity: AffinityToken,
 }
 
 impl SharedDocument {
@@ -209,6 +221,34 @@ pub(crate) fn with_document<T>(
     }
 }
 
+/// Maps a [`AffinityError`] from the T21B guard to the pending JavaScript
+/// exception and returns the napi error signalling it.
+///
+/// The failure is a plain `Error` (the T21A lifecycle/internal bucket): it
+/// carries the frozen T21B `code` and a stable, hand-written message (no Rust
+/// debug formatting), so JavaScript can key on `error.code` exactly like the
+/// Core taxonomy.
+pub(crate) fn affinity_error_to_napi(env: &Env, err: &AffinityError) -> NapiError {
+    let code = err.code();
+    let message = format!("[{code}] {err}");
+    let _ = env.throw_error(&message, Some(code));
+    NapiError::new(Status::PendingException, message)
+}
+
+/// The single T21 affinity wiring point: verifies that the current call runs
+/// on the thread/isolate that created the document behind `shared`, throwing
+/// the T21B-mapped exception when it does not.
+///
+/// Every `#[napi]` entry calls this before delegating to Core; later gates
+/// wire their entries through the same point, so the guard semantics stay
+/// owned by T21B and are never re-implemented by a subtask.
+pub(crate) fn check_affinity(shared: &Arc<SharedDocument>, env: &Env) -> napi::Result<()> {
+    shared
+        .affinity
+        .check()
+        .map_err(|err| affinity_error_to_napi(env, &err))
+}
+
 /// Maps a Core [`NodeType`] to the WHATWG `Node.nodeType` number.
 ///
 /// Pure value conversion (the binding's job); no DOM rule is implemented here.
@@ -250,6 +290,7 @@ impl DocumentHandle {
                     document: Document::new(),
                 })),
                 wrappers: Mutex::new(HashMap::new()),
+                affinity: AffinityToken::create(),
             }),
         }
     }
@@ -381,6 +422,7 @@ impl DocumentHandle {
 impl DocumentHandle {
     #[napi(catch_unwind)]
     pub fn create_element(&self, env: Env, name: String) -> napi::Result<Reference<NodeHandle>> {
+        check_affinity(&self.shared, &env)?;
         let id = self
             .create_element_inner(&name)
             .map_err(|err| err.into_napi(&env))?;
@@ -389,6 +431,7 @@ impl DocumentHandle {
 
     #[napi(catch_unwind)]
     pub fn create_text(&self, env: Env, data: String) -> napi::Result<Reference<NodeHandle>> {
+        check_affinity(&self.shared, &env)?;
         let id = self
             .create_text_inner(&data)
             .map_err(|err| err.into_napi(&env))?;
@@ -397,6 +440,7 @@ impl DocumentHandle {
 
     #[napi(catch_unwind)]
     pub fn create_comment(&self, env: Env, data: String) -> napi::Result<Reference<NodeHandle>> {
+        check_affinity(&self.shared, &env)?;
         let id = self
             .create_comment_inner(&data)
             .map_err(|err| err.into_napi(&env))?;
@@ -405,6 +449,7 @@ impl DocumentHandle {
 
     #[napi(catch_unwind)]
     pub fn create_document_fragment(&self, env: Env) -> napi::Result<Reference<NodeHandle>> {
+        check_affinity(&self.shared, &env)?;
         let id = self
             .create_document_fragment_inner()
             .map_err(|err| err.into_napi(&env))?;
@@ -418,6 +463,7 @@ impl DocumentHandle {
         parent: &NodeHandle,
         child: &NodeHandle,
     ) -> napi::Result<()> {
+        check_affinity(&self.shared, &env)?;
         self.append_child_inner(parent, child)
             .map_err(|err| err.into_napi(&env))
     }
@@ -430,6 +476,7 @@ impl DocumentHandle {
         child: &NodeHandle,
         reference: &NodeHandle,
     ) -> napi::Result<()> {
+        check_affinity(&self.shared, &env)?;
         self.insert_before_inner(parent, child, reference)
             .map_err(|err| err.into_napi(&env))
     }
@@ -441,6 +488,7 @@ impl DocumentHandle {
         parent: &NodeHandle,
         child: &NodeHandle,
     ) -> napi::Result<()> {
+        check_affinity(&self.shared, &env)?;
         self.remove_child_inner(parent, child)
             .map_err(|err| err.into_napi(&env))
     }
@@ -453,13 +501,53 @@ impl DocumentHandle {
         child: &NodeHandle,
         node: &NodeHandle,
     ) -> napi::Result<()> {
+        check_affinity(&self.shared, &env)?;
         self.replace_child_inner(parent, child, node)
             .map_err(|err| err.into_napi(&env))
     }
 
     #[napi(catch_unwind)]
-    pub fn destroy(&self) {
+    pub fn destroy(&self, env: Env) -> napi::Result<()> {
+        check_affinity(&self.shared, &env)?;
         self.destroy_inner();
+        Ok(())
+    }
+
+    /// Diagnostic (safety-boundary fixture only, not part of the DOM facade):
+    /// panics deliberately *while holding the document lock*. `catch_unwind`
+    /// must convert the panic into a throwable JS `Error` instead of aborting
+    /// the process, and the next entry must recover the poisoned [`Mutex`]
+    /// ([`Mutex::into_inner`]), so a panicking native call can never crash
+    /// Bun or wedge a document.
+    #[napi(catch_unwind)]
+    pub fn diagnose_panic(&self, env: Env) -> napi::Result<()> {
+        check_affinity(&self.shared, &env)?;
+        let _guard = self
+            .shared
+            .document
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        panic!("diagnostic panic: the native panic boundary is contained")
+    }
+
+    /// Diagnostic (safety-boundary fixture only, not part of the DOM facade):
+    /// runs the T21B affinity check from a freshly spawned thread. The spawned
+    /// thread has a distinct [`std::thread::ThreadId`], so the check is
+    /// guaranteed to fail with [`AffinityError::Mismatch`] — surfacing the
+    /// exact JS error (code, name, message) every real cross-thread entry
+    /// produces. First phase: cross-thread access fails explicitly; it is
+    /// never silently allowed.
+    #[napi(catch_unwind)]
+    pub fn diagnose_cross_thread(&self, env: Env) -> napi::Result<()> {
+        check_affinity(&self.shared, &env)?;
+        let token = self.shared.affinity.clone();
+        let checked = std::thread::spawn(move || token.check()).join();
+        let err = match checked {
+            Ok(Ok(())) => return Ok(()),
+            Ok(Err(err)) => err,
+            Err(_) => AffinityError::Unverifiable,
+        };
+        Err(affinity_error_to_napi(&env, &err))
     }
 }
 
@@ -589,16 +677,19 @@ impl NodeHandle {
 impl NodeHandle {
     #[napi(catch_unwind)]
     pub fn node_type(&self, env: Env) -> napi::Result<u32> {
+        check_affinity(&self.shared, &env)?;
         self.node_type_inner().map_err(|err| err.into_napi(&env))
     }
 
     #[napi(catch_unwind)]
     pub fn node_name(&self, env: Env) -> napi::Result<String> {
+        check_affinity(&self.shared, &env)?;
         self.node_name_inner().map_err(|err| err.into_napi(&env))
     }
 
     #[napi(catch_unwind)]
     pub fn parent_node(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        check_affinity(&self.shared, &env)?;
         match self
             .parent_node_inner()
             .map_err(|err| err.into_napi(&env))?
@@ -610,6 +701,7 @@ impl NodeHandle {
 
     #[napi(catch_unwind)]
     pub fn first_child(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        check_affinity(&self.shared, &env)?;
         match self
             .first_child_inner()
             .map_err(|err| err.into_napi(&env))?
@@ -621,6 +713,7 @@ impl NodeHandle {
 
     #[napi(catch_unwind)]
     pub fn last_child(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        check_affinity(&self.shared, &env)?;
         match self.last_child_inner().map_err(|err| err.into_napi(&env))? {
             None => Ok(None),
             Some(id) => self.shared.wrap_node(env, id).map(Some),
@@ -629,6 +722,7 @@ impl NodeHandle {
 
     #[napi(catch_unwind)]
     pub fn previous_sibling(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        check_affinity(&self.shared, &env)?;
         match self
             .previous_sibling_inner()
             .map_err(|err| err.into_napi(&env))?
@@ -640,6 +734,7 @@ impl NodeHandle {
 
     #[napi(catch_unwind)]
     pub fn next_sibling(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+        check_affinity(&self.shared, &env)?;
         match self
             .next_sibling_inner()
             .map_err(|err| err.into_napi(&env))?
@@ -651,6 +746,7 @@ impl NodeHandle {
 
     #[napi(catch_unwind)]
     pub fn child_nodes(&self, env: Env) -> napi::Result<Vec<Reference<NodeHandle>>> {
+        check_affinity(&self.shared, &env)?;
         let ids = self
             .child_nodes_inner()
             .map_err(|err| err.into_napi(&env))?;
@@ -904,5 +1000,24 @@ mod tests {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .is_empty());
+    }
+
+    #[test]
+    fn every_document_mints_an_affinity_token_bound_to_its_thread() {
+        // T21 wiring: the token minted in the constructor lives in the shared
+        // state (so every handle checks the same one), passes on the creating
+        // thread, and rejects a foreign thread with the T21B contract error.
+        let _guard = lock();
+        let doc = DocumentHandle::new();
+        assert_eq!(doc.shared.affinity.check(), Ok(()));
+
+        let token = doc.shared.affinity.clone();
+        let result = std::thread::spawn(move || token.check()).join().unwrap();
+        assert!(matches!(result, Err(AffinityError::Mismatch { .. })));
+        assert_eq!(
+            result.unwrap_err().code(),
+            "ERR_MAD_DOM_AFFINITY_MISMATCH",
+            "cross-thread access must surface the frozen T21B code"
+        );
     }
 }

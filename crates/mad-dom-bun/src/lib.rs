@@ -59,9 +59,13 @@
 //!   so any single reachable handle — document or node — keeps the whole
 //!   arena alive.
 //! * **No cross-thread sharing**: this binding targets Bun's single JS
-//!   thread. The shared document state is guarded by a `Mutex` so any
-//!   accidental concurrent use fails safe rather than race. The isolate/
-//!   thread affinity guard lands in [`affinity`] (T21B, wired by T21).
+//!   thread. Every native entry first checks the T21B affinity guard in
+//!   [`affinity`] (wired by T21 through [`handle::check_affinity`]), so a
+//!   call that cannot be attributed to the document's creating thread/isolate
+//!   fails with a structured `ERR_MAD_DOM_AFFINITY_*` error before any Core
+//!   state is touched. The shared document state is additionally guarded by a
+//!   `Mutex` so accidental concurrent use fails safe rather than races. First
+//!   phase: no cross-thread DOM.
 //!
 //! # Extension seam (T20A)
 //!

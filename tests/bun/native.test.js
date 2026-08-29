@@ -11,6 +11,11 @@ import {
 // acceptance criteria: minimal Core API calls, opaque handles, string/number
 // results, document create/destroy and repeated load/destruct stability.
 //
+// Error assertions follow the T21A taxonomy (wired by T21): DOM-spec
+// violations are raised as controlled plain `Error`s carrying the frozen
+// DOMException `name` and a stable `code` (napi4 degradation), while argument
+// and lifecycle failures map to `TypeError` / `Error` respectively.
+//
 // They need the locally built artifact (`npm run dev:build`, or
 // MAD_DOM_NATIVE_PATH pointing at one); without it they skip so a clean
 // checkout still passes `npm run validate`.
@@ -91,19 +96,21 @@ describe.skipIf(!nativeAvailable)("native binding (T19)", () => {
     doc.destroy();
   });
 
-  test("invalid usage maps to TypeError / Error with stable codes", () => {
+  test("invalid usage maps to the T21A taxonomy with stable codes", () => {
     const doc = createDocument();
     const div = doc.createElement("div");
     let thrown;
 
-    // invalid element name
+    // invalid element name: DOM-spec violation -> DOMException-classed error
+    // (raised as a controlled plain Error under napi4, frozen name embedded)
     try {
       doc.createElement("1div");
     } catch (error) {
       thrown = error;
     }
-    expect(thrown).toBeInstanceOf(TypeError);
+    expect(thrown).toBeInstanceOf(Error);
     expect(thrown.code).toBe("ERR_MAD_DOM_INVALID_CHARACTER");
+    expect(thrown.message).toContain("InvalidCharacterError");
 
     // hierarchy violation (cannot append a node into itself)
     thrown = undefined;
@@ -112,8 +119,9 @@ describe.skipIf(!nativeAvailable)("native binding (T19)", () => {
     } catch (error) {
       thrown = error;
     }
-    expect(thrown).toBeInstanceOf(TypeError);
+    expect(thrown).toBeInstanceOf(Error);
     expect(thrown.code).toBe("ERR_MAD_DOM_HIERARCHY");
+    expect(thrown.message).toContain("HierarchyRequestError");
 
     // operation on a destroyed document is a controlled Error
     doc.destroy();
@@ -139,8 +147,9 @@ describe.skipIf(!nativeAvailable)("native binding (T19)", () => {
     } catch (error) {
       thrown = error;
     }
-    expect(thrown).toBeInstanceOf(TypeError);
+    expect(thrown).toBeInstanceOf(Error);
     expect(thrown.code).toBe("ERR_MAD_DOM_WRONG_DOCUMENT");
+    expect(thrown.message).toContain("WrongDocumentError");
     expect(elA.nodeName()).toBe("from-a");
     expect(targetB.nodeName()).toBe("from-b");
     docA.destroy();
