@@ -1,0 +1,62 @@
+{
+  "schema": "mad-dom/native-mutation-remove-contract/1",
+  "owner": "T24B",
+  "gate": "T24",
+  "status": "frozen",
+  "frozenFor": ["T24C"],
+  "base": "native-node-contract.json",
+  "role": "T24B audits the T19/T20 low-level remove/replace surface in crates/mad-dom-bun/src/handle.rs and freezes it here; it adds no new native export, so no symbol is duplicated (per the T20A seam rule). appendChild/insertBefore belong exclusively to T24A (mutation_insert_api)",
+  "classes": {
+    "DocumentHandle": {
+      "methods": {
+        "removeChild": {
+          "params": ["parent: NodeHandle", "child: NodeHandle"],
+          "returns": "void",
+          "behavior": "removes child from parent's child list; child becomes detached (parent/sibling reads return null) but stays live in the arena with its subtree and can be re-inserted; failure leaves the tree unchanged (atomic)"
+        },
+        "replaceChild": {
+          "params": ["parent: NodeHandle", "child: NodeHandle", "node: NodeHandle"],
+          "returns": "void",
+          "behavior": "replaces child with node in parent's child list; child becomes detached; node is moved with its subtree, or a DocumentFragment's children are spliced in (the fragment is emptied); replacing a node with itself is a no-op; failure leaves the tree unchanged (atomic)"
+        }
+      }
+    }
+  },
+  "identity": {
+    "rule": "the removed/replaced node keeps the wrapper minted by crate::handle::SharedDocument::wrap_node (the per-document weak wrapper cache, T20): while a wrapper is alive, re-reading or re-inserting the same node hands back one and the same JS object (strict equality)",
+    "distinct": "detach never reuses an arena slot and never rebinds a wrapper to a different node; a removed node's NodeId stays live and valid"
+  },
+  "delegation": {
+    "rule": "extensions delegate every tree write to Core through crate::handle::with_document (Document::remove_child / Document::replace_child); no second DOM state; a Core NodeId is never fabricated and never crosses the boundary as a primitive; no tree rule is re-implemented in the binding"
+  },
+  "documentContext": {
+    "type": "Arc<SharedDocument>",
+    "documentAccess": "crate::handle::with_document",
+    "sharedAccessors": [
+      "crate::handle::DocumentHandle::shared",
+      "crate::handle::NodeHandle::shared",
+      "crate::handle::NodeHandle::id"
+    ],
+    "wrapperEntry": "crate::handle::SharedDocument::wrap_node",
+    "errorOutlet": "crate::error::BindingError::into_napi",
+    "affinityGuard": "crate::handle::check_affinity"
+  },
+  "errors": {
+    "destroyed": {
+      "code": "ERR_MAD_DOM_DOCUMENT_DESTROYED",
+      "name": "Error",
+      "message": "[ERR_MAD_DOM_DOCUMENT_DESTROYED] the document has been destroyed"
+    },
+    "hierarchy": {
+      "code": "ERR_MAD_DOM_HIERARCHY",
+      "name": "HierarchyRequestError"
+    },
+    "crossDocument": {
+      "code": "ERR_MAD_DOM_WRONG_DOCUMENT",
+      "name": "WrongDocumentError"
+    },
+    "affinity": {
+      "codePrefix": "ERR_MAD_DOM_AFFINITY_"
+    }
+  }
+}
