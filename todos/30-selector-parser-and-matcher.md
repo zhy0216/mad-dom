@@ -1,6 +1,6 @@
 # 30 实现 selector parser 与 arena matcher
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M6
 - 条目 ID：`T30`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T30 — 实现 selector parser 与 arena matcher**
+- [x] **T30 — 实现 selector parser 与 arena matcher**
   - 实现：
     - 实现选定的基础选择器语法和组合器。
     - 实现 Element.matches 所需的节点/祖先/兄弟匹配。

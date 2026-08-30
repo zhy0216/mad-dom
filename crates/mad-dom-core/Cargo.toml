@@ -13,3 +13,12 @@ name = "mad_dom_core"
 # version validated by the T05 spike. The TreeSink lets the parser stream
 # tokens straight into the unified per-document arena.
 html5ever = "0.39.0"
+# Selector engine (ADR-0004): servo selectors (MPL-2.0) + cssparser (MPL-2.0),
+# pinned to the versions validated by the T05 spike. Matching is dispatched
+# through the Element trait against the arena, so no mirror tree is kept; the
+# MPL-2.0 files are used as unmodified dependencies and all adaptation code
+# lives in this crate's own `selectors` module.
+selectors = "0.40.0"
+cssparser = "0.37.0"
+# Tiny helper used by selectors' SelectorImpl bounds.
+precomputed-hash = "0.1.1"
