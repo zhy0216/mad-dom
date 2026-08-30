@@ -237,7 +237,7 @@ git diff --check
 | 41 | P2 | [41-mutation-observer.md](done/41-mutation-observer.md) | M7 | T24, T34, T37 | 已完成 |
 | 42 | P2 | [42-custom-elements.md](done/42-custom-elements.md) | M8 | T37, T39, T40, T41 | 已完成 |
 | 43 | P2 | [43-shadow-dom.md](done/43-shadow-dom.md) | M8 | T31, T37, T42 | 已完成 |
-| 44 | P2 | [44-cssom.md](44-cssom.md) | M8 | T34, T39, T43 | 待办 |
+| 44 | P2 | [44-cssom.md](done/44-cssom.md) | M8 | T34, T39, T43 | 已完成 |
 | 45 | P2 | [45-window-platform-and-storage.md](done/45-window-platform-and-storage.md) | M8 | T22, T37 | 已完成 |
 | 46 | P2 | [46-fetch-and-network-surface.md](done/46-fetch-and-network-surface.md) | M8 | T38, T45 | 已完成 |
 | 47 | P2 | [47-timers-and-script-execution.md](done/47-timers-and-script-execution.md) | M8 | T37, T41, T42, T46 | 已完成 |
