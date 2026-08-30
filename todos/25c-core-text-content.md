@@ -1,6 +1,6 @@
 # 25C 实现 Core textContent 模块
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P0
 - 里程碑：M4
 - 条目 ID：T25C
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T25C — 实现 Core textContent 模块**
+- [x] **T25C — 实现 Core textContent 模块**
   - 实现：
     - 在预留 text_content 模块中接入 Element、Text、Comment、DocumentFragment 的 textContent 读取与设置。
     - setter 通过统一 Core mutation/文本更新入口工作，失败不留下部分替换。
