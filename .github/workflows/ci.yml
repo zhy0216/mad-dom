@@ -24,6 +24,9 @@ jobs:
         with:
           bun-version-file: .bun-version
 
+      - name: Install pinned dependencies
+        run: npm ci
+
       - name: Check JavaScript entry
         run: bun --check index.js
 
