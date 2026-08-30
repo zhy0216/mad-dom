@@ -232,7 +232,7 @@ git diff --check
 | 36 | P1 | [36-range-and-selection.md](36-range-and-selection.md) | M7 | T33, T35 | 待办 |
 | 37 | P1 | [37-event-target-and-propagation.md](done/37-event-target-and-propagation.md) | M7 | T25 | 已完成 |
 | 38 | P1 | [38-event-classes.md](done/38-event-classes.md) | M7 | T37 | 已完成 |
-| 39 | P1 | [39-html-element-base.md](39-html-element-base.md) | M7 | T29, T34, T37 | 待办 |
+| 39 | P1 | [39-html-element-base.md](done/39-html-element-base.md) | M7 | T29, T34, T37 | 已完成 |
 | 40 | P1 | [40-template-and-forms.md](40-template-and-forms.md) | M7 | T27, T34, T39 | 待办 |
 | 41 | P2 | [41-mutation-observer.md](41-mutation-observer.md) | M7 | T24, T34, T37 | 待办 |
 | 42 | P2 | [42-custom-elements.md](42-custom-elements.md) | M8 | T37, T39, T40, T41 | 待办 |
