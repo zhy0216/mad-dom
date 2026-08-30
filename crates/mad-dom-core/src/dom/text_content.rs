@@ -84,7 +84,7 @@ impl Document {
             NodeType::ProcessingInstruction => Ok(Some(
                 node.data().pi_data().unwrap_or_default().1.to_string(),
             )),
-            NodeType::Element | NodeType::DocumentFragment => {
+            NodeType::Element | NodeType::DocumentFragment | NodeType::ShadowRoot => {
                 let mut out = String::new();
                 self.collect_descendant_text(id, &mut out)?;
                 Ok(Some(out))
@@ -115,7 +115,7 @@ impl Document {
             NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction => {
                 self.set_character_data(id, value)
             }
-            NodeType::Element | NodeType::DocumentFragment => {
+            NodeType::Element | NodeType::DocumentFragment | NodeType::ShadowRoot => {
                 // WHATWG "string replace all": create the single replacement
                 // text node (validating its data) before touching the child
                 // list, so a rejected value leaves every child in place.

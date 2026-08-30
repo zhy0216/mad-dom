@@ -174,7 +174,7 @@ fn write_node(
     out: &mut String,
 ) -> Result<(), CoreError> {
     match doc.get(node)?.data() {
-        NodeData::Document | NodeData::DocumentFragment => {
+        NodeData::Document | NodeData::DocumentFragment | NodeData::ShadowRoot { .. } => {
             write_children(doc, node, false, options, out)
         }
         NodeData::DocumentType {

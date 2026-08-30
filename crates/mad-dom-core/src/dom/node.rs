@@ -45,6 +45,19 @@ pub enum NodeType {
     Comment,
     /// A `ProcessingInstruction` node (T33).
     ProcessingInstruction,
+    /// A `ShadowRoot` node (T43).
+    ShadowRoot,
+}
+
+/// The mode of a shadow root (T43): `open` roots are reachable through the
+/// host's `shadowRoot` property, `closed` roots are not (`host.shadowRoot`
+/// reads `null`, matching the WHATWG and happy-dom).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ShadowRootMode {
+    /// An `open` shadow root: `host.shadowRoot` returns it.
+    Open,
+    /// A `closed` shadow root: `host.shadowRoot` reads `null`.
+    Closed,
 }
 
 /// Per-type storage for a [`Node`].
@@ -94,6 +107,16 @@ pub enum NodeData {
     /// `character_data` module lets it participate in the CharacterData-style
     /// mutation surface (happy-dom parity).
     ProcessingInstruction { target: String, data: String },
+    /// A `ShadowRoot` node (T43) holding its [`ShadowRootMode`].
+    ///
+    /// The shadow root is *not* a child of its host: like the template-contents
+    /// fragment, it lives in the same arena as every other node and is linked
+    /// to its host only through the per-document `shadow_roots` map (the
+    /// sibling `shadow_root` module owns that link). Keeping it out of the
+    /// host's child list is what makes the query/traversal/serialization
+    /// boundary structural — ordinary navigation never pierces into a shadow
+    /// tree.
+    ShadowRoot { mode: ShadowRootMode },
 }
 
 impl NodeData {
@@ -107,6 +130,7 @@ impl NodeData {
             Self::Text { .. } => NodeType::Text,
             Self::Comment { .. } => NodeType::Comment,
             Self::ProcessingInstruction { .. } => NodeType::ProcessingInstruction,
+            Self::ShadowRoot { .. } => NodeType::ShadowRoot,
         }
     }
 
@@ -120,6 +144,7 @@ impl NodeData {
             Self::Text { .. } => "#text",
             Self::Comment { .. } => "#comment",
             Self::ProcessingInstruction { target, .. } => target,
+            Self::ShadowRoot { .. } => "#document-fragment",
         }
     }
 
@@ -208,6 +233,15 @@ impl NodeData {
     pub fn pi_data(&self) -> Option<(&str, &str)> {
         match self {
             Self::ProcessingInstruction { target, data } => Some((target, data)),
+            _ => None,
+        }
+    }
+
+    /// Returns the shadow root's [`ShadowRootMode`], or `None` if this is not
+    /// a `ShadowRoot` node.
+    pub fn shadow_root_mode(&self) -> Option<ShadowRootMode> {
+        match self {
+            Self::ShadowRoot { mode } => Some(*mode),
             _ => None,
         }
     }

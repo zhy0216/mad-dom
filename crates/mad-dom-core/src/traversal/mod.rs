@@ -113,7 +113,7 @@ fn node_type_mask(node_type: NodeType) -> u32 {
         NodeType::Comment => SHOW_COMMENT,
         NodeType::Document => SHOW_DOCUMENT,
         NodeType::DocumentType => SHOW_DOCUMENT_TYPE,
-        NodeType::DocumentFragment => SHOW_DOCUMENT_FRAGMENT,
+        NodeType::DocumentFragment | NodeType::ShadowRoot => SHOW_DOCUMENT_FRAGMENT,
         NodeType::ProcessingInstruction => SHOW_PROCESSING_INSTRUCTION,
     }
 }

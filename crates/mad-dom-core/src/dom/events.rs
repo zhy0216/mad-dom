@@ -341,10 +341,9 @@ impl Document {
     /// Returns the fixed propagation path of `target`: the target followed by
     /// its ancestor chain up to the document root (T37/T38).
     ///
-    /// This is the path [`Document::begin_dispatch`] walks and the WHATWG
-    /// `Event.composedPath()` reports (minus the shadow-host and window hops,
-    /// which land with T43/T45). It is computed at dispatch start and never
-    /// re-derived, so mid-dispatch tree mutation cannot change it.
+    /// This is the plain light-DOM path [`Document::composed_path`] computes
+    /// for a tree without shadow boundaries. It is computed at dispatch start
+    /// and never re-derived, so mid-dispatch tree mutation cannot change it.
     ///
     /// # Errors
     ///
@@ -356,6 +355,49 @@ impl Document {
         while let Some(parent) = self.get(cursor)?.parent() {
             path.push(parent);
             cursor = parent;
+        }
+        Ok(path)
+    }
+
+    /// Returns the composed propagation path of `target` (T43): the target
+    /// followed by its ancestor chain, crossing a shadow boundary to the host
+    /// when the event is `composed` and the target sits inside a shadow tree.
+    ///
+    /// The shadow root itself is in the path (it is the parent of the nodes
+    /// inside its tree); when the walk reaches a shadow root and the event is
+    /// `composed`, the path continues from the root's host. A non-`composed`
+    /// event stops at the shadow root, so listeners on the host and beyond are
+    /// never reached — the WHATWG composed-path rule that
+    /// [`Document::begin_dispatch`] uses to fix the dispatch path. The
+    /// document→window hop is out of scope (T45).
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::WrongDocument`] / [`CoreError::Arena`] for a foreign or
+    /// stale `target`.
+    pub fn composed_path(&self, target: NodeId, composed: bool) -> Result<Vec<NodeId>, CoreError> {
+        let mut path = vec![target];
+        let mut cursor = target;
+        loop {
+            match self.get(cursor)?.parent() {
+                Some(parent) => {
+                    path.push(parent);
+                    cursor = parent;
+                }
+                None => {
+                    // The top of the parent chain: for a composed event, a
+                    // shadow root continues into its host (the host is never
+                    // inside its own shadow tree, so this cannot loop).
+                    if composed && self.has_shadow_roots() && self.is_shadow_root(cursor)? {
+                        if let Some(host) = self.shadow_host(cursor)? {
+                            path.push(host);
+                            cursor = host;
+                            continue;
+                        }
+                    }
+                    break;
+                }
+            }
         }
         Ok(path)
     }
@@ -388,7 +430,7 @@ impl Document {
         event.stop_immediate_propagation = false;
         event.in_passive_listener = false;
 
-        let path = self.propagation_path(target)?;
+        let path = self.composed_path(target, event.composed)?;
         let struct_index = path.len().saturating_sub(1);
         let mut dispatch = Dispatch {
             struct_index,

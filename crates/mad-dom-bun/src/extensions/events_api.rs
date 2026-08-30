@@ -424,16 +424,21 @@ impl EventHandle {
         lock_event_state(self).set_init_values(event_type, bubbles, cancelable);
     }
 
-    /// WHATWG `Event.composedPath` (T38): the propagation path of the event's
-    /// target (the target followed by its ancestors up to the document root),
-    /// or the empty list before the first dispatch.
+    /// WHATWG `Event.composedPath` (T38, extended by T43): the propagation
+    /// path of the event's target (the target followed by its ancestors up to
+    /// the document root), crossing a shadow boundary to the host when the
+    /// event is `composed`, or the empty list before the first dispatch.
     ///
-    /// The shadow-host and document→window hops are out of T38 scope (T43 /
-    /// T45); the path is the exact one `begin_dispatch` captures. A destroyed
-    /// document yields an empty path rather than an exception.
+    /// The document→window hop is out of scope (T45); the path is the exact one
+    /// `begin_dispatch` captures (a `composed` event's path includes the shadow
+    /// root and the host; a non-`composed` event stops at the shadow root). A
+    /// destroyed document yields an empty path rather than an exception.
     #[napi(catch_unwind)]
     pub fn composed_path(&self, env: Env) -> napi::Result<Vec<Reference<NodeHandle>>> {
-        let target = lock_event_state(self).target;
+        let (target, composed) = {
+            let state = lock_event_state(self);
+            (state.target, state.composed)
+        };
         let Some(target) = target else {
             return Ok(Vec::new());
         };
@@ -442,7 +447,8 @@ impl EventHandle {
             return Ok(Vec::new());
         };
         let ids = run_document(&document, |doc| {
-            doc.propagation_path(target).map_err(BindingError::Core)
+            doc.composed_path(target, composed)
+                .map_err(BindingError::Core)
         })
         .unwrap_or_default();
         ids.iter().map(|id| document.wrap_node(env, *id)).collect()

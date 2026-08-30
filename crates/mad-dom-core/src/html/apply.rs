@@ -186,7 +186,7 @@ impl Document {
     /// do not expose `innerHTML`.
     pub fn inner_html(&self, node: NodeId) -> Result<String, CoreError> {
         match self.get(node)?.node_type() {
-            NodeType::Element | NodeType::DocumentFragment => {
+            NodeType::Element | NodeType::DocumentFragment | NodeType::ShadowRoot => {
                 if self.is_template(node)? {
                     if let Some(content) = self.template_content_id(node)? {
                         return serialize_children(self, content);
@@ -195,7 +195,7 @@ impl Document {
                 serialize_children(self, node)
             }
             _ => Err(hierarchy(
-                "innerHTML requires an Element or DocumentFragment node",
+                "innerHTML requires an Element, DocumentFragment or ShadowRoot node",
             )),
         }
     }
@@ -341,9 +341,11 @@ fn parse_fragment_in_context(
             };
             parse_html_fragment(input, &context)
         }
-        NodeData::DocumentFragment => parse_html_fragment(input, &FragmentContext::html("body")),
+        NodeData::DocumentFragment | NodeData::ShadowRoot { .. } => {
+            parse_html_fragment(input, &FragmentContext::html("body"))
+        }
         _ => Err(hierarchy(
-            "innerHTML/outerHTML context requires an Element or DocumentFragment node",
+            "innerHTML/outerHTML context requires an Element, DocumentFragment or ShadowRoot node",
         )),
     }
 }

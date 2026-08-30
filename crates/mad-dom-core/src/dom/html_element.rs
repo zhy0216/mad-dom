@@ -42,10 +42,13 @@ use super::NodeType;
 
 impl Document {
     /// Returns whether the node for `id` is connected to this document: its
-    /// root ancestor (the top of its parent chain) is the `Document` node.
+    /// shadow-including root ancestor (the top of its parent chain, crossing a
+    /// shadow boundary to the host) is the `Document` node.
     ///
     /// A detached element, a fragment or any node whose parent chain ends at a
-    /// non-document node is *not* connected. This is a pure read; it never
+    /// non-document node is *not* connected. A node inside an attached shadow
+    /// tree is connected (its shadow root's host chain reaches the document),
+    /// matching the WHATWG and happy-dom. This is a pure read; it never
     /// modifies the tree.
     ///
     /// # Errors
@@ -57,6 +60,16 @@ impl Document {
         loop {
             match self.get(cursor)?.parent() {
                 None => {
+                    // The top of the parent chain. A shadow root is a tree root
+                    // of its own; its connectivity is its host's, so keep
+                    // walking from the host (a shadow root's host is never
+                    // inside the same shadow tree, so this cannot loop).
+                    if self.has_shadow_roots() && self.is_shadow_root(cursor)? {
+                        if let Some(host) = self.shadow_host(cursor)? {
+                            cursor = host;
+                            continue;
+                        }
+                    }
                     return Ok(self.node_type(cursor)? == NodeType::Document);
                 }
                 Some(parent) => cursor = parent,

@@ -66,6 +66,8 @@ export declare class Window {
   readonly customElements: CustomElementRegistry;
   /** The WHATWG `HTMLTemplateElement` constructor (T40): the template surface base class. */
   readonly HTMLTemplateElement: typeof HTMLTemplateElement;
+  /** The WHATWG `ShadowRoot` constructor (T43): every `attachShadow` root is `instanceof window.ShadowRoot`. */
+  readonly ShadowRoot: typeof ShadowRoot;
   /** The WHATWG `HTMLFormElement` constructor (T40). */
   readonly HTMLFormElement: typeof HTMLFormElement;
   /** The WHATWG `HTMLInputElement` constructor (T40). */
@@ -996,6 +998,22 @@ export interface Element extends Node {
   readonly classList: DOMTokenList;
   /** WHATWG `Element.namespaceURI` (T34): the element's namespace URI (the WHATWG HTML namespace for a `createElement` element), `null` for non-elements. */
   readonly namespaceURI: string | null;
+  /** WHATWG `Element.attachShadow` (T43): creates a shadow root of the given `mode` for this element. */
+  attachShadow(init: ShadowRootInit): ShadowRoot;
+  /** WHATWG `Element.shadowRoot` (T43): the `open` shadow root, or `null` (a `closed` root never leaks). */
+  readonly shadowRoot: ShadowRoot | null;
+  /** WHATWG `Element.slot` (T43): the `slot` attribute, two-way reflected (`""` when absent). */
+  slot: string;
+  /** WHATWG `HTMLSlotElement.assignedNodes` (T43): the host children assigned to this `<slot>` element (basic named assignment), or `[]` for other nodes. */
+  assignedNodes(options?: { flatten?: boolean }): Node[];
+  /** WHATWG `HTMLSlotElement.assignedElements` (T43): the assigned element children (basic named assignment), or `[]` for other nodes. */
+  assignedElements(options?: { flatten?: boolean }): Element[];
+}
+
+/** The WHATWG `ShadowRootInit` dictionary (T43): the `attachShadow` option object. */
+export interface ShadowRootInit {
+  /** The shadow root mode: `"open"` roots are reachable through `host.shadowRoot`, `"closed"` roots are not. */
+  mode: "open" | "closed";
 }
 
 /** A node minted by `Document.createElement` — the WHATWG `HTMLElement`
@@ -1392,6 +1410,19 @@ export interface DocumentFragment extends Node {
   innerHTML: string;
 }
 
+/** A `ShadowRoot` (T43): the tree owner behind an `attachShadow` host. In the
+ * single-class model every shadow-root wrapper's prototype chain runs
+ * `ShadowRoot.prototype → Node.prototype`, so the whole Node surface is
+ * inherited; `host` / `mode` are the shadow-root-specific reads. The shadow
+ * tree is never part of the host's light DOM: navigation, queries and
+ * serialization on the host stay on the light side. */
+export interface ShadowRoot extends DocumentFragment {
+  /** The element this shadow root is attached to. */
+  readonly host: Element | null;
+  /** The shadow root mode: `"open"` or `"closed"`. */
+  readonly mode: "open" | "closed";
+}
+
 /** A `NodeList` collection of nodes. The T25D live `childNodes` collection is
  * bound to one parent node and re-read from Core on every access; the T31
  * `querySelectorAll` returns a static snapshot collection with the same
@@ -1589,4 +1620,18 @@ export interface NodeHandle {
   removeEventListener(type: string, listener: unknown, capture: boolean): void;
   /** T37 native `dispatchEvent` on this node; returns the WHATWG boolean. */
   dispatchEvent(event: unknown): boolean;
+  /** T43 native `attachShadow(mode)`: mode `0` = open, `1` = closed. */
+  attachShadow(mode: number): NodeHandle;
+  /** T43 native `shadowRoot`: this element's open shadow root, or `null` (closed roots never leak). */
+  shadowRoot(): NodeHandle | null;
+  /** T43 native `shadowRootMode`: the mode of a shadow root (`0` open / `1` closed), or `null` for other nodes. */
+  shadowRootMode(): number | null;
+  /** T43 native `shadowHost`: the host of a shadow root, or `null` for other nodes. */
+  shadowHost(): NodeHandle | null;
+  /** T43 native `isShadowRoot`: whether this node is a shadow root. */
+  isShadowRoot(): boolean;
+  /** T43 native `slotAssignedNodes(flatten)`: the host children assigned to this `<slot>` element. */
+  slotAssignedNodes(flatten: boolean): NodeHandle[];
+  /** T43 native `slotAssignedElements(flatten)`: the assigned element children of this `<slot>` element. */
+  slotAssignedElements(flatten: boolean): NodeHandle[];
 }

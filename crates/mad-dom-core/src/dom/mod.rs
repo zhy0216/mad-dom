@@ -33,6 +33,7 @@ mod mutation;
 mod mutation_observer;
 mod node;
 mod range;
+mod shadow_root;
 mod template;
 mod text_content;
 mod tree;
@@ -44,6 +45,8 @@ pub use events::{
     EVENT_PHASE_BUBBLING, EVENT_PHASE_CAPTURING, EVENT_PHASE_NONE,
 };
 pub use mutation_observer::{MutationRecord, ObserverOptions, RecordType};
-pub use node::{Node, NodeData, NodeType, HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE};
+pub use node::{
+    Node, NodeData, NodeType, ShadowRootMode, HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE,
+};
 pub use range::{BoundaryPoint, SelectionDirection};
 pub use tree::TreeViolation;

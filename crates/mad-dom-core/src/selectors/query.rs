@@ -46,7 +46,7 @@ use super::parser::{parse_selector_list, DomSelectorImpl};
 fn is_query_scope(node_type: NodeType) -> bool {
     matches!(
         node_type,
-        NodeType::Element | NodeType::Document | NodeType::DocumentFragment
+        NodeType::Element | NodeType::Document | NodeType::DocumentFragment | NodeType::ShadowRoot
     )
 }
 

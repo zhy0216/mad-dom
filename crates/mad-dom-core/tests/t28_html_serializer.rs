@@ -115,6 +115,7 @@ fn shape(doc: &Document, start: NodeId) -> String {
             NodeData::ProcessingInstruction { target, data } => {
                 out.push_str(&format!("ProcessingInstruction({target}, {data:?})"))
             }
+            NodeData::ShadowRoot { mode } => out.push_str(&format!("ShadowRoot({mode:?})")),
         }
         out.push('\n');
         for child in doc.children(id).unwrap() {

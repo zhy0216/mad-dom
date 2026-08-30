@@ -49,7 +49,7 @@ use crate::error::CoreError;
 fn is_query_scope(node_type: NodeType) -> bool {
     matches!(
         node_type,
-        NodeType::Element | NodeType::Document | NodeType::DocumentFragment
+        NodeType::Element | NodeType::Document | NodeType::DocumentFragment | NodeType::ShadowRoot
     )
 }
 

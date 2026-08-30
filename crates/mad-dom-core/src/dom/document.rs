@@ -88,6 +88,13 @@ pub struct Document {
     /// lifecycle reaction queue. Written only through the `custom_elements`
     /// module and the mutation/attribute chokepoints.
     pub(crate) custom_elements: CustomElementState,
+    /// The T43 shadow-root association: every shadow host `Element` -> its
+    /// `ShadowRoot` node. Like the T40 template-contents map, the shadow root is
+    /// *not* a child of the host — this map is the only link, so the shadow
+    /// tree stays reachable while ordinary navigation, queries, traversal and
+    /// serialization never pierce the boundary. Written only through the
+    /// `shadow_root` module.
+    pub(crate) shadow_roots: HashMap<NodeId, NodeId>,
 }
 
 impl Document {
@@ -105,6 +112,7 @@ impl Document {
             template_contents: HashMap::new(),
             form_state: FormState::default(),
             custom_elements: CustomElementState::default(),
+            shadow_roots: HashMap::new(),
         }
     }
 

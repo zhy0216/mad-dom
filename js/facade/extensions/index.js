@@ -40,6 +40,7 @@ import * as mutationObserverExtension from "./mutation-observer.js";
 import * as nodeExtension from "./node.js";
 import * as queryExtension from "./query.js";
 import * as rangeSelectionExtension from "./range-selection.js";
+import * as shadowDomExtension from "./shadow-dom.js";
 import * as templateExtension from "./template.js";
 import * as textContentExtension from "./text-content.js";
 import * as treeTraversalExtension from "./tree-traversal.js";
@@ -73,6 +74,7 @@ const EXTENSIONS = [
   templateExtension,
   formsExtension,
   rangeSelectionExtension,
+  shadowDomExtension,
 ];
 
 /**

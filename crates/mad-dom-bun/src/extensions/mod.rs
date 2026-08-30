@@ -79,6 +79,7 @@ mod mutation_remove_api;
 mod node_api;
 mod query_api;
 mod range_api;
+mod shadow_dom_api;
 mod template_api;
 mod text_api;
 mod traversal_api;

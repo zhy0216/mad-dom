@@ -36,13 +36,14 @@
 //!
 //! Pragmatic rules for the first batch of node types:
 //!
-//! * a parent may be an [`Element`](super::node::NodeType::Element) or a
-//!   [`DocumentFragment`](super::node::NodeType::DocumentFragment). A
-//!   `Document`, `Text` or `Comment` node cannot have children;
+//! * a parent may be an [`Element`](super::node::NodeType::Element), a
+//!   [`DocumentFragment`](super::node::NodeType::DocumentFragment) or a
+//!   [`ShadowRoot`](super::node::NodeType::ShadowRoot) (T43). A `Document`,
+//!   `Text` or `Comment` node cannot have children;
 //! * a child argument may be an `Element`, `Text` or `Comment` node, which is
-//!   moved as a single node, or a `DocumentFragment`, whose children are
-//!   spliced into the target position — the fragment itself is emptied and
-//!   never becomes a child;
+//!   moved as a single node, or a `DocumentFragment` / `ShadowRoot` (T43),
+//!   whose children are spliced into the target position — the fragment / root
+//!   itself is emptied and never becomes a child;
 //! * a `Document` node can be neither a parent nor a child.
 //!
 //! # References, no-ops and error selection
@@ -379,7 +380,9 @@ impl Document {
         let prev = self.get(child)?.previous_sibling();
         let next = self.get(child)?.next_sibling();
 
-        let fragment_children = if self.get(node)?.node_type() == NodeType::DocumentFragment {
+        let fragment_children = if self.get(node)?.node_type() == NodeType::DocumentFragment
+            || self.get(node)?.node_type() == NodeType::ShadowRoot
+        {
             Some(self.validate_fragment_children(parent, node)?)
         } else {
             None
@@ -435,11 +438,14 @@ impl Document {
 
         // For a fragment child, every one of its children is about to become a
         // child of `parent`; none of them may be `parent` or an ancestor of it.
-        let fragment_children = if child_type == NodeType::DocumentFragment {
-            self.validate_fragment_children(parent, child)?
-        } else {
-            Vec::new()
-        };
+        // A shadow root spliced as a child behaves like a fragment (its
+        // children move, the root itself is emptied), matching happy-dom.
+        let fragment_children =
+            if child_type == NodeType::DocumentFragment || child_type == NodeType::ShadowRoot {
+                self.validate_fragment_children(parent, child)?
+            } else {
+                Vec::new()
+            };
 
         // WHATWG pre-insert step 3: inserting a node before itself is a no-op,
         // even when the node is not a child of `parent`.
@@ -471,13 +477,15 @@ impl Document {
 
         // An empty fragment has nothing to move; its children are never
         // inserted, so this is a no-op (validation above already ran).
-        if child_type == NodeType::DocumentFragment && fragment_children.is_empty() {
+        if (child_type == NodeType::DocumentFragment || child_type == NodeType::ShadowRoot)
+            && fragment_children.is_empty()
+        {
             return Ok(());
         }
 
         // --- Mutation phase: every precondition has been validated. ---
 
-        if child_type == NodeType::DocumentFragment {
+        if child_type == NodeType::DocumentFragment || child_type == NodeType::ShadowRoot {
             for &c in &fragment_children {
                 self.detach(c);
             }
@@ -495,7 +503,7 @@ impl Document {
     /// have children.
     fn validate_insert_parent(&self, parent: NodeId) -> Result<(), CoreError> {
         match self.get(parent)?.node_type() {
-            NodeType::Element | NodeType::DocumentFragment => Ok(()),
+            NodeType::Element | NodeType::DocumentFragment | NodeType::ShadowRoot => Ok(()),
             NodeType::Document => Err(hierarchy("a Document node cannot be a parent")),
             NodeType::DocumentType => Err(hierarchy("a DocumentType node cannot be a parent")),
             NodeType::Text => Err(hierarchy("a Text node cannot be a parent")),
