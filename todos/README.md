@@ -240,7 +240,7 @@ git diff --check
 | 44 | P2 | [44-cssom.md](44-cssom.md) | M8 | T34, T39, T43 | 待办 |
 | 45 | P2 | [45-window-platform-and-storage.md](done/45-window-platform-and-storage.md) | M8 | T22, T37 | 已完成 |
 | 46 | P2 | [46-fetch-and-network-surface.md](done/46-fetch-and-network-surface.md) | M8 | T38, T45 | 已完成 |
-| 47 | P2 | [47-timers-and-script-execution.md](47-timers-and-script-execution.md) | M8 | T37, T41, T42, T46 | 待办 |
+| 47 | P2 | [47-timers-and-script-execution.md](done/47-timers-and-script-execution.md) | M8 | T37, T41, T42, T46 | 已完成 |
 | 48 | P2 | [48-compatibility-closure-and-wpt.md](48-compatibility-closure-and-wpt.md) | M8/M9 | T11, T25, T29, T32, T33, T34, T35, T36, T37, T38, T39, T40, T41, T42, T43, T44, T45, T46, T47 | 待办 |
 | 49 | P2 | [49-native-packaging-and-artifacts.md](49-native-packaging-and-artifacts.md) | M9 | T06, T21, T48 | 待办 |
 | 50 | P2 | [50-hardening-and-stable-release.md](50-hardening-and-stable-release.md) | M9 | T18, T20, T21, T48, T49 | 待办 |
