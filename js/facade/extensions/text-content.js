@@ -28,7 +28,8 @@
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
 // by exporting `install(ctx)`; nothing in the registry changes. The `seam`
-// metadata stays `"placeholder"` until the T25 gate flips it.
+// metadata was flipped from `"placeholder"` to `"implemented"` by the T25 gate
+// (tests/bun/seam.test.js pins that shape).
 
 import { Node } from "./node.js";
 
@@ -36,7 +37,9 @@ export const seam = Object.freeze({
   id: "facade/extensions/text-content",
   owner: "T25E",
   gate: "T25",
-  status: "placeholder",
+  // The seam status was flipped from "placeholder" to "implemented" by the T25
+  // gate (tests/bun/seam.test.js pins that shape).
+  status: "implemented",
 });
 
 function isNodeHandle(handle) {

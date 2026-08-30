@@ -65,15 +65,15 @@ describe("attribute facade module shape (T25E)", () => {
     expect(Object.keys(mod).sort()).toEqual(["install", "seam"]);
   });
 
-  test("the seams stay placeholders until the T25 gate flips them", () => {
+  test("the seams are flipped to implemented by the T25 gate", () => {
     expect(attributesSeam.owner).toBe("T25E");
     expect(attributesSeam.gate).toBe("T25");
-    expect(attributesSeam.status).toBe("placeholder");
+    expect(attributesSeam.status).toBe("implemented");
     expect(Object.isFrozen(attributesSeam)).toBe(true);
 
     expect(textContentSeam.owner).toBe("T25E");
     expect(textContentSeam.gate).toBe("T25");
-    expect(textContentSeam.status).toBe("placeholder");
+    expect(textContentSeam.status).toBe("implemented");
     expect(Object.isFrozen(textContentSeam)).toBe(true);
   });
 

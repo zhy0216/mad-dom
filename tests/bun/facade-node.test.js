@@ -267,7 +267,7 @@ describe.skipIf(!nativeAvailable)("facade node creation and navigation (T23B)", 
       expect(node.lastChild).toBeNull();
       expect(node.previousSibling).toBeNull();
       expect(node.nextSibling).toBeNull();
-      expect(node.childNodes).toEqual([]);
+      expect(node.childNodes).toHaveLength(0);
     }
 
     win.destroy();
@@ -342,18 +342,20 @@ describe.skipIf(!nativeAvailable)("facade node creation and navigation (T23B)", 
     expect(label.previousSibling).toBeNull();
     expect(label.nextSibling).toBeNull();
 
-    // childNodes hands back the stable wrappers, in order, on every read.
+    // childNodes hands back the T25D live NodeList with the stable wrappers,
+    // in order, on every read; one and the same collection object per parent.
     const kids = ul.childNodes;
     expect(kids).toHaveLength(2);
     expect(kids[0]).toBe(a);
     expect(kids[1]).toBe(b);
+    expect(ul.childNodes).toBe(kids);
     expect(ul.childNodes[0]).toBe(a);
     expect(ul.childNodes[1]).toBe(b);
 
     // Empty relations.
     expect(b.firstChild).toBeNull();
     expect(b.lastChild).toBeNull();
-    expect(b.childNodes).toEqual([]);
+    expect(b.childNodes).toHaveLength(0);
 
     win.destroy();
   });
@@ -378,7 +380,9 @@ describe.skipIf(!nativeAvailable)("facade node creation and navigation (T23B)", 
       () => div.lastChild,
       () => div.previousSibling,
       () => div.nextSibling,
-      () => div.childNodes,
+      // The live childNodes accessor hands back the NodeList object without a
+      // native read (T25D); every *collection* read re-enters Core and fails.
+      () => div.childNodes.length,
       () => text.nodeName,
     ];
     for (const call of calls) {

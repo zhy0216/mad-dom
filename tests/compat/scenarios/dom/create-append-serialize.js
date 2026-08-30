@@ -3,13 +3,14 @@
 //
 // The window-acquisition probe is uniform capability detection on the entry
 // object: implementations expose either createWindow() or a Window
-// constructor. Since T23, MAD DOM's createElement/createTextNode and Node
-// navigation work, but the rest of the node surface (setAttribute, appendChild,
-// body, serialization) is not implemented yet, so the mad-dom side records a
-// facade-phase error at section.setAttribute and stops. These differences are
-// reported (non-fatal) in report mode and tracked as ledger entries.
+// constructor. Since T25, MAD DOM's createElement/createTextNode, tree
+// mutation and the attribute/textContent surface work, but the Document-level
+// members (body, readyState, serialization) are not implemented yet, so the
+// mad-dom side records a facade-phase error at document.body.appendChild and
+// reads readyState as undefined. These differences are reported (non-fatal) in
+// report mode and tracked as ledger entries.
 export const id = "dom-create-append-serialize";
-export const description = "real differential: create an element, attach it to body, serialize (mad-dom facade without attributes/mutation/body/serialization)";
+export const description = "real differential: create an element, attach it to body, serialize (mad-dom facade without document body/readyState/serialization)";
 export const targets = "real";
 
 export async function run(api) {

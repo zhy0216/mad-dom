@@ -16,10 +16,17 @@
 //     (T20).
 //
 // It deliberately does **not** implement mutation, attributes, `textContent`
-// or the live `childNodes` facade — those belong to T24C / T25E / T25D and are
-// explicitly out of scope (js/facade/CONTRACT.md). The facade keeps no second
-// DOM state: a `Node` wrapper holds exactly the opaque native `NodeHandle`
+// or the live `childNodes` collection — those belong to T24C / T25E / T25D and
+// are explicitly out of scope here (js/facade/CONTRACT.md). The facade keeps no
+// second DOM state: a `Node` wrapper holds exactly the opaque native `NodeHandle`
 // behind it, a Core `NodeId` never crosses this seam as a primitive.
+//
+// Since the T25 gate, `childNodes` hands back the T25D live `NodeList`
+// (`liveChildNodes`) instead of the T23B snapshot array: the collection re-reads
+// the same frozen native `childNodes()` read on every access, so an existing
+// `childNodes` object reflects later append/insert/move/remove/replace and
+// `textContent` writes immediately. The wiring is the single place the snapshot
+// facade form of `childNodes` disappears.
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
 // by exporting `install(ctx)`; nothing in the registry changes. The `seam`
@@ -27,6 +34,7 @@
 // (tests/bun/seam.test.js pins that shape).
 
 import { Document } from "../document.js";
+import { liveChildNodes } from "./child-nodelist.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/node",
@@ -132,12 +140,14 @@ export function install(ctx) {
     return ctx.wrap(NODE_HANDLES.get(this).nextSibling());
   }, undefined);
 
-  // Ordered children as a plain array of wrapped nodes; an empty array for a
-  // leaf node. The *live* `childNodes` facade is T25D's — this is the frozen
-  // T23B snapshot form.
+  // Ordered children as the T25D *live* `NodeList` bound to this parent. Every
+  // access re-reads the frozen native `childNodes()` read through
+  // `liveChildNodes`, so an existing collection reflects later tree or
+  // `textContent` changes immediately and one and the same `NodeList` object is
+  // handed back per parent (stable identity), matching happy-dom. The T23B
+  // snapshot-array form was replaced by the T25 gate; an empty `NodeList`
+  // stands for a leaf node.
   ctx.defineAccessor(Node.prototype, "childNodes", function childNodes() {
-    return NODE_HANDLES.get(this)
-      .childNodes()
-      .map((handle) => ctx.wrap(handle));
+    return liveChildNodes(NODE_HANDLES.get(this));
   }, undefined);
 }

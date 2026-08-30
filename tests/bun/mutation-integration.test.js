@@ -132,7 +132,7 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
     fragment.appendChild(two);
     parent.appendChild(fragment);
 
-    expect(fragment.childNodes).toEqual([]);
+    expect(fragment.childNodes).toHaveLength(0);
     expect(Array.from(parent.childNodes, (node) => node.nodeName)).toEqual(["one", "two"]);
     expect(one.parentNode).toBe(parent);
     expect(two.parentNode).toBe(parent);

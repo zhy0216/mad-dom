@@ -96,7 +96,7 @@ describe.skipIf(!nativeAvailable)("root entry node creation and navigation (T23)
       expect(node.lastChild).toBeNull();
       expect(node.previousSibling).toBeNull();
       expect(node.nextSibling).toBeNull();
-      expect(node.childNodes).toEqual([]);
+      expect(node.childNodes).toHaveLength(0);
     }
     win.destroy();
   });
@@ -133,7 +133,9 @@ describe.skipIf(!nativeAvailable)("root entry node creation and navigation (T23)
       () => div.lastChild,
       () => div.previousSibling,
       () => div.nextSibling,
-      () => div.childNodes,
+      // The live childNodes accessor hands back the NodeList object without a
+      // native read (T25D); every *collection* read re-enters Core and fails.
+      () => div.childNodes.length,
       () => text.nodeName,
     ];
     for (const read of reads) {

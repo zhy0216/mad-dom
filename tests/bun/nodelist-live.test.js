@@ -35,10 +35,9 @@ import {
 // built artifact (build/mad-dom.node) and skips without one, so a clean
 // checkout still passes `npm run validate`. The structural block needs no
 // native. The facade is wired through the public entry import below (which
-// runs the registry exactly once); trees are built with the native
-// DocumentHandle mutation surface because wiring `Node.prototype.childNodes`
-// to return this live collection is the T25 gate's integration step — until
-// then the T23B snapshot accessor is unchanged.
+// runs the registry exactly once); since the T25 gate `Node.prototype.childNodes`
+// returns this live collection, so `liveChildNodes` behaviour is exercised both
+// directly and through the public `childNodes` accessor.
 
 const nativeAvailable = isNativeAvailable();
 
@@ -70,10 +69,10 @@ describe("live childNodes facade module shape (T25D)", () => {
     expect(Object.keys(mod).sort()).toEqual(["NodeList", "install", "liveChildNodes", "seam"]);
   });
 
-  test("the seam stays a placeholder until the T25 gate flips it", () => {
+  test("the seam is flipped to implemented by the T25 gate", () => {
     expect(seam.owner).toBe("T25D");
     expect(seam.gate).toBe("T25");
-    expect(seam.status).toBe("placeholder");
+    expect(seam.status).toBe("implemented");
     expect(Object.isFrozen(seam)).toBe(true);
   });
 

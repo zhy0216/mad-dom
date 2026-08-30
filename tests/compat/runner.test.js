@@ -358,13 +358,14 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(byPath["values.entry-window-type"]).toBeUndefined();
 
     // The gap moved from the setup phase to the facade surface: with the dev
-    // artifact the window is acquired, createElement (T23) succeeds and the
-    // missing attribute surface fails in the scenario body; without one,
-    // loading the native binding fails lazily at createWindow().
+    // artifact the window is acquired, createElement (T23), tree mutation (T24)
+    // and the attribute/textContent surface (T25) succeed, and the missing
+    // Document-level member (document.body) fails in the scenario body; without
+    // one, loading the native binding fails lazily at createWindow().
     expect(madRecord.errors).toHaveLength(1);
     if (nativeAvailable) {
       expect(madRecord.errors[0].name).toBe("TypeError");
-      expect(madRecord.errors[0].message).toContain("setAttribute is not a function");
+      expect(madRecord.errors[0].message).toContain("document.body");
       expect(madRecord.errors[0].phase).toBe("facade");
     } else {
       expect(madRecord.errors[0].name).toBe("Error");
@@ -372,6 +373,12 @@ describe("real differential (happy-dom vs mad-dom)", () => {
       expect(madRecord.errors[0].phase).toBe("setup");
     }
     expect(byPath["errors[0]"]).toMatchObject({ kind: "right-only", right: madRecord.errors[0] });
+
+    expect(madRecord.values["document-ready-state"]).toEqual({ type: "undefined" });
+    expect(byPath["values.document-ready-state.value"]).toMatchObject({
+      kind: "left-only",
+      left: "interactive",
+    });
 
     expect(madRecord.snapshots).toEqual({});
     expect(madRecord.events).toEqual([]);
@@ -542,6 +549,140 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(happyRecord.values["after-insert-types"]).toEqual(madRecord.values["after-insert-types"]);
   });
 
+  test("live childNodes real scenario passes exactly (live length, index, identity)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-child-nodelist");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // Since the T25 gate wired `Node.prototype.childNodes` to the T25D live
+    // collection, the whole scenario matches happy-dom observation for
+    // observation: an existing childNodes object reflects append/insert/move/
+    // remove/replace immediately and keeps one and the same NodeList identity
+    // per parent. Ledgered hc-diff-child-nodelist.
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+
+    expect(madRecord.values["captured-length"]).toEqual({ type: "number", value: 2 });
+    expect(madRecord.values["indexed-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 1 },
+        { type: "number", value: 3 },
+      ],
+    });
+    expect(madRecord.values["live-after-append-length"]).toEqual({ type: "number", value: 3 });
+    expect(madRecord.values["live-after-append-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 1 },
+        { type: "number", value: 3 },
+        { type: "number", value: 1 },
+      ],
+    });
+    expect(madRecord.values["live-after-move-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 1 },
+        { type: "number", value: 1 },
+        { type: "number", value: 3 },
+      ],
+    });
+    expect(madRecord.values["live-after-remove-count"]).toEqual({ type: "number", value: 2 });
+    expect(madRecord.values["live-after-replace-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 1 },
+        { type: "number", value: 1 },
+      ],
+    });
+    expect(madRecord.values["empty-list-length"]).toEqual({ type: "number", value: 0 });
+    expect(madRecord.identity["child-nodes-is-live-list"]).toBe(true);
+  });
+
+  test("attribute real scenario reports exactly the frozen T25 known gaps", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-attributes");
+    expect(scenario).toBeDefined();
+    expect(scenario.status).toBe("differences-report");
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T25E attribute slice matches happy-dom except the four frozen
+    // gaps (ledgered hc-diff-attributes-read-write): the T21A error
+    // degradation on DOM-spec violations, the strict WHATWG "Name" validation
+    // (digit-led names rejected), the non-Element methods living on
+    // Node.prototype, and the descriptor present on the element's direct
+    // prototype.
+    const paths = scenario.differences.map((difference) => difference.path);
+    expect(paths).toContain("descriptors.getAttribute-descriptor.present");
+    expect(paths).toContain("descriptors.setAttribute-descriptor.present");
+    expect(paths).toContain("errors[0].name");
+    expect(paths).toContain("errors[1].name");
+    expect(paths).toContain("errors[2]");
+    expect(paths).toContain("values.digit-led-name");
+
+    // The value round-trip, WebIDL DOMString shaping and absent-name reads
+    // match happy-dom exactly.
+    expect(madRecord.values["absent-get"]).toEqual({ type: "null" });
+    expect(madRecord.values["absent-has"]).toEqual({ type: "boolean", value: false });
+    expect(madRecord.values["get-after-set"]).toEqual({ type: "string", value: "x" });
+    expect(madRecord.values["numeric-value"]).toEqual({ type: "string", value: "123" });
+    expect(madRecord.values["null-value"]).toEqual({ type: "string", value: "null" });
+    expect(madRecord.values["undefined-value"]).toEqual({ type: "string", value: "undefined" });
+    expect(madRecord.values["boolean-value"]).toEqual({ type: "string", value: "true" });
+    expect(madRecord.values["survivor-value"]).toEqual({ type: "string", value: "2" });
+    expect(madRecord.values["empty-value"]).toEqual({ type: "string", value: "" });
+  });
+
+  test("textContent real scenario reports exactly the frozen T25 known gaps", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-text-content");
+    expect(scenario).toBeDefined();
+    expect(scenario.status).toBe("differences-report");
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T25E textContent slice matches happy-dom except the two frozen
+    // gaps (ledgered hc-diff-text-content-accessor): the Core NUL rejection
+    // (text-data well-formedness) and the accessor descriptor living on the
+    // element's direct prototype.
+    const paths = scenario.differences.map((difference) => difference.path);
+    expect(paths).toContain("descriptors.textContent-descriptor.present");
+    expect(paths).toContain("errors[0]");
+    expect(paths).toContain("values.nul-stored");
+
+    // Reads, writes, null clearing, coercion and deep-tree concatenation match.
+    expect(madRecord.values["empty-get"]).toEqual({ type: "string", value: "" });
+    expect(madRecord.values["get-after-set"]).toEqual({ type: "string", value: "hello" });
+    expect(madRecord.values["get-after-null"]).toEqual({ type: "string", value: "" });
+    expect(madRecord.values["child-count-after-null"]).toEqual({ type: "number", value: 0 });
+    expect(madRecord.values["get-after-number"]).toEqual({ type: "string", value: "42" });
+    expect(madRecord.values["deep-concat"]).toEqual({ type: "string", value: "123" });
+    expect(madRecord.values["text-get"]).toEqual({ type: "string", value: "data" });
+    expect(madRecord.values["text-get-after-set"]).toEqual({ type: "string", value: "changed" });
+  });
+
   test("strict mode fails on the same real scenario (exit 1)", () => {
     const strictRun = runRunner([join(DOM_DIR, "create-append-serialize.js"), "--json"]);
     expect(strictRun.status).toBe(1);
@@ -568,6 +709,25 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     } else {
       // Without the artifact the mad-dom side stops at setup, which is a real
       // difference, not an infrastructure error.
+      expect(strictRun.status).toBe(1);
+      expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+      expect(strictReport.totals.infraErrors).toBe(0);
+    }
+  });
+
+  test("strict mode passes on the live childNodes scenario exactly when it matches happy-dom", () => {
+    const strictRun = runRunner([join(DOM_DIR, "dom-child-nodelist.js"), "--json"]);
+    const strictReport = JSON.parse(strictRun.stdout);
+    expect(strictReport.mode).toBe("strict");
+    expect(strictReport.scenarios[0].id).toBe("dom-child-nodelist");
+    if (nativeAvailable) {
+      // With the dev artifact the whole T25D live childNodes slice matches
+      // happy-dom, so the strict run must exit 0 with zero differences.
+      expect(strictRun.status).toBe(0);
+      expect(strictReport.exitCode).toBe(0);
+      expect(strictReport.scenarios[0].status).toBe("pass");
+      expect(strictReport.scenarios[0].differences).toEqual([]);
+    } else {
       expect(strictRun.status).toBe(1);
       expect(strictReport.scenarios[0].status).toBe("differences-fatal");
       expect(strictReport.totals.infraErrors).toBe(0);

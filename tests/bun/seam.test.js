@@ -22,22 +22,21 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/child-nodelist.js", owner: "T25D" },
 ];
 
-// The T22B-owned files and the node (T23B) and mutation (T24C) capability
-// extensions are implemented and their seam status is flipped to "implemented";
-// the remaining capability extensions stay placeholders until their owning
-// gates land.
+// The T22B-owned files and the node (T23B), mutation (T24C) and T25E/T25D
+// capability extensions are implemented and their seam status is flipped to
+// "implemented"; no capability extension stays a placeholder — the T25 gate
+// completes the M4 extension set.
 const IMPLEMENTED_FACADE_FILES = [
   { path: "window.js", owner: "T22B" },
   { path: "document.js", owner: "T22B" },
   { path: "extensions/index.js", owner: "T22B" },
   { path: "extensions/node.js", owner: "T23B" },
   { path: "extensions/mutation.js", owner: "T24C" },
-];
-const PLACEHOLDER_FACADE_FILES = [
   { path: "extensions/attributes.js", owner: "T25E" },
   { path: "extensions/text-content.js", owner: "T25E" },
   { path: "extensions/child-nodelist.js", owner: "T25D" },
 ];
+const PLACEHOLDER_FACADE_FILES = [];
 
 describe("cross-layer extension seam (T20A)", () => {
   test("js/facade contract and placeholder files exist", () => {
@@ -65,17 +64,20 @@ describe("cross-layer extension seam (T20A)", () => {
     }
   });
 
-  test("implemented facade files (T22B + node/mutation capability) are flipped by their gates", async () => {
+  test("implemented facade files are flipped by their gates", async () => {
     for (const file of IMPLEMENTED_FACADE_FILES) {
       const mod = await import(`${FACADE}/${file.path}`);
       expect(mod.seam.status, `${file.path} status`).toBe("implemented");
     }
   });
 
-  test("capability extensions stay placeholder until their owning gate lands", async () => {
+  test("the M4 extension set leaves no facade seam as a placeholder", async () => {
     for (const file of PLACEHOLDER_FACADE_FILES) {
       const mod = await import(`${FACADE}/${file.path}`);
       expect(mod.seam.status, `${file.path} status`).toBe("placeholder");
     }
+    // With the T25 gate every owned capability extension is implemented, so
+    // the placeholder set is empty — the M4 facade seam is complete.
+    expect(PLACEHOLDER_FACADE_FILES).toEqual([]);
   });
 });

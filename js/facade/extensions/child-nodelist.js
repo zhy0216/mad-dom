@@ -21,12 +21,11 @@
 // # Snapshot vs live boundary
 //
 // `Node.prototype.childNodes` was frozen by T23B as a *snapshot* array of
-// wrapped children (js/facade/extensions/node.js). This module owns the *live*
-// collection: `NodeList` re-reads the same native surface on every access
-// (length, index, iteration) and keeps a stable per-parent identity
-// (`liveChildNodes`). Wiring `Node.prototype.childNodes` to return this live
-// collection is the T25 gate's integration step; until then the facade still
-// hands back the T23B snapshot.
+// wrapped children (js/facade/extensions/node.js). The T25 gate rewired that
+// accessor to this module's `liveChildNodes`, so today `childNodes` hands back
+// the live collection directly: `NodeList` re-reads the same native surface on
+// every access (length, index, iteration) and keeps a stable per-parent identity
+// (`liveChildNodes`).
 //
 // # Lifecycle and identity
 //
@@ -38,13 +37,16 @@
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
 // by exporting `install(ctx)`; nothing in the registry changes. The `seam`
-// metadata stays `"placeholder"` until the T25 gate flips it.
+// metadata was flipped from `"placeholder"` to `"implemented"` by the T25 gate
+// (tests/bun/seam.test.js pins that shape).
 
 export const seam = Object.freeze({
   id: "facade/extensions/child-nodelist",
   owner: "T25D",
   gate: "T25",
-  status: "placeholder",
+  // The seam status was flipped from "placeholder" to "implemented" by the T25
+  // gate (tests/bun/seam.test.js pins that shape).
+  status: "implemented",
 });
 
 // Native parent handle behind each NodeList instance, keyed by the live proxy

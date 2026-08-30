@@ -1,6 +1,6 @@
 # 25 集成属性、textContent 与 live childNodes
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P0
 - 里程碑：M4
 - 条目 ID：`T25`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T25 — 实现属性、textContent 与 live childNodes**
+- [x] **T25 — 实现属性、textContent 与 live childNodes**
   - 实现：
     - 接入 T25A、T25B、T25C、T25D、T25E，更新唯一 registry、入口、类型、API 快照和兼容清单。
     - 运行跨模块交互测试，确认 mutation、属性、textContent 和 live childNodes 的观察顺序一致。

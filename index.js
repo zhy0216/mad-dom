@@ -1,4 +1,4 @@
-// Public package entry (T22 gate, extended by T23/T24).
+// Public package entry (T22 gate, extended by T23/T24/T25).
 //
 // The single source of the runtime surface lives in js/entry.js; this file
 // only re-exports it, so the entry can never drift from the facade wiring

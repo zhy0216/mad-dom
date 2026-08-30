@@ -5,11 +5,9 @@
     {
       "id": "hc-diff-child-nodelist",
       "suite": "diff",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-child-nodelist",
-      "reason": "Since T25D, MAD DOM implements the live NodeList module (crates/mad-dom-bun/src/extensions/collection_api.rs and js/facade/extensions/child-nodelist.js) that re-reads the frozen native childNodes read on every access, but Node.prototype.childNodes is still the frozen T23B snapshot array (a plain array captured at read time), so an already-captured childNodes object does not reflect later append/insert/move/remove/replace while happy-dom's NodeList stays live and is identical on re-read. The T25 gate rewires childNodes to the live collection and flips this entry to pass.",
-      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T25D"
     },
     {
@@ -38,7 +36,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-create-append-serialize",
-      "reason": "Since T24C, MAD DOM's document.createElement / createTextNode, Node navigation and basic tree mutation are implemented, but attributes (setAttribute), body and serialization are not, so the mad-dom side still records a facade-phase TypeError at section.setAttribute while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22/T23/T24C; collected into the compatibility ledger by T11.",
+      "reason": "Since T25, MAD DOM's document.createElement / createTextNode, Node navigation, tree mutation (append/insert/remove/replace) and the attribute/textContent surface are implemented, so setAttribute and appendChild succeed on the mad-dom side; the facade gap has moved to the Document-level surface: document.body (and document.readyState) are not implemented yet, so the mad-dom side records a facade-phase TypeError at document.body.appendChild(section) and reads readyState as undefined while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22/T23/T24/T25; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
     },
@@ -141,12 +139,11 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/window-document-basics.ts",
-      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); Document.createElement is now typed (T23) but returns the minimal Element surface, so setAttribute, id, querySelectorAll, title and body are still rejected on the mad-dom target. Updated by T22/T23.",
+      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); the element attribute surface is now typed (T25), so setAttribute type-checks, but the remaining element/document members — id, querySelectorAll, title and body — are still rejected on the mad-dom target. Updated by T22/T23/T25.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2353, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'setAttribute' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'id' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'querySelectorAll' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'title' does not exist" },

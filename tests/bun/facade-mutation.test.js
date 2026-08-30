@@ -26,7 +26,7 @@ function thrown(fn) {
 }
 
 function names(node) {
-  return node.childNodes.map((child) => child.nodeName);
+  return Array.from(node.childNodes, (child) => child.nodeName);
 }
 
 function destroy(window) {
@@ -131,7 +131,7 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
       parent.appendChild(child);
 
       expect(parent.removeChild(child)).toBe(child);
-      expect(parent.childNodes).toEqual([]);
+      expect(parent.childNodes).toHaveLength(0);
       expect(child.parentNode).toBeNull();
       expect(label.parentNode).toBe(child);
       expect(parent.appendChild(child)).toBe(child);
@@ -154,7 +154,7 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
       source.appendChild(branch);
 
       expect(target.appendChild(branch)).toBe(branch);
-      expect(source.childNodes).toEqual([]);
+      expect(source.childNodes).toHaveLength(0);
       expect(branch.parentNode).toBe(target);
       expect(branch.firstChild).toBe(leaf);
       expect(leaf.parentNode).toBe(branch);
@@ -200,7 +200,7 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
 
       expect(parent.insertBefore(fragment, after)).toBe(fragment);
       expect(names(parent)).toEqual(["before", "one", "two", "after"]);
-      expect(fragment.childNodes).toEqual([]);
+      expect(fragment.childNodes).toHaveLength(0);
       expect(one.parentNode).toBe(parent);
       expect(two.parentNode).toBe(parent);
 
@@ -209,7 +209,7 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
       replacement.appendChild(three);
       expect(parent.replaceChild(replacement, one)).toBe(one);
       expect(names(parent)).toEqual(["before", "three", "two", "after"]);
-      expect(replacement.childNodes).toEqual([]);
+      expect(replacement.childNodes).toHaveLength(0);
       expect(one.parentNode).toBeNull();
     } finally {
       destroy(window);
@@ -287,7 +287,7 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
         const error = thrown(call);
         expect(error).toBeInstanceOf(TypeError);
       }
-      expect(parent.childNodes).toEqual([]);
+      expect(parent.childNodes).toHaveLength(0);
     } finally {
       destroy(window);
     }
