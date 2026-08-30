@@ -24,22 +24,77 @@ export declare class Window {
   readonly document: Document;
   /** The WHATWG `Event` constructor (T37): `new window.Event("click", { bubbles: true })`. */
   readonly Event: typeof Event;
+  /** The WHATWG `CustomEvent` constructor (T38). */
+  readonly CustomEvent: typeof CustomEvent;
+  /** The WHATWG `UIEvent` constructor (T38). */
+  readonly UIEvent: typeof UIEvent;
+  /** The WHATWG `MouseEvent` constructor (T38). */
+  readonly MouseEvent: typeof MouseEvent;
+  /** The WHATWG `KeyboardEvent` constructor (T38). */
+  readonly KeyboardEvent: typeof KeyboardEvent;
+  /** The WHATWG `FocusEvent` constructor (T38). */
+  readonly FocusEvent: typeof FocusEvent;
+  /** The WHATWG `WheelEvent` constructor (T38). */
+  readonly WheelEvent: typeof WheelEvent;
+  /** The WHATWG `InputEvent` constructor (T38). */
+  readonly InputEvent: typeof InputEvent;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
 
-// --- Event / EventTarget (T37) -----------------------------------------------
+// --- Event / EventTarget (T37, completed by T38) ------------------------------
 //
-// The base `Event` value is not exported from the package entry in T37 — it is
-// reached through `window.Event` — so the concrete subclasses, constants and
-// `composedPath`/`timeStamp`/`initEvent` surface land with T38. The
-// EventTarget methods on `Node` / `Document` delegate to the Core propagation
-// engine. The listener-option shapes are inlined (the WHATWG `EventInit`,
-// `EventListenerOptions` and `AddEventListenerOptions` type exports arrive with
-// T38 alongside the runtime `Event` export).
+// T37 wired the EventTarget methods onto `Node` / `Document` and the minimal
+// `Event` value (reached through `window.Event`). T38 completes the base
+// `Event` surface (phase constants, `timeStamp`, `cancelBubble`, `composedPath`,
+// `initEvent`), exports the full `Event` value and the first batch of concrete
+// event classes (`CustomEvent`, `UIEvent`, `MouseEvent`, `KeyboardEvent`,
+// `FocusEvent`, `WheelEvent`, `InputEvent`), and exports the `EventPhaseEnum`
+// plus the `I*Init` / `TEventListener*` types. The native handle surface and
+// the package entry exports must stay in lockstep with these declarations.
 
-declare class Event {
-  constructor(type: string, eventInit?: { bubbles?: boolean; cancelable?: boolean; composed?: boolean } | null);
+export declare enum EventPhaseEnum {
+  none = 0,
+  capturing = 1,
+  atTarget = 2,
+  bubbling = 3,
+}
+
+/** The WHATWG `EventInit` dictionary (module type export, T38). */
+export interface IEventInit {
+  bubbles?: boolean;
+  cancelable?: boolean;
+  composed?: boolean;
+}
+
+/** A function event listener (WHATWG `EventListener` function form). */
+export type TEventListenerFunction = (event: Event) => void;
+/** An object event listener exposing `handleEvent` (WHATWG `EventListener` object form). */
+export interface TEventListenerObject {
+  handleEvent(event: Event): void;
+}
+/** The WHATWG `EventListener` union accepted by `addEventListener`. */
+export type TEventListener = TEventListenerFunction | TEventListenerObject;
+
+/** The WHATWG `EventListenerOptions` dictionary. */
+export interface IEventListenerOptions {
+  once?: boolean;
+  capture?: boolean;
+  passive?: boolean;
+  signal?: unknown;
+}
+
+export declare class Event {
+  static readonly NONE: EventPhaseEnum;
+  static readonly CAPTURING_PHASE: EventPhaseEnum;
+  static readonly AT_TARGET: EventPhaseEnum;
+  static readonly BUBBLING_PHASE: EventPhaseEnum;
+  /** The phase constants are also own instance fields (baseline shape). */
+  readonly NONE: EventPhaseEnum;
+  readonly CAPTURING_PHASE: EventPhaseEnum;
+  readonly AT_TARGET: EventPhaseEnum;
+  readonly BUBBLING_PHASE: EventPhaseEnum;
+  constructor(type: string, eventInit?: IEventInit | null);
   /** The event's type string. */
   readonly type: string;
   /** Whether the event bubbles past its target. */
@@ -50,18 +105,183 @@ declare class Event {
   readonly composed: boolean;
   /** Whether `preventDefault` was called by a non-passive cancelable listener. */
   readonly defaultPrevented: boolean;
-  /** The current phase: 0 none, 1 capturing, 2 at target, 3 bubbling. */
-  readonly eventPhase: number;
+  /** The current phase: `EventPhaseEnum.none` outside a dispatch. */
+  readonly eventPhase: EventPhaseEnum;
+  /** The construction-time timestamp (a positive number). */
+  readonly timeStamp: number;
   /** The node `dispatchEvent` was called on, or `null` before the first dispatch. */
   readonly target: Node | null;
   /** The node whose listeners are running, or `null` outside a dispatch. */
   readonly currentTarget: Node | null;
+  /** Whether `stopPropagation` was called (baseline: read-only). */
+  readonly cancelBubble: boolean;
+  /** The propagation path of the event's target (target first), or `[]` before the first dispatch. */
+  composedPath(): (Node | Window)[];
   /** Sets `defaultPrevented` when the event is cancelable and not passive. */
   preventDefault(): void;
   /** Ends the dispatch after the current target's listeners finish. */
   stopPropagation(): void;
   /** Ends the dispatch immediately. */
   stopImmediatePropagation(): void;
+  /** Re-initializes `type` / `bubbles` / `cancelable` and resets the cancellation flags (deprecated WHATWG). */
+  initEvent(type: string, bubbles?: boolean, cancelable?: boolean): void;
+}
+
+/** The WHATWG `CustomEventInit` dictionary. */
+export interface ICustomEventInit extends IEventInit {
+  detail?: any;
+}
+
+export declare class CustomEvent<T = any> extends Event {
+  readonly detail: T;
+  constructor(type: string, eventInit?: ICustomEventInit | null);
+  /** Re-initializes the event (deprecated WHATWG). */
+  initCustomEvent(type: string, bubbles?: boolean, cancelable?: boolean, detail?: T): void;
+}
+
+/** The WHATWG `UIEventInit` dictionary. */
+export interface IUIEventInit extends IEventInit {
+  detail?: number;
+  view?: Window | null;
+}
+
+export declare class UIEvent extends Event {
+  static readonly NONE: EventPhaseEnum;
+  static readonly CAPTURING_PHASE: EventPhaseEnum;
+  static readonly AT_TARGET: EventPhaseEnum;
+  static readonly BUBBLING_PHASE: EventPhaseEnum;
+  readonly detail: number;
+  readonly layerX: number;
+  readonly layerY: number;
+  readonly pageX: number;
+  readonly pageY: number;
+  readonly view: Window | null;
+  constructor(type: string, eventInit?: IUIEventInit | null);
+}
+
+/** The WHATWG `MouseEventInit` dictionary. */
+export interface IMouseEventInit extends IUIEventInit {
+  screenX?: number;
+  screenY?: number;
+  clientX?: number;
+  clientY?: number;
+  ctrlKey?: boolean;
+  shiftKey?: boolean;
+  altKey?: boolean;
+  metaKey?: boolean;
+  movementX?: number;
+  movementY?: number;
+  offsetX?: number;
+  offsetY?: number;
+  button?: number;
+  buttons?: number;
+  relatedTarget?: Node | null;
+  region?: string;
+}
+
+export declare class MouseEvent extends UIEvent {
+  readonly altKey: boolean;
+  readonly button: number;
+  readonly buttons: number;
+  readonly clientX: number;
+  readonly clientY: number;
+  readonly ctrlKey: boolean;
+  readonly metaKey: boolean;
+  readonly movementX: number;
+  readonly movementY: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly region: string;
+  readonly relatedTarget: Node | null;
+  readonly screenX: number;
+  readonly screenY: number;
+  readonly shiftKey: boolean;
+  constructor(type: string, eventInit?: IMouseEventInit | null);
+}
+
+/** The WHATWG `KeyboardEventInit` dictionary. */
+export interface IKeyboardEventInit extends IUIEventInit {
+  key?: string;
+  code?: string;
+  location?: number;
+  ctrlKey?: boolean;
+  shiftKey?: boolean;
+  altKey?: boolean;
+  metaKey?: boolean;
+  repeat?: boolean;
+  isComposing?: boolean;
+  /** @deprecated */
+  keyCode?: number;
+  /** @deprecated */
+  which?: number;
+}
+
+export declare class KeyboardEvent extends UIEvent {
+  static readonly DOM_KEY_LOCATION_STANDARD: number;
+  static readonly DOM_KEY_LOCATION_LEFT: number;
+  static readonly DOM_KEY_LOCATION_RIGHT: number;
+  static readonly DOM_KEY_LOCATION_NUMPAD: number;
+  readonly altKey: boolean;
+  readonly code: string;
+  readonly ctrlKey: boolean;
+  readonly isComposing: boolean;
+  readonly key: string;
+  readonly location: number;
+  readonly metaKey: boolean;
+  readonly repeat: boolean;
+  readonly shiftKey: boolean;
+  /** @deprecated */
+  readonly keyCode: number;
+  /** @deprecated */
+  readonly which: number;
+  constructor(type: string, eventInit?: IKeyboardEventInit | null);
+  /** Whether the named modifier is pressed. */
+  getModifierState(key: string): boolean;
+}
+
+/** The WHATWG `FocusEventInit` dictionary. */
+export interface IFocusEventInit extends IUIEventInit {
+  relatedTarget?: Node | null;
+}
+
+export declare class FocusEvent extends UIEvent {
+  readonly relatedTarget: Node | null;
+  constructor(type: string, eventInit?: IFocusEventInit | null);
+}
+
+/** The WHATWG `WheelEventInit` dictionary. */
+export interface IWheelEventInit extends IUIEventInit {
+  deltaX?: number;
+  deltaY?: number;
+  deltaZ?: number;
+  deltaMode?: number;
+}
+
+export declare class WheelEvent extends UIEvent {
+  static readonly DOM_DELTA_PIXEL: number;
+  static readonly DOM_DELTA_LINE: number;
+  static readonly DOM_DELTA_PAGE: number;
+  readonly deltaX: number;
+  readonly deltaY: number;
+  readonly deltaZ: number;
+  readonly deltaMode: number;
+  constructor(type: string, eventInit?: IWheelEventInit | null);
+}
+
+/** The WHATWG `InputEventInit` dictionary. */
+export interface IInputEventInit extends IUIEventInit {
+  inputType?: string;
+  data?: string;
+  dataTransfer?: unknown;
+  isComposing?: boolean;
+}
+
+export declare class InputEvent extends UIEvent {
+  readonly data: string;
+  readonly dataTransfer: unknown;
+  readonly inputType: string;
+  readonly isComposing: boolean;
+  constructor(type: string, eventInit?: IInputEventInit | null);
 }
 
 export declare class Document {
@@ -107,9 +327,9 @@ export declare class Document {
   createAttribute(name: string): Attr;
 
   /** WHATWG `EventTarget.addEventListener` (T37), registered on the document-root node. */
-  addEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean; once?: boolean; passive?: boolean; signal?: unknown }): void;
+  addEventListener(type: string, listener: TEventListener | null, options?: boolean | IEventListenerOptions | null): void;
   /** WHATWG `EventTarget.removeEventListener` (T37), matching the registered callback. */
-  removeEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean }): void;
+  removeEventListener(type: string, listener: TEventListener | null, options?: boolean | { capture?: boolean } | null): void;
   /** WHATWG `EventTarget.dispatchEvent` (T37): returns `false` when a cancelable event was default-prevented. */
   dispatchEvent(event: Event): boolean;
 }
@@ -157,9 +377,9 @@ export interface Node {
   nodeValue: string | null;
 
   /** WHATWG `EventTarget.addEventListener` (T37). */
-  addEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean; once?: boolean; passive?: boolean; signal?: unknown }): void;
+  addEventListener(type: string, listener: TEventListener | null, options?: boolean | IEventListenerOptions | null): void;
   /** WHATWG `EventTarget.removeEventListener` (T37), matching the registered callback. */
-  removeEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean }): void;
+  removeEventListener(type: string, listener: TEventListener | null, options?: boolean | { capture?: boolean } | null): void;
   /** WHATWG `EventTarget.dispatchEvent` (T37): returns `false` when a cancelable event was default-prevented. */
   dispatchEvent(event: Event): boolean;
 }

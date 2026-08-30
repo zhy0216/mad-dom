@@ -34,7 +34,16 @@ describe("root entry surface (T22)", () => {
   test("the package entry exports exactly the public surface", async () => {
     const mod = await import("../../index.js");
     expect(Object.keys(mod).sort()).toEqual([
+      "CustomEvent",
       "Document",
+      "Event",
+      "EventPhaseEnum",
+      "FocusEvent",
+      "InputEvent",
+      "KeyboardEvent",
+      "MouseEvent",
+      "UIEvent",
+      "WheelEvent",
       "Window",
       "createDocument",
       "createWindow",

@@ -31,7 +31,16 @@ describe("root entry mutation surface (T24)", () => {
   test("the package entry keeps exactly one set of exports", async () => {
     const mod = await import("../../index.js");
     expect(Object.keys(mod).sort()).toEqual([
+      "CustomEvent",
       "Document",
+      "Event",
+      "EventPhaseEnum",
+      "FocusEvent",
+      "InputEvent",
+      "KeyboardEvent",
+      "MouseEvent",
+      "UIEvent",
+      "WheelEvent",
       "Window",
       "createDocument",
       "createWindow",

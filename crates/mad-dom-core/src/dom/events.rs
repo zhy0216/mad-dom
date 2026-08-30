@@ -172,6 +172,37 @@ impl EventState {
     pub fn stop_immediate_propagation(&mut self) {
         self.stop_immediate_propagation = true;
     }
+
+    /// WHATWG `Event.initEvent` (T38): re-initializes the event's `type`,
+    /// `bubbles` and `cancelable` and resets the per-dispatch cancellation
+    /// flags (`defaultPrevented`, `stopPropagation`, `stopImmediatePropagation`).
+    ///
+    /// Unlike the WHATWG rule ("do nothing while dispatching"), the baseline
+    /// applies the mutation unconditionally — matching happy-dom, which does not
+    /// guard `initEvent` on the dispatching flag. `timeStamp` is never reset.
+    pub fn init_event(&mut self, event_type: impl Into<String>, bubbles: bool, cancelable: bool) {
+        self.event_type = event_type.into();
+        self.bubbles = bubbles;
+        self.cancelable = cancelable;
+        self.default_prevented = false;
+        self.stop_propagation = false;
+        self.stop_immediate_propagation = false;
+    }
+
+    /// `CustomEvent.initCustomEvent` (T38): re-initializes the event's `type`,
+    /// `bubbles` and `cancelable` *without* touching the cancellation flags —
+    /// the baseline's `initCustomEvent` leaves `defaultPrevented` /
+    /// `stopPropagation` / `stopImmediatePropagation` as they are.
+    pub fn set_init_values(
+        &mut self,
+        event_type: impl Into<String>,
+        bubbles: bool,
+        cancelable: bool,
+    ) {
+        self.event_type = event_type.into();
+        self.bubbles = bubbles;
+        self.cancelable = cancelable;
+    }
 }
 
 /// One listener captured by the snapshot of a struct.
@@ -307,6 +338,28 @@ impl Document {
         Ok(removed)
     }
 
+    /// Returns the fixed propagation path of `target`: the target followed by
+    /// its ancestor chain up to the document root (T37/T38).
+    ///
+    /// This is the path [`Document::begin_dispatch`] walks and the WHATWG
+    /// `Event.composedPath()` reports (minus the shadow-host and window hops,
+    /// which land with T43/T45). It is computed at dispatch start and never
+    /// re-derived, so mid-dispatch tree mutation cannot change it.
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::WrongDocument`] / [`CoreError::Arena`] for a foreign or
+    /// stale `target`.
+    pub fn propagation_path(&self, target: NodeId) -> Result<Vec<NodeId>, CoreError> {
+        let mut path = vec![target];
+        let mut cursor = target;
+        while let Some(parent) = self.get(cursor)?.parent() {
+            path.push(parent);
+            cursor = parent;
+        }
+        Ok(path)
+    }
+
     /// Starts a dispatch of `event` on `target`.
     ///
     /// Computes the propagation path (the target and its ancestors up to the
@@ -335,12 +388,7 @@ impl Document {
         event.stop_immediate_propagation = false;
         event.in_passive_listener = false;
 
-        let mut path = vec![target];
-        let mut cursor = target;
-        while let Some(parent) = self.get(cursor)?.parent() {
-            path.push(parent);
-            cursor = parent;
-        }
+        let path = self.propagation_path(target)?;
         let struct_index = path.len().saturating_sub(1);
         let mut dispatch = Dispatch {
             struct_index,

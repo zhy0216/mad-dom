@@ -1,18 +1,24 @@
-// `EventTarget` / `Event` facade extension (T37).
+// `EventTarget` / `Event` facade extension (T37, extended by T38).
 //
 // Installs the WHATWG event surface on `Node.prototype` and
 // `Document.prototype` — `addEventListener` / `removeEventListener` /
-// `dispatchEvent` — plus a minimal `Event` class (the base needed to
-// construct and dispatch events; concrete subclasses, constants and
-// `composedPath`/`timeStamp`/`initEvent` land with T38) and the `window.Event`
-// constructor accessor. Every behavior delegates verbatim to the native T37
-// contract (crates/mad-dom-bun/src/extensions/events_api.rs) and through it to
-// the Core propagation engine (`mad_dom_core::dom::events`). Like the rest of
-// the facade, this module keeps **no second DOM state**: Core owns the listener
-// registrations and the dispatch plan, this module only shapes arguments,
-// wraps the user listener into the stable wrapper the native identity
-// comparisons rely on, and routes `preventDefault` / `stopPropagation` /
-// `stopImmediatePropagation` to the native event state.
+// `dispatchEvent` — plus the full `Event` base class (constants, the
+// `type`/`bubbles`/`cancelable`/`composed`/`defaultPrevented`/`eventPhase`/
+// `target`/`currentTarget`/`timeStamp`/`cancelBubble` reads, `composedPath`,
+// `initEvent` and the cancel methods), the first batch of concrete event
+// classes (`CustomEvent`, `UIEvent`, `MouseEvent`, `KeyboardEvent`,
+// `FocusEvent`, `WheelEvent`, `InputEvent`) and the module-level
+// `EventPhaseEnum`. Every base-`Event` behavior delegates verbatim to the
+// native contract (crates/mad-dom-bun/src/extensions/events_api.rs) and
+// through it to the Core propagation engine (`mad_dom_core::dom::events`);
+// the concrete classes store their immutable init payload exactly like the
+// baseline (own data fields for `UIEvent` and its subclasses, a symbol-like
+// slot for `CustomEvent.detail`) — none of that is DOM tree state, so the
+// facade still keeps no second authoritative DOM. Like the rest of the
+// facade, this module only shapes arguments, wraps the user listener into the
+// stable wrapper the native identity comparisons rely on, and routes
+// `preventDefault` / `stopPropagation` / `stopImmediatePropagation` /
+// `initEvent` / `composedPath` to the native event state.
 //
 // # Listener wrapper (`WRAPPED`)
 //
@@ -36,6 +42,19 @@
 // already aborted and exposes `addEventListener`, an `abort` handler removes it
 // (matching happy-dom, which registers regardless of the `aborted` flag and
 // only hooks a live signal).
+//
+// # Event class payload (T38)
+//
+// The base `Event` state (type/bubbles/cancelable/composed/defaultPrevented/
+// stop flags/dispatching/phase/target/currentTarget/timeStamp) lives in the
+// native `EventHandle`. The concrete classes' init payload — `UIEvent.detail`/
+// `view` and the `MouseEvent`/`KeyboardEvent`/`FocusEvent`/`WheelEvent`/
+// `InputEvent` data fields — is immutable construction metadata, stored as own
+// instance fields exactly like the baseline so instance descriptor probes
+// match. `CustomEvent.detail` lives behind the prototype getter (a symbol-like
+// slot) like the baseline, so its own-property probe matches too. The four
+// phase constants are both static class fields and own instance fields
+// (baseline instance shape: `Object.keys(event)` == the four constants).
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
 // by exporting `install(ctx)` and registering its `EventHandle` wrapper type;
@@ -70,6 +89,30 @@ const EVENT_OWNERS = new WeakMap();
 // The stable wrapper function registered with the native binding per user
 // listener (WeakMap so a collected user listener stops being reachable).
 const WRAPPED = new WeakMap();
+
+// The `CustomEvent.detail` slot behind the prototype getter (T38). The
+// baseline stores it in a symbol-keyed private slot; this WeakMap mirrors that
+// layout so `getOwnPropertyDescriptor(event, "detail")` stays absent and the
+// own-instance key set matches. Weak so a facade event never pins its payload.
+const EVENT_PAYLOADS = new WeakMap();
+
+// --- EventPhaseEnum -----------------------------------------------------------
+//
+// The `EventPhaseEnum` module export (T38), a TS-style numeric enum object with
+// reverse mappings, exactly like the baseline runtime value. It is deliberately
+// not frozen (the baseline leaves it extensible) and not a window member
+// (happy-dom only exposes it as a module export).
+
+export const EventPhaseEnum = {
+  0: "none",
+  1: "capturing",
+  2: "atTarget",
+  3: "bubbling",
+  none: 0,
+  capturing: 1,
+  atTarget: 2,
+  bubbling: 3,
+};
 
 // --- Native loader (mirrors js/facade/window.js; the Event constructor mints
 // native event handles through the module-level `createEvent` factory) --------
@@ -152,15 +195,21 @@ function facadeDocumentHandle(ctx, value, role) {
 }
 
 /**
- * Minimal `Event` facade (T37).
+ * Full `Event` facade (T37 base, T38 completed).
  *
  * Construction mints a native event handle with the WebIDL init values; the
  * facade registry's `EventHandle` wrapper factory wraps an existing native
- * handle instead. Every property and method delegates to the native event
- * state, so the object handed to a listener is the same object the caller
- * dispatched (identity through the `ctx.wrap` cache).
+ * handle instead. Every base-`Event` property and method delegates to the
+ * native event state, so the object handed to a listener is the same object
+ * the caller dispatched (identity through the `ctx.wrap` cache). The four
+ * phase constants are own instance data fields (baseline instance shape).
  */
 export class Event {
+  static NONE = 0;
+  static CAPTURING_PHASE = 1;
+  static AT_TARGET = 2;
+  static BUBBLING_PHASE = 3;
+
   constructor(type, eventInit = null) {
     let handle;
     if (isEventHandle(type)) {
@@ -176,6 +225,140 @@ export class Event {
     }
     EVENT_HANDLES.set(this, handle);
     EVENT_OWNERS.set(handle, this);
+    this.NONE = Event.NONE;
+    this.CAPTURING_PHASE = Event.CAPTURING_PHASE;
+    this.AT_TARGET = Event.AT_TARGET;
+    this.BUBBLING_PHASE = Event.BUBBLING_PHASE;
+  }
+}
+
+/**
+ * `CustomEvent` facade (T38): adds `detail` (prototype getter over a symbol-
+ * like slot) and `initCustomEvent`, matching the baseline instance shape.
+ */
+export class CustomEvent extends Event {
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    EVENT_PAYLOADS.set(this, { detail: init.detail ?? null });
+  }
+}
+
+/**
+ * `UIEvent` facade (T38): the base for mouse/keyboard/focus/wheel/input
+ * events. Its payload fields are own instance data fields like the baseline.
+ */
+export class UIEvent extends Event {
+  static NONE = 0;
+  static CAPTURING_PHASE = 1;
+  static AT_TARGET = 2;
+  static BUBBLING_PHASE = 3;
+
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    this.detail = init.detail ?? 0;
+    this.layerX = 0;
+    this.layerY = 0;
+    this.pageX = 0;
+    this.pageY = 0;
+    this.view = init.view ?? null;
+  }
+}
+
+/**
+ * `MouseEvent` facade (T38).
+ */
+export class MouseEvent extends UIEvent {
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    this.altKey = init.altKey ?? false;
+    this.button = init.button ?? 0;
+    this.buttons = init.buttons ?? 0;
+    this.clientX = init.clientX ?? 0;
+    this.clientY = init.clientY ?? 0;
+    this.ctrlKey = init.ctrlKey ?? false;
+    this.metaKey = init.metaKey ?? false;
+    this.movementX = init.movementX ?? 0;
+    this.movementY = init.movementY ?? 0;
+    this.offsetX = init.offsetX ?? 0;
+    this.offsetY = init.offsetY ?? 0;
+    this.region = init.region ?? "";
+    this.relatedTarget = init.relatedTarget ?? null;
+    this.screenX = init.screenX ?? 0;
+    this.screenY = init.screenY ?? 0;
+    this.shiftKey = init.shiftKey ?? false;
+  }
+}
+
+/**
+ * `KeyboardEvent` facade (T38): adds the `DOM_KEY_LOCATION_*` constants and
+ * `getModifierState`.
+ */
+export class KeyboardEvent extends UIEvent {
+  static DOM_KEY_LOCATION_STANDARD = 0;
+  static DOM_KEY_LOCATION_LEFT = 1;
+  static DOM_KEY_LOCATION_RIGHT = 2;
+  static DOM_KEY_LOCATION_NUMPAD = 3;
+
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    this.altKey = init.altKey ?? false;
+    this.code = init.code ?? "";
+    this.ctrlKey = init.ctrlKey ?? false;
+    this.isComposing = init.isComposing ?? false;
+    this.key = init.key ?? "";
+    this.location = init.location ?? 0;
+    this.metaKey = init.metaKey ?? false;
+    this.repeat = init.repeat ?? false;
+    this.shiftKey = init.shiftKey ?? false;
+    this.keyCode = init.keyCode ?? 0;
+    this.which = init.which ?? init.keyCode ?? 0;
+  }
+}
+
+/**
+ * `FocusEvent` facade (T38).
+ */
+export class FocusEvent extends UIEvent {
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    this.relatedTarget = init.relatedTarget ?? null;
+  }
+}
+
+/**
+ * `WheelEvent` facade (T38): adds the `DOM_DELTA_*` constants.
+ */
+export class WheelEvent extends UIEvent {
+  static DOM_DELTA_PIXEL = 0;
+  static DOM_DELTA_LINE = 1;
+  static DOM_DELTA_PAGE = 2;
+
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    this.deltaX = init.deltaX ?? 0;
+    this.deltaY = init.deltaY ?? 0;
+    this.deltaZ = init.deltaZ ?? 0;
+    this.deltaMode = init.deltaMode ?? 0;
+  }
+}
+
+/**
+ * `InputEvent` facade (T38).
+ */
+export class InputEvent extends UIEvent {
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    this.data = init.data ?? "";
+    this.dataTransfer = init.dataTransfer ?? null;
+    this.inputType = init.inputType ?? "";
+    this.isComposing = init.isComposing ?? false;
   }
 }
 
@@ -307,9 +490,38 @@ export function install(ctx) {
     return handle.dispatchEvent(EVENT_HANDLES.get(event));
   });
 
-  // `window.Event` — the WHATWG constructor accessor on every window.
+  // `window.Event` — the WHATWG constructor accessor on every window (T37),
+  // plus the T38 concrete constructors the baseline window exposes.
   ctx.defineAccessor(Window.prototype, "Event", function getEvent() {
     return Event;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "CustomEvent", function getCustomEvent() {
+    return CustomEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "UIEvent", function getUIEvent() {
+    return UIEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "MouseEvent", function getMouseEvent() {
+    return MouseEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "KeyboardEvent", function getKeyboardEvent() {
+    return KeyboardEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "FocusEvent", function getFocusEvent() {
+    return FocusEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "WheelEvent", function getWheelEvent() {
+    return WheelEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "InputEvent", function getInputEvent() {
+    return InputEvent;
   }, undefined);
 
   // Event surface.
@@ -337,12 +549,20 @@ export function install(ctx) {
     return EVENT_HANDLES.get(this).eventPhase();
   }, undefined);
 
+  ctx.defineAccessor(Event.prototype, "timeStamp", function timeStamp() {
+    return EVENT_HANDLES.get(this).timeStamp();
+  }, undefined);
+
   ctx.defineAccessor(Event.prototype, "target", function target() {
     return ctx.wrap(EVENT_HANDLES.get(this).target());
   }, undefined);
 
   ctx.defineAccessor(Event.prototype, "currentTarget", function currentTarget() {
     return ctx.wrap(EVENT_HANDLES.get(this).currentTarget());
+  }, undefined);
+
+  ctx.defineAccessor(Event.prototype, "cancelBubble", function cancelBubble() {
+    return EVENT_HANDLES.get(this).cancelBubble();
   }, undefined);
 
   ctx.defineMethod(Event.prototype, "preventDefault", function preventDefault() {
@@ -355,5 +575,50 @@ export function install(ctx) {
 
   ctx.defineMethod(Event.prototype, "stopImmediatePropagation", function stopImmediatePropagation() {
     EVENT_HANDLES.get(this).stopImmediatePropagation();
+  });
+
+  ctx.defineMethod(Event.prototype, "initEvent", function initEvent(type, bubbles = false, cancelable = false) {
+    EVENT_HANDLES.get(this).initEvent(String(type), Boolean(bubbles), Boolean(cancelable));
+  });
+
+  ctx.defineMethod(Event.prototype, "composedPath", function composedPath() {
+    return (EVENT_HANDLES.get(this).composedPath() ?? []).map((handle) => ctx.wrap(handle));
+  });
+
+  // CustomEvent surface.
+  ctx.defineAccessor(CustomEvent.prototype, "detail", function detail() {
+    return EVENT_PAYLOADS.get(this)?.detail;
+  }, undefined);
+
+  ctx.defineMethod(CustomEvent.prototype, "initCustomEvent", function initCustomEvent(
+    type,
+    bubbles = false,
+    cancelable = false,
+    detail = null,
+  ) {
+    EVENT_HANDLES.get(this).setInitValues(String(type), Boolean(bubbles), Boolean(cancelable));
+    EVENT_PAYLOADS.get(this).detail = detail;
+  });
+
+  // KeyboardEvent surface.
+  ctx.defineMethod(KeyboardEvent.prototype, "getModifierState", function getModifierState(key) {
+    if (arguments.length < 1) {
+      throw new TypeError(
+        "Failed to execute 'getModifierState' on 'KeyboardEvent': 1 argument required, but only 0 present.",
+      );
+    }
+    switch (String(key).toLowerCase()) {
+      case "alt":
+      case "altgraph":
+        return this.altKey;
+      case "control":
+        return this.ctrlKey;
+      case "meta":
+        return this.metaKey;
+      case "shift":
+        return this.shiftKey;
+      default:
+        return false;
+    }
   });
 }

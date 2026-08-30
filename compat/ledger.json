@@ -11,6 +11,14 @@
       "addedIn": "T25D"
     },
     {
+      "id": "hc-diff-event-classes",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-event-classes",
+      "addedIn": "T38"
+    },
+    {
       "id": "hc-diff-event-target",
       "suite": "diff",
       "status": "pass",
@@ -122,12 +130,11 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/enums-and-overloads.ts",
-      "reason": "MAD DOM still does not export CSSRule or EventPhaseEnum, and its Window is not user-constructible (it needs a genuine native handle); Document.createElement is typed (T23) but returns the minimal Element surface, so tag-name narrowing (tagName) cannot be checked yet, while querySelectorAll iteration now type-checks (T31). Updated by T22/T23/T31.",
+      "reason": "MAD DOM still does not export CSSRule (T44), its Window is not user-constructible (it needs a genuine native handle), and Document.createElement returns the minimal Element surface, so tag-name narrowing (tagName) cannot be checked yet (T39), while EventPhaseEnum now type-checks (T38) and querySelectorAll iteration type-checks (T31). Updated by T22/T23/T31/T38.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2305, "messageIncludes": "no exported member 'CSSRule'" },
-        { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
         { "code": 2554, "line": 7 },
         { "code": 2339, "messageIncludes": "Property 'tagName' does not exist" }
       ]
@@ -138,11 +145,10 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/event-callbacks.ts",
-      "reason": "Since T37 the EventTarget surface is typed: Document/Node addEventListener listeners receive a typed Event (window.Event), so the listener-parameter and handler-body checks now type-check. The remaining gaps are the module-level exports (MAD DOM does not export Event or EventPhaseEnum from the package entry — the Event value is reached through window.Event and the full export lands with T38) and the Window constructor shape (not user-constructible). Updated by T22 and T37.",
+      "reason": "Since T37 the EventTarget surface is typed and since T38 Event and EventPhaseEnum are exported from the package entry, so the listener-parameter, handler-body and enum-member checks now type-check. The only remaining gap is the Window constructor shape (not user-constructible). Updated by T22, T37 and T38.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
-        { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
         { "code": 2554, "line": 7 }
       ]
     },
@@ -152,28 +158,12 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/constructor-options.ts",
-      "reason": "MAD DOM does not export CustomEvent, and its Window is not user-constructible: the option-object constructor signature and the DetachedWindowAPI accessor are rejected. Updated by T22 when Window became an exported, non-constructible class.",
+      "reason": "Since T38 CustomEvent is exported with a typed constructor, so the option-object construction and detail payload now type-check. The remaining gaps are the Window constructor shape (not user-constructible) and the DetachedWindowAPI happyDOM accessor. Updated by T22 and T38.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
-        { "code": 2305, "messageIncludes": "no exported member 'CustomEvent'" },
         { "code": 2353, "line": 7 },
         { "code": 2339, "messageIncludes": "Property 'happyDOM' does not exist" }
-      ]
-    },
-    {
-      "id": "hc-types-event-type-exports",
-      "suite": "types",
-      "status": "known-gap",
-      "subsystem": "types",
-      "fixture": "positive/type-exports.ts",
-      "reason": "Since T37 the Event value is declared (non-exported) so type-only references to it in annotations resolve against the typed window.Event surface; the remaining gaps are the module-level type exports IEventInit and TEventListener (whose full definitions land with T38) and the annotations that degrade to implicit any (TS7006) while those exports are missing. First recorded in T09 as div-types-type-exports; migrated into the compatibility ledger by T11; updated by T37.",
-      "recordedAt": "2026-08-28T00:00:00Z",
-      "addedIn": "T09",
-      "diagnostics": [
-        { "code": 2305, "messageIncludes": "no exported member 'IEventInit'" },
-        { "code": 2305, "messageIncludes": "no exported member 'TEventListener'" },
-        { "code": 7006, "messageIncludes": "Parameter 'event' implicitly has an 'any' type" }
       ]
     },
     {

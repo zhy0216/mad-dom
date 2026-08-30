@@ -1,4 +1,4 @@
-// Package runtime entry (T22 gate, extended by T23/T24/T25).
+// Package runtime entry (T22 gate, extended by T23/T24/T25/T38).
 //
 // Single source of the public runtime surface: the root index.js re-exports
 // everything from here, so the package entry, the facade wiring and the type
@@ -6,9 +6,13 @@
 // come from the js/facade layer (T22B); the node creation and navigation
 // surface (T23B), the tree mutation surface (T24C) and the T25 attribute /
 // textContent / live childNodes surface are installed onto the facade classes
-// by the registry, so no new export is needed here — the shared entry keeps
-// exactly one set of exports. The low-level native bindings (T19) stay behind
-// the same lazy native loader; `project` is the frozen package metadata.
+// by the registry, so no new export is needed there — the shared entry keeps
+// exactly one set of exports. The T37 base `Event` value was reached through
+// `window.Event` only; T38 adds the full `Event` / concrete event classes and
+// the `EventPhaseEnum` module export (the events.js facade owns their
+// implementations, and the registry installs their window accessors). The
+// low-level native bindings (T19) stay behind the same lazy native loader;
+// `project` is the frozen package metadata.
 // index.d.ts is the single source for the type surface and must be kept in
 // lockstep with the exports below.
 
@@ -18,6 +22,17 @@ import { fileURLToPath } from "node:url";
 
 import { createWindow, Window } from "./facade/window.js";
 import { Document } from "./facade/document.js";
+import {
+  CustomEvent,
+  Event,
+  EventPhaseEnum,
+  FocusEvent,
+  InputEvent,
+  KeyboardEvent,
+  MouseEvent,
+  UIEvent,
+  WheelEvent,
+} from "./facade/extensions/events.js";
 
 export const project = Object.freeze({
   name: "mad-dom",
@@ -93,4 +108,4 @@ export function nativeAbiVersion() {
   return loadNative().abiVersion();
 }
 
-export { createWindow, Window, Document };
+export { createWindow, Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum };

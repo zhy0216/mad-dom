@@ -39,7 +39,16 @@ describe("M4 vertical slice entry surface (T25)", () => {
   test("the package entry exposes exactly one set of exports", async () => {
     const mod = await import("../../index.js");
     expect(Object.keys(mod).sort()).toEqual([
+      "CustomEvent",
       "Document",
+      "Event",
+      "EventPhaseEnum",
+      "FocusEvent",
+      "InputEvent",
+      "KeyboardEvent",
+      "MouseEvent",
+      "UIEvent",
+      "WheelEvent",
       "Window",
       "createDocument",
       "createWindow",

@@ -70,10 +70,16 @@
 //!
 //! # Ownership
 //!
-//! Owned by **T37**; like T29/T31 there is no separate integration gate, so
-//! T37 also wires the facade, the shared entry/type/ledger surfaces and the
-//! seam metadata itself. `tests/bun/events.test.js`, the `hc-diff-events`
-//! differential scenario and the Core fixtures carry the end-to-end evidence.
+//! Created by **T37**; like T29/T31 there is no separate integration gate, so
+//! T37 also wired the facade, the shared entry/type/ledger surfaces and the
+//! seam metadata itself. **T38** extends this module (and the T37 facade
+//! `events.js` / Core `events.rs`) with the full `Event` initialization
+//! contract — `timeStamp`, `cancelBubble`, `initEvent`, `composedPath` and the
+//! `initCustomEvent` value half — plus the concrete event classes as facade
+//! payload on top of the same `EventHandle`. `tests/bun/events.test.js`,
+//! `tests/bun/event-classes.test.js`, the `hc-diff-event-target` and
+//! `hc-diff-event-classes` differential scenarios and the Core fixtures carry
+//! the end-to-end evidence.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -108,6 +114,10 @@ pub(crate) const EVENT_TARGET_CONTRACT: &[&str] =
     &["addEventListener", "removeEventListener", "dispatchEvent"];
 
 /// The frozen native `Event` surface on [`EventHandle`].
+///
+/// T37 froze the read/cancel surface; T38 extends it with the full
+/// `Event` initialization contract (`timeStamp`, `cancelBubble`,
+/// `initEvent`, `composedPath` plus the `initCustomEvent` value half).
 #[allow(dead_code)]
 pub(crate) const EVENT_CONTRACT: &[&str] = &[
     "type",
@@ -118,9 +128,14 @@ pub(crate) const EVENT_CONTRACT: &[&str] = &[
     "eventPhase",
     "target",
     "currentTarget",
+    "timeStamp",
+    "cancelBubble",
     "preventDefault",
     "stopPropagation",
     "stopImmediatePropagation",
+    "initEvent",
+    "setInitValues",
+    "composedPath",
 ];
 
 // --- listener callback registry ---------------------------------------------
@@ -294,12 +309,25 @@ fn listener_function(
 ///
 /// Carries the [`EventState`] (owned here, passed `&mut` into Core during a
 /// dispatch) plus the document link the dispatch stamps so `target` /
-/// `currentTarget` reads can mint node wrappers. Construction goes through the
-/// module-level `createEvent`; the facade wraps it with its own `Event` class.
+/// `currentTarget` reads can mint node wrappers, and the frozen construction
+/// `timeStamp`. Construction goes through the module-level `createEvent`; the
+/// facade wraps it with its own `Event` class.
 #[napi]
 pub struct EventHandle {
     state: Mutex<EventState>,
     document: Mutex<Option<Arc<SharedDocument>>>,
+    time_stamp: f64,
+}
+
+/// Milliseconds since the Unix epoch, the native `Event.timeStamp` value the
+/// facade hands out for each event (set once at construction). The baseline
+/// uses `performance.now()` (a DOMHighResTimeStamp); the two clocks share no
+/// epoch, so the value is only ever observed as "a positive number".
+fn now_ms() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs_f64() * 1000.0)
+        .unwrap_or_default()
 }
 
 /// Creates a new event with the given WebIDL init values and returns the
@@ -319,6 +347,7 @@ pub fn create_event(
     EventHandle {
         state: Mutex::new(EventState::new(event_type, bubbles, cancelable, composed)),
         document: Mutex::new(None),
+        time_stamp: now_ms(),
     }
 }
 
@@ -366,6 +395,57 @@ impl EventHandle {
     #[napi(catch_unwind)]
     pub fn dispatching(&self) -> bool {
         lock_event_state(self).dispatching
+    }
+
+    /// The event's `timeStamp` (a positive number fixed at construction).
+    #[napi(catch_unwind)]
+    pub fn time_stamp(&self) -> f64 {
+        self.time_stamp
+    }
+
+    /// WHATWG `Event.cancelBubble`: whether `stopPropagation` was called.
+    #[napi(catch_unwind)]
+    pub fn cancel_bubble(&self) -> bool {
+        lock_event_state(self).stop_propagation
+    }
+
+    /// WHATWG `Event.initEvent` (T38): re-initializes the event's type /
+    /// bubbles / cancelable and resets the per-dispatch cancellation flags.
+    #[napi(catch_unwind)]
+    pub fn init_event(&self, event_type: String, bubbles: bool, cancelable: bool) {
+        lock_event_state(self).init_event(event_type, bubbles, cancelable);
+    }
+
+    /// The `CustomEvent.initCustomEvent` value half (T38): re-initializes the
+    /// type / bubbles / cancelable without touching the cancellation flags
+    /// (the baseline leaves `defaultPrevented` and the stop flags as they are).
+    #[napi(catch_unwind)]
+    pub fn set_init_values(&self, event_type: String, bubbles: bool, cancelable: bool) {
+        lock_event_state(self).set_init_values(event_type, bubbles, cancelable);
+    }
+
+    /// WHATWG `Event.composedPath` (T38): the propagation path of the event's
+    /// target (the target followed by its ancestors up to the document root),
+    /// or the empty list before the first dispatch.
+    ///
+    /// The shadow-host and document→window hops are out of T38 scope (T43 /
+    /// T45); the path is the exact one `begin_dispatch` captures. A destroyed
+    /// document yields an empty path rather than an exception.
+    #[napi(catch_unwind)]
+    pub fn composed_path(&self, env: Env) -> napi::Result<Vec<Reference<NodeHandle>>> {
+        let target = lock_event_state(self).target;
+        let Some(target) = target else {
+            return Ok(Vec::new());
+        };
+        let document = lock_event_document(self).clone();
+        let Some(document) = document else {
+            return Ok(Vec::new());
+        };
+        let ids = run_document(&document, |doc| {
+            doc.propagation_path(target).map_err(BindingError::Core)
+        })
+        .unwrap_or_default();
+        ids.iter().map(|id| document.wrap_node(env, *id)).collect()
     }
 
     /// The event's `target` (the node `dispatchEvent` was called on), or
@@ -797,7 +877,7 @@ mod tests {
     use super::*;
 
     /// The frozen native surface is exactly the three event-target entries on
-    /// both handles plus the eleven `Event` entries; `tests/bun/events.test.js`
+    /// both handles plus the sixteen `Event` entries; `tests/bun/events.test.js`
     /// re-checks the same names against the live module.
     #[test]
     fn frozen_contract_surfaces_are_the_event_api() {
@@ -817,17 +897,23 @@ mod tests {
                 "eventPhase",
                 "target",
                 "currentTarget",
+                "timeStamp",
+                "cancelBubble",
                 "preventDefault",
                 "stopPropagation",
                 "stopImmediatePropagation",
+                "initEvent",
+                "setInitValues",
+                "composedPath",
             ],
-            "native event contract must stay exactly the T37 surface"
+            "native event contract must stay exactly the T38 surface"
         );
     }
 
     /// The event-target surface must never drift into the concrete event
-    /// subclasses, `createEvent`, `on*` properties or the MutationObserver
-    /// surface (T38/T39/T41 boundaries).
+    /// subclass payloads (T38 keeps those on the facade instance like the
+    /// baseline), the `on*` properties or the MutationObserver surface
+    /// (T39/T41 boundaries).
     #[test]
     fn contract_has_no_event_subclass_or_mutation_observer_surface() {
         for name in EVENT_TARGET_CONTRACT {
@@ -838,11 +924,12 @@ mod tests {
         }
         for name in EVENT_CONTRACT {
             assert!(
-                *name != "composedPath"
-                    && *name != "initEvent"
-                    && !name.contains("timeStamp")
-                    && *name != "cancelBubble",
-                "events_api must not declare the T38 Event surface: {name}"
+                *name != "detail"
+                    && *name != "view"
+                    && *name != "screenX"
+                    && *name != "keyCode"
+                    && *name != "getModifierState",
+                "events_api must not declare the event-subclass payload surface: {name}"
             );
         }
     }
