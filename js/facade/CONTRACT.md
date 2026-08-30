@@ -28,6 +28,8 @@
 | `extensions/window-platform.js` | T45 | T45 | `URL`/`Location`/`History`/`Navigator`、`localStorage`/`sessionStorage`、`document.cookie` 与 `document.URL` facade |
 | `extensions/tree-traversal.js` | T35 | T35 | `createTreeWalker`/`createNodeIterator`、`TreeWalker`/`NodeIterator` 与 `window.NodeFilter` facade |
 | `extensions/mutation-observer.js` | T41 | T41 | `MutationObserver`/`MutationRecord` facade、observe 选项校验与 microtask 交付 |
+| `extensions/template.js` | T40 | T40 | `template.content` 与 `getInnerHTML`/`getHTML` facade |
+| `extensions/forms.js` | T40 | T40 | 首批表单控件（`input`/`button`/`select`/`option`/`textarea`/`form`）value/name/disabled/checked/selected 与 `form.elements`/提交/重置 facade |
 
 每个占位文件是合法 ESM 模块，导出冻结的 `seam` 元数据（`id`、`owner`、
 `gate`、`status`），由 `tests/bun/seam.test.js` 锁定；owner 接管实现后可删除

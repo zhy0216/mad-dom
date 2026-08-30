@@ -32,6 +32,8 @@
 //! | `character_data_api` | `extensions/character_data_api.rs` | T33 | T33 |
 //! | `attribute_nodes_api` | `extensions/attribute_nodes_api.rs` | T34 | T34 |
 //! | `html_element_api` | `extensions/html_element_api.rs` | T39 | T39 |
+//! | `template_api` | `extensions/template_api.rs` | T40 | T40 |
+//! | `form_api` | `extensions/form_api.rs` | T40 | T40 |
 //!
 //! The first eight rows are the *frozen M4 boundaries* recorded in
 //! [`REGISTRY`]. `html_api` (T29, M5), `query_api` (T31, M6),
@@ -66,6 +68,7 @@ mod attributes_api;
 mod character_data_api;
 mod collection_api;
 mod events_api;
+mod form_api;
 mod html_api;
 mod html_element_api;
 mod live_collections;
@@ -74,6 +77,7 @@ pub(crate) mod mutation_observer_api;
 mod mutation_remove_api;
 mod node_api;
 mod query_api;
+mod template_api;
 mod text_api;
 mod traversal_api;
 mod window_document;

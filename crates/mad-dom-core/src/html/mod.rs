@@ -59,11 +59,15 @@ pub use sink::{DocumentMode, FragmentMode, HtmlSink, SinkMode};
 /// the doctype, if any, and the `<html>` element). `parse_errors` carries the
 /// non-fatal HTML5 diagnostics the tokenizer/tree builder reported, and
 /// `quirks_mode` records the mode the doctype (or its absence) selected.
+/// `template_contents` maps every `<template>` element created during the parse
+/// to its HTML5 template-contents `DocumentFragment` (T40), so the content
+/// stored outside the tree stays reachable for the T29 apply adoption.
 pub struct ParsedDocument {
     pub document: Document,
     pub root: NodeId,
     pub parse_errors: Vec<String>,
     pub quirks_mode: QuirksMode,
+    pub template_contents: Vec<(NodeId, NodeId)>,
 }
 
 /// Parses `input` as a full HTML document into a fresh [`Document`].

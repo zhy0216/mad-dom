@@ -43,12 +43,12 @@
 //!
 //! The sink is parameterised over its parse mode ([`SinkMode`]) so the single
 //! `TreeSink` implementation serves both the document parser (T26) and the
-//! fragment parser (T27) with distinct output types. In fragment mode
-//! ([`FragmentMode`]) the sink additionally carries [`FragmentState`]: a
-//! `template element -> template-contents fragment` map, so
-//! [`TreeSink::get_template_contents`] routes a `<template>`'s content into
-//! its own `DocumentFragment` instead of the T26 document-mode shortcut of
-//! parsing it as ordinary children of the template element.
+//! fragment parser (T27) with distinct output types. Since T40 both modes give
+//! every `<template>` element its HTML5 template-contents `DocumentFragment`
+//! and record the association in [`HtmlSink::template_contents`], so
+//! [`TreeSink::get_template_contents`] routes a `<template>`'s content into its
+//! own `DocumentFragment` exactly like the browser (the T26 shortcut of parsing
+//! template content as ordinary children is gone).
 
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
@@ -89,11 +89,20 @@ impl SinkMode for DocumentMode {
     type Output = ParsedDocument;
 
     fn finish(sink: HtmlSink<Self>) -> Self::Output {
+        let mut document = sink.document.into_inner();
+        let template_contents = sink.template_contents.into_inner();
+        // Link every `<template>` to its contents fragment in the document map
+        // (T40), so serialization and clone/import see the content even on a
+        // raw parse (before any adoption runs).
+        for &(template, contents) in &template_contents {
+            document.set_template_content(template, contents);
+        }
         ParsedDocument {
-            document: sink.document.into_inner(),
+            document,
             root: sink.root,
             parse_errors: sink.parse_errors.into_inner(),
             quirks_mode: sink.quirks_mode.get(),
+            template_contents,
         }
     }
 }
@@ -102,11 +111,11 @@ impl SinkMode for FragmentMode {
     type Output = ParsedFragment;
 
     fn finish(sink: HtmlSink<Self>) -> Self::Output {
-        let document = sink.document.into_inner();
-        let state = sink
-            .fragment
-            .into_inner()
-            .expect("fragment sink always carries fragment state");
+        let mut document = sink.document.into_inner();
+        let template_contents = sink.template_contents.into_inner();
+        for &(template, contents) in &template_contents {
+            document.set_template_content(template, contents);
+        }
         // html5ever's fragment parsing builds the tree under the temporary
         // root `<html>` element (`create_root`), which is the document node's
         // first child; its children are the parsed fragment.
@@ -122,16 +131,10 @@ impl SinkMode for FragmentMode {
             document_root: sink.root,
             root,
             nodes,
-            template_contents: state.template_contents,
+            template_contents,
             parse_errors: sink.parse_errors.into_inner(),
         }
     }
-}
-
-/// Fragment-parse state carried by a [`FragmentMode`] sink.
-struct FragmentState {
-    /// Every `template element -> its template-contents DocumentFragment`.
-    template_contents: Vec<(NodeId, NodeId)>,
 }
 
 /// The `TreeSink` whose arena is the parse target.
@@ -146,8 +149,9 @@ pub struct HtmlSink<M: SinkMode = DocumentMode> {
     root: NodeId,
     parse_errors: RefCell<Vec<String>>,
     quirks_mode: Cell<QuirksMode>,
-    /// Fragment-parse state; `None` in document mode (T26).
-    fragment: RefCell<Option<FragmentState>>,
+    /// Every `template element -> its template-contents DocumentFragment`,
+    /// recorded by [`TreeSink::create_element`] in both parse modes (T40).
+    template_contents: RefCell<Vec<(NodeId, NodeId)>>,
     mode: PhantomData<M>,
 }
 
@@ -162,7 +166,7 @@ impl HtmlSink<DocumentMode> {
             root,
             parse_errors: RefCell::new(Vec::new()),
             quirks_mode: Cell::new(QuirksMode::NoQuirks),
-            fragment: RefCell::new(None),
+            template_contents: RefCell::new(Vec::new()),
             mode: PhantomData,
         }
     }
@@ -179,9 +183,7 @@ impl HtmlSink<FragmentMode> {
             root,
             parse_errors: RefCell::new(Vec::new()),
             quirks_mode: Cell::new(QuirksMode::NoQuirks),
-            fragment: RefCell::new(Some(FragmentState {
-                template_contents: Vec::new(),
-            })),
+            template_contents: RefCell::new(Vec::new()),
             mode: PhantomData,
         }
     }
@@ -267,15 +269,16 @@ impl<M: SinkMode> TreeSink for HtmlSink<M> {
             })
         };
         if flags.template {
-            // HTML5 template contents: each template element gets its own
-            // DocumentFragment. Document mode (T26) keeps the shortcut of
-            // parsing contents as ordinary children, so only fragment mode
-            // records the fragment and routes into it (get_template_contents).
-            if let Some(state) = self.fragment.borrow_mut().as_mut() {
-                let mut doc = self.document.borrow_mut();
-                let contents = doc.allocate_node(NodeData::DocumentFragment);
-                state.template_contents.push((node, contents));
-            }
+            // HTML5 template contents (T40): every `<template>` element — in
+            // both parse modes — gets its own template-contents
+            // DocumentFragment, and the association is recorded so
+            // get_template_contents routes into it and the T29 apply adoption
+            // can link it to the element.
+            let contents = self
+                .document
+                .borrow_mut()
+                .allocate_node(NodeData::DocumentFragment);
+            self.template_contents.borrow_mut().push((node, contents));
         }
         node
     }
@@ -349,19 +352,17 @@ impl<M: SinkMode> TreeSink for HtmlSink<M> {
     }
 
     fn get_template_contents(&self, target: &Self::Handle) -> Self::Handle {
-        // Fragment mode gives every template element its HTML5
-        // template-contents DocumentFragment (recorded at create_element time);
-        // document mode keeps the T26 simplification of parsing contents as
-        // ordinary children of the template element.
-        let fragment = self.fragment.borrow();
-        if let Some(state) = fragment.as_ref() {
-            if let Some(&(_, contents)) = state
-                .template_contents
-                .iter()
-                .find(|(element, _)| element == target)
-            {
-                return contents;
-            }
+        // T40: every `<template>` element gets its HTML5 template-contents
+        // DocumentFragment (recorded at create_element time) in both parse
+        // modes, so template content is routed into the fragment exactly like
+        // the browser.
+        if let Some(&(_, contents)) = self
+            .template_contents
+            .borrow()
+            .iter()
+            .find(|(element, _)| element == target)
+        {
+            return contents;
         }
         *target
     }
@@ -646,7 +647,7 @@ mod tests {
             root,
             parse_errors: RefCell::new(Vec::new()),
             quirks_mode: Cell::new(QuirksMode::NoQuirks),
-            fragment: RefCell::new(None),
+            template_contents: RefCell::new(Vec::new()),
             mode: PhantomData,
         };
         sink.set_quirks_mode(QuirksMode::Quirks);

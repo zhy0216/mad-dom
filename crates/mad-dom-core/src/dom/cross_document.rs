@@ -89,6 +89,10 @@ impl Document {
         }
         self.link_mapped_subtree(&map, &subtree);
         let root = *map.get(&id).expect("the root was cloned");
+        // A cloned `<template>` element keeps its template-contents fragment
+        // (T40): every template in the cloned subtree gets a cloned copy of its
+        // content, registered under the corresponding clone.
+        self.clone_template_contents(&map, deep)?;
         self.verify_subtree(root);
         Ok(root)
     }
@@ -128,6 +132,10 @@ impl Document {
         }
         self.link_mapped_subtree(&map, &subtree);
         let root = *map.get(&id).expect("the root was imported");
+        // Template contents follow the import (T40): every imported `<template>`
+        // element gets its source contents fragment imported under the
+        // corresponding import.
+        self.import_template_contents(source, &map, deep)?;
         self.verify_subtree(root);
         Ok(root)
     }
@@ -156,6 +164,18 @@ impl Document {
         let subtree = source.collect_subtree(id)?;
         let old_parent = source.get(id)?.parent();
 
+        // Collect the subtree's template contents before the mutation phase
+        // frees the source slots (template contents live outside the tree, so
+        // `subtree` does not include them).
+        let mut template_contents: Vec<(NodeId, NodeId)> = Vec::new();
+        for (sid, _) in &subtree {
+            if source.is_template(*sid)? {
+                if let Some(contents) = source.template_content_id(*sid)? {
+                    template_contents.push((*sid, contents));
+                }
+            }
+        }
+
         // Mutation phase: every precondition was validated above, so the
         // remaining steps cannot fail.
         source.detach(id);
@@ -167,6 +187,17 @@ impl Document {
             map.insert(*sid, tid);
         }
         self.link_mapped_subtree(&map, &subtree);
+
+        // Template contents move with the element (T40): each adopted
+        // `<template>` gets its content fragment adopted under the
+        // corresponding adoption.
+        for (src_template, contents) in template_contents {
+            let dst = *map
+                .get(&src_template)
+                .expect("every subtree template was adopted");
+            let new_contents = self.adopt_node(source, contents)?;
+            self.set_template_content(dst, new_contents);
+        }
 
         let root = *map.get(&id).expect("the root was adopted");
         self.verify_subtree(root);
@@ -183,6 +214,46 @@ impl Document {
             return Err(hierarchy(
                 "a Document node cannot be cloned, imported or adopted",
             ));
+        }
+        Ok(())
+    }
+
+    /// Clones the template-contents fragment of every `<template>` element in
+    /// the cloned subtree (T40) and registers it under the corresponding
+    /// clone, so `cloneNode` reproduces template content exactly like the
+    /// browser.
+    fn clone_template_contents(
+        &mut self,
+        map: &HashMap<NodeId, NodeId>,
+        deep: bool,
+    ) -> Result<(), CoreError> {
+        for (src, dst) in map {
+            if self.is_template(*src)? {
+                if let Some(contents) = self.template_content_id(*src)? {
+                    let new_contents = self.clone_node(contents, deep)?;
+                    self.set_template_content(*dst, new_contents);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Imports the template-contents fragment of every `<template>` element in
+    /// the imported subtree (T40) from `source` and registers it under the
+    /// corresponding import.
+    fn import_template_contents(
+        &mut self,
+        source: &Document,
+        map: &HashMap<NodeId, NodeId>,
+        deep: bool,
+    ) -> Result<(), CoreError> {
+        for (src, dst) in map {
+            if source.is_template(*src)? {
+                if let Some(contents) = source.template_content_id(*src)? {
+                    let new_contents = self.import_node(source, contents, deep)?;
+                    self.set_template_content(*dst, new_contents);
+                }
+            }
         }
         Ok(())
     }

@@ -30,6 +30,8 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/window-platform.js", owner: "T45" },
   { path: "extensions/tree-traversal.js", owner: "T35" },
   { path: "extensions/mutation-observer.js", owner: "T41" },
+  { path: "extensions/template.js", owner: "T40" },
+  { path: "extensions/forms.js", owner: "T40" },
 ];
 
 // The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29,
@@ -55,6 +57,8 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/window-platform.js", owner: "T45" },
   { path: "extensions/tree-traversal.js", owner: "T35" },
   { path: "extensions/mutation-observer.js", owner: "T41" },
+  { path: "extensions/template.js", owner: "T40" },
+  { path: "extensions/forms.js", owner: "T40" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 

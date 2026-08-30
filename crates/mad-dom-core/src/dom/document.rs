@@ -25,11 +25,13 @@ use crate::arena::{Arena, NodeId};
 use crate::error::CoreError;
 use crate::selectors::live::QueryIndex;
 
+use super::form::FormState;
 use super::mutation_observer::ObserverEntry;
 use super::node::{Node, NodeData, NodeType, HTML_NAMESPACE};
 
 use html5ever::{LocalName, Namespace};
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Global counter assigning each [`Document`] a unique id.
@@ -70,6 +72,16 @@ pub struct Document {
     /// re-order and the T29 implied-skeleton build). Managed exclusively by
     /// [`Document::with_observer_records_suppressed`].
     pub(crate) suppress_observer_records: bool,
+    /// The T40 template association: every `<template>` element -> its HTML5
+    /// template-contents `DocumentFragment`. The fragment is *not* a child of
+    /// the element (WHATWG template contents); this map is the only link, so
+    /// the content stays reachable and serialization/clone/import can find it.
+    pub(crate) template_contents: HashMap<NodeId, NodeId>,
+    /// The T40 form-control state (dirty input/textarea values, dirty
+    /// checkedness, option selectedness and the select selection model). This
+    /// is the single authoritative form state — the facade never keeps a
+    /// second copy.
+    pub(crate) form_state: FormState,
 }
 
 impl Document {
@@ -84,6 +96,8 @@ impl Document {
             observers: Vec::new(),
             next_observation_key: 0,
             suppress_observer_records: false,
+            template_contents: HashMap::new(),
+            form_state: FormState::default(),
         }
     }
 
@@ -145,7 +159,7 @@ impl Document {
     /// character, with the first character not being a digit).
     pub fn create_element(&mut self, name: &str) -> Result<NodeId, CoreError> {
         validate_element_name(name)?;
-        Ok(self.arena.allocate(
+        let node = self.arena.allocate(
             self.id,
             Node::new(NodeData::Element {
                 name: LocalName::from(name.to_string()),
@@ -154,7 +168,18 @@ impl Document {
                 mathml_annotation_xml_integration_point: false,
                 had_duplicate_attributes: false,
             }),
-        ))
+        );
+        // A `<template>` element owns a template-contents DocumentFragment
+        // (WHATWG HTML template contents, T40): `template.content` must be a
+        // live fragment from the moment the element exists, so it is allocated
+        // and registered here like the HTML5 algorithm does.
+        if name.eq_ignore_ascii_case("template") {
+            let content = self
+                .arena
+                .allocate(self.id, Node::new(NodeData::DocumentFragment));
+            self.template_contents.insert(node, content);
+        }
+        Ok(node)
     }
 
     /// Creates a text node with `data` and returns its handle.

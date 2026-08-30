@@ -159,15 +159,6 @@ export function install(ctx) {
 
   ctx.defineAccessor(
     Node.prototype,
-    "length",
-    function length() {
-      return facadeNodeHandle(ctx, this, "length").dataLength() ?? undefined;
-    },
-    undefined,
-  );
-
-  ctx.defineAccessor(
-    Node.prototype,
     "nodeValue",
     function nodeValue() {
       return facadeNodeHandle(ctx, this, "nodeValue").nodeValue();
@@ -219,6 +210,12 @@ export function install(ctx) {
     undefined,
   );
 
+  // `name` and `length` are defined configurable so the T40 forms extension can
+  // redefine them: the single-class model shares `Node.prototype.name` /
+  // `Node.prototype.length` between the T33 DocumentType/CharacterData reads and
+  // the T40 form `name` reflection and `select.length` / `form.length`. T40's
+  // redefinitions keep the T33 reads through the same native `handle.name()` /
+  // `handle.dataLength()` calls.
   ctx.defineAccessor(
     Node.prototype,
     "name",
@@ -226,6 +223,17 @@ export function install(ctx) {
       return facadeNodeHandle(ctx, this, "name").name() ?? undefined;
     },
     undefined,
+    { configurable: true },
+  );
+
+  ctx.defineAccessor(
+    Node.prototype,
+    "length",
+    function length() {
+      return facadeNodeHandle(ctx, this, "length").dataLength() ?? undefined;
+    },
+    undefined,
+    { configurable: true },
   );
 
   ctx.defineAccessor(

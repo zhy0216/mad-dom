@@ -163,15 +163,13 @@ impl Document {
     /// child of the document root (the old doctype / `<html>` element) with the
     /// parsed doctype / `<html>` element. The old nodes stay live (detached),
     /// so existing wrappers remain valid; the new tree is owned by this
-    /// document and `documentElement` / `head` / `body` reflect it.
+    /// document and `documentElement` / `head` / `body` reflect it. `<template>`
+    /// contents fragments from the parse are adopted and linked too (T40).
     pub fn load_html(&mut self, input: &str) -> Result<(), CoreError> {
         let mut parsed = parse_html_document(input)?;
         let root = self.document_root();
         let children = parsed.document.children(parsed.root)?;
-        let mut adopted = Vec::with_capacity(children.len());
-        for &c in &children {
-            adopted.push(self.adopt_node(&mut parsed.document, c)?);
-        }
+        let adopted = adopt_parsed(self, &mut parsed.document, &children)?;
         replace_children(self, root, &adopted)?;
         self.verify_apply(root);
         Ok(())
@@ -180,12 +178,22 @@ impl Document {
     /// Returns the WHATWG `innerHTML` of `node`: the serialized children for an
     /// `Element` or `DocumentFragment`.
     ///
-    /// Reading the children of any other node kind (Text, Comment, Document,
-    /// DocumentType) fails with [`CoreError::Hierarchy`] — in the WHATWG and
-    /// happy-dom those node types do not expose `innerHTML`.
+    /// A `<template>` element serializes its template-contents `DocumentFragment`
+    /// (T40) instead of its ordinary children, matching the WHATWG rule and
+    /// happy-dom's template `innerHTML` override. Reading the children of any
+    /// other node kind (Text, Comment, Document, DocumentType) fails with
+    /// [`CoreError::Hierarchy`] — in the WHATWG and happy-dom those node types
+    /// do not expose `innerHTML`.
     pub fn inner_html(&self, node: NodeId) -> Result<String, CoreError> {
         match self.get(node)?.node_type() {
-            NodeType::Element | NodeType::DocumentFragment => serialize_children(self, node),
+            NodeType::Element | NodeType::DocumentFragment => {
+                if self.is_template(node)? {
+                    if let Some(content) = self.template_content_id(node)? {
+                        return serialize_children(self, content);
+                    }
+                }
+                serialize_children(self, node)
+            }
             _ => Err(hierarchy(
                 "innerHTML requires an Element or DocumentFragment node",
             )),
@@ -198,7 +206,10 @@ impl Document {
     /// attributes for an `Element`; the fallback `body` context for a
     /// `DocumentFragment`) and every parsed node is adopted into this document
     /// before the existing children are detached, so a failure leaves the node
-    /// byte-for-byte unchanged. An empty input clears the children.
+    /// byte-for-byte unchanged. An empty input clears the children. For a
+    /// `<template>` target the parsed content populates the template-contents
+    /// fragment (T40) instead of the element's ordinary child list; a nested
+    /// `<template>` inside the input keeps its own contents fragment.
     ///
     /// # Errors
     ///
@@ -209,7 +220,12 @@ impl Document {
     pub fn set_inner_html(&mut self, node: NodeId, input: &str) -> Result<(), CoreError> {
         let mut parsed = parse_fragment_in_context(self, node, input)?;
         let adopted = adopt_parsed(self, &mut parsed.document, &parsed.nodes)?;
-        replace_children(self, node, &adopted)?;
+        let target = if self.is_template(node)? {
+            self.template_content(node)?
+        } else {
+            node
+        };
+        replace_children(self, target, &adopted)?;
         self.verify_apply(node);
         Ok(())
     }
@@ -337,7 +353,9 @@ fn parse_fragment_in_context(
 ///
 /// The parsed nodes are freshly minted handles of `source`'s arena, so every
 /// [`Document::adopt_node`] call is validated and infallible; the source
-/// document is drained and dropped by the caller afterwards.
+/// document is drained and dropped by the caller afterwards. `<template>`
+/// contents fragments are adopted recursively by [`Document::adopt_node`]
+/// (T40), so the parse→adopt round trip keeps every template's content linked.
 fn adopt_parsed(
     doc: &mut Document,
     source: &mut Document,

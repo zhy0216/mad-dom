@@ -26,10 +26,12 @@ mod character_data;
 mod cross_document;
 mod document;
 mod events;
+mod form;
 mod html_element;
 mod mutation;
 mod mutation_observer;
 mod node;
+mod template;
 mod text_content;
 mod tree;
 

@@ -1,6 +1,6 @@
 # 40 实现 template 与首批表单契约
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M7
 - 条目 ID：`T40`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T40 — 实现 template 与首批表单契约**
+- [x] **T40 — 实现 template 与首批表单契约**
   - 实现：
     - 实现 template content 的独立 fragment、解析、克隆和序列化。
     - 按兼容清单实现 form、input、button、select、option、textarea 的基础 value/name/disabled/checked/selected 行为。

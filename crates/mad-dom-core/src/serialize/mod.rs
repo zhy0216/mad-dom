@@ -234,6 +234,22 @@ fn write_element(
         return Ok(());
     }
     let raw_text = rules::is_raw_text_element(namespace, name, options.scripting_enabled);
+    // A `<template>` serializes its template-contents DocumentFragment (T40),
+    // not its ordinary children: the WHATWG "serialising HTML fragments" rule
+    // mirrors how the parser routes template content. When the element has no
+    // registered contents fragment (a doc-mode shortcut template, or a
+    // programmatic template whose content was never created), its ordinary
+    // children are serialized instead — the two stay consistent because a
+    // template's content and its child list are never both populated.
+    if namespace == crate::dom::HTML_NAMESPACE && name.eq_ignore_ascii_case("template") {
+        if let Some(content) = doc.template_content_id(node)? {
+            write_children(doc, content, false, options, out)?;
+            out.push_str("</");
+            out.push_str(name);
+            out.push('>');
+            return Ok(());
+        }
+    }
     write_children(doc, node, raw_text, options, out)?;
     out.push_str("</");
     out.push_str(name);

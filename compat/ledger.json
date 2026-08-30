@@ -258,6 +258,45 @@
       "diagnostics": [
         { "code": 2353, "line": 9 }
       ]
+    },
+    {
+      "id": "hc-diff-form-controls",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-form-controls",
+      "addedIn": "T40"
+    },
+    {
+      "id": "hc-diff-template-content",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-template",
+      "addedIn": "T40"
+    },
+    {
+      "id": "hc-diff-form-validation",
+      "suite": "diff",
+      "status": "known-gap",
+      "subsystem": "facade",
+      "scenario": "dom-form-validation",
+      "reason": "T40 implements the first-batch form contract (value/name/disabled/checked/selected, form.elements, submit/reset and event order) but not the advanced validation machinery: constraint validation is deliberately out of scope and explicitly recorded. MAD DOM's form.checkValidity()/reportValidity() always return true (no ValidityState, no constraint evaluation, no invalid event), while happy-dom evaluates the required/type constraints, so a form with a required empty input reports false and the per-control validation surface (validity / validationMessage / setCustomValidity / willValidate / checkValidity) is absent on controls. This scenario pins that known gap; the divergence is expected and reported non-fatally.",
+      "recordedAt": "2026-08-30T17:30:00Z",
+      "addedIn": "T40"
+    },
+    {
+      "id": "hc-types-template-forms",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/template-forms.ts",
+      "reason": "MAD DOM's Window is not user-constructible (it needs a genuine native handle, T22), so the fixture's `new Window()` reports TS2554; everything else in the T40 template/form fixture type-checks (the single-class HTMLElement surface carries value/name/checked/selected, the live collections and the window constructor accessors). Added by T40.",
+      "recordedAt": "2026-08-30T17:21:20Z",
+      "addedIn": "T40",
+      "diagnostics": [
+        { "code": 2554, "line": 17 }
+      ]
     }
   ]
 }

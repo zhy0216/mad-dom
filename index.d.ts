@@ -62,6 +62,26 @@ export declare class Window {
   readonly NodeIterator: typeof NodeIterator;
   /** The WHATWG `MutationObserver` constructor (T41): `new window.MutationObserver(callback)`. */
   readonly MutationObserver: typeof MutationObserver;
+  /** The WHATWG `HTMLTemplateElement` constructor (T40): the template surface base class. */
+  readonly HTMLTemplateElement: typeof HTMLTemplateElement;
+  /** The WHATWG `HTMLFormElement` constructor (T40). */
+  readonly HTMLFormElement: typeof HTMLFormElement;
+  /** The WHATWG `HTMLInputElement` constructor (T40). */
+  readonly HTMLInputElement: typeof HTMLInputElement;
+  /** The WHATWG `HTMLButtonElement` constructor (T40). */
+  readonly HTMLButtonElement: typeof HTMLButtonElement;
+  /** The WHATWG `HTMLSelectElement` constructor (T40). */
+  readonly HTMLSelectElement: typeof HTMLSelectElement;
+  /** The WHATWG `HTMLOptionElement` constructor (T40). */
+  readonly HTMLOptionElement: typeof HTMLOptionElement;
+  /** The WHATWG `HTMLTextAreaElement` constructor (T40). */
+  readonly HTMLTextAreaElement: typeof HTMLTextAreaElement;
+  /** The WHATWG `HTMLFormControlsCollection` constructor (T40). */
+  readonly HTMLFormControlsCollection: typeof HTMLFormControlsCollection;
+  /** The WHATWG `HTMLOptionsCollection` constructor (T40). */
+  readonly HTMLOptionsCollection: typeof HTMLOptionsCollection;
+  /** The WHATWG `SubmitEvent` constructor (T40). */
+  readonly SubmitEvent: typeof SubmitEvent;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
@@ -603,6 +623,12 @@ export interface Node {
   cloneNode(deep?: boolean): Node;
   /** WHATWG `Node.nodeValue` (T33): the character data of a `Text`/`Comment`/`ProcessingInstruction` node, `null` otherwise (setting is a no-op on other kinds). */
   nodeValue: string | null;
+  /** WHATWG `Node.isConnected` (T39/T40): whether the node's root ancestor is the `Document` node. */
+  readonly isConnected: boolean;
+
+  /** T40: whether the node's root ancestor is the `Document` node (the form
+   * `input`/`change` rule and general DOM usage). */
+  // (declared as isConnected above)
 
   /** WHATWG `EventTarget.addEventListener` (T37). */
   addEventListener(type: string, listener: TEventListener | null, options?: boolean | IEventListenerOptions | null): void;
@@ -701,6 +727,77 @@ export interface HTMLElement extends Element {
   focus(): void;
   /** WHATWG `HTMLElement.blur` (T39): clears the document's active element and dispatches `blur`/`focusout` (a no-op when not the active element). */
   blur(): void;
+
+  // T40 form/template surface (single-class shared members). Every element
+  // wrapper carries these; the per-tag interfaces above document the subset
+  // happy-dom exposes on each tag (ineligible tags read `undefined` at
+  // runtime).
+  /** `template.content` (T40): the template-contents fragment. */
+  readonly content: DocumentFragment;
+  /** Serializes a template's contents (T40). */
+  getInnerHTML(): string;
+  /** Serializes a template's contents (T40). */
+  getHTML(): string;
+  /** The control value (input/select/textarea/button/option, T40). */
+  value: string;
+  /** The control or form `name` (T40). */
+  name: string;
+  /** The control `type` (input/button/select, T40). */
+  type: string;
+  /** The control `disabled` (T40). */
+  disabled: boolean;
+  /** The input `checked` (T40). */
+  checked: boolean;
+  /** The input `defaultChecked` (T40). */
+  defaultChecked: boolean;
+  /** The input/textarea `defaultValue` (T40). */
+  defaultValue: string;
+  /** The control `required` (T40). */
+  required: boolean;
+  /** The input/textarea `readOnly` (T40). */
+  readOnly: boolean;
+  /** The input/select `multiple` (T40). */
+  multiple: boolean;
+  /** The option `selected` (T40). */
+  selected: boolean;
+  /** The option `index` (T40). */
+  readonly index: number;
+  /** The option `text` (T40). */
+  text: string;
+  /** The select `options` collection (T40, live). */
+  readonly options: HTMLOptionsCollection;
+  /** The select `selectedIndex` (T40). */
+  selectedIndex: number;
+  /** The select `selectedOptions` collection (T40, live). */
+  readonly selectedOptions: HTMLCollection<HTMLOptionElement>;
+  /** The select/form `length` (T40, live). */
+  readonly length: number;
+  /** The form `elements` collection (T40, live). */
+  readonly elements: HTMLFormControlsCollection;
+  /** The form `method` (T40). */
+  method: string;
+  /** The form `action` (T40). */
+  action: string;
+  /** The form `enctype` (T40). */
+  enctype: string;
+  /** The form `acceptCharset` (T40). */
+  acceptCharset: string;
+  /** The form `noValidate` (T40). */
+  noValidate: boolean;
+  /** The nearest ancestor form of a control (T40). */
+  readonly form: HTMLFormElement | null;
+  /** Select `item(index)` (T40). */
+  item(index: number): HTMLOptionElement | null;
+  /** Form `submit()` (T40; no navigation). */
+  submit(): void;
+  /** Form `requestSubmit(submitter)` (T40). */
+  requestSubmit(submitter?: HTMLElement): void;
+  /** Form `reset()` (T40). */
+  reset(): void;
+  /** Form `checkValidity()` (T40; always `true` — constraint validation is a gap). */
+  checkValidity(): boolean;
+  /** Form `reportValidity()` (T40; always `true`). */
+  reportValidity(): boolean;
 }
 
 /** The WHATWG `DOMStringMap` behind `HTMLElement.dataset` (T39): a live,
@@ -718,6 +815,170 @@ declare const HTMLElement: {
   readonly prototype: HTMLElement;
   new (): HTMLElement;
 };
+
+// --- Form controls and template (T40) ----------------------------------------
+//
+// The first-batch form contract: `input` / `button` / `select` / `option` /
+// `textarea` value/name/disabled/checked/selected basics, the `form` element's
+// `elements` / `submit` / `requestSubmit` / `reset`, and
+// `HTMLTemplateElement.content`. In the single-`Node`-class model every
+// element shares one runtime class, so the form surface is declared on the
+// `Element`/`Node` surface below and these interfaces document the per-tag
+// subset happy-dom exposes. Constraint validation (`ValidityState`,
+// `checkValidity` evaluation, `setCustomValidity`) is a recorded gap:
+// `checkValidity` / `reportValidity` return `true`.
+
+/** The WHATWG `SubmitEvent` (T40): dispatched by `form.requestSubmit`, carrying
+ * the `submitter` button/input (or the form itself). */
+export interface ISubmitEventInit extends IEventInit {
+  submitter?: HTMLElement | null;
+}
+
+export declare class SubmitEvent extends Event {
+  readonly submitter: HTMLElement | null;
+  constructor(type: string, eventInit?: ISubmitEventInit | null);
+}
+
+/** The WHATWG `HTMLTemplateElement` surface (T40): the template-contents
+ * `DocumentFragment` behind `content` and the content serialization methods.
+ * The fragment is not exposed as ordinary children; `innerHTML` /
+ * `outerHTML` route through it. */
+export interface HTMLTemplateElement extends HTMLElement {
+  /** The template-contents `DocumentFragment` (stable identity; created on first access). */
+  readonly content: DocumentFragment;
+  /** Serializes the template contents (happy-dom `getInnerHTML`). */
+  getInnerHTML(): string;
+  /** Serializes the template contents (happy-dom `getHTML`). */
+  getHTML(): string;
+}
+
+/** The WHATWG `HTMLInputElement` basics (T40): value/name/type/disabled/
+ * checked/defaultChecked/defaultValue/required/readOnly/multiple. The dirty
+ * text-like `value` and the dirty `checked` are stored in Core, not the
+ * attribute list. */
+export interface HTMLInputElement extends HTMLElement {
+  value: string;
+  name: string;
+  type: string;
+  disabled: boolean;
+  checked: boolean;
+  defaultChecked: boolean;
+  defaultValue: string;
+  required: boolean;
+  readOnly: boolean;
+  multiple: boolean;
+  /** The nearest ancestor `<form>` element, or `null`. */
+  readonly form: HTMLFormElement | null;
+}
+
+/** The WHATWG `HTMLButtonElement` basics (T40). */
+export interface HTMLButtonElement extends HTMLElement {
+  value: string;
+  name: string;
+  type: string;
+  disabled: boolean;
+  /** The nearest ancestor `<form>` element, or `null`. */
+  readonly form: HTMLFormElement | null;
+}
+
+/** The WHATWG `HTMLSelectElement` basics (T40): the value/selectedIndex
+ * selection model, the live `options` and `selectedOptions` collections. */
+export interface HTMLSelectElement extends HTMLElement {
+  value: string;
+  name: string;
+  disabled: boolean;
+  multiple: boolean;
+  required: boolean;
+  type: string;
+  readonly length: number;
+  readonly options: HTMLOptionsCollection;
+  selectedIndex: number;
+  readonly selectedOptions: HTMLCollection<HTMLOptionElement>;
+  /** Returns the option at `index`, or `null` past the end. */
+  item(index: number): HTMLOptionElement | null;
+  /** The nearest ancestor `<form>` element, or `null`. */
+  readonly form: HTMLFormElement | null;
+}
+
+/** The WHATWG `HTMLOptionElement` basics (T40). */
+export interface HTMLOptionElement extends HTMLElement {
+  value: string;
+  text: string;
+  selected: boolean;
+  readonly index: number;
+  disabled: boolean;
+  /** The owning select's form, or `null`. */
+  readonly form: HTMLFormElement | null;
+}
+
+/** The WHATWG `HTMLTextAreaElement` basics (T40). */
+export interface HTMLTextAreaElement extends HTMLElement {
+  value: string;
+  name: string;
+  disabled: boolean;
+  required: boolean;
+  readOnly: boolean;
+  defaultValue: string;
+  /** The nearest ancestor `<form>` element, or `null`. */
+  readonly form: HTMLFormElement | null;
+}
+
+/** The WHATWG `HTMLFormElement` basics (T40): the live `elements` collection,
+ * the attribute reflections and the submit/reset surface. `submit()` performs
+ * no navigation (T40 boundary). */
+export interface HTMLFormElement extends HTMLElement {
+  readonly elements: HTMLFormControlsCollection;
+  readonly length: number;
+  name: string;
+  method: string;
+  action: string;
+  enctype: string;
+  acceptCharset: string;
+  noValidate: boolean;
+  /** Submits without dispatching a `submit` event; navigation is a no-op. */
+  submit(): void;
+  /** Dispatches a cancelable `SubmitEvent('submit')` (with `submitter`), then submits when not default-prevented. */
+  requestSubmit(submitter?: HTMLElement): void;
+  /** Resets every control to its default value, then dispatches a cancelable `Event('reset')`. */
+  reset(): void;
+  /** Returns `true` (constraint validation is a recorded gap). */
+  checkValidity(): boolean;
+  /** Returns `true` (constraint validation is a recorded gap). */
+  reportValidity(): boolean;
+}
+
+/** A live collection of form controls (T40). Every access re-reads Core, so an
+ * existing collection reflects any tree change immediately. */
+export interface HTMLFormControlsCollection {
+  readonly length: number;
+  item(index: number): HTMLElement | null;
+  namedItem(name: string): HTMLElement | null;
+  [index: number]: HTMLElement;
+  [Symbol.iterator](): IterableIterator<HTMLElement>;
+}
+
+/** A live collection of `<option>` elements (T40). */
+export interface HTMLOptionsCollection {
+  readonly length: number;
+  item(index: number): HTMLOptionElement | null;
+  namedItem(name: string): HTMLOptionElement | null;
+  [index: number]: HTMLOptionElement;
+  [Symbol.iterator](): IterableIterator<HTMLOptionElement>;
+}
+
+/** Constructor values reached through `window.HTMLFormElement` / ... (T40).
+ * The classes are not user-constructible in MAD DOM; every `createElement`
+ * wrapper is a shared `Node`, so the per-tag classes exist only as the
+ * constructor accessors. */
+declare const HTMLTemplateElement: { readonly prototype: HTMLTemplateElement; new (): HTMLTemplateElement };
+declare const HTMLFormElement: { readonly prototype: HTMLFormElement; new (): HTMLFormElement };
+declare const HTMLInputElement: { readonly prototype: HTMLInputElement; new (): HTMLInputElement };
+declare const HTMLButtonElement: { readonly prototype: HTMLButtonElement; new (): HTMLButtonElement };
+declare const HTMLSelectElement: { readonly prototype: HTMLSelectElement; new (): HTMLSelectElement };
+declare const HTMLOptionElement: { readonly prototype: HTMLOptionElement; new (): HTMLOptionElement };
+declare const HTMLTextAreaElement: { readonly prototype: HTMLTextAreaElement; new (): HTMLTextAreaElement };
+declare const HTMLFormControlsCollection: { readonly prototype: HTMLFormControlsCollection; new (): HTMLFormControlsCollection };
+declare const HTMLOptionsCollection: { readonly prototype: HTMLOptionsCollection; new (): HTMLOptionsCollection };
 
 /** A live map of an element's attributes (T34). Each access re-reads the
  * element's ordered attribute list from Core, so an existing map reflects

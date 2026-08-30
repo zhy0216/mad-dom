@@ -553,16 +553,29 @@ fn table_foster_parenting_moves_phrasing_content_out() {
 }
 
 #[test]
-fn template_is_a_stable_container_in_this_milestone() {
-    // T26 scope: template contents become ordinary children of the template
-    // element (the HTML5 template DocumentFragment is T27's concern). The tree
-    // stays stable and valid.
+fn template_content_is_kept_in_a_contents_fragment() {
+    // T40: the document parser routes `<template>` content into an HTML5
+    // template-contents DocumentFragment (recorded in `ParsedDocument
+    // ::template_contents`) instead of the T26 shortcut of ordinary children,
+    // exactly like the fragment parser (T27). The element's own child list
+    // stays empty and the tree stays stable and valid.
     let parsed = parse("<template><p>in</p></template>");
     let doc = &parsed.document;
     let template = find_element(doc, parsed.root, "template");
     let inner = element_children(doc, template);
-    assert_eq!(names(doc, &inner), ["p"]);
-    assert_eq!(text_of(doc, children(doc, inner[0])[0]), "in");
+    assert_eq!(inner, Vec::<NodeId>::new(), "template children stay empty");
+
+    let contents = parsed
+        .template_contents
+        .iter()
+        .find(|(element, _)| *element == template)
+        .map(|&(_, fragment)| fragment)
+        .expect("template contents fragment recorded");
+    assert_eq!(names(doc, &element_children(doc, contents)), ["p"]);
+    assert_eq!(
+        text_of(doc, children(doc, element_children(doc, contents)[0])[0]),
+        "in"
+    );
     assert_eq!(doc.check_invariants(parsed.root).unwrap(), ());
 }
 

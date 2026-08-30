@@ -29,6 +29,7 @@ import * as attributesExtension from "./attributes.js";
 import * as childNodeListExtension from "./child-nodelist.js";
 import * as eventsExtension from "./events.js";
 import * as extendedNodesExtension from "./extended-nodes.js";
+import * as formsExtension from "./forms.js";
 import * as htmlElementExtension from "./html-element.js";
 import * as htmlExtension from "./html.js";
 import * as liveCollectionsExtension from "./live-collections.js";
@@ -36,6 +37,7 @@ import * as mutationExtension from "./mutation.js";
 import * as mutationObserverExtension from "./mutation-observer.js";
 import * as nodeExtension from "./node.js";
 import * as queryExtension from "./query.js";
+import * as templateExtension from "./template.js";
 import * as textContentExtension from "./text-content.js";
 import * as treeTraversalExtension from "./tree-traversal.js";
 import * as windowPlatformExtension from "./window-platform.js";
@@ -63,6 +65,8 @@ const EXTENSIONS = [
   treeTraversalExtension,
   windowPlatformExtension,
   mutationObserverExtension,
+  templateExtension,
+  formsExtension,
 ];
 
 /**
