@@ -8,7 +8,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-create-append-serialize",
-      "reason": "Since T23, MAD DOM's document.createElement / createTextNode and the Node navigation surface are implemented, but attributes (setAttribute), mutation (appendChild), body and serialization are not, so the mad-dom side records a facade-phase TypeError at section.setAttribute while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22/T23; collected into the compatibility ledger by T11.",
+      "reason": "Since T24C, MAD DOM's document.createElement / createTextNode, Node navigation and basic tree mutation are implemented, but attributes (setAttribute), body and serialization are not, so the mad-dom side still records a facade-phase TypeError at section.setAttribute while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22/T23/T24C; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
     },
@@ -18,9 +18,17 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-node-navigation",
-      "reason": "Since T23, detached Element/Text creation and the Node navigation surface match happy-dom observation for observation — nodeType, text nodeName (#text), null parent/first/last/previous/next relations, empty childNodes and per-create distinctness all record identically. The only divergence is Element.nodeName casing: MAD DOM returns the frozen lowercased tag (T23A/T23B contract) while happy-dom returns the uppercased WHATWG tag name (\"div\" vs \"DIV\"). Tree-building is out of scope (facade mutation is T24C's), so relations are exercised on detached nodes.",
+      "reason": "Since T23, detached Element/Text creation and the Node navigation surface match happy-dom observation for observation — nodeType, text nodeName (#text), null parent/first/last/previous/next relations, empty childNodes and per-create distinctness all record identically. The only divergence is Element.nodeName casing: MAD DOM returns the frozen lowercased tag (T23A/T23B contract) while happy-dom returns the uppercased WHATWG tag name (\"div\" vs \"DIV\"). The scenario intentionally keeps its probes detached so this ledger entry isolates the navigation contract; tree mutation is covered by dom-mutations (T24C).",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T23"
+    },
+    {
+      "id": "hc-diff-node-mutations",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-mutations",
+      "addedIn": "T24C"
     },
     {
       "id": "hc-diff-selector-query-identity",

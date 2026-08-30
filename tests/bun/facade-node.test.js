@@ -204,10 +204,26 @@ describe("facade registry drives the node extension (T23B)", () => {
     };
     expect(() => installExtensions(mockCtx)).not.toThrow();
 
-    // Exactly the frozen node surface: the Node wrapper type registration plus
-    // the two Document creation methods and the eight Node navigation
-    // accessors. The other extensions are still placeholders and stay silent.
-    expect(calls).toEqual([
+    // The node extension's own calls remain exactly the frozen surface. T24C
+    // now also contributes mutation methods through the same registry, so
+    // select the T23-owned entries before asserting their shape.
+    const nodeCalls = calls.filter(([kind, target, name]) =>
+      (kind === "registerHandleType" && target === "NodeHandle") ||
+      (kind === "method" && target === Document.prototype &&
+        (name === "createElement" || name === "createTextNode")) ||
+      (kind === "accessor" && target === Node.prototype &&
+        [
+          "nodeType",
+          "nodeName",
+          "parentNode",
+          "firstChild",
+          "lastChild",
+          "previousSibling",
+          "nextSibling",
+          "childNodes",
+        ].includes(name)),
+    );
+    expect(nodeCalls).toEqual([
       ["registerHandleType", "NodeHandle", expect.any(Function)],
       ["method", Document.prototype, "createElement", expect.any(Function)],
       ["method", Document.prototype, "createTextNode", expect.any(Function)],
