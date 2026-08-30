@@ -216,7 +216,7 @@ git diff --check
 | 25A | P0 | [25a-core-payload-seam.md](done/25a-core-payload-seam.md) | M4 | T24, T20A | 已完成 |
 | 25B | P0 | [25b-core-attributes.md](25b-core-attributes.md) | M4 | T25A | 待办 |
 | 25C | P0 | [25c-core-text-content.md](25c-core-text-content.md) | M4 | T25A | 待办 |
-| 25D | P0 | [25d-live-child-nodelist.md](25d-live-child-nodelist.md) | M4 | T24, T23 | 待办 |
+| 25D | P0 | [25d-live-child-nodelist.md](done/25d-live-child-nodelist.md) | M4 | T24, T23 | 已完成 |
 | 25E | P0 | [25e-binding-attributes-text.md](25e-binding-attributes-text.md) | M4 | T23, T24, T25A, T25B, T25C, T25D | 待办 |
 | 25 | P0 | [25-attributes-text-and-nodelist.md](25-attributes-text-and-nodelist.md) | M4 | T25A, T25B, T25C, T25D, T25E | 待办 |
 | 26 | P1 | [26-html-document-parser.md](26-html-document-parser.md) | M5 | T05, T17, T25 | 待办 |
