@@ -73,6 +73,68 @@ export declare class Window {
   readonly InputEvent: typeof InputEvent;
   /** The WHATWG `HTMLElement` constructor (T39): every `createElement` wrapper is `instanceof window.HTMLElement`. */
   readonly HTMLElement: typeof HTMLElement;
+  /** The WHATWG `Node` constructor (T48A class hierarchy): Text/Comment/ProcessingInstruction wrappers are plain `Node`s. */
+  readonly Node: typeof Node;
+  /** The WHATWG `Element` constructor (T48A class hierarchy): the base of every element wrapper. */
+  readonly Element: typeof Element;
+  /** The WHATWG `DocumentFragment` constructor (T48A class hierarchy): fragments and (through the T43 re-parenting) shadow roots. */
+  readonly DocumentFragment: typeof DocumentFragment;
+  /** The WHATWG `HTMLUnknownElement` constructor (T48A): the direct prototype for an undefined plain tag name. */
+  readonly HTMLUnknownElement: typeof HTMLUnknownElement;
+  /** The WHATWG `HTMLDivElement` constructor (T48A): the direct prototype of a `div`. */
+  readonly HTMLDivElement: typeof HTMLDivElement;
+  /** The WHATWG `HTMLSpanElement` constructor (T48A). */
+  readonly HTMLSpanElement: typeof HTMLSpanElement;
+  /** The WHATWG `HTMLParagraphElement` constructor (T48A). */
+  readonly HTMLParagraphElement: typeof HTMLParagraphElement;
+  /** The WHATWG `HTMLAnchorElement` constructor (T48A). */
+  readonly HTMLAnchorElement: typeof HTMLAnchorElement;
+  /** The WHATWG `HTMLBodyElement` constructor (T48A). */
+  readonly HTMLBodyElement: typeof HTMLBodyElement;
+  /** The WHATWG `HTMLHeadingElement` constructor (T48A). */
+  readonly HTMLHeadingElement: typeof HTMLHeadingElement;
+  /** The WHATWG `HTMLUListElement` constructor (T48A). */
+  readonly HTMLUListElement: typeof HTMLUListElement;
+  /** The WHATWG `HTMLOListElement` constructor (T48A). */
+  readonly HTMLOListElement: typeof HTMLOListElement;
+  /** The WHATWG `HTMLLIElement` constructor (T48A). */
+  readonly HTMLLIElement: typeof HTMLLIElement;
+  /** The WHATWG `HTMLTableElement` constructor (T48A). */
+  readonly HTMLTableElement: typeof HTMLTableElement;
+  /** The WHATWG `HTMLTableCaptionElement` constructor (T48A). */
+  readonly HTMLTableCaptionElement: typeof HTMLTableCaptionElement;
+  /** The WHATWG `HTMLTableRowElement` constructor (T48A). */
+  readonly HTMLTableRowElement: typeof HTMLTableRowElement;
+  /** The WHATWG `HTMLTableCellElement` constructor (T48A). */
+  readonly HTMLTableCellElement: typeof HTMLTableCellElement;
+  /** The WHATWG `HTMLTableSectionElement` constructor (T48A). */
+  readonly HTMLTableSectionElement: typeof HTMLTableSectionElement;
+  /** The WHATWG `HTMLBRElement` constructor (T48A). */
+  readonly HTMLBRElement: typeof HTMLBRElement;
+  /** The WHATWG `HTMLHRElement` constructor (T48A). */
+  readonly HTMLHRElement: typeof HTMLHRElement;
+  /** The WHATWG `HTMLLabelElement` constructor (T48A). */
+  readonly HTMLLabelElement: typeof HTMLLabelElement;
+  /** The WHATWG `HTMLImageElement` constructor (T48A). */
+  readonly HTMLImageElement: typeof HTMLImageElement;
+  /** The WHATWG `HTMLScriptElement` constructor (T48A). */
+  readonly HTMLScriptElement: typeof HTMLScriptElement;
+  /** The WHATWG `HTMLStyleElement` constructor (T48A). */
+  readonly HTMLStyleElement: typeof HTMLStyleElement;
+  /** The WHATWG `HTMLLinkElement` constructor (T48A). */
+  readonly HTMLLinkElement: typeof HTMLLinkElement;
+  /** The WHATWG `HTMLMetaElement` constructor (T48A). */
+  readonly HTMLMetaElement: typeof HTMLMetaElement;
+  /** The WHATWG `HTMLTitleElement` constructor (T48A). */
+  readonly HTMLTitleElement: typeof HTMLTitleElement;
+  /** The WHATWG `HTMLHeadElement` constructor (T48A). */
+  readonly HTMLHeadElement: typeof HTMLHeadElement;
+  /** The WHATWG `HTMLHtmlElement` constructor (T48A). */
+  readonly HTMLHtmlElement: typeof HTMLHtmlElement;
+  /** The WHATWG `HTMLQuoteElement` constructor (T48A). */
+  readonly HTMLQuoteElement: typeof HTMLQuoteElement;
+  /** The WHATWG `HTMLSlotElement` constructor (T48A). */
+  readonly HTMLSlotElement: typeof HTMLSlotElement;
   /** WHATWG `window.location` (T45): the live per-window Location (URL state linked to the document). */
   readonly location: Location;
   /** WHATWG `window.history` (T45): the per-window session History stack. */
@@ -1263,15 +1325,146 @@ declare const HTMLElement: {
   new (): HTMLElement;
 };
 
+/** The WHATWG `Node` constructor value reached through `window.Node` (T48A
+ * class hierarchy). The base of every wrapper — Text / Comment /
+ * ProcessingInstruction are plain `Node`s and never reach the element members. */
+declare const Node: {
+  readonly prototype: Node;
+  new (): Node;
+};
+
+/** The WHATWG `Element` constructor value reached through `window.Element`
+ * (T48A class hierarchy): the base of every element wrapper, between `Node`
+ * and `HTMLElement`. Not user-constructible. */
+declare const Element: {
+  readonly prototype: Element;
+  new (): Element;
+};
+
+/** The WHATWG `DocumentFragment` constructor value reached through
+ * `window.DocumentFragment` (T48A class hierarchy): fragments (and, through
+ * the T43 re-parenting, shadow roots) reach the ParentNode query surface and
+ * `innerHTML`. */
+declare const DocumentFragment: {
+  readonly prototype: DocumentFragment;
+  new (): DocumentFragment;
+};
+
+// --- Per-tag element classes (T48A) -------------------------------------------
+//
+// One empty class per common HTML tag, exposed as a `window.HTML*Element`
+// constructor and selected by `createElement` / parse / import as the
+// wrapper's direct prototype so `Object.getPrototypeOf(el)` matches happy-dom.
+// The classes add no members of their own — every surface is inherited from
+// `Element` / `HTMLElement`.
+
+/** The WHATWG `HTMLUnknownElement` constructor (T48A): the direct prototype
+ * for an undefined plain tag name. */
+declare const HTMLUnknownElement: {
+  readonly prototype: HTMLElement;
+  new (): HTMLElement;
+};
+/** The WHATWG `HTMLDivElement` constructor (T48A). */
+declare const HTMLDivElement: { readonly prototype: HTMLDivElement; new (): HTMLDivElement };
+/** The WHATWG `HTMLSpanElement` constructor (T48A). */
+declare const HTMLSpanElement: { readonly prototype: HTMLSpanElement; new (): HTMLSpanElement };
+/** The WHATWG `HTMLParagraphElement` constructor (T48A). */
+declare const HTMLParagraphElement: { readonly prototype: HTMLParagraphElement; new (): HTMLParagraphElement };
+/** The WHATWG `HTMLAnchorElement` constructor (T48A). */
+declare const HTMLAnchorElement: { readonly prototype: HTMLAnchorElement; new (): HTMLAnchorElement };
+/** The WHATWG `HTMLBodyElement` constructor (T48A). */
+declare const HTMLBodyElement: { readonly prototype: HTMLBodyElement; new (): HTMLBodyElement };
+/** The WHATWG `HTMLHeadingElement` constructor (T48A). */
+declare const HTMLHeadingElement: { readonly prototype: HTMLHeadingElement; new (): HTMLHeadingElement };
+/** The WHATWG `HTMLUListElement` constructor (T48A). */
+declare const HTMLUListElement: { readonly prototype: HTMLUListElement; new (): HTMLUListElement };
+/** The WHATWG `HTMLOListElement` constructor (T48A). */
+declare const HTMLOListElement: { readonly prototype: HTMLOListElement; new (): HTMLOListElement };
+/** The WHATWG `HTMLLIElement` constructor (T48A). */
+declare const HTMLLIElement: { readonly prototype: HTMLLIElement; new (): HTMLLIElement };
+/** The WHATWG `HTMLTableElement` constructor (T48A). */
+declare const HTMLTableElement: { readonly prototype: HTMLTableElement; new (): HTMLTableElement };
+/** The WHATWG `HTMLTableCaptionElement` constructor (T48A). */
+declare const HTMLTableCaptionElement: { readonly prototype: HTMLTableCaptionElement; new (): HTMLTableCaptionElement };
+/** The WHATWG `HTMLTableRowElement` constructor (T48A). */
+declare const HTMLTableRowElement: { readonly prototype: HTMLTableRowElement; new (): HTMLTableRowElement };
+/** The WHATWG `HTMLTableCellElement` constructor (T48A). */
+declare const HTMLTableCellElement: { readonly prototype: HTMLTableCellElement; new (): HTMLTableCellElement };
+/** The WHATWG `HTMLTableSectionElement` constructor (T48A). */
+declare const HTMLTableSectionElement: { readonly prototype: HTMLTableSectionElement; new (): HTMLTableSectionElement };
+/** The WHATWG `HTMLBRElement` constructor (T48A). */
+declare const HTMLBRElement: { readonly prototype: HTMLBRElement; new (): HTMLBRElement };
+/** The WHATWG `HTMLHRElement` constructor (T48A). */
+declare const HTMLHRElement: { readonly prototype: HTMLHRElement; new (): HTMLHRElement };
+/** The WHATWG `HTMLLabelElement` constructor (T48A). */
+declare const HTMLLabelElement: { readonly prototype: HTMLLabelElement; new (): HTMLLabelElement };
+/** The WHATWG `HTMLImageElement` constructor (T48A). */
+declare const HTMLImageElement: { readonly prototype: HTMLImageElement; new (): HTMLImageElement };
+/** The WHATWG `HTMLScriptElement` constructor (T48A). */
+declare const HTMLScriptElement: { readonly prototype: HTMLScriptElement; new (): HTMLScriptElement };
+/** The WHATWG `HTMLStyleElement` constructor (T48A). */
+declare const HTMLStyleElement: { readonly prototype: HTMLStyleElement; new (): HTMLStyleElement };
+/** The WHATWG `HTMLLinkElement` constructor (T48A). */
+declare const HTMLLinkElement: { readonly prototype: HTMLLinkElement; new (): HTMLLinkElement };
+/** The WHATWG `HTMLMetaElement` constructor (T48A). */
+declare const HTMLMetaElement: { readonly prototype: HTMLMetaElement; new (): HTMLMetaElement };
+/** The WHATWG `HTMLTitleElement` constructor (T48A). */
+declare const HTMLTitleElement: { readonly prototype: HTMLTitleElement; new (): HTMLTitleElement };
+/** The WHATWG `HTMLHeadElement` constructor (T48A). */
+declare const HTMLHeadElement: { readonly prototype: HTMLHeadElement; new (): HTMLHeadElement };
+/** The WHATWG `HTMLHtmlElement` constructor (T48A). */
+declare const HTMLHtmlElement: { readonly prototype: HTMLHtmlElement; new (): HTMLHtmlElement };
+/** The WHATWG `HTMLQuoteElement` constructor (T48A). */
+declare const HTMLQuoteElement: { readonly prototype: HTMLQuoteElement; new (): HTMLQuoteElement };
+/** The WHATWG `HTMLSlotElement` constructor (T48A). */
+declare const HTMLSlotElement: { readonly prototype: HTMLSlotElement; new (): HTMLSlotElement };
+
+// --- Per-tag element interfaces (T48A) ----------------------------------------
+//
+// One empty interface per per-tag class: since T48A the facade owns the WHATWG
+// class chain (`Node → Element → HTMLElement → per-tag`) and `createElement` /
+// parse / import select the per-tag class as the wrapper's direct prototype.
+// These interfaces carry no members of their own — everything is inherited
+// from `HTMLElement` — and exist so the `window.HTML*Element` constructors and
+// `instanceof` narrowing line up with happy-dom.
+
+export interface HTMLUnknownElement extends HTMLElement {}
+export interface HTMLDivElement extends HTMLElement {}
+export interface HTMLSpanElement extends HTMLElement {}
+export interface HTMLParagraphElement extends HTMLElement {}
+export interface HTMLAnchorElement extends HTMLElement {}
+export interface HTMLBodyElement extends HTMLElement {}
+export interface HTMLHeadingElement extends HTMLElement {}
+export interface HTMLUListElement extends HTMLElement {}
+export interface HTMLOListElement extends HTMLElement {}
+export interface HTMLLIElement extends HTMLElement {}
+export interface HTMLTableElement extends HTMLElement {}
+export interface HTMLTableCaptionElement extends HTMLElement {}
+export interface HTMLTableRowElement extends HTMLElement {}
+export interface HTMLTableCellElement extends HTMLElement {}
+export interface HTMLTableSectionElement extends HTMLElement {}
+export interface HTMLBRElement extends HTMLElement {}
+export interface HTMLHRElement extends HTMLElement {}
+export interface HTMLLabelElement extends HTMLElement {}
+export interface HTMLImageElement extends HTMLElement {}
+export interface HTMLScriptElement extends HTMLElement {}
+export interface HTMLStyleElement extends HTMLElement {}
+export interface HTMLLinkElement extends HTMLElement {}
+export interface HTMLMetaElement extends HTMLElement {}
+export interface HTMLTitleElement extends HTMLElement {}
+export interface HTMLHeadElement extends HTMLElement {}
+export interface HTMLHtmlElement extends HTMLElement {}
+export interface HTMLQuoteElement extends HTMLElement {}
+export interface HTMLSlotElement extends HTMLElement {}
+
 // --- Form controls and template (T40) ----------------------------------------
 //
 // The first-batch form contract: `input` / `button` / `select` / `option` /
 // `textarea` value/name/disabled/checked/selected basics, the `form` element's
 // `elements` / `submit` / `requestSubmit` / `reset`, and
-// `HTMLTemplateElement.content`. In the single-`Node`-class model every
-// element shares one runtime class, so the form surface is declared on the
-// `Element`/`Node` surface below and these interfaces document the per-tag
-// subset happy-dom exposes. Constraint validation (`ValidityState`,
+// `HTMLTemplateElement.content`. The per-tag classes (T48A) give these the
+// happy-dom direct prototypes; the form surface itself is declared on the
+// `Element`/`Node` surface below. Constraint validation (`ValidityState`,
 // `checkValidity` evaluation, `setCustomValidity`) is a recorded gap:
 // `checkValidity` / `reportValidity` return `true`.
 

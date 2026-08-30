@@ -22,15 +22,16 @@
 // produced here — so the native handle still receives a plain string and Core
 // stays the single source of tree truth.
 //
-// # Node-kind eligibility
+// # Node-kind eligibility (T48A class hierarchy)
 //
 // `innerHTML` is defined on `Element` and `DocumentFragment` (WHATWG);
-// `outerHTML` on `Element` alone. In MAD DOM's single-`Node`-class model the
-// accessors live on `Node.prototype`, so calling them on an ineligible node
-// (a `Text`, `Comment` or `Document`) reaches Core, which rejects it with the
-// frozen `ERR_MAD_DOM_HIERARCHY` taxonomy — the same pattern as the T25E
-// attribute methods. happy-dom instead has no such property on those node
-// types (reads as `undefined`); that divergence is recorded as a known gap.
+// `outerHTML` on `Element` alone. Since T48A the accessors live on
+// `Element.prototype` (and `innerHTML` additionally on
+// `DocumentFragment.prototype`), so calling them on an ineligible node — a
+// `Text`, `Comment` or `Document` — reads `undefined` / throws
+// `TypeError: ... is not a function`, matching happy-dom. Before T48A the
+// single-`Node`-class model let them reach Core, which rejected the ineligible
+// kind with the frozen `ERR_MAD_DOM_HIERARCHY` taxonomy.
 //
 // # Errors
 //
@@ -43,7 +44,7 @@
 // by exporting `install(ctx)`; nothing in the registry changes.
 
 import { Document } from "../document.js";
-import { Node } from "./node.js";
+import { Element, DocumentFragment } from "./node.js";
 import {
   flushCustomElementReactions,
   upgradeParsedCandidates,
@@ -179,9 +180,12 @@ export function install(ctx) {
     flushCustomElementReactions(ctx, documentHandle.documentElement());
   });
 
-  // Node innerHTML / outerHTML accessors.
+  // Element innerHTML / outerHTML accessors (T48A: moved off `Node.prototype`
+  // onto `Element.prototype`, so Text/Comment never hold them; `innerHTML` is
+  // additionally defined on `DocumentFragment.prototype` — fragments and,
+  // through the T43 re-parenting, shadow roots reach it like happy-dom).
   ctx.defineAccessor(
-    Node.prototype,
+    Element.prototype,
     "innerHTML",
     function innerHTML() {
       return facadeNodeHandle(ctx, this, "innerHTML").innerHTML();
@@ -198,7 +202,21 @@ export function install(ctx) {
   );
 
   ctx.defineAccessor(
-    Node.prototype,
+    DocumentFragment.prototype,
+    "innerHTML",
+    function innerHTML() {
+      return facadeNodeHandle(ctx, this, "innerHTML").innerHTML();
+    },
+    function innerHTML(value) {
+      const handle = facadeNodeHandle(ctx, this, "innerHTML");
+      handle.setInnerHTML(String(value));
+      upgradeParsedCandidates(ctx, handle);
+      flushCustomElementReactions(ctx, handle);
+    },
+  );
+
+  ctx.defineAccessor(
+    Element.prototype,
     "outerHTML",
     function outerHTML() {
       return facadeNodeHandle(ctx, this, "outerHTML").outerHTML();

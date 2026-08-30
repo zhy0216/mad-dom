@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createWindow, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
 import { StaticNodeList } from "../../js/facade/extensions/query.js";
-import { Node } from "../../js/facade/extensions/node.js";
+import { Node, Element, DocumentFragment } from "../../js/facade/extensions/node.js";
 
 // T31 selector query integration tests.
 //
@@ -60,10 +60,18 @@ describe("T31 selector query surface shape", () => {
       expect(descriptor.writable).toBe(false);
     }
     for (const name of ["querySelector", "querySelectorAll", "matches", "closest"]) {
-      const descriptor = Object.getOwnPropertyDescriptor(Node.prototype, name);
-      expect(descriptor, `Node.${name}`).toBeDefined();
-      expect(typeof descriptor.value, `Node.${name}`).toBe("function");
+      const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, name);
+      expect(descriptor, `Element.${name}`).toBeDefined();
+      expect(typeof descriptor.value, `Element.${name}`).toBe("function");
     }
+    // T48A: DocumentFragment (and shadow roots through it) reaches the two
+    // ParentNode queries; Text/Comment never hold them.
+    for (const name of ["querySelector", "querySelectorAll"]) {
+      const fragmentDescriptor = Object.getOwnPropertyDescriptor(DocumentFragment.prototype, name);
+      expect(fragmentDescriptor, `DocumentFragment.${name}`).toBeDefined();
+      expect(typeof fragmentDescriptor.value, `DocumentFragment.${name}`).toBe("function");
+    }
+    expect(Object.getOwnPropertyDescriptor(Node.prototype, "querySelector")).toBeUndefined();
 
     // The static query NodeList carries the WHATWG read surface.
     for (const name of ["item", "forEach", "entries", "keys", "values"]) {
@@ -294,16 +302,22 @@ describe.skipIf(!nativeAvailable)("static NodeList surface (T31)", () => {
 });
 
 describe.skipIf(!nativeAvailable)("query errors (T31)", () => {
-  test("non-element receivers and non-ParentNode scopes fail with Hierarchy", () => {
+  test("non-element receivers hold no query members (T48A happy-dom parity)", () => {
     const win = createWindow();
     try {
       const doc = build(win);
       const text = doc.createTextNode("plain");
 
-      expect(thrown(() => text.matches("li")).code).toBe("ERR_MAD_DOM_HIERARCHY");
-      expect(thrown(() => text.closest("li")).code).toBe("ERR_MAD_DOM_HIERARCHY");
-      expect(thrown(() => text.querySelector("li")).code).toBe("ERR_MAD_DOM_HIERARCHY");
-      expect(thrown(() => text.querySelectorAll("li")).code).toBe("ERR_MAD_DOM_HIERARCHY");
+      // T48A: the query surface lives on Element/DocumentFragment.prototype, so
+      // a Text node reads undefined and calling it throws TypeError (not a
+      // function) — no Core element check is reached.
+      for (const name of ["matches", "closest", "querySelector", "querySelectorAll"]) {
+        expect(text[name], `${name} must be undefined on a Text node`).toBeUndefined();
+      }
+      expect(thrown(() => text.matches("li")).message).toContain("text.matches is not a function");
+      expect(thrown(() => text.closest("li")).message).toContain("text.closest is not a function");
+      expect(thrown(() => text.querySelector("li")).message).toContain("text.querySelector is not a function");
+      expect(thrown(() => text.querySelectorAll("li")).message).toContain("text.querySelectorAll is not a function");
     } finally {
       win.destroy();
     }

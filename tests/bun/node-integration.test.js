@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createWindow, Document, isNativeAvailable } from "../../index.js";
+import { Node } from "../../js/facade/extensions/node.js";
 
 // T23 cross-layer integration smoke tests.
 //
@@ -78,11 +79,14 @@ describe("root entry node surface (T23)", () => {
     }
   });
 
-  test("the Node navigation surface is a non-enumerable accessor set behind the created wrapper", () => {
+  test("the Node navigation surface is a non-enumerable accessor set on Node.prototype (T48A per-tag direct prototype)", () => {
     if (!nativeAvailable) return;
     const win = createWindow();
     const div = win.document.createElement("div");
-    const prototype = Object.getPrototypeOf(div);
+    // T48A: the direct prototype is the per-tag class (empty), so the
+    // navigation accessors are inherited from Node.prototype — present: false
+    // on the direct prototype, matching happy-dom.
+    expect(Object.getOwnPropertyDescriptor(Object.getPrototypeOf(div), "nodeType")).toBeUndefined();
     for (const name of [
       "nodeType",
       "nodeName",
@@ -93,7 +97,7 @@ describe("root entry node surface (T23)", () => {
       "nextSibling",
       "childNodes",
     ]) {
-      const descriptor = Object.getOwnPropertyDescriptor(prototype, name);
+      const descriptor = Object.getOwnPropertyDescriptor(Node.prototype, name);
       expect(descriptor, `${name} must be defined`).toBeDefined();
       expect(typeof descriptor.get).toBe("function");
       expect(descriptor.set).toBeUndefined();

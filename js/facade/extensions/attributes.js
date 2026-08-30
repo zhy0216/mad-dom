@@ -1,13 +1,13 @@
 // Attribute read/write facade extension (T25E).
 //
 // Installs the WHATWG element attribute surface — `getAttribute`,
-// `setAttribute`, `removeAttribute`, `hasAttribute` — as prototype methods that
-// delegate every read and every write to the native `NodeHandle` attribute
-// contract (T25E, crates/mad-dom-bun/src/extensions/attributes_api.rs). Like
-// the rest of the facade, this module keeps **no second attribute state**: the
-// ordered `(name, value)` list lives in the Core arena and every call routes
-// through the native handle, so a write through any entry point is immediately
-// visible to every reader.
+// `setAttribute`, `removeAttribute`, `hasAttribute` — as prototype methods on
+// `Element.prototype` (T48A) that delegate every read and every write to the
+// native `NodeHandle` attribute contract (T25E, crates/mad-dom-bun/src/
+// extensions/attributes_api.rs). Like the rest of the facade, this module
+// keeps **no second attribute state**: the ordered `(name, value)` list lives
+// in the Core arena and every call routes through the native handle, so a
+// write through any entry point is immediately visible to every reader.
 //
 // # WebIDL argument shaping
 //
@@ -37,7 +37,7 @@
 // metadata was flipped from `"placeholder"` to `"implemented"` by the T25 gate
 // (tests/bun/seam.test.js pins that shape).
 
-import { Node } from "./node.js";
+import { Element } from "./node.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
 
 export const seam = Object.freeze({
@@ -71,18 +71,21 @@ function facadeNodeHandle(ctx, value, role) {
 }
 
 /**
- * Installs the T25E attribute surface.
+ * Installs the T25E attribute surface on `Element.prototype` (T48A: moved off
+ * `Node.prototype` so Text / Comment never hold the attribute members —
+ * `text.getAttribute` reads `undefined` and calling it throws
+ * `TypeError: ... is not a function`, matching happy-dom).
  *
  * `ctx.defineMethod` is the only property-definition path used here; its
  * default descriptor is fixed, non-enumerable and non-configurable, matching
  * the rest of the facade surface.
  */
 export function install(ctx) {
-  ctx.defineMethod(Node.prototype, "getAttribute", function getAttribute(name) {
+  ctx.defineMethod(Element.prototype, "getAttribute", function getAttribute(name) {
     return facadeNodeHandle(ctx, this, "getAttribute").getAttribute(String(name));
   });
 
-  ctx.defineMethod(Node.prototype, "setAttribute", function setAttribute(name, value) {
+  ctx.defineMethod(Element.prototype, "setAttribute", function setAttribute(name, value) {
     const handle = facadeNodeHandle(ctx, this, "setAttribute");
     handle.setAttribute(String(name), String(value));
     // T42: the write queued the `attributeChangedCallback` reaction for a
@@ -90,13 +93,13 @@ export function install(ctx) {
     flushCustomElementReactions(ctx, handle);
   });
 
-  ctx.defineMethod(Node.prototype, "removeAttribute", function removeAttribute(name) {
+  ctx.defineMethod(Element.prototype, "removeAttribute", function removeAttribute(name) {
     const handle = facadeNodeHandle(ctx, this, "removeAttribute");
     handle.removeAttribute(String(name));
     flushCustomElementReactions(ctx, handle);
   });
 
-  ctx.defineMethod(Node.prototype, "hasAttribute", function hasAttribute(name) {
+  ctx.defineMethod(Element.prototype, "hasAttribute", function hasAttribute(name) {
     return facadeNodeHandle(ctx, this, "hasAttribute").hasAttribute(String(name));
   });
 }

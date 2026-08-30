@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { createWindow, Window } from "../../js/facade/window.js";
 import { Document } from "../../js/facade/document.js";
-import { Node, seam as nodeSeam } from "../../js/facade/extensions/node.js";
+import { Node, Element, seam as nodeSeam } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
 import { installExtensions, seam as registrySeam } from "../../js/facade/extensions/index.js";
 import { isNativeAvailable } from "../../index.js";
@@ -108,9 +108,18 @@ describe("facade node contract fixture (T23B)", () => {
 });
 
 describe("facade node export shapes (T23B)", () => {
-  test("node.js exports exactly Node, install and the frozen seam", async () => {
+  test("node.js exports the base classes, install and the frozen seam", async () => {
     const mod = await import("../../js/facade/extensions/node.js");
-    expect(Object.keys(mod).sort()).toEqual(["Node", "install", "seam"]);
+    expect(Object.keys(mod).sort()).toEqual([
+      "DocumentFragment",
+      "ELEMENT_MINT_SYMBOL",
+      "Element",
+      "Node",
+      "install",
+      "registerElementClass",
+      "seam",
+      "setElementFallbackClasses",
+    ]);
     expect(nodeSeam.owner).toBe("T23B");
     expect(nodeSeam.gate).toBe("T23");
     expect(Object.isFrozen(nodeSeam)).toBe(true);
@@ -122,8 +131,9 @@ describe("facade node export shapes (T23B)", () => {
 });
 
 describe("facade node prototype chains (T23B)", () => {
-  test("Node sits one level under HTMLElement.prototype (the T39 hierarchy)", () => {
-    expect(Object.getPrototypeOf(Node.prototype)).toBe(HTMLElement.prototype);
+  test("the T48A hierarchy: Element over Node, HTMLElement over Element", () => {
+    expect(Object.getPrototypeOf(Element.prototype)).toBe(Node.prototype);
+    expect(Object.getPrototypeOf(HTMLElement.prototype)).toBe(Element.prototype);
   });
 
   test("no own enumerable surface leaks on the Node prototype", () => {

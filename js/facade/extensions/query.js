@@ -1,8 +1,9 @@
 // `querySelector` / `querySelectorAll` / `matches` / `closest` /
 // `getElementById` facade extension (T31).
 //
-// Installs the WHATWG selector-query surface on `Document.prototype` and
-// `Node.prototype`, delegating every read verbatim to the native T31 contract
+// Installs the WHATWG selector-query surface on `Document.prototype`,
+// `Element.prototype` and `DocumentFragment.prototype` (T48A), delegating every
+// read verbatim to the native T31 contract
 // (crates/mad-dom-bun/src/extensions/query_api.rs) and through it to the Core
 // document-order queries (T31) and the T30 parser/arena matcher. Like the rest
 // of the facade, this module keeps **no second DOM state** and builds **no
@@ -40,7 +41,7 @@
 // by exporting `install(ctx)`; nothing in the registry changes.
 
 import { Document } from "../document.js";
-import { Node } from "./node.js";
+import { Element, DocumentFragment } from "./node.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/query",
@@ -163,23 +164,40 @@ export function install(ctx) {
     );
   });
 
-  // Element (Node) surface.
-  ctx.defineMethod(Node.prototype, "querySelector", function querySelector(selectors) {
+  // Element (Element) and ParentNode (DocumentFragment) surface (T48A: the
+  // query methods moved off `Node.prototype` onto `Element.prototype`, with
+  // `querySelector` / `querySelectorAll` additionally on
+  // `DocumentFragment.prototype` so fragments and — through the T43
+  // re-parenting — shadow roots reach them; `matches` / `closest` are element
+  // only, exactly like happy-dom). Text / Comment are plain `Node`s and read
+  // `undefined`.
+  ctx.defineMethod(Element.prototype, "querySelector", function querySelector(selectors) {
     return ctx.wrap(facadeNodeHandle(ctx, this, "querySelector").querySelector(String(selectors)));
   });
 
-  ctx.defineMethod(Node.prototype, "querySelectorAll", function querySelectorAll(selectors) {
+  ctx.defineMethod(Element.prototype, "querySelectorAll", function querySelectorAll(selectors) {
     return staticNodeList(
       ctx,
       facadeNodeHandle(ctx, this, "querySelectorAll").querySelectorAll(String(selectors)),
     );
   });
 
-  ctx.defineMethod(Node.prototype, "matches", function matches(selectors) {
+  ctx.defineMethod(DocumentFragment.prototype, "querySelector", function querySelector(selectors) {
+    return ctx.wrap(facadeNodeHandle(ctx, this, "querySelector").querySelector(String(selectors)));
+  });
+
+  ctx.defineMethod(DocumentFragment.prototype, "querySelectorAll", function querySelectorAll(selectors) {
+    return staticNodeList(
+      ctx,
+      facadeNodeHandle(ctx, this, "querySelectorAll").querySelectorAll(String(selectors)),
+    );
+  });
+
+  ctx.defineMethod(Element.prototype, "matches", function matches(selectors) {
     return facadeNodeHandle(ctx, this, "matches").matches(String(selectors));
   });
 
-  ctx.defineMethod(Node.prototype, "closest", function closest(selectors) {
+  ctx.defineMethod(Element.prototype, "closest", function closest(selectors) {
     return ctx.wrap(facadeNodeHandle(ctx, this, "closest").closest(String(selectors)));
   });
 

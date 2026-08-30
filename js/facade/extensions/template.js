@@ -33,7 +33,7 @@
 // import and array entry.
 
 import { Node } from "./node.js";
-import { Window } from "../window.js";
+import { HTMLTemplateElement } from "./html-element.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/template",
@@ -42,15 +42,7 @@ export const seam = Object.freeze({
   status: "implemented",
 });
 
-/**
- * `HTMLTemplateElement` facade base class (T40).
- *
- * Instances are never constructed directly: every node wrapper is a `Node`,
- * and the class exists so `window.HTMLTemplateElement` is a genuine constructor
- * accessor (the single-class model approximates the WHATWG class split the same
- * way `HTMLElement` does in T39).
- */
-export class HTMLTemplateElement {}
+export { HTMLTemplateElement };
 
 function isNodeHandle(handle) {
   return (
@@ -78,11 +70,6 @@ function isTemplate(handle) {
  * Installs the T40 template surface.
  */
 export function install(ctx) {
-  // `window.HTMLTemplateElement` — the WHATWG constructor accessor.
-  ctx.defineAccessor(Window.prototype, "HTMLTemplateElement", function getHTMLTemplateElement() {
-    return HTMLTemplateElement;
-  }, undefined);
-
   // `template.content`: the template-contents DocumentFragment, minted by Core
   // on first access (identity is stable through `ctx.wrap`).
   ctx.defineAccessor(Node.prototype, "content", function content() {

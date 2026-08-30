@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createWindow, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
-import { Node } from "../../js/facade/extensions/node.js";
+import { Node, Element } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
 import {
   Attr,
@@ -76,8 +76,9 @@ describe("attribute-node facade module shape (T34)", () => {
     expect(Object.isFrozen(attributeNodesSeam)).toBe(true);
   });
 
-  test("Node sits one level under HTMLElement.prototype (the T39 hierarchy) with no enumerable surface", () => {
-    expect(Object.getPrototypeOf(Node.prototype)).toBe(HTMLElement.prototype);
+  test("the T48A hierarchy: Element over Node, HTMLElement over Element, with no enumerable surface", () => {
+    expect(Object.getPrototypeOf(Element.prototype)).toBe(Node.prototype);
+    expect(Object.getPrototypeOf(HTMLElement.prototype)).toBe(Element.prototype);
     expect(Object.keys(Node.prototype)).toEqual([]);
   });
 });

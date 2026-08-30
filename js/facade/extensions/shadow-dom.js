@@ -10,21 +10,24 @@
 // (crates/mad-dom-bun/src/extensions/shadow_dom_api.rs) and through it to the
 // Core ownership / mode / slot model (`mad_dom_core::dom::shadow_root`).
 //
-// # The `ShadowRoot` wrapper (single-class re-parenting)
+// # The `ShadowRoot` wrapper (T43 re-parenting on the T48A hierarchy)
 //
-// MAD DOM wraps every native node in one `Node` facade class, so a shadow root
-// is the *same wrapper* whose prototype has been re-parented onto the
-// `ShadowRoot` class: `Object.setPrototypeOf(wrapper, ShadowRoot.prototype)`,
-// exactly like the T42 custom-element upgrade. The two minting points —
-// `attachShadow` and the `shadowRoot` getter — route the native handle through
-// `ctx.wrap` (the unique conversion entry, so identity is stable) and then
-// re-parent it, and every later `ctx.wrap` of the same native handle returns
-// the already-re-parented object. `ShadowRoot.prototype` chains to
-// `Node.prototype`, so the whole Node surface (navigation, mutation, query,
-// events, `innerHTML`, `textContent`) is inherited and works against the same
-// native handle. A closed root is minted once by `attachShadow` and never
-// reaches `host.shadowRoot` again (the native read reports `null`), so closed
-// trees never leak through the public surface.
+// A shadow root is the `Node` wrapper produced by `ctx.wrap` (which since
+// T48A mints fragments as the `DocumentFragment` class) whose prototype has
+// been re-parented onto the `ShadowRoot` class:
+// `Object.setPrototypeOf(wrapper, ShadowRoot.prototype)`, exactly like the T42
+// custom-element upgrade. The two minting points — `attachShadow` and the
+// `shadowRoot` getter — route the native handle through `ctx.wrap` (the unique
+// conversion entry, so identity is stable) and then re-parent it, and every
+// later `ctx.wrap` of the same native handle returns the already-re-parented
+// object. `ShadowRoot.prototype` chains to `DocumentFragment.prototype`
+// (happy-dom's `ShadowRoot extends DocumentFragment`) and through it to
+// `Node.prototype`, so the whole Node surface (navigation, mutation, events,
+// `textContent`) plus the fragment `innerHTML` / `querySelector` /
+// `querySelectorAll` surface is inherited and works against the same native
+// handle. A closed root is minted once by `attachShadow` and never reaches
+// `host.shadowRoot` again (the native read reports `null`), so closed trees
+// never leak through the public surface.
 //
 // # The `assignedNodes` / `assignedElements` reads
 //
@@ -38,7 +41,7 @@
 // by exporting `install(ctx)`; nothing in the registry changes beyond the
 // import and array entry.
 
-import { Node } from "./node.js";
+import { Node, DocumentFragment } from "./node.js";
 import { Window } from "../window.js";
 
 export const seam = Object.freeze({
@@ -51,12 +54,12 @@ export const seam = Object.freeze({
 /**
  * `ShadowRoot` facade class (T43).
  *
- * Instances are never constructed directly: every shadow-root wrapper is a
- * `Node` whose prototype has been re-parented onto `ShadowRoot.prototype` (the
- * single-class re-parenting, like the T42 custom-element upgrade), so
- * `root instanceof window.ShadowRoot` and `root instanceof window.Node` both
- * hold and every Node method stays reachable. The class body is empty;
- * `install` wires the surface.
+ * Instances are never constructed directly: every shadow-root wrapper is the
+ * `Node`/`DocumentFragment` wrapper whose prototype has been re-parented onto
+ * `ShadowRoot.prototype` (the T43 re-parenting, like the T42 custom-element
+ * upgrade), so `root instanceof window.ShadowRoot` and `root instanceof
+ * window.Node` both hold and every Node / DocumentFragment method stays
+ * reachable. The class body is empty; `install` wires the surface.
  */
 export class ShadowRoot {}
 
@@ -100,10 +103,11 @@ function wrapShadowRoot(ctx, handle) {
  * non-configurable, matching the rest of the facade surface.
  */
 export function install(ctx) {
-  // The single-class prototype hierarchy: a `ShadowRoot` wrapper is a `Node`
-  // (and, through Node.prototype, an `HTMLElement` — the same honest
-  // single-class deviation the T39 hierarchy records).
-  Object.setPrototypeOf(ShadowRoot.prototype, Node.prototype);
+  // The T48A prototype hierarchy: a `ShadowRoot` wrapper is a `Node` whose
+  // prototype chain passes through `DocumentFragment` (matching happy-dom's
+  // `ShadowRoot extends DocumentFragment`), so a shadow root reaches the
+  // ParentNode query surface and `innerHTML` plus every Node method.
+  Object.setPrototypeOf(ShadowRoot.prototype, DocumentFragment.prototype);
 
   // `window.ShadowRoot` — the WHATWG constructor accessor on every window.
   ctx.defineAccessor(Window.prototype, "ShadowRoot", function getShadowRoot() {

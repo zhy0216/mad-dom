@@ -7,19 +7,18 @@
 // `isContentEditable`), the live `dataset` `DOMStringMap`, and the base
 // `click` / `focus` / `blur` interaction.
 //
-// # Prototype hierarchy (single-class model)
+// # Prototype hierarchy (T48A class hierarchy)
 //
-// MAD DOM wraps every node in one `Node` facade class, so the WHATWG
-// `Element`↔`HTMLElement` class split is approximated by re-parenting
-// `Node.prototype` onto the new `HTMLElement.prototype`:
-// `Node.prototype → HTMLElement.prototype → Object.prototype`. The element
-// surface (`id` / `className`, the attribute methods, `innerHTML`, ...) stays
-// on `Node.prototype` (MAD DOM's element class), while the HTMLElement
+// Since T48A the facade owns the WHATWG class chain: `Node` is the base,
+// `Element extends Node`, `HTMLElement extends Element`, and per-tag classes
+// (`HTMLDivElement` etc.) extend `HTMLElement`. The element surface (`id` /
+// `className`, the attribute methods, `innerHTML`, the query methods,
+// `tagName` / `localName`) lives on `Element.prototype`; the HTMLElement
 // surface lives on `HTMLElement.prototype` exactly like happy-dom. Every
-// wrapper is therefore `instanceof window.HTMLElement`, and the HTMLElement
-// methods are inherited by every node — a text node reaches them and fails
-// the Core element check (or reads through the attribute contract), the same
-// honest single-class deviation the T25/T29 surfaces already record.
+// element wrapper is `instanceof window.HTMLElement` (and its per-tag class),
+// and Text / Comment are plain `Node`s that never reach the element members —
+// `text.getAttribute` reads `undefined` and calling it throws
+// `TypeError: ... is not a function`, matching happy-dom.
 //
 // # Reflected attributes are the attribute contract
 //
@@ -58,7 +57,7 @@
 // import and array entry.
 
 import { Document } from "../document.js";
-import { Node } from "./node.js";
+import { Element, registerElementClass, setElementFallbackClasses } from "./node.js";
 import { Window } from "../window.js";
 import { Event } from "./events.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
@@ -71,15 +70,149 @@ export const seam = Object.freeze({
 });
 
 /**
- * `HTMLElement` facade base class (T39).
+ * `HTMLElement` facade base class (T39, T48A).
  *
- * Instances are never constructed directly: every node wrapper is a `Node`
- * whose prototype chain has `HTMLElement.prototype` as its parent (the
- * single-class approximation of the WHATWG `Element`/`HTMLElement` split), so
- * `el instanceof window.HTMLElement` holds and the HTMLElement surface is
- * inherited. The class body is empty; `install` wires the surface.
+ * Since T48A `HTMLElement` is a genuine class between `Element` and the
+ * per-tag element classes: `per-tag → HTMLElement → Element → Node`, matching
+ * the WHATWG / happy-dom chain. Instances are never constructed directly: the
+ * element surface is wired on `HTMLElement.prototype` and every element
+ * wrapper inherits it (the T48A per-tag direct prototypes sit above).
  */
-export class HTMLElement {}
+export class HTMLElement extends Element {}
+
+/**
+ * Per-tag element classes (T48A).
+ *
+ * One empty class per common HTML tag, generated so `constructor.name` matches
+ * the WHATWG name (`HTMLDivElement` etc.) and `Object.getPrototypeOf(el)`
+ * lines up with happy-dom (`getAttribute` / `textContent` are inherited, so
+ * they read `present: false` on the direct prototype). Each class is exported
+ * and registered in the `node.js` per-tag table so `createElement` / parse /
+ * import select it as the direct prototype.
+ */
+export const HTMLUnknownElement = class HTMLUnknownElement extends HTMLElement {};
+export const HTMLDivElement = class HTMLDivElement extends HTMLElement {};
+export const HTMLSpanElement = class HTMLSpanElement extends HTMLElement {};
+export const HTMLParagraphElement = class HTMLParagraphElement extends HTMLElement {};
+export const HTMLAnchorElement = class HTMLAnchorElement extends HTMLElement {};
+export const HTMLBodyElement = class HTMLBodyElement extends HTMLElement {};
+export const HTMLHeadingElement = class HTMLHeadingElement extends HTMLElement {};
+export const HTMLUListElement = class HTMLUListElement extends HTMLElement {};
+export const HTMLOListElement = class HTMLOListElement extends HTMLElement {};
+export const HTMLLIElement = class HTMLLIElement extends HTMLElement {};
+export const HTMLTableElement = class HTMLTableElement extends HTMLElement {};
+export const HTMLTableCaptionElement = class HTMLTableCaptionElement extends HTMLElement {};
+export const HTMLTableRowElement = class HTMLTableRowElement extends HTMLElement {};
+export const HTMLTableCellElement = class HTMLTableCellElement extends HTMLElement {};
+export const HTMLTableSectionElement = class HTMLTableSectionElement extends HTMLElement {};
+export const HTMLBRElement = class HTMLBRElement extends HTMLElement {};
+export const HTMLHRElement = class HTMLHRElement extends HTMLElement {};
+export const HTMLFormElement = class HTMLFormElement extends HTMLElement {};
+export const HTMLInputElement = class HTMLInputElement extends HTMLElement {};
+export const HTMLButtonElement = class HTMLButtonElement extends HTMLElement {};
+export const HTMLSelectElement = class HTMLSelectElement extends HTMLElement {};
+export const HTMLOptionElement = class HTMLOptionElement extends HTMLElement {};
+export const HTMLTextAreaElement = class HTMLTextAreaElement extends HTMLElement {};
+export const HTMLLabelElement = class HTMLLabelElement extends HTMLElement {};
+export const HTMLImageElement = class HTMLImageElement extends HTMLElement {};
+export const HTMLScriptElement = class HTMLScriptElement extends HTMLElement {};
+export const HTMLStyleElement = class HTMLStyleElement extends HTMLElement {};
+export const HTMLLinkElement = class HTMLLinkElement extends HTMLElement {};
+export const HTMLMetaElement = class HTMLMetaElement extends HTMLElement {};
+export const HTMLTitleElement = class HTMLTitleElement extends HTMLElement {};
+export const HTMLHeadElement = class HTMLHeadElement extends HTMLElement {};
+export const HTMLHtmlElement = class HTMLHtmlElement extends HTMLElement {};
+export const HTMLQuoteElement = class HTMLQuoteElement extends HTMLElement {};
+export const HTMLSlotElement = class HTMLSlotElement extends HTMLElement {};
+export const HTMLTemplateElement = class HTMLTemplateElement extends HTMLElement {};
+
+// Common-tag → direct prototype table (T48A), mirroring the happy-dom
+// selection: every class here becomes the wrapper's direct prototype. Tags not
+// listed fall back to `HTMLUnknownElement` (plain name) or `HTMLElement`
+// (hyphenated, an undefined custom-element-style name) exactly like happy-dom.
+const PER_TAG = [
+  ["html", HTMLHtmlElement],
+  ["head", HTMLHeadElement],
+  ["body", HTMLBodyElement],
+  ["title", HTMLTitleElement],
+  ["div", HTMLDivElement],
+  ["span", HTMLSpanElement],
+  ["p", HTMLParagraphElement],
+  ["a", HTMLAnchorElement],
+  ["h1", HTMLHeadingElement],
+  ["h2", HTMLHeadingElement],
+  ["h3", HTMLHeadingElement],
+  ["h4", HTMLHeadingElement],
+  ["h5", HTMLHeadingElement],
+  ["h6", HTMLHeadingElement],
+  ["ul", HTMLUListElement],
+  ["ol", HTMLOListElement],
+  ["li", HTMLLIElement],
+  ["table", HTMLTableElement],
+  ["caption", HTMLTableCaptionElement],
+  ["tr", HTMLTableRowElement],
+  ["td", HTMLTableCellElement],
+  ["th", HTMLTableCellElement],
+  ["thead", HTMLTableSectionElement],
+  ["tbody", HTMLTableSectionElement],
+  ["tfoot", HTMLTableSectionElement],
+  ["br", HTMLBRElement],
+  ["hr", HTMLHRElement],
+  ["form", HTMLFormElement],
+  ["input", HTMLInputElement],
+  ["button", HTMLButtonElement],
+  ["select", HTMLSelectElement],
+  ["option", HTMLOptionElement],
+  ["textarea", HTMLTextAreaElement],
+  ["label", HTMLLabelElement],
+  ["img", HTMLImageElement],
+  ["script", HTMLScriptElement],
+  ["style", HTMLStyleElement],
+  ["link", HTMLLinkElement],
+  ["meta", HTMLMetaElement],
+  ["blockquote", HTMLQuoteElement],
+  ["q", HTMLQuoteElement],
+  ["slot", HTMLSlotElement],
+  ["template", HTMLTemplateElement],
+];
+
+const PER_TAG_WINDOW_ACCESSORS = Object.freeze({
+  HTMLUnknownElement,
+  HTMLDivElement,
+  HTMLSpanElement,
+  HTMLParagraphElement,
+  HTMLAnchorElement,
+  HTMLBodyElement,
+  HTMLHeadingElement,
+  HTMLUListElement,
+  HTMLOListElement,
+  HTMLLIElement,
+  HTMLTableElement,
+  HTMLTableCaptionElement,
+  HTMLTableRowElement,
+  HTMLTableCellElement,
+  HTMLTableSectionElement,
+  HTMLBRElement,
+  HTMLHRElement,
+  HTMLFormElement,
+  HTMLInputElement,
+  HTMLButtonElement,
+  HTMLSelectElement,
+  HTMLOptionElement,
+  HTMLTextAreaElement,
+  HTMLLabelElement,
+  HTMLImageElement,
+  HTMLScriptElement,
+  HTMLStyleElement,
+  HTMLLinkElement,
+  HTMLMetaElement,
+  HTMLTitleElement,
+  HTMLHeadElement,
+  HTMLHtmlElement,
+  HTMLQuoteElement,
+  HTMLSlotElement,
+  HTMLTemplateElement,
+});
 
 // One cached live `dataset` Proxy per element (stable identity, live reads).
 const DATASET_MAPS = new WeakMap();
@@ -202,15 +335,27 @@ function datasetFor(ctx, element) {
  * non-configurable, matching the rest of the facade surface.
  */
 export function install(ctx) {
-  // The single-class prototype hierarchy: `Node` is MAD DOM's element class,
-  // so `HTMLElement` sits directly above it (happy-dom: HTMLElement over
-  // Element over Node).
-  Object.setPrototypeOf(Node.prototype, HTMLElement.prototype);
+  // The T48A prototype hierarchy: `HTMLElement extends Element extends Node`
+  // through class syntax (no re-parenting needed). Register the per-tag direct
+  // prototypes and the unknown-name fallbacks so the node creation / parse /
+  // import wrap path selects them (node.js createNodeWrapper).
+  for (const [tag, elementClass] of PER_TAG) {
+    registerElementClass(tag, elementClass);
+  }
+  setElementFallbackClasses(HTMLElement, HTMLUnknownElement);
 
   // `window.HTMLElement` — the WHATWG constructor accessor on every window.
   ctx.defineAccessor(Window.prototype, "HTMLElement", function getHTMLElement() {
     return HTMLElement;
   }, undefined);
+
+  // `window.HTML*Element` — the per-tag constructor accessors (T48A), matching
+  // the happy-dom window surface.
+  for (const [name, elementClass] of Object.entries(PER_TAG_WINDOW_ACCESSORS)) {
+    ctx.defineAccessor(Window.prototype, name, function getPerTagElement() {
+      return elementClass;
+    }, undefined);
+  }
 
   // `document.activeElement` — the stored focused element (stale-cleared by
   // Core), falling back to body / documentElement / null like happy-dom.
@@ -222,9 +367,9 @@ export function install(ctx) {
     return this.body ?? this.documentElement ?? null;
   }, undefined);
 
-  // Element-level string reflection (happy-dom puts `id` / `className` on
-  // `Element`, which is the `Node` class in the single-class model).
-  ctx.defineAccessor(Node.prototype, "id", function id() {
+  // Element-level string reflection (T48A: on `Element.prototype`, matching
+  // happy-dom; Text/Comment never reach them).
+  ctx.defineAccessor(Element.prototype, "id", function id() {
     return facadeNodeHandle(ctx, this, "id").getAttribute("id") || "";
   }, function id(value) {
     const handle = facadeNodeHandle(ctx, this, "id");
@@ -232,7 +377,7 @@ export function install(ctx) {
     flushCustomElementReactions(ctx, handle);
   });
 
-  ctx.defineAccessor(Node.prototype, "className", function className() {
+  ctx.defineAccessor(Element.prototype, "className", function className() {
     return facadeNodeHandle(ctx, this, "className").getAttribute("class") || "";
   }, function className(value) {
     const handle = facadeNodeHandle(ctx, this, "className");

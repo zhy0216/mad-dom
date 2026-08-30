@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createWindow, Document, isNativeAvailable } from "../../index.js";
+import { Node } from "../../js/facade/extensions/node.js";
 
 // T24 cross-layer integration smoke tests.
 //
@@ -79,12 +80,14 @@ describe("root entry mutation surface (T24)", () => {
 });
 
 describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
-  test("the Node mutation methods are fixed non-enumerable method descriptors behind the created wrapper", () => {
+  test("the Node mutation methods are fixed non-enumerable method descriptors on Node.prototype (T48A per-tag direct prototype)", () => {
     const win = createWindow();
     const parent = win.document.createElement("parent");
-    const prototype = Object.getPrototypeOf(parent);
+    // T48A: the direct prototype is the per-tag class (empty); the mutation
+    // methods are inherited from Node.prototype.
+    expect(Object.getOwnPropertyDescriptor(Object.getPrototypeOf(parent), "appendChild")).toBeUndefined();
     for (const name of ["appendChild", "insertBefore", "removeChild", "replaceChild"]) {
-      const descriptor = Object.getOwnPropertyDescriptor(prototype, name);
+      const descriptor = Object.getOwnPropertyDescriptor(Node.prototype, name);
       expect(descriptor, `${name} must be defined`).toBeDefined();
       expect(typeof descriptor.value).toBe("function");
       expect(descriptor.writable).toBe(false);

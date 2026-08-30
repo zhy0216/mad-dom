@@ -143,6 +143,15 @@ function wrap(nativeHandle) {
   return wrapper;
 }
 
+// Registers a wrapper that was constructed outside `wrap` (the T48A
+// `new DefinedClass()` mint path) in the same two caches, so a later `wrap`
+// of the same native handle hands back that exact object.
+function registerWrap(nativeHandle, wrapper) {
+  if (nativeHandle === null || nativeHandle === undefined) return;
+  WRAP_CACHE.set(nativeHandle, wrapper);
+  WRAPPER_TO_HANDLE.set(wrapper, nativeHandle);
+}
+
 // --- Descriptor helpers ---------------------------------------------------
 
 function defineMethod(target, name, fn, descriptor = {}) {
@@ -180,6 +189,7 @@ const ctx = Object.freeze({
   defineAccessor,
   documentContext,
   registerHandleType,
+  registerWrap,
 });
 
 // --- `Window` facade -------------------------------------------------------

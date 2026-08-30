@@ -5,21 +5,23 @@
 // whenDefined / upgrade) and the synchronous lifecycle reaction dispatch
 // (`connectedCallback` / `disconnectedCallback` / `attributeChangedCallback`).
 //
-// # Single-class model
+// # Class hierarchy (T48A)
 //
-// The facade wraps every node in one `Node` class (the T39 single-class
-// model), so an "upgraded" custom element is the *same wrapper* whose
+// The facade owns the WHATWG class chain — `Node → Element → HTMLElement →
+// per-tag` — so an "upgraded" custom element is the *same wrapper* whose
 // prototype has been re-parented onto the user class:
-// `Object.setPrototypeOf(wrapper, ElementClass.prototype)` — the user class
+// `Object.setPrototypeOf(wrapper, ElementClass.prototype)`. The user class
 // extends `window.HTMLElement`, so `instanceof ElementClass` and
-// `instanceof window.HTMLElement` both hold and every `Node` / `HTMLElement`
-// method stays reachable. This is an *in-place* upgrade: unlike happy-dom,
-// which physically replaces the element object when a connected candidate is
-// defined later, MAD DOM keeps the wrapper identity stable. The upgrade
-// happens at the same native entry points that mark the Core element custom
-// (createElement, define, the apply path, `upgrade()`), so the wrapper
-// prototype and the Core custom state are always in step — no second
-// authoritative DOM state.
+// `instanceof window.HTMLElement` both hold and every `Node` / `Element` /
+// `HTMLElement` method stays reachable. `new DefinedClass()` casts a real
+// detached element through the mint slot `define` stashes on the class
+// prototype (T48A), so `localName` reads the registered name like happy-dom.
+// This is an *in-place* upgrade: unlike happy-dom, which physically replaces
+// the element object when a connected candidate is defined later, MAD DOM
+// keeps the wrapper identity stable. The upgrade happens at the same native
+// entry points that mark the Core element custom (createElement, define, the
+// apply path, `upgrade()`), so the wrapper prototype and the Core custom state
+// are always in step — no second authoritative DOM state.
 //
 // # Definitions live here; reactions are decided and queued in Core
 //
@@ -73,7 +75,7 @@ import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Window } from "../window.js";
-import { Node } from "./node.js";
+import { Node, Element, ELEMENT_MINT_SYMBOL } from "./node.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/custom-elements",
@@ -375,16 +377,26 @@ export function install(ctx) {
       }
     }
 
-    // Wire the user class into the single-class model (the T39 mechanism):
-    // the element surface lives on `Node.prototype` (whose parent the T39
-    // install re-parented onto `HTMLElement.prototype`), so the custom class's
-    // prototype chain must pass through `Node.prototype` before reaching
-    // `HTMLElement.prototype` — otherwise an upgraded wrapper would lose every
-    // Node method. happy-dom likewise mutates the constructor's prototype at
-    // define (it stashes the window/document symbols on it).
-    if (Object.getPrototypeOf(elementClass.prototype) !== Node.prototype) {
-      Object.setPrototypeOf(elementClass.prototype, Node.prototype);
+    // Wire the user class into the T48A class hierarchy: a class written as
+    // `class X extends window.HTMLElement` already chains through `HTMLElement
+    // → Element → Node`, so nothing needs re-parenting; a class that does not
+    // descend from `Node` is re-parented onto `Element.prototype` so an
+    // upgraded wrapper keeps every Node / Element method and stays
+    // `instanceof window.HTMLElement`. happy-dom likewise mutates the
+    // constructor's prototype at define (it stashes the window/document
+    // symbols on it).
+    if (!Node.prototype.isPrototypeOf(elementClass.prototype)) {
+      Object.setPrototypeOf(elementClass.prototype, Element.prototype);
     }
+
+    // T48A `new DefinedClass()`: stash the native document handle and the
+    // registered name on the class prototype so the `Element` constructor can
+    // cast a real detached element (happy-dom stashes window/document/localName
+    // symbols the same way).
+    elementClass.prototype[ELEMENT_MINT_SYMBOL] = {
+      docHandle: this.docHandle,
+      localName: name,
+    };
 
     // Core registers the definition, upgrades the connected matching elements
     // and queues their `Connected` reaction; the wrapper prototypes are set

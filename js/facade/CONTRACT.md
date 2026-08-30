@@ -57,6 +57,9 @@
   安装器不得用其他方式定义属性。
 - `ctx.documentContext` —— 只读访问 wrapper 所需的文档所有权引用；绝不以
   原始值形式暴露 NodeId。
+- `ctx.registerHandleType(name, makeWrapper)` 与 `ctx.registerWrap(handle,
+  wrapper)` —— wrapper 类型注册表与"wrap 之外的铸造"登记（T48A
+  `new DefinedClass()` 铸造路径把真实 detached 元素写回每文档弱缓存）。
 
 ### 转换入口
 

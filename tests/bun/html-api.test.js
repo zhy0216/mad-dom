@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createWindow, isNativeAvailable } from "../../index.js";
-import { Node } from "../../js/facade/extensions/node.js";
+import { Node, Element, DocumentFragment } from "../../js/facade/extensions/node.js";
 
 // T29 HTML API integration tests.
 //
@@ -40,31 +40,41 @@ function thrown(fn) {
 }
 
 describe("T29 HTML API surface shape", () => {
-  test("the facade installs innerHTML/outerHTML accessors and the document structure surface", () => {
-    const descriptor = Object.getOwnPropertyDescriptor(Node.prototype, "innerHTML");
+  test("the facade installs innerHTML/outerHTML on Element (and innerHTML on DocumentFragment) plus the document structure surface", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
     expect(descriptor).toBeDefined();
     expect(typeof descriptor.get).toBe("function");
     expect(typeof descriptor.set).toBe("function");
     expect(descriptor.enumerable).toBe(false);
     expect(descriptor.configurable).toBe(false);
 
-    const outer = Object.getOwnPropertyDescriptor(Node.prototype, "outerHTML");
+    const outer = Object.getOwnPropertyDescriptor(Element.prototype, "outerHTML");
     expect(typeof outer.get).toBe("function");
     expect(typeof outer.set).toBe("function");
+
+    // T48A: Text/Comment never hold the accessors; DocumentFragment and — via
+    // the T43 re-parenting — shadow roots reach innerHTML.
+    expect(Object.getOwnPropertyDescriptor(Node.prototype, "innerHTML")).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(DocumentFragment.prototype, "innerHTML")).toBeDefined();
   });
 });
 
 describe.skipIf(!nativeAvailable)("T29 ineligible node kinds", () => {
-  test("text nodes fail innerHTML/outerHTML with the frozen Hierarchy taxonomy", () => {
-    // The accessors live on Node.prototype (single-class model), so the node
-    // kind check is delegated to Core and throws the frozen Hierarchy error.
+  test("text nodes read innerHTML/outerHTML undefined (happy-dom parity, T48A)", () => {
     const win = createWindow();
     try {
       const doc = win.document;
       const text = doc.createTextNode("hi");
-      expect(thrown(() => text.innerHTML).name).toBe("Error");
-      expect(thrown(() => text.innerHTML).code).toBe("ERR_MAD_DOM_HIERARCHY");
-      expect(thrown(() => text.outerHTML).code).toBe("ERR_MAD_DOM_HIERARCHY");
+      // T48A: the accessors live on Element.prototype (and innerHTML on
+      // DocumentFragment.prototype), so a Text node reads undefined — matching
+      // happy-dom, with no Core element check reached. Assigning to the absent
+      // property silently creates an own data property exactly like happy-dom,
+      // leaving the character data untouched.
+      expect(text.innerHTML).toBeUndefined();
+      expect(text.outerHTML).toBeUndefined();
+      text.innerHTML = "x";
+      expect(text.innerHTML).toBe("x");
+      expect(text.data).toBe("hi");
     } finally {
       win.destroy();
     }
@@ -328,11 +338,10 @@ describe.skipIf(!nativeAvailable)("failure atomicity and errors (T29)", () => {
       const div = doc.createElement("div");
       div.innerHTML = "<p>original</p>";
 
-      // Text node: ineligible target, rejected before any mutation.
+      // Text node: no innerHTML member (T48A) — the write silently creates an
+      // own data property (happy-dom parity) and the text data stays untouched.
       const text = doc.createTextNode("keep");
-      expect(thrown(() => {
-        text.innerHTML = "<p>swap</p>";
-      }).code).toBe("ERR_MAD_DOM_HIERARCHY");
+      text.innerHTML = "<p>swap</p>";
       expect(text.textContent).toBe("keep");
 
       // The element itself is untouched by the rejected call.

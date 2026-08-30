@@ -56,7 +56,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-attributes",
-      "reason": "T48 added Element.tagName/localName and the uppercased nodeName, but the four recorded attribute gaps remain. First, the prototype layout: MAD DOM owns the attribute methods on Node.prototype (the element's direct prototype), so getOwnPropertyDescriptor reports them present, while happy-dom inherits them from higher up the class chain (present: false) — the per-tag Element class hierarchy is tracked by T48A. Second, non-Element access: `text.getAttribute` reaches Core and throws the frozen HierarchyRequestError taxonomy, while happy-dom lacks the method on text nodes (TypeError \"not a function\") — also closed by T48A. Third, the napi4 error degradation: DOM-spec violations throw a plain Error carrying the frozen ERR_MAD_DOM_* code instead of a real DOMException with the happy-dom message, and fourth, Core validates the WHATWG Name production strictly (digit-led names rejected where happy-dom accepts them) — both tracked by T48B.",
+      "reason": "T48A introduced the per-tag Element class hierarchy: the attribute methods now live on Element.prototype and the element's direct prototype is a per-tag class, so getAttribute/ setAttribute report present: false on it (matching happy-dom), and non-Element access is closed - `text.getAttribute` reads undefined and calling it throws the same TypeError (\"not a function\") as happy-dom. Two attribute gaps remain, both tracked by T48B: the napi4 error degradation (DOM-spec violations throw a plain Error carrying the frozen ERR_MAD_DOM_* code instead of a real DOMException with the happy-dom message) and Core's strict WHATWG Name validation (digit-led names rejected where happy-dom accepts them; the extra recorded digit-led error shifts the errors array, so the now-matching text.getAttribute TypeError sits at a different index).",
       "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T25E"
     },
@@ -66,7 +66,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-text-content",
-      "reason": "T48 kept the Node.textContent accessor matching happy-dom for every read/write, null-to-empty conversion, non-string coercion and deep-tree concatenation. Two gaps remain. First, the prototype layout: MAD DOM owns the accessor on Node.prototype (present: true with getter/setter on the element's direct prototype) while happy-dom inherits it from higher up the class chain (present: false) — the per-tag Element class hierarchy is tracked by T48A. Second, a NUL byte in the setter value: Core rejects it with ERR_MAD_DOM_INVALID_CHARACTER while happy-dom stores it verbatim — tracked by T48B.",
+      "reason": "T48A introduced the per-tag Element class hierarchy: textContent stays on Node.prototype (matching happy-dom) and the element's direct prototype is a per-tag class, so the textContent accessor reports present: false on it. The single remaining gap: a NUL byte in the setter value - Core rejects it with ERR_MAD_DOM_INVALID_CHARACTER while happy-dom stores it verbatim - tracked by T48B.",
       "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T25E"
     },
@@ -290,7 +290,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-custom-elements-upgrade",
-      "reason": "The T42 registry (define/get/getName/whenDefined) and the synchronous lifecycle reactions match happy-dom, but three deliberate deviations remain. First, happy-dom's CustomElementRegistry.upgrade() is a documented no-op while MAD DOM performs a genuine spec-style upgrade (firing connectedCallback) — aligning the upgrade semantics is tracked by T48D. Second, `new DefinedClass()` mints a real detached element in happy-dom while MAD DOM's empty single-class base yields a bare object whose localName reads undefined — the per-tag Element class hierarchy is tracked by T48A. Third, the define-after-connect upgrade is in-place in MAD DOM while happy-dom physically replaces the element — also tracked by T48D.",
+      "reason": "The T42 registry (define/get/getName/whenDefined) and the synchronous lifecycle reactions match happy-dom; T48A closed the `new DefinedClass()` gap - define now stashes the document/name mint slot on the class prototype, so `new DefinedClass()` casts a real detached element whose localName reads the registered name. Two deliberate deviations remain, both tracked by T48D: happy-dom's CustomElementRegistry.upgrade() is a documented no-op while MAD DOM performs a genuine spec-style upgrade (firing connectedCallback), and the define-after-connect upgrade is in-place in MAD DOM while happy-dom physically replaces the element.",
       "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T42"
     },

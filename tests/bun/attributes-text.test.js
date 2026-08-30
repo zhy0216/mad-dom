@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createWindow, isNativeAvailable } from "../../index.js";
-import { Node } from "../../js/facade/extensions/node.js";
+import { Node, Element } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
 import {
   install as installAttributes,
@@ -32,11 +32,13 @@ import {
 //   - string conversion (WebIDL DOMString shaping in the facade), null handling,
 //     non-Element behaviour, deep trees, failure atomicity and wrapper identity
 //     are covered end to end;
-//   - error names/codes follow the frozen taxonomy: a non-Element attribute op
-//     fails with ERR_MAD_DOM_HIERARCHY, an invalid attribute name with
-//     ERR_MAD_DOM_INVALID_CHARACTER (list unchanged), a NUL textContent setter
-//     value with ERR_MAD_DOM_INVALID_CHARACTER (node unchanged), and a destroyed
-//     document with ERR_MAD_DOM_DOCUMENT_DESTROYED.
+//   - error names/codes follow the frozen taxonomy: an invalid attribute name
+//     fails with ERR_MAD_DOM_INVALID_CHARACTER (list unchanged), a NUL
+//     textContent setter value with ERR_MAD_DOM_INVALID_CHARACTER (node
+//     unchanged), and a destroyed document with ERR_MAD_DOM_DOCUMENT_DESTROYED.
+//     Since T48A a Text/Comment node holds no attribute members at all
+//     (happy-dom parity: reads undefined, calls throw TypeError), so no Core
+//     element check is reached for non-Element attribute access.
 //
 // Like the other native suites, the native-dependent block loads the locally
 // built artifact (build/mad-dom.node) and skips without one, so a clean
@@ -78,21 +80,25 @@ describe("attribute facade module shape (T25E)", () => {
     expect(Object.isFrozen(textContentSeam)).toBe(true);
   });
 
-  test("Node sits one level under HTMLElement.prototype (the T39 hierarchy) with no enumerable surface", () => {
-    expect(Object.getPrototypeOf(Node.prototype)).toBe(HTMLElement.prototype);
+  test("the T48A hierarchy: Element over Node, HTMLElement over Element, with no enumerable surface", () => {
+    expect(Object.getPrototypeOf(Element.prototype)).toBe(Node.prototype);
+    expect(Object.getPrototypeOf(HTMLElement.prototype)).toBe(Element.prototype);
     expect(Object.keys(Node.prototype)).toEqual([]);
   });
 });
 
 describe("attribute and textContent descriptors (T25E)", () => {
-  test("getAttribute, setAttribute, removeAttribute and hasAttribute are fixed method descriptors", () => {
+  test("getAttribute, setAttribute, removeAttribute and hasAttribute are fixed method descriptors on Element.prototype", () => {
     for (const name of ["getAttribute", "setAttribute", "removeAttribute", "hasAttribute"]) {
-      const descriptor = Object.getOwnPropertyDescriptor(Node.prototype, name);
+      const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, name);
       expect(descriptor, `${name} must be defined`).toBeDefined();
       expect(typeof descriptor.value).toBe("function");
       expect(descriptor.writable).toBe(false);
       expect(descriptor.enumerable).toBe(false);
       expect(descriptor.configurable).toBe(false);
+      // T48A: Text / Comment are plain Node wrappers and never hold the
+      // attribute members (matching happy-dom).
+      expect(Object.getOwnPropertyDescriptor(Node.prototype, name)).toBeUndefined();
     }
   });
 
@@ -120,10 +126,10 @@ describe("attribute and textContent install surface (T25E)", () => {
     };
     expect(() => installAttributes(mockCtx)).not.toThrow();
     expect(calls).toEqual([
-      ["method", Node.prototype, "getAttribute", expect.any(Function)],
-      ["method", Node.prototype, "setAttribute", expect.any(Function)],
-      ["method", Node.prototype, "removeAttribute", expect.any(Function)],
-      ["method", Node.prototype, "hasAttribute", expect.any(Function)],
+      ["method", Element.prototype, "getAttribute", expect.any(Function)],
+      ["method", Element.prototype, "setAttribute", expect.any(Function)],
+      ["method", Element.prototype, "removeAttribute", expect.any(Function)],
+      ["method", Element.prototype, "hasAttribute", expect.any(Function)],
     ]);
   });
 
@@ -258,21 +264,20 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
     }
   });
 
-  test("a non-Element node fails attribute operations with ERR_MAD_DOM_HIERARCHY", () => {
+  test("a non-Element node holds no attribute members (happy-dom parity, T48A)", () => {
     const win = createWindow();
     const text = win.document.createTextNode("hi");
     try {
-      for (const call of [
-        () => text.getAttribute("x"),
-        () => text.hasAttribute("x"),
-        () => text.setAttribute("x", "y"),
-        () => text.removeAttribute("x"),
-      ]) {
-        const err = thrown(call);
-        expect(err, "a non-Element attribute operation must throw").toBeInstanceOf(Error);
-        expect(err.code).toBe("ERR_MAD_DOM_HIERARCHY");
-        expect(err.message).toContain("HierarchyRequestError");
+      // T48A: the attribute methods live on Element.prototype, so a Text node
+      // reads undefined and calling them throws TypeError (not a function),
+      // exactly like happy-dom — no Core element check is reached.
+      for (const name of ["getAttribute", "setAttribute", "removeAttribute", "hasAttribute"]) {
+        expect(text[name], `${name} must be undefined on a Text node`).toBeUndefined();
       }
+      expect(thrown(() => text.getAttribute("x")).message).toContain("text.getAttribute is not a function");
+      expect(thrown(() => text.setAttribute("x", "y")).message).toContain("text.setAttribute is not a function");
+      expect(thrown(() => text.removeAttribute("x")).message).toContain("text.removeAttribute is not a function");
+      expect(thrown(() => text.hasAttribute("x")).message).toContain("text.hasAttribute is not a function");
     } finally {
       win.destroy();
     }

@@ -31,7 +31,7 @@
 
 import { afterAll, describe, expect, test } from "bun:test";
 import { createWindow, isNativeAvailable } from "../../index.js";
-import { Node } from "../../js/facade/extensions/node.js";
+import { Node, Element } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
 import { Document } from "../../js/facade/document.js";
 
@@ -88,13 +88,15 @@ describe("T39 HTMLElement prototype hierarchy", () => {
     }
   });
 
-  test("Node.prototype sits directly under HTMLElement.prototype", () => {
-    expect(Object.getPrototypeOf(Node.prototype)).toBe(HTMLElement.prototype);
-    expect(Object.getPrototypeOf(HTMLElement.prototype)).toBe(Object.prototype);
-    // The element-level reflection stays on Node.prototype (the element class).
-    expect(Object.getOwnPropertyDescriptor(Node.prototype, "id")).toBeDefined();
-    expect(Object.getOwnPropertyDescriptor(Node.prototype, "className")).toBeDefined();
-    expect(Object.getOwnPropertyDescriptor(Node.prototype, "title")).toBeUndefined();
+  test("the T48A hierarchy: Element over Node, HTMLElement over Element", () => {
+    expect(Object.getPrototypeOf(Element.prototype)).toBe(Node.prototype);
+    expect(Object.getPrototypeOf(HTMLElement.prototype)).toBe(Element.prototype);
+    // The element-level reflection lives on Element.prototype (the element
+    // class); the HTMLElement surface on HTMLElement.prototype.
+    expect(Object.getOwnPropertyDescriptor(Element.prototype, "id")).toBeDefined();
+    expect(Object.getOwnPropertyDescriptor(Element.prototype, "className")).toBeDefined();
+    expect(Object.getOwnPropertyDescriptor(Node.prototype, "id")).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(HTMLElement.prototype, "title")).toBeDefined();
   });
 
   test("document.activeElement is a fixed accessor", () => {

@@ -33,14 +33,30 @@
 // metadata was flipped from `"placeholder"` to `"implemented"` by the T23 gate
 // (tests/bun/seam.test.js pins that shape).
 
+import {
+  Node,
+  Element,
+  DocumentFragment,
+  ELEMENT_MINT_SYMBOL,
+  nodeHandleOf,
+  registerElementClass,
+  setElementFallbackClasses,
+  setRegisterMintedWrapper,
+  createNodeWrapper,
+} from "./classes.js";
 import { Document } from "../document.js";
+import { Window } from "../window.js";
 import { liveChildNodes } from "./child-nodelist.js";
 import { upgradeElementPrototype } from "./custom-elements.js";
 
-// The WHATWG HTML namespace URI (mirrors crates/mad-dom-core/src/dom/node.rs):
-// `nodeName` / `tagName` report the tag name uppercased only for elements in
-// this namespace, matching happy-dom.
-const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+export {
+  Node,
+  Element,
+  DocumentFragment,
+  ELEMENT_MINT_SYMBOL,
+  registerElementClass,
+  setElementFallbackClasses,
+};
 
 export const seam = Object.freeze({
   id: "facade/extensions/node",
@@ -49,41 +65,10 @@ export const seam = Object.freeze({
   status: "implemented",
 });
 
-// Native NodeHandle behind each Node facade. Weak so a facade never pins its
-// node; the native handle keeps its document's arena alive (T20 ownership
-// chain), and wrapper identity is produced by `ctx.wrap`, never by a facade
-// constructor.
-const NODE_HANDLES = new WeakMap();
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-/**
- * Facade wrapper for a native `NodeHandle` (minted by the native binding for
- * every Core node — Element, Text, Comment, DocumentFragment, …).
- *
- * Construction is restricted: it requires a genuine native node handle; every
- * other argument throws a `TypeError`, so no facade surface can fabricate a
- * node. Instances are normally minted through the unique conversion entry
- * `ctx.wrap`, never by calling this constructor directly from facade code.
- */
-export class Node {
-  constructor(nativeHandle) {
-    if (!isNodeHandle(nativeHandle)) {
-      throw new TypeError(
-        "Node can only be constructed from a genuine native Node handle",
-      );
-    }
-    NODE_HANDLES.set(this, nativeHandle);
-  }
-}
+// The WHATWG HTML namespace URI (mirrors crates/mad-dom-core/src/dom/node.rs):
+// `nodeName` / `tagName` report the tag name uppercased only for elements in
+// this namespace, matching happy-dom.
+const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 
 /**
  * Installs the node creation and navigation surface onto the facade.
@@ -94,7 +79,20 @@ export class Node {
  * native node that crosses back to JavaScript goes through `ctx.wrap`.
  */
 export function install(ctx) {
-  ctx.registerHandleType("NodeHandle", (handle) => new Node(handle));
+  ctx.registerHandleType("NodeHandle", createNodeWrapper);
+  setRegisterMintedWrapper(ctx.registerWrap);
+
+  // `window.Node` / `window.Element` / `window.DocumentFragment` — the WHATWG
+  // constructor accessors (T48A), matching the happy-dom window surface.
+  ctx.defineAccessor(Window.prototype, "Node", function getNode() {
+    return Node;
+  }, undefined);
+  ctx.defineAccessor(Window.prototype, "Element", function getElement() {
+    return Element;
+  }, undefined);
+  ctx.defineAccessor(Window.prototype, "DocumentFragment", function getDocumentFragment() {
+    return DocumentFragment;
+  }, undefined);
 
   // `document.createElement` / `document.createTextNode` (WHATWG names).
   //
@@ -124,7 +122,7 @@ export function install(ctx) {
   // one and the same facade object (strict equality), mirroring the native
   // per-document weak wrapper cache. `null` results pass through unchanged.
   ctx.defineAccessor(Node.prototype, "nodeType", function nodeType() {
-    return NODE_HANDLES.get(this).nodeType();
+    return nodeHandleOf(this).nodeType();
   }, undefined);
 
   // WHATWG nodeName: an element in the HTML namespace reports its tag name in
@@ -133,7 +131,7 @@ export function install(ctx) {
   // lowercased tag, ...). The serializers and selectors keep using the Core
   // lowercased local name, so this case change is only the observable accessor.
   ctx.defineAccessor(Node.prototype, "nodeName", function nodeName() {
-    const handle = NODE_HANDLES.get(this);
+    const handle = nodeHandleOf(this);
     if (handle === undefined) return undefined;
     const name = handle.nodeName();
     if (handle.nodeType() === 1 && handle.namespaceUri() === HTML_NAMESPACE) {
@@ -143,11 +141,11 @@ export function install(ctx) {
   }, undefined);
 
   // WHATWG Element.localName: the lowercased local tag name for an element
-  // (the Core `nodeName`), `undefined` on non-element nodes like happy-dom. A
-  // bare custom-class object without a native handle also reads `undefined`
-  // (the `new DefinedClass()` single-class deviation).
-  ctx.defineAccessor(Node.prototype, "localName", function localName() {
-    const handle = NODE_HANDLES.get(this);
+  // (the Core `nodeName`), `undefined` on non-element nodes like happy-dom. On
+  // `Element.prototype` (T48A): Text / Comment are plain `Node`s and read
+  // `undefined`.
+  ctx.defineAccessor(Element.prototype, "localName", function localName() {
+    const handle = nodeHandleOf(this);
     if (handle === undefined) return undefined;
     if (handle.nodeType() !== 1) return undefined;
     return handle.nodeName();
@@ -155,8 +153,8 @@ export function install(ctx) {
 
   // WHATWG Element.tagName: equal to `nodeName` for elements (uppercase for
   // HTML namespace elements), `undefined` on non-element nodes like happy-dom.
-  ctx.defineAccessor(Node.prototype, "tagName", function tagName() {
-    const handle = NODE_HANDLES.get(this);
+  ctx.defineAccessor(Element.prototype, "tagName", function tagName() {
+    const handle = nodeHandleOf(this);
     if (handle === undefined) return undefined;
     if (handle.nodeType() !== 1) return undefined;
     const name = handle.nodeName();
@@ -167,23 +165,23 @@ export function install(ctx) {
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "parentNode", function parentNode() {
-    return ctx.wrap(NODE_HANDLES.get(this).parentNode());
+    return ctx.wrap(nodeHandleOf(this).parentNode());
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "firstChild", function firstChild() {
-    return ctx.wrap(NODE_HANDLES.get(this).firstChild());
+    return ctx.wrap(nodeHandleOf(this).firstChild());
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "lastChild", function lastChild() {
-    return ctx.wrap(NODE_HANDLES.get(this).lastChild());
+    return ctx.wrap(nodeHandleOf(this).lastChild());
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "previousSibling", function previousSibling() {
-    return ctx.wrap(NODE_HANDLES.get(this).previousSibling());
+    return ctx.wrap(nodeHandleOf(this).previousSibling());
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "nextSibling", function nextSibling() {
-    return ctx.wrap(NODE_HANDLES.get(this).nextSibling());
+    return ctx.wrap(nodeHandleOf(this).nextSibling());
   }, undefined);
 
   // Ordered children as the T25D *live* `NodeList` bound to this parent. Every
@@ -194,6 +192,6 @@ export function install(ctx) {
   // snapshot-array form was replaced by the T25 gate; an empty `NodeList`
   // stands for a leaf node.
   ctx.defineAccessor(Node.prototype, "childNodes", function childNodes() {
-    return liveChildNodes(NODE_HANDLES.get(this));
+    return liveChildNodes(nodeHandleOf(this));
   }, undefined);
 }

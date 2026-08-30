@@ -57,6 +57,7 @@
 // import and array entry.
 
 import { Node } from "./node.js";
+import { HTMLInputElement, HTMLButtonElement } from "./html-element.js";
 import { Window } from "../window.js";
 import { Event, MouseEvent } from "./events.js";
 
@@ -69,18 +70,6 @@ export const seam = Object.freeze({
 
 // --- constructor accessor classes (single-class model) ----------------------
 
-/** `HTMLFormElement` facade base class (T40). */
-export class HTMLFormElement {}
-/** `HTMLInputElement` facade base class (T40). */
-export class HTMLInputElement {}
-/** `HTMLButtonElement` facade base class (T40). */
-export class HTMLButtonElement {}
-/** `HTMLSelectElement` facade base class (T40). */
-export class HTMLSelectElement {}
-/** `HTMLOptionElement` facade base class (T40). */
-export class HTMLOptionElement {}
-/** `HTMLTextAreaElement` facade base class (T40). */
-export class HTMLTextAreaElement {}
 /** `HTMLFormControlsCollection` facade base class (T40). */
 export class HTMLFormControlsCollection {}
 /** `HTMLOptionsCollection` facade base class (T40). */
@@ -659,76 +648,54 @@ export function install(ctx) {
 
   // --- click (input / button default actions) -------------------------------
   //
-  // Shadows `HTMLElement.prototype.click` (T39) on `Node.prototype`: for every
-  // non-form element it reproduces the T39 behavior exactly (a bubbling,
-  // cancelable, composed plain `click` event), while an `input` / `button` runs
-  // the happy-dom `dispatchEvent` default action — the checkbox/radio toggle
-  // before dispatch (restored on `preventDefault`) followed by the
-  // `input`/`change` sequence, and the submit/reset trigger for a
-  // `submit`/`reset` type.
-  ctx.defineMethod(Node.prototype, "click", function click() {
+  // Since T48A the per-tag classes sit *above* `HTMLElement`, so the T39 base
+  // `HTMLElement.prototype.click` would shadow any `Node.prototype` override.
+  // The form default actions therefore live on the `HTMLInputElement` /
+  // `HTMLButtonElement` prototypes: `click()` runs the happy-dom
+  // `dispatchEvent` default action — the checkbox/radio toggle before dispatch
+  // (restored on `preventDefault`) followed by the `input`/`change` sequence,
+  // and the submit/reset trigger for a `submit`/`reset` type. Every other
+  // element resolves the base `HTMLElement.prototype.click`.
+  const clickWithDefaultAction = function click() {
     const handle = facadeNodeHandle(ctx, this, "click");
-    const tag = tagOf(handle);
-    if (tag === "input" || tag === "button") {
-      if (this.disabled) return;
-      const type = this.type;
-      let previousChecked = null;
-      if (type === "checkbox" || type === "radio") {
-        previousChecked = this.checked;
-        handle.setInputChecked(type === "checkbox" ? !previousChecked : true);
-      }
-      const event = new MouseEvent("click", { bubbles: true, composed: true, cancelable: true });
-      this.dispatchEvent(event);
-      if (event.defaultPrevented) {
-        if (previousChecked !== null) handle.setInputChecked(previousChecked);
-        return;
-      }
-      if (type === "checkbox" || type === "radio") {
-        const changed = type === "checkbox" || !previousChecked;
-        if (changed && handle.isConnected()) {
-          this.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
-          this.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
-        }
-      } else if (type === "submit" || type === "reset") {
-        const form = this.form;
-        if (form) {
-          if (type === "submit" && handle.isConnected()) {
-            form.requestSubmit(this);
-          } else if (type === "reset") {
-            form.reset();
-          }
-        }
-      }
+    if (this.disabled) return;
+    const type = this.type;
+    let previousChecked = null;
+    if (type === "checkbox" || type === "radio") {
+      previousChecked = this.checked;
+      handle.setInputChecked(type === "checkbox" ? !previousChecked : true);
+    }
+    const event = new MouseEvent("click", { bubbles: true, composed: true, cancelable: true });
+    this.dispatchEvent(event);
+    if (event.defaultPrevented) {
+      if (previousChecked !== null) handle.setInputChecked(previousChecked);
       return;
     }
-    this.dispatchEvent(new Event("click", { bubbles: true, cancelable: true, composed: true }));
-  });
+    if (type === "checkbox" || type === "radio") {
+      const changed = type === "checkbox" || !previousChecked;
+      if (changed && handle.isConnected()) {
+        this.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+        this.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+      }
+    } else if (type === "submit" || type === "reset") {
+      const form = this.form;
+      if (form) {
+        if (type === "submit" && handle.isConnected()) {
+          form.requestSubmit(this);
+        } else if (type === "reset") {
+          form.reset();
+        }
+      }
+    }
+  };
+  ctx.defineMethod(HTMLInputElement.prototype, "click", clickWithDefaultAction);
+  ctx.defineMethod(HTMLButtonElement.prototype, "click", clickWithDefaultAction);
 
   // --- window constructor accessors ------------------------------------------
-
-  ctx.defineAccessor(Window.prototype, "HTMLFormElement", function getHTMLFormElement() {
-    return HTMLFormElement;
-  }, undefined);
-
-  ctx.defineAccessor(Window.prototype, "HTMLInputElement", function getHTMLInputElement() {
-    return HTMLInputElement;
-  }, undefined);
-
-  ctx.defineAccessor(Window.prototype, "HTMLButtonElement", function getHTMLButtonElement() {
-    return HTMLButtonElement;
-  }, undefined);
-
-  ctx.defineAccessor(Window.prototype, "HTMLSelectElement", function getHTMLSelectElement() {
-    return HTMLSelectElement;
-  }, undefined);
-
-  ctx.defineAccessor(Window.prototype, "HTMLOptionElement", function getHTMLOptionElement() {
-    return HTMLOptionElement;
-  }, undefined);
-
-  ctx.defineAccessor(Window.prototype, "HTMLTextAreaElement", function getHTMLTextAreaElement() {
-    return HTMLTextAreaElement;
-  }, undefined);
+  //
+  // The per-tag element classes (`window.HTMLFormElement`, `window.HTMLInput
+  // Element`, ...) are owned by the html-element extension (T48A); this module
+  // only exposes the collection and event classes.
 
   ctx.defineAccessor(Window.prototype, "HTMLFormControlsCollection", function getFormControlsCollection() {
     return HTMLFormControlsCollection;
