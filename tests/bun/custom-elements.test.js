@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 
 // T42 Custom Elements integration tests.
 //
@@ -44,7 +44,7 @@ async function flush() {
 const createdWindows = [];
 
 function makeWindow() {
-  const window = createWindow();
+  const window = new Window();
   createdWindows.push(window);
   return { window, document: window.document };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 
 // T45 Storage / Cookie integration tests.
 //
@@ -40,7 +40,7 @@ function thrown(fn) {
 
 describe.skipIf(!nativeAvailable)("storage (T45)", () => {
   test("an empty area reports length 0, null reads and an empty key list", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const storage = win.localStorage;
       expect(storage.length).toBe(0);
@@ -56,7 +56,7 @@ describe.skipIf(!nativeAvailable)("storage (T45)", () => {
   });
 
   test("setItem coerces values with String and reads them back verbatim", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const storage = win.localStorage;
       storage.setItem("a", 1);
@@ -77,7 +77,7 @@ describe.skipIf(!nativeAvailable)("storage (T45)", () => {
   });
 
   test("key ordering follows JS property order: integer-like keys first, then insertion", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const storage = win.localStorage;
       storage.clear();
@@ -96,7 +96,7 @@ describe.skipIf(!nativeAvailable)("storage (T45)", () => {
   });
 
   test("property reads and writes funnel through the storage area", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const storage = win.localStorage;
       storage.setItem("a", "1");
@@ -119,7 +119,7 @@ describe.skipIf(!nativeAvailable)("storage (T45)", () => {
   });
 
   test("removeItem and clear drop the stored keys", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const storage = win.localStorage;
       storage.setItem("a", "1");
@@ -136,7 +136,7 @@ describe.skipIf(!nativeAvailable)("storage (T45)", () => {
   });
 
   test("setItem / getItem / key never throw and no storage event is dispatched", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const storage = win.localStorage;
       // No quota limit on the detached-window baseline: bulk writes stay
@@ -157,8 +157,8 @@ describe.skipIf(!nativeAvailable)("storage (T45)", () => {
   });
 
   test("localStorage and sessionStorage are isolated areas, isolated across windows", () => {
-    const win = createWindow();
-    const second = createWindow();
+    const win = new Window();
+    const second = new Window();
     try {
       win.localStorage.setItem("shared", "ls");
       win.sessionStorage.setItem("shared", "ss");
@@ -178,7 +178,7 @@ describe.skipIf(!nativeAvailable)("storage (T45)", () => {
 
 describe.skipIf(!nativeAvailable)("cookies (T45)", () => {
   test("an empty jar reads back an empty string", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(win.document.cookie).toBe("");
     } finally {
@@ -187,7 +187,7 @@ describe.skipIf(!nativeAvailable)("cookies (T45)", () => {
   });
 
   test("cookie writes round-trip as key=value pairs in insertion order", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const document = win.document;
       document.cookie = "name=value";
@@ -205,7 +205,7 @@ describe.skipIf(!nativeAvailable)("cookies (T45)", () => {
   });
 
   test("an empty key is rejected and a value-less cookie is legal", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const document = win.document;
       document.cookie = "=novalue";
@@ -220,7 +220,7 @@ describe.skipIf(!nativeAvailable)("cookies (T45)", () => {
   });
 
   test("httpOnly cookies are hidden from document.cookie but replaced by name", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const document = win.document;
       document.cookie = "visible=1";
@@ -235,7 +235,7 @@ describe.skipIf(!nativeAvailable)("cookies (T45)", () => {
   });
 
   test("expired cookies (Expires / Max-Age) are dropped and never read back", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const document = win.document;
       document.cookie = "kept=1";
@@ -251,7 +251,7 @@ describe.skipIf(!nativeAvailable)("cookies (T45)", () => {
   });
 
   test("scope and prefix rules filter the jar deterministically", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const document = win.document;
       // about:blank: a Path=/ cookie never matches the "blank" pathname.
@@ -279,8 +279,8 @@ describe.skipIf(!nativeAvailable)("cookies (T45)", () => {
   });
 
   test("cookies are scoped to the owning window and isolated across windows", () => {
-    const winA = createWindow();
-    const winB = createWindow();
+    const winA = new Window();
+    const winB = new Window();
     try {
       winA.document.cookie = "only-a=1";
       expect(winA.document.cookie).toBe("only-a=1");

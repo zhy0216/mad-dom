@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, Window, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
+import { createWindow } from "../../js/facade/window.js";
 
 // T48 compatibility-closure surface tests.
 //
@@ -238,7 +239,10 @@ describe.skipIf(!nativeAvailable)("T48 Window constructibility", () => {
     configured.destroy();
   });
 
-  test("createWindow still hands back the same window surface", () => {
+  test("the facade createWindow compat alias hands back the same window surface", () => {
+    // T48E: createWindow is retired from the package entry (matching happy-dom);
+    // the facade module keeps it as an internal compat alias with the same
+    // surface as `new Window()`.
     const win = createWindow();
     expect(win).toBeInstanceOf(Window);
     win.destroy();

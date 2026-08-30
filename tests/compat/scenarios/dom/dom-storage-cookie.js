@@ -23,7 +23,7 @@ export async function run(api) {
 
   let window;
   try {
-    window = typeof entry.createWindow === "function" ? entry.createWindow() : new entry.Window();
+    window = new entry.Window();
   } catch (error) {
     api.record.error(error, "setup");
     return;
@@ -94,8 +94,7 @@ export async function run(api) {
     api.record.value("ls-isolation", localStorage.getItem("shared"));
     api.record.value("ss-isolation", sessionStorage.getItem("shared"));
     api.record.value("ls-length-isolated", localStorage.length);
-    const secondWindow =
-      typeof entry.createWindow === "function" ? entry.createWindow() : new entry.Window();
+    const secondWindow = new entry.Window();
     api.record.value("win2-ls-get", secondWindow.localStorage.getItem("shared"));
     api.record.value("win2-ls-length", secondWindow.localStorage.length);
 

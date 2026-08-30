@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Node, Element, DocumentFragment } from "../../js/facade/extensions/node.js";
 
 // T29 HTML API integration tests.
@@ -61,7 +61,7 @@ describe("T29 HTML API surface shape", () => {
 
 describe.skipIf(!nativeAvailable)("T29 ineligible node kinds", () => {
   test("text nodes read innerHTML/outerHTML undefined (happy-dom parity, T48A)", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const text = doc.createTextNode("hi");
@@ -83,7 +83,7 @@ describe.skipIf(!nativeAvailable)("T29 ineligible node kinds", () => {
 
 describe.skipIf(!nativeAvailable)("document structure accessors (T29)", () => {
   test("documentElement / head / body materialize the implied skeleton and keep identity", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       expect(doc.documentElement).toBeInstanceOf(Node);
@@ -106,7 +106,7 @@ describe.skipIf(!nativeAvailable)("document structure accessors (T29)", () => {
   });
 
   test("a write through body.innerHTML is visible to documentElement.outerHTML", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const body = doc.body;
@@ -121,7 +121,7 @@ describe.skipIf(!nativeAvailable)("document structure accessors (T29)", () => {
   });
 
   test("parseHtml loads a full document and the structure accessors reflect it", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const oldBody = doc.body;
@@ -146,7 +146,7 @@ describe.skipIf(!nativeAvailable)("document structure accessors (T29)", () => {
   });
 
   test("parseHtml of a bare fragment builds the implied skeleton", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       doc.parseHtml("<p>bare</p>");
@@ -161,7 +161,7 @@ describe.skipIf(!nativeAvailable)("document structure accessors (T29)", () => {
 
 describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
   test("parse → modify → serialize a common fragment", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const div = doc.createElement("div");
@@ -187,7 +187,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
   });
 
   test("setting innerHTML replaces children and detaches the old ones", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const div = doc.createElement("div");
@@ -206,7 +206,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
   });
 
   test("an empty setter clears the children", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const div = doc.createElement("div");
@@ -221,7 +221,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
   });
 
   test("the setter parses in the target's own context (table → tbody)", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const table = doc.createElement("table");
@@ -234,7 +234,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
   });
 
   test("entities and escaped markup round-trip", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const p = doc.createElement("p");
@@ -247,7 +247,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
   });
 
   test("the setter stringifies its value like a DOMString attribute", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const div = doc.createElement("div");
@@ -262,7 +262,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
   });
 
   test("innerHTML on a DocumentFragment replaces its children", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const frag = doc.createDocumentFragment();
@@ -282,7 +282,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
 
 describe.skipIf(!nativeAvailable)("outerHTML getter/setter (T29)", () => {
   test("outerHTML serializes the element itself", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const section = doc.createElement("section");
@@ -295,7 +295,7 @@ describe.skipIf(!nativeAvailable)("outerHTML getter/setter (T29)", () => {
   });
 
   test("setting outerHTML on a detached element is a no-op", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const div = doc.createElement("div");
@@ -310,7 +310,7 @@ describe.skipIf(!nativeAvailable)("outerHTML getter/setter (T29)", () => {
   });
 
   test("setting outerHTML replaces the element in its parent", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const host = doc.createElement("div");
@@ -332,7 +332,7 @@ describe.skipIf(!nativeAvailable)("outerHTML getter/setter (T29)", () => {
 
 describe.skipIf(!nativeAvailable)("failure atomicity and errors (T29)", () => {
   test("a failed setter leaves the target unchanged", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const div = doc.createElement("div");
@@ -352,7 +352,7 @@ describe.skipIf(!nativeAvailable)("failure atomicity and errors (T29)", () => {
   });
 
   test("a destroyed document fails every T29 surface per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const div = doc.createElement("div");
     const body = doc.body;

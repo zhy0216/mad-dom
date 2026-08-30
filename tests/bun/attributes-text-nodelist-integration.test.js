@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, Document, isNativeAvailable } from "../../index.js";
+import { Window, Document, isNativeAvailable } from "../../index.js";
 import { Node } from "../../js/facade/extensions/node.js";
 
 // T25 cross-module integration gate tests.
@@ -68,7 +68,6 @@ describe("M4 vertical slice entry surface (T25)", () => {
       "WheelEvent",
       "Window",
       "createDocument",
-      "createWindow",
       "isNativeAvailable",
       "liveDocumentCount",
       "nativeAbiVersion",
@@ -79,7 +78,7 @@ describe("M4 vertical slice entry surface (T25)", () => {
 
 describe.skipIf(!nativeAvailable)("cross-module observation ordering (T25)", () => {
   test("an existing childNodes object reflects append/insert/remove/replace immediately", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const parent = doc.createElement("parent");
@@ -110,7 +109,7 @@ describe.skipIf(!nativeAvailable)("cross-module observation ordering (T25)", () 
   });
 
   test("an existing childNodes object reflects a textContent write immediately", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const el = doc.createElement("div");
@@ -137,7 +136,7 @@ describe.skipIf(!nativeAvailable)("cross-module observation ordering (T25)", () 
   });
 
   test("textContent reads observe tree mutations in document order", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const root = doc.createElement("root");
@@ -164,7 +163,7 @@ describe.skipIf(!nativeAvailable)("cross-module observation ordering (T25)", () 
   });
 
   test("attribute writes are immediate and survive textContent and mutation writes", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const el = doc.createElement("div");
@@ -192,7 +191,7 @@ describe.skipIf(!nativeAvailable)("cross-module observation ordering (T25)", () 
   });
 
   test("attributes and textContent share the single Core state source", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const el = doc.createElement("div");
@@ -214,7 +213,7 @@ describe.skipIf(!nativeAvailable)("cross-module observation ordering (T25)", () 
   });
 
   test("one and the same live NodeList object is handed back per parent", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const parent = doc.createElement("div");
@@ -228,7 +227,7 @@ describe.skipIf(!nativeAvailable)("cross-module observation ordering (T25)", () 
   });
 
   test("a destroyed document fails every M4 surface per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const el = doc.createElement("div");
     el.setAttribute("id", "x");

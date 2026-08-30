@@ -2,8 +2,12 @@
 //
 // Single source of the public runtime surface: the root index.js re-exports
 // everything from here, so the package entry, the facade wiring and the type
-// declaration can never drift apart. `createWindow`, `Window` and `Document`
-// come from the js/facade layer (T22B); the node creation and navigation
+// declaration can never drift apart. `Window` and `Document` come from the
+// js/facade layer (T22B); since T48E the package entry follows the happy-dom
+// surface shape and no longer exports the `createWindow` convenience — the
+// public construction path is `new Window()` / `new Window(options)` (the
+// facade module keeps `createWindow` only as an internal compat alias). The
+// node creation and navigation
 // surface (T23B), the tree mutation surface (T24C) and the T25 attribute /
 // textContent / live childNodes surface are installed onto the facade classes
 // by the registry, so no new export is needed there — the shared entry keeps
@@ -20,7 +24,7 @@ import { createRequire } from "node:module";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createWindow, Window } from "./facade/window.js";
+import { Window } from "./facade/window.js";
 import { Document } from "./facade/document.js";
 import {
   CustomEvent,
@@ -127,4 +131,4 @@ export function nativeAbiVersion() {
   return loadNative().abiVersion();
 }
 
-export { createWindow, Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum, CSSStyleDeclaration, CSSRule, CSSStyleSheet, CSSStyleRule, CSSMediaRule, CSSKeyframesRule, CSSKeyframeRule, CSSFontFaceRule, CSSSupportsRule, CSSGroupingRule, CSSConditionRule, CSSContainerRule, CSSScopeRule, CSSStyleValue, CSSKeywordValue, MediaList, MediaQueryListEvent };
+export { Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum, CSSStyleDeclaration, CSSRule, CSSStyleSheet, CSSStyleRule, CSSMediaRule, CSSKeyframesRule, CSSKeyframeRule, CSSFontFaceRule, CSSSupportsRule, CSSGroupingRule, CSSConditionRule, CSSContainerRule, CSSScopeRule, CSSStyleValue, CSSKeywordValue, MediaList, MediaQueryListEvent };

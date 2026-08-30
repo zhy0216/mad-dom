@@ -16,7 +16,7 @@ export async function run(api) {
 
   let window;
   try {
-    window = typeof entry.createWindow === "function" ? entry.createWindow() : new entry.Window();
+    window = new entry.Window();
   } catch (error) {
     api.record.error(error, "setup");
     return;

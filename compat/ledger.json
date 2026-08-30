@@ -149,11 +149,9 @@
     {
       "id": "hc-diff-node-create-append-serialize",
       "suite": "diff",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-create-append-serialize",
-      "reason": "T48 closed the document-readyState gap (now \"interactive\") and the Element.nodeName casing gap (HTML elements now report the uppercased tag, so the body snapshot's nodeName matches happy-dom byte for byte). The single remaining difference is the entry shape: mad-dom exports the extra createWindow() convenience while happy-dom's package entry does not, so `typeof entry.createWindow` reads \"function\" on mad-dom and \"undefined\" on happy-dom. Aligning the entry surface (making `new Window()` the documented construction path and retiring or masking the createWindow export) is tracked by the follow-up todo T48E; the scenario keeps recording the difference so the ledger stays honest until then.",
-      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T48"
     },
     {
@@ -175,11 +173,9 @@
     {
       "id": "hc-diff-selector-query-identity",
       "suite": "diff",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-query-selector-identity",
-      "reason": "T48 closed the Element.nodeName casing gap (HTML elements now report the uppercased tag, so the querySelectorAll list snapshot's nodeName fields match happy-dom). The single remaining difference is the entry shape: mad-dom exports the extra createWindow() convenience while happy-dom's package entry does not, so `typeof entry.createWindow` differs. Aligning the entry surface is tracked by the follow-up todo T48E; the scenario keeps recording the difference so the ledger stays honest until then.",
-      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T48"
     },
     {

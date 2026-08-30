@@ -130,8 +130,8 @@ bun tests/compat/runner/run.js [paths...] [--report] [--selftest] [--json]
 | `selftest-isolation-read` | mock | 通过：在另一个探针里断言无污染；bun test 另断言两侧 pid 不同 |
 | `selftest-error-shape`（divergent/） | mock | 故意失败：`errors[0].phase`、`errors[1].name`、`errors[1].message`、`values.sync-mode.value` |
 | `selftest-dom-snapshot-events`（divergent/） | mock | 故意失败：事件顺序 ×2、`snapshots.tree.attributes.id`（left-only）、文本 data、outerHTML |
-| `dom-create-append-serialize` | real | 报告：body 结构已实现（T29），outerHTML 逐字节一致；querySelector / readyState / .attributes / namespaceURI / nodeName 大小写仍为缺口 |
-| `dom-query-selector-identity` | real | 报告：body.innerHTML 已实现（T29）；querySelectorAll / getElementById / click 冒泡仍为缺口 |
+| `dom-create-append-serialize` | real | 通过（T48E）：body 结构、outerHTML、readyState、nodeName 大小写与入口形态均逐字节一致 |
+| `dom-query-selector-identity` | real | 通过（T48E）：querySelectorAll / getElementById / click 冒泡与入口形态均一致 |
 | `dom-inner-outer-html` | real | 通过（T29）：documentElement/head/body 与 innerHTML/outerHTML getter/setter 观察逐一一致 |
 
 mock-fail 的 5 处种子差异全部注明在 `mocks.js` 头注释（管线事件乱序、同步抛改
@@ -139,10 +139,10 @@ mock-fail 的 5 处种子差异全部注明在 `mocks.js` 头注释（管线事�
 
 ## 真实差分与 T11 的接缝
 
-真实场景（`dom/`）当前的差异是**真实兼容缺口**：MAD DOM 处于 pre-alpha，
-`createWindow()` 抛 `Error("mad-dom is in pre-alpha development and does not
-implement Window yet.")`，探针把它作为 setup 阶段异常记录，happy-dom 侧则记录
-完整观测。这些差异：
+真实场景（`dom/`）通过公共入口 `new Window()` 获取窗口。当真实兼容缺口存在时
+（报告为差异路径），它们在 `--report`（`npm run compat:differential`）下**如实
+打印、不作为失败**；T48E 已把此前最后两条入口形态缺口清零，当前真实差分全绿。
+这些差异：
 
 - 在 `--report`（`npm run compat:differential`）下**如实打印、不作为失败**；
 - `--json` 报告含完整规范化记录与差异路径，供 T11 生成

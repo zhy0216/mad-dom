@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, Document, isNativeAvailable } from "../../index.js";
+import { Window, Document, isNativeAvailable } from "../../index.js";
 import { Node } from "../../js/facade/extensions/node.js";
 
 // T23 cross-layer integration smoke tests.
@@ -60,7 +60,6 @@ describe("root entry node surface (T23)", () => {
       "WheelEvent",
       "Window",
       "createDocument",
-      "createWindow",
       "isNativeAvailable",
       "liveDocumentCount",
       "nativeAbiVersion",
@@ -81,7 +80,7 @@ describe("root entry node surface (T23)", () => {
 
   test("the Node navigation surface is a non-enumerable accessor set on Node.prototype (T48A per-tag direct prototype)", () => {
     if (!nativeAvailable) return;
-    const win = createWindow();
+    const win = new Window();
     const div = win.document.createElement("div");
     // T48A: the direct prototype is the per-tag class (empty), so the
     // navigation accessors are inherited from Node.prototype — present: false
@@ -110,7 +109,7 @@ describe("root entry node surface (T23)", () => {
 
 describe.skipIf(!nativeAvailable)("root entry node creation and navigation (T23)", () => {
   test("createElement / createTextNode mint detached Element and Text through the entry", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const div = doc.createElement("div");
     const text = doc.createTextNode("hello");
@@ -132,7 +131,7 @@ describe.skipIf(!nativeAvailable)("root entry node creation and navigation (T23)
   });
 
   test("each facade create call mints a distinct node", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const a = doc.createElement("div");
     const b = doc.createElement("div");
@@ -146,7 +145,7 @@ describe.skipIf(!nativeAvailable)("root entry node creation and navigation (T23)
   });
 
   test("after entry-level destroy every creation and navigation read fails per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const div = doc.createElement("div");
     const text = doc.createTextNode("x");

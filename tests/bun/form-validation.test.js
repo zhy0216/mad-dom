@@ -29,7 +29,7 @@
 // suites.
 
 import { afterAll, describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Node } from "../../js/facade/extensions/node.js";
 
 const nativeAvailable = isNativeAvailable();
@@ -37,7 +37,7 @@ const nativeAvailable = isNativeAvailable();
 const createdWindows = [];
 
 function freshWindow() {
-  const win = createWindow();
+  const win = new Window();
   createdWindows.push(win);
   return win;
 }

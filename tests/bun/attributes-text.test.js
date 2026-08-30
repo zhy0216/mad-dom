@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Node, Element } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
 import {
@@ -154,7 +154,7 @@ describe("attribute and textContent install surface (T25E)", () => {
 
 describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () => {
   test("get/set/has/remove round-trip and observe immediate changes", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       expect(el.getAttribute("class")).toBeNull();
@@ -181,7 +181,7 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
   });
 
   test("multiple attributes coexist and reads stay independent", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("a", "1");
@@ -202,7 +202,7 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
   });
 
   test("values are stored verbatim: empty, whitespace, multi-byte and empty-name lookups", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("data-empty", "");
@@ -224,7 +224,7 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
   });
 
   test("WebIDL DOMString argument shaping converts non-string values", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("n", 123);
@@ -248,7 +248,7 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
   });
 
   test("invalid attribute names fail with ERR_MAD_DOM_INVALID_CHARACTER and stay atomic", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       for (const bad of ["", "has space", "-dash"]) {
@@ -269,7 +269,7 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
   });
 
   test("a non-Element node holds no attribute members (happy-dom parity, T48A)", () => {
-    const win = createWindow();
+    const win = new Window();
     const text = win.document.createTextNode("hi");
     try {
       // T48A: the attribute methods live on Element.prototype, so a Text node
@@ -288,7 +288,7 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
   });
 
   test("a destroyed document fails every attribute read/write per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     el.setAttribute("id", "x");
     win.destroy();
@@ -309,7 +309,7 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
 
 describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   test("the getter/setter round-trips and reflects immediate changes", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       expect(el.textContent).toBe("");
@@ -323,7 +323,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("the setter converts null to the empty string and clears children", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.textContent = "x";
@@ -339,7 +339,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("WebIDL DOMString shaping converts non-string setter values", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.textContent = 42;
@@ -354,7 +354,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("setting textContent replaces children with one text node and syncs navigation/childNodes", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const el = doc.createElement("div");
     try {
@@ -376,7 +376,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("the setter with an empty value clears every child", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const el = doc.createElement("div");
     try {
@@ -393,7 +393,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("deep trees read the tree-order concatenation of descendant text", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const root = doc.createElement("root");
     try {
@@ -417,7 +417,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("text nodes read and set their own data", () => {
-    const win = createWindow();
+    const win = new Window();
     const text = win.document.createTextNode("data");
     try {
       expect(text.textContent).toBe("data");
@@ -430,7 +430,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("a NUL byte in the setter is stored verbatim (T48B happy-dom parity)", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const el = doc.createElement("div");
     const text = doc.createTextNode("keep");
@@ -450,7 +450,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("wrapper identity is stable through textContent writes and reads", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const el = doc.createElement("div");
     try {
@@ -473,7 +473,7 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
   });
 
   test("a destroyed document fails every textContent read/write per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     win.destroy();
 

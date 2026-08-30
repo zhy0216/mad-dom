@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
 import { StaticNodeList } from "../../js/facade/extensions/query.js";
 import { Node, Element, DocumentFragment } from "../../js/facade/extensions/node.js";
@@ -84,7 +84,7 @@ describe("T31 selector query surface shape", () => {
 
 describe.skipIf(!nativeAvailable)("querySelectorAll (T31)", () => {
   test("returns a static NodeList snapshot in document order", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const items = doc.querySelectorAll("li.item");
@@ -104,7 +104,7 @@ describe.skipIf(!nativeAvailable)("querySelectorAll (T31)", () => {
   });
 
   test("a later mutation does not change an already returned collection", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const captured = doc.querySelectorAll("li.item");
@@ -122,7 +122,7 @@ describe.skipIf(!nativeAvailable)("querySelectorAll (T31)", () => {
   });
 
   test("each call returns a fresh collection while elements keep identity", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const first = doc.querySelectorAll("li.item");
@@ -137,7 +137,7 @@ describe.skipIf(!nativeAvailable)("querySelectorAll (T31)", () => {
   });
 
   test("an element scope matches descendants only", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const list = doc.getElementById("list");
@@ -154,7 +154,7 @@ describe.skipIf(!nativeAvailable)("querySelectorAll (T31)", () => {
 
 describe.skipIf(!nativeAvailable)("querySelector (T31)", () => {
   test("returns the first document-order match or null", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       expect(doc.querySelector("li.item").getAttribute("data-i")).toBe("0");
@@ -162,7 +162,7 @@ describe.skipIf(!nativeAvailable)("querySelector (T31)", () => {
       expect(doc.querySelector("li.missing")).toBeNull();
 
       // The implied skeleton is discoverable on a fresh window.
-      const fresh = createWindow();
+      const fresh = new Window();
       try {
         expect(fresh.document.querySelector("body").nodeName).toBe("BODY");
         expect(fresh.document.querySelector("p")).toBeNull();
@@ -175,7 +175,7 @@ describe.skipIf(!nativeAvailable)("querySelector (T31)", () => {
   });
 
   test("a selector with a syntax error throws the frozen taxonomy", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const err = thrown(() => doc.querySelector("div:::"));
@@ -189,7 +189,7 @@ describe.skipIf(!nativeAvailable)("querySelector (T31)", () => {
   });
 
   test("WebIDL DOMString shaping applies to the selector argument", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const li = doc.querySelector(".item");
@@ -206,7 +206,7 @@ describe.skipIf(!nativeAvailable)("querySelector (T31)", () => {
 
 describe.skipIf(!nativeAvailable)("matches and closest (T31)", () => {
   test("matches tests the element itself", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const second = doc.querySelectorAll("li.item")[1];
@@ -220,7 +220,7 @@ describe.skipIf(!nativeAvailable)("matches and closest (T31)", () => {
   });
 
   test("closest walks up from the receiver itself", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const second = doc.querySelectorAll("li.item")[1];
@@ -238,7 +238,7 @@ describe.skipIf(!nativeAvailable)("matches and closest (T31)", () => {
 
 describe.skipIf(!nativeAvailable)("getElementById (T31)", () => {
   test("returns the first matching element or null", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const list = doc.getElementById("list");
@@ -251,7 +251,7 @@ describe.skipIf(!nativeAvailable)("getElementById (T31)", () => {
   });
 
   test("a fresh document has nothing to find", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(win.document.getElementById("anything")).toBeNull();
     } finally {
@@ -262,7 +262,7 @@ describe.skipIf(!nativeAvailable)("getElementById (T31)", () => {
 
 describe.skipIf(!nativeAvailable)("query identity (T31)", () => {
   test("query results are the same wrappers across entry points", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const list = doc.getElementById("list");
@@ -279,7 +279,7 @@ describe.skipIf(!nativeAvailable)("query identity (T31)", () => {
 
 describe.skipIf(!nativeAvailable)("static NodeList surface (T31)", () => {
   test("forEach / entries / keys / values / iterator behave like a NodeList", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const items = doc.querySelectorAll("li.item");
@@ -303,7 +303,7 @@ describe.skipIf(!nativeAvailable)("static NodeList surface (T31)", () => {
 
 describe.skipIf(!nativeAvailable)("query errors (T31)", () => {
   test("non-element receivers hold no query members (T48A happy-dom parity)", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const text = doc.createTextNode("plain");
@@ -324,7 +324,7 @@ describe.skipIf(!nativeAvailable)("query errors (T31)", () => {
   });
 
   test("a destroyed document fails every query surface per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     build(win);
     const li = doc.querySelector(".item");

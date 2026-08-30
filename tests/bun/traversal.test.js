@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
 import { Node } from "../../js/facade/extensions/node.js";
 import { NodeFilter, NodeIterator, TreeWalker } from "../../js/facade/extensions/tree-traversal.js";
-import { Window } from "../../js/facade/window.js";
 
 // T35 TreeWalker / NodeIterator integration tests.
 //
@@ -136,7 +135,7 @@ describe("T35 traversal surface shape", () => {
 
 describe.skipIf(!nativeAvailable)("T35 TreeWalker order and navigation", () => {
   test("nextNode visits the subtree in document pre-order", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -151,7 +150,7 @@ describe.skipIf(!nativeAvailable)("T35 TreeWalker order and navigation", () => {
   });
 
   test("previousNode walks the subtree backwards", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -166,7 +165,7 @@ describe.skipIf(!nativeAvailable)("T35 TreeWalker order and navigation", () => {
   });
 
   test("directional methods move the current node", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -187,7 +186,7 @@ describe.skipIf(!nativeAvailable)("T35 TreeWalker order and navigation", () => {
   });
 
   test("currentNode is settable and identity is stable through ctx.wrap", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -203,7 +202,7 @@ describe.skipIf(!nativeAvailable)("T35 TreeWalker order and navigation", () => {
 
 describe.skipIf(!nativeAvailable)("T35 filtering and whatToShow", () => {
   test("a REJECT filter prunes the rejected subtree", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(
@@ -218,7 +217,7 @@ describe.skipIf(!nativeAvailable)("T35 filtering and whatToShow", () => {
   });
 
   test("a SKIP filter descends into the skipped subtree", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(
@@ -233,7 +232,7 @@ describe.skipIf(!nativeAvailable)("T35 filtering and whatToShow", () => {
   });
 
   test("an acceptNode object filter keeps `this` bound to the object", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       let seenThis = null;
@@ -252,7 +251,7 @@ describe.skipIf(!nativeAvailable)("T35 filtering and whatToShow", () => {
   });
 
   test("whatToShow masks node types inline", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       // SHOW_TEXT over an all-element subtree yields nothing.
@@ -274,7 +273,7 @@ describe.skipIf(!nativeAvailable)("T35 filtering and whatToShow", () => {
   });
 
   test("whatToShow is returned raw (the -1 default) while filtering uses the mask", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(env.body);
@@ -290,7 +289,7 @@ describe.skipIf(!nativeAvailable)("T35 filtering and whatToShow", () => {
 
 describe.skipIf(!nativeAvailable)("T35 NodeIterator", () => {
   test("the first nextNode returns the root, then walks in document order", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const iterator = env.doc.createNodeIterator(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -304,7 +303,7 @@ describe.skipIf(!nativeAvailable)("T35 NodeIterator", () => {
   });
 
   test("the first nextNode skips a rejected root", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const iterator = env.doc.createNodeIterator(
@@ -320,7 +319,7 @@ describe.skipIf(!nativeAvailable)("T35 NodeIterator", () => {
   });
 
   test("previousNode walks backwards and nextNode resumes forward", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const iterator = env.doc.createNodeIterator(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -339,7 +338,7 @@ describe.skipIf(!nativeAvailable)("T35 NodeIterator", () => {
 
 describe.skipIf(!nativeAvailable)("T35 mutation and reentrancy", () => {
   test("removing a node mid-walk never leaves the walker touching a dangling id", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -354,7 +353,7 @@ describe.skipIf(!nativeAvailable)("T35 mutation and reentrancy", () => {
   });
 
   test("removing a node mid-iterator never leaves the iterator touching a dangling id", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const iterator = env.doc.createNodeIterator(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -371,7 +370,7 @@ describe.skipIf(!nativeAvailable)("T35 mutation and reentrancy", () => {
   });
 
   test("a filter that mutates the tree is observed by the next step", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(
@@ -394,7 +393,7 @@ describe.skipIf(!nativeAvailable)("T35 mutation and reentrancy", () => {
   });
 
   test("a throwing filter propagates and leaves the current node unchanged", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(env.body, win.NodeFilter.SHOW_ELEMENT, () => {
@@ -412,7 +411,7 @@ describe.skipIf(!nativeAvailable)("T35 mutation and reentrancy", () => {
 
 describe.skipIf(!nativeAvailable)("T35 errors", () => {
   test("a non-Node root throws a TypeError", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const error = thrown(() => env.doc.createTreeWalker({}));
@@ -425,7 +424,7 @@ describe.skipIf(!nativeAvailable)("T35 errors", () => {
   });
 
   test("a non-Node currentNode assignment throws a TypeError", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const env = build(win);
       const walker = env.doc.createTreeWalker(env.body, win.NodeFilter.SHOW_ELEMENT);
@@ -439,7 +438,7 @@ describe.skipIf(!nativeAvailable)("T35 errors", () => {
   });
 
   test("a destroyed document fails every Core-touching traversal surface per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const env = build(win);
     const walker = env.doc.createTreeWalker(env.body, win.NodeFilter.SHOW_ELEMENT);
     const iterator = env.doc.createNodeIterator(env.body, win.NodeFilter.SHOW_ELEMENT);

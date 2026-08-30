@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
 import { Range, Selection } from "../../js/facade/extensions/range-selection.js";
 import { Node } from "../../js/facade/extensions/node.js";
-import { Window } from "../../js/facade/window.js";
 
 // T36 Range / Selection integration tests.
 //
@@ -143,7 +142,7 @@ describe("T36 Range/Selection surface shape", () => {
     expect(Range.START_TO_END).toBe(1);
     expect(Range.END_TO_END).toBe(2);
     expect(Range.END_TO_START).toBe(3);
-    const win = createWindow();
+    const win = new Window();
     try {
       const r = win.document.createRange();
       expect(r.START_TO_START).toBe(0);
@@ -158,7 +157,7 @@ describe("T36 Range/Selection surface shape", () => {
 
 describe.skipIf(!nativeAvailable)("T36 Range boundary and comparisons", () => {
   test("a fresh range is collapsed at the document root", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       const r = doc.createRange();
@@ -174,7 +173,7 @@ describe.skipIf(!nativeAvailable)("T36 Range boundary and comparisons", () => {
   });
 
   test("setStart/setEnd select a text slice", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, text } = build(win);
       const r = doc.createRange();
@@ -193,7 +192,7 @@ describe.skipIf(!nativeAvailable)("T36 Range boundary and comparisons", () => {
   });
 
   test("setEnd before the start collapses at the earlier point", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, text } = build(win);
       const r = doc.createRange();
@@ -208,7 +207,7 @@ describe.skipIf(!nativeAvailable)("T36 Range boundary and comparisons", () => {
   });
 
   test("selectNode and selectNodeContents set the boundary points", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p, b } = build(win);
       const r = doc.createRange();
@@ -228,7 +227,7 @@ describe.skipIf(!nativeAvailable)("T36 Range boundary and comparisons", () => {
   });
 
   test("setStartBefore/After and setEndBefore/After address the sibling offsets", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p, b } = build(win);
       const r = doc.createRange();
@@ -245,7 +244,7 @@ describe.skipIf(!nativeAvailable)("T36 Range boundary and comparisons", () => {
   });
 
   test("compareBoundaryPoints returns -1/0/1 in all four directions", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p, b } = build(win);
       const rA = doc.createRange();
@@ -263,7 +262,7 @@ describe.skipIf(!nativeAvailable)("T36 Range boundary and comparisons", () => {
   });
 
   test("comparePoint / isPointInRange / intersectsNode agree", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p, text, b } = build(win);
       // A range over the whole paragraph: every descendant position is inside.
@@ -293,7 +292,7 @@ describe.skipIf(!nativeAvailable)("T36 Range boundary and comparisons", () => {
 
 describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
   test("cloneContents copies without mutating the tree", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p } = build(win);
       const r = doc.createRange();
@@ -311,7 +310,7 @@ describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
   });
 
   test("deleteContents truncates a same-node text range without collapsing", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       doc.body.innerHTML = '<p id="p1">abcdef</p>';
@@ -331,7 +330,7 @@ describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
   });
 
   test("deleteContents collapses a cross-node range", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       doc.body.innerHTML = '<p id="p1">abc <b>def</b> ghi</p>';
@@ -351,7 +350,7 @@ describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
   });
 
   test("extractContents moves the selected contents into a fragment", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       doc.body.innerHTML = '<p id="p1">abcdef</p>';
@@ -373,7 +372,7 @@ describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
   });
 
   test("extractContents over an element range collapses the range", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p } = build(win);
       const r = doc.createRange();
@@ -393,7 +392,7 @@ describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
   });
 
   test("insertNode splits a text container and moves the collapsed end", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       doc.body.innerHTML = '<p id="p1">abc</p>';
@@ -417,7 +416,7 @@ describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
   });
 
   test("surroundContents wraps the contents and re-selects the new parent", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       doc.body.innerHTML = '<p id="p1"><b>world</b></p>';
@@ -439,7 +438,7 @@ describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
   });
 
   test("cloneRange copies the boundary points and detach is a no-op", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, text } = build(win);
       const r = doc.createRange();
@@ -461,7 +460,7 @@ describe.skipIf(!nativeAvailable)("T36 Range content operations", () => {
 
 describe.skipIf(!nativeAvailable)("T36 mutation interplay", () => {
   test("offsets clamp after a character-data change", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       doc.body.innerHTML = '<p id="p1">abcdef</p>';
@@ -480,7 +479,7 @@ describe.skipIf(!nativeAvailable)("T36 mutation interplay", () => {
   });
 
   test("a removed container stays readable (no dangling boundary)", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       doc.body.innerHTML = '<p id="p1">abcdef</p>';
@@ -504,7 +503,7 @@ describe.skipIf(!nativeAvailable)("T36 mutation interplay", () => {
 
 describe.skipIf(!nativeAvailable)("T36 Selection", () => {
   test("document and window expose one Selection per document", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       const sel = doc.getSelection();
@@ -523,7 +522,7 @@ describe.skipIf(!nativeAvailable)("T36 Selection", () => {
   });
 
   test("addRange / getRangeAt / removeRange / removeAllRanges manage the range", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, text } = build(win);
       const sel = doc.getSelection();
@@ -558,7 +557,7 @@ describe.skipIf(!nativeAvailable)("T36 Selection", () => {
   });
 
   test("extend moves the focus and tracks the direction", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p, text } = build(win);
       const sel = doc.getSelection();
@@ -583,7 +582,7 @@ describe.skipIf(!nativeAvailable)("T36 Selection", () => {
   });
 
   test("setBaseAndExtent and selectAllChildren set the direction", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p, text } = build(win);
       const sel = doc.getSelection();
@@ -607,7 +606,7 @@ describe.skipIf(!nativeAvailable)("T36 Selection", () => {
   });
 
   test("collapse / setPosition / collapseToStart / collapseToEnd", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       doc.body.innerHTML = '<p id="p1">abcdef</p>';
@@ -635,7 +634,7 @@ describe.skipIf(!nativeAvailable)("T36 Selection", () => {
   });
 
   test("containsNode and deleteFromDocument", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, p, text, b } = build(win);
       const sel = doc.getSelection();
@@ -653,7 +652,7 @@ describe.skipIf(!nativeAvailable)("T36 Selection", () => {
   });
 
   test("selectionchange fires once per associated-range change", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, text } = build(win);
       let events = 0;
@@ -678,7 +677,7 @@ describe.skipIf(!nativeAvailable)("T36 Selection", () => {
 
 describe.skipIf(!nativeAvailable)("T36 errors", () => {
   test("oversized offsets and parentless selectNode throw the frozen codes", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, text } = build(win);
       const r = doc.createRange();
@@ -697,7 +696,7 @@ describe.skipIf(!nativeAvailable)("T36 errors", () => {
   });
 
   test("non-Range arguments throw a TypeError", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       const r = doc.createRange();
@@ -711,7 +710,7 @@ describe.skipIf(!nativeAvailable)("T36 errors", () => {
   });
 
   test("a destroyed document fails every Core-touching surface per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const { doc, text } = build(win);
     const r = doc.createRange();
     r.setStart(text, 0);
@@ -740,8 +739,8 @@ describe.skipIf(!nativeAvailable)("T36 errors", () => {
   });
 
   test("a foreign range fails compareBoundaryPoints with WrongDocument", () => {
-    const win = createWindow();
-    const other = createWindow();
+    const win = new Window();
+    const other = new Window();
     try {
       const { doc, p } = build(win);
       other.document.body.innerHTML = "<x></x>";

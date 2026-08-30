@@ -1,8 +1,8 @@
 // Negative fixture: wrong argument types passed to public methods.
 // Every marked line below MUST be rejected by BOTH dom-under-test targets.
-// Instances are typed through function parameters because MAD DOM only mints
-// windows through createWindow() — its Window/Document are not constructible
-// from user code (they require a genuine native handle).
+// Instances are typed through function parameters so the fixture stays a pure
+// signature check (no window construction on either target; `new Window()` is
+// the package-entry path since T48E).
 import { Document, Window } from "dom-under-test";
 
 function rejectWrongArgumentTypes(window: Window, document: Document): void {

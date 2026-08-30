@@ -29,7 +29,7 @@
 
 import { afterAll, describe, expect, test } from "bun:test";
 import {
-  createWindow,
+  Window,
   CSSRule,
   CSSStyleDeclaration,
   CSSStyleSheet,
@@ -41,7 +41,7 @@ const nativeAvailable = isNativeAvailable();
 const createdWindows = [];
 
 function freshWindow() {
-  const win = createWindow();
+  const win = new Window();
   createdWindows.push(win);
   return win;
 }

@@ -15,9 +15,9 @@
 //     crashes on both sides surfaces as an infrastructure error (exit 2),
 //     never a silent pass;
 //   - real targets: report mode (`--report`) exits 0 while the genuine
-//     happy-dom vs mad-dom gaps (mad-dom's setup-phase createWindow throw)
-//     stay fully visible with name/message/phase verbatim; strict mode fails
-//     on the same scenario.
+//     happy-dom vs mad-dom gaps, when any exist, stay fully visible with
+//     name/message/phase verbatim (currently the whole real-pair set passes
+//     since T48E aligned the entry shape); strict mode fails on a gap.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -32,10 +32,10 @@ const DIVERGENT_DIR = join(COMPAT_DIR, "scenarios", "selftest", "divergent");
 const DOM_DIR = join(COMPAT_DIR, "scenarios", "dom");
 const RECORD_SCHEMA = "mad-dom-diff-record/1";
 
-// The real differential runs against the built mad-dom entry. Since T22,
-// createWindow() no longer throws a setup placeholder; with the dev artifact
-// the window is acquired and the (still missing) node surface fails during
-// the scenario body, so the recorded gap shape depends on the artifact.
+// The real differential runs against the built mad-dom entry. Since T48E the
+// window is acquired through the public `new Window()` path; without the dev
+// artifact the native binding fails lazily at construction, so the recorded
+// error shape depends on the artifact.
 const nativeAvailable = isNativeAvailable();
 
 function runRunner(args, timeoutMs = 180_000) {
@@ -325,13 +325,13 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     for (const scenario of report.scenarios.filter((item) => item.id.startsWith("selftest-"))) {
       expect(scenario.status).toBe("pass");
     }
-    // T48 closed the nodeName-casing gap (dom-node-navigation is now a clean
-    // pass); the two remaining real-target gaps are the createWindow entry
-    // shape, tracked by the T48E follow-up todo.
-    for (const id of ["dom-create-append-serialize", "dom-query-selector-identity"]) {
+    // T48 closed the nodeName-casing gap and T48E aligned the entry shape, so
+    // dom-create-append-serialize and dom-query-selector-identity are now clean
+    // passes; dom-node-navigation passes too.
+    for (const id of ["dom-create-append-serialize", "dom-query-selector-identity", "dom-node-navigation"]) {
       const scenario = report.scenarios.find((item) => item.id === id);
-      expect(scenario.status).toBe("differences-report");
-      expect(scenario.reportOnly).toBe(true);
+      expect(scenario.status).toBe("pass");
+      expect(scenario.differences).toEqual([]);
       expect(scenario.targets).toEqual(["happy-dom", "mad-dom"]);
       for (const target of ["happy-dom", "mad-dom"]) {
         expect(Number.isInteger(scenario.sides[target].pid)).toBe(true);
@@ -342,28 +342,20 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(nodeNavigation.status).toBe("pass");
   });
 
-  test("mad-dom's window facade gap is reported verbatim", () => {
+  test("create-append-serialize matches happy-dom exactly (entry shape aligned by T48E)", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-create-append-serialize");
     const byPath = differencesByPath(scenario.differences);
 
     const madRecord = scenario.sides["mad-dom"].record;
-    // Since T22, createWindow() is exported and no longer a setup placeholder.
-    expect(madRecord.values["entry-create-window-type"]).toEqual({ type: "string", value: "function" });
+    // T48E retired createWindow from the package entry, so mad-dom's
+    // `typeof entry.createWindow` reads "undefined" exactly like happy-dom.
+    expect(madRecord.values["entry-create-window-type"]).toEqual({ type: "string", value: "undefined" });
     expect(madRecord.values["entry-window-type"]).toEqual({ type: "string", value: "function" });
-    expect(byPath["values.entry-create-window-type.value"]).toEqual({
-      path: "values.entry-create-window-type.value",
-      kind: "changed",
-      left: "undefined",
-      right: "function",
-    });
+    expect(byPath["values.entry-create-window-type.value"]).toBeUndefined();
     expect(byPath["values.entry-window-type"]).toBeUndefined();
 
-    // The gap moved from the setup phase to the surface: with the dev artifact
-    // the window is acquired, createElement (T23), tree mutation (T24), the
-    // attribute/textContent surface (T25), document.body with the implied
-    // skeleton (T29) and — since T31 — the selector query all succeed, so the
-    // scenario body completes with no recorded error; without one, loading the
-    // native binding fails lazily at createWindow().
+    // With the dev artifact the scenario body completes with no recorded error;
+    // without one, loading the native binding fails lazily at new Window().
     if (nativeAvailable) {
       expect(madRecord.errors).toEqual([]);
     } else {
@@ -402,24 +394,17 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(happyRecord.values["body-child-count"]).toEqual({ type: "number", value: 1 });
   });
 
-  test("query/identity real scenario reports its gaps too", () => {
+  test("query/identity real scenario is a clean pass (entry shape aligned by T48E)", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-query-selector-identity");
-    expect(scenario.status).toBe("differences-report");
-    const paths = scenario.differences.map((difference) => difference.path);
-    // T48 closed the snapshot nodeName casing (list children match happy-dom);
-    // the single remaining difference is the createWindow entry shape (T48E).
-    expect(paths).toEqual(["values.entry-create-window-type.value"]);
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
 
     // Since T31 the query surface matches: item-count is 2 and re-querying
-    // returns the same element on both sides, so those paths are gone, and
-    // since T34 the list snapshot's .attributes and namespaceURI match too.
-    // Since T39 Element.click() is implemented, so the scenario's click events
-    // fire and record identically on both sides (no errors[0] difference
-    // anymore). The remaining differences are the snapshot leaf nodeName
-    // casing (T23A) and the createWindow export shape.
-    expect(paths).not.toContain("errors[0]");
-    expect(paths).not.toContain("values.item-count");
-    expect(paths).not.toContain("identity.requery-returns-same-element");
+    // returns the same element on both sides, since T34 the list snapshot's
+    // .attributes and namespaceURI match, since T39 Element.click() fires the
+    // events identically, and since T48 the snapshot leaf nodeName casing
+    // matches. T48E removed the last difference by aligning the createWindow
+    // entry shape, so the scenario reports zero difference paths.
 
     const madRecord = scenario.sides["mad-dom"].record;
     expect(madRecord.values["item-count"]).toEqual({ type: "number", value: 2 });
@@ -443,7 +428,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -489,7 +474,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -552,7 +537,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -648,7 +633,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -702,7 +687,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -785,7 +770,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -871,7 +856,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -921,7 +906,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].name).toBe("Error");
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
@@ -958,7 +943,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].name).toBe("Error");
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
@@ -1053,7 +1038,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -1193,7 +1178,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -1260,7 +1245,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
       // Without the dev artifact, loading the native binding fails lazily at
-      // createWindow() and the scenario stops at the setup phase.
+      // new Window() and the scenario stops at the setup phase.
       expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
@@ -1377,15 +1362,23 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     }
   });
 
-  test("strict mode fails on the same real scenario (exit 1)", () => {
+  test("strict mode passes on the create-append-serialize scenario exactly when it matches happy-dom", () => {
     const strictRun = runRunner([join(DOM_DIR, "create-append-serialize.js"), "--json"]);
-    expect(strictRun.status).toBe(1);
     const strictReport = JSON.parse(strictRun.stdout);
     expect(strictReport.mode).toBe("strict");
-    expect(strictReport.exitCode).toBe(1);
     expect(strictReport.scenarios[0].id).toBe("dom-create-append-serialize");
-    expect(strictReport.scenarios[0].status).toBe("differences-fatal");
-    expect(strictReport.scenarios[0].reportOnly).toBe(false);
+    if (nativeAvailable) {
+      // T48E aligned the entry shape, so the scenario matches happy-dom and
+      // the strict run exits 0 with zero differences.
+      expect(strictRun.status).toBe(0);
+      expect(strictReport.exitCode).toBe(0);
+      expect(strictReport.scenarios[0].status).toBe("pass");
+      expect(strictReport.scenarios[0].differences).toEqual([]);
+    } else {
+      expect(strictRun.status).toBe(1);
+      expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+      expect(strictReport.totals.infraErrors).toBe(0);
+    }
   });
 
   test("strict mode passes on the tree-mutation scenario exactly when it matches happy-dom", () => {

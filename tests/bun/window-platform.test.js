@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
-import { Window } from "../../js/facade/window.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Location } from "../../js/facade/extensions/window-platform.js";
 import { History } from "../../js/facade/extensions/window-platform.js";
 import { Navigator } from "../../js/facade/extensions/window-platform.js";
@@ -68,7 +67,7 @@ describe("window platform export shapes (T45)", () => {
 
 describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   test("a default window exposes location, history, navigator and the two storage areas", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(win.location).toBeInstanceOf(Location);
       expect(win.history).toBeInstanceOf(History);
@@ -84,7 +83,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("repeat reads hand back one and the same platform object (per-window identity)", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(win.location).toBe(win.location);
       expect(win.history).toBe(win.history);
@@ -97,7 +96,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("the default location is about:blank with the WHATWG host semantics", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const location = win.location;
       expect(location.href).toBe("about:blank");
@@ -119,7 +118,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("document.URL and documentURI stay linked to location.href", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       const location = win.location;
@@ -141,7 +140,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("the hash setter pushes a history entry and an unchanged hash is a no-op", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const location = win.location;
       const history = win.history;
@@ -164,7 +163,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("pushState / replaceState manage the history stack, URL and errors", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const location = win.location;
       const history = win.history;
@@ -202,7 +201,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("scrollRestoration accepts only auto and manual", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const history = win.history;
       expect(history.scrollRestoration).toBe("auto");
@@ -218,7 +217,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("simulated navigation updates the URL and history without fetching", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const location = win.location;
       const history = win.history;
@@ -257,7 +256,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("navigator exposes the fixed happy-dom baseline mock values", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const navigator = win.navigator;
       expect(navigator.userAgent).toContain("HappyDOM/20.11.11");
@@ -290,7 +289,7 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("window.URL and window.DOMException reuse the host constructors", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(new win.URL("https://x.test/y").href).toBe("https://x.test/y");
       expect(thrown(() => new win.URL("not a url"))).toBeInstanceOf(TypeError);
@@ -303,8 +302,8 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
   });
 
   test("each window owns isolated platform state", () => {
-    const winA = createWindow();
-    const winB = createWindow();
+    const winA = new Window();
+    const winB = new Window();
     try {
       expect(winA.location).not.toBe(winB.location);
       expect(winA.history).not.toBe(winB.history);

@@ -264,13 +264,16 @@ defineMethod(Window.prototype, "destroy", function destroy() {
 // --- Facade entry ----------------------------------------------------------
 
 /**
- * Creates a `Window` facade strongly owning a fresh native `Document`.
+ * Compatibility alias for `new Window()`.
  *
  * The native binding mints the window + document pair and hands back an opaque
- * `WindowHandle`; `createWindow` routes it through `ctx.wrap`, the single
- * native handle → facade wrapper conversion entry. This is the historical MAD
- * DOM entry; since T48 `new Window()` / `new Window(options)` construct the
- * same way through the constructor's mint path.
+ * `WindowHandle`; the historical MAD DOM entry routed it through `ctx.wrap`,
+ * the single native handle → facade wrapper conversion entry. Since T48
+ * `new Window()` / `new Window(options)` construct the same way through the
+ * constructor's mint path, and since T48E the **package entry** (js/entry.js,
+ * index.d.ts) no longer exports `createWindow` — happy-dom does not expose it
+ * either, so the entry shapes match. This function is kept here as an internal
+ * compatibility alias only, for the facade layer and its tests.
  */
 export function createWindow() {
   return wrap(loadNative().createWindow());

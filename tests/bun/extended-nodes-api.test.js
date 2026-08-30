@@ -1,7 +1,7 @@
 // T33 extended-node JavaScript surface integration tests.
 //
 // Exercises the T33 facade + native + Core slice end to end through the public
-// `createWindow()` surface: `CharacterData` (`data` / `length` / `nodeValue` /
+// `new Window()` surface: `CharacterData` (`data` / `length` / `nodeValue` /
 // `substringData` / `appendData` / `insertData` / `deleteData` /
 // `replaceData`), `Text.splitText`, `createProcessingInstruction` /
 // `createComment`, `ProcessingInstruction.target`, the `DocumentType` payload
@@ -9,7 +9,7 @@
 // `adoptNode`) — including cross-document separation (no `NodeId` reuse) and
 // the frozen error taxonomy.
 import { afterAll, describe, expect, test } from "bun:test";
-import { createWindow } from "../../index.js";
+import { Window } from "../../index.js";
 
 // Every created window is tracked and destroyed after the file's tests, so no
 // document outlives this suite and the shared-process live-document counter
@@ -17,7 +17,7 @@ import { createWindow } from "../../index.js";
 const createdWindows = [];
 
 function freshWindow() {
-  const win = createWindow();
+  const win = new Window();
   createdWindows.push(win);
   return win;
 }

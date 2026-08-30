@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable, liveDocumentCount } from "../../index.js";
-import { Window } from "../../js/facade/window.js";
+import { Window, isNativeAvailable, liveDocumentCount } from "../../index.js";
 
 // T47 timer / task-scheduling / script-evaluation integration tests.
 //
@@ -82,7 +81,7 @@ describe("T47 window async surface shape", () => {
     }
     expect(Object.getOwnPropertyDescriptor(Window.prototype, "ErrorEvent").get).toBeTypeOf("function");
 
-    const win = createWindow();
+    const win = new Window();
     try {
       // happy-dom's window exposes no setImmediate / clearImmediate (only
       // requestAnimationFrame is immediate-backed); the baseline reads both as
@@ -109,7 +108,7 @@ describe("T47 window async surface shape", () => {
 
 describe.skipIf(!nativeAvailable)("T47 timers are scheduled by Bun", () => {
   test("setTimeout fires with the extra args and clearTimeout cancels", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const order = [];
       const id = win.setTimeout((a, b) => order.push([a, b]), 5, 1, "x");
@@ -127,7 +126,7 @@ describe.skipIf(!nativeAvailable)("T47 timers are scheduled by Bun", () => {
   });
 
   test("setInterval repeats until clearInterval", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const ticks = [];
       const id = win.setInterval((n) => ticks.push(n), 5, 7);
@@ -144,7 +143,7 @@ describe.skipIf(!nativeAvailable)("T47 timers are scheduled by Bun", () => {
   });
 
   test("requestAnimationFrame fires once with a numeric timestamp and cancelAnimationFrame cancels", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const fired = [];
       const id = win.requestAnimationFrame((timestamp) => fired.push(["raf", timestamp]));
@@ -162,7 +161,7 @@ describe.skipIf(!nativeAvailable)("T47 timers are scheduled by Bun", () => {
   });
 
   test("queueMicrotask runs the callback on the microtask queue", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const order = [];
       win.queueMicrotask(() => order.push("qm"));
@@ -175,7 +174,7 @@ describe.skipIf(!nativeAvailable)("T47 timers are scheduled by Bun", () => {
   });
 
   test("task order is pinned: events/custom-element reactions sync, promises + MutationObserver microtasks, timers after", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const order = [];
       class XEl extends win.HTMLElement {
@@ -229,7 +228,7 @@ describe.skipIf(!nativeAvailable)("T47 timers are scheduled by Bun", () => {
 
 describe.skipIf(!nativeAvailable)("T47 error propagation", () => {
   test("a throwing timeout callback dispatches a window error event, not an uncaught error", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const events = [];
       win.addEventListener("error", (event) => {
@@ -262,7 +261,7 @@ describe.skipIf(!nativeAvailable)("T47 error propagation", () => {
   });
 
   test("a throwing interval callback dispatches an error event and clears itself", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const events = [];
       win.addEventListener("error", (event) => events.push(event.error.message));
@@ -278,7 +277,7 @@ describe.skipIf(!nativeAvailable)("T47 error propagation", () => {
   });
 
   test("a rejected promise returned by a timer callback is routed to the error event", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const events = [];
       win.addEventListener("error", (event) => events.push(event.error.message));
@@ -291,7 +290,7 @@ describe.skipIf(!nativeAvailable)("T47 error propagation", () => {
   });
 
   test("removeEventListener stops the error delivery", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const events = [];
       const handler = (event) => events.push(event.error.message);
@@ -308,7 +307,7 @@ describe.skipIf(!nativeAvailable)("T47 error propagation", () => {
   });
 
   test("a throwing eval script propagates synchronously to the caller", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       let thrown;
       try {
@@ -332,7 +331,7 @@ describe.skipIf(!nativeAvailable)("T47 error propagation", () => {
 
 describe.skipIf(!nativeAvailable)("T47 script evaluation with window globals", () => {
   test("eval resolves the owning window's document/window/constructors/timers", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(win.eval("typeof document")).toBe("object");
       expect(win.eval("typeof window")).toBe("object");
@@ -351,8 +350,8 @@ describe.skipIf(!nativeAvailable)("T47 script evaluation with window globals", (
   });
 
   test("eval uses the owning window, not a shared global", () => {
-    const winA = createWindow();
-    const winB = createWindow();
+    const winA = new Window();
+    const winB = new Window();
     try {
       winA.document.body.setAttribute("data-owner", "a");
       expect(winB.eval("document.body.hasAttribute('data-owner')")).toBe(false);
@@ -364,7 +363,7 @@ describe.skipIf(!nativeAvailable)("T47 script evaluation with window globals", (
   });
 
   test("eval assignments and declarations do not pollute the process globals", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(globalThis.__madDomEvalProbe).toBeUndefined();
       win.eval("__madDomEvalProbe = 42");
@@ -384,7 +383,7 @@ describe.skipIf(!nativeAvailable)("T47 lifecycle: releasing a window leaves no o
     let winRef = null;
     let docRef = null;
     const spawn = () => {
-      const win = createWindow();
+      const win = new Window();
       winRef = new WeakRef(win);
       docRef = new WeakRef(win.document);
       win.setInterval(() => fired.push("interval"), 5000);
@@ -407,7 +406,7 @@ describe.skipIf(!nativeAvailable)("T47 lifecycle: releasing a window leaves no o
     expect(fired).toEqual([]);
 
     // A fresh window on the same code path still schedules normally.
-    const win = createWindow();
+    const win = new Window();
     try {
       const order = [];
       win.setTimeout(() => order.push("alive"), 5);
@@ -419,7 +418,7 @@ describe.skipIf(!nativeAvailable)("T47 lifecycle: releasing a window leaves no o
   });
 
   test("destroying a window never leaves an uncaught async error behind", async () => {
-    const win = createWindow();
+    const win = new Window();
     const events = [];
     win.addEventListener("error", (event) => events.push(event.error.message));
     const el = win.document.createElement("div");

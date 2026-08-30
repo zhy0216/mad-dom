@@ -30,7 +30,7 @@
 // exactly like the other native suites.
 
 import { afterAll, describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Node, Element } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
 import { Document } from "../../js/facade/document.js";
@@ -40,7 +40,7 @@ const nativeAvailable = isNativeAvailable();
 const createdWindows = [];
 
 function freshWindow() {
-  const win = createWindow();
+  const win = new Window();
   createdWindows.push(win);
   return win;
 }

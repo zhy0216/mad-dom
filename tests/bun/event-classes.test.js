@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  createWindow,
+  Window,
   CustomEvent,
   Event,
   EventPhaseEnum,
@@ -119,7 +119,7 @@ describe("T38 event-class module exports", () => {
   });
 
   test("the window exposes every event constructor accessor", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(typeof win.Event).toBe("function");
       for (const name of ["CustomEvent", "UIEvent", "MouseEvent", "KeyboardEvent", "FocusEvent", "WheelEvent", "InputEvent"]) {
@@ -144,7 +144,7 @@ describe("T38 event-class module exports", () => {
 
 describe("T38 construction and defaults", () => {
   test("Event instances carry the phase constants and the base default reads", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const event = new win.Event("evt", { bubbles: true, cancelable: true });
       expect(Object.keys(event)).toEqual(["NONE", "CAPTURING_PHASE", "AT_TARGET", "BUBBLING_PHASE"]);
@@ -172,7 +172,7 @@ describe("T38 construction and defaults", () => {
   });
 
   test("CustomEvent defaults detail to null and exposes it via the prototype getter", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const event = new win.CustomEvent("ready", { detail: { attempt: 1 } });
       expect(event.detail).toEqual({ attempt: 1 });
@@ -189,7 +189,7 @@ describe("T38 construction and defaults", () => {
   });
 
   test("the concrete event classes expose the baseline default values as own data fields", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const ui = new win.UIEvent("ui");
       expect(ui.detail).toBe(0);
@@ -259,7 +259,7 @@ describe("T38 construction and defaults", () => {
   });
 
   test("init values flow into the concrete event classes", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const mouse = new win.MouseEvent("click", {
         screenX: 10,
@@ -324,7 +324,7 @@ describe("T38 construction and defaults", () => {
 
 describe.skipIf(!nativeAvailable)("T38 stable event behaviors", () => {
   test("timeStamp is a positive number fixed at construction", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const a = new win.Event("a");
       const b = new win.Event("b");
@@ -343,7 +343,7 @@ describe.skipIf(!nativeAvailable)("T38 stable event behaviors", () => {
   });
 
   test("composedPath returns the propagation path, not currentTarget", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, mid, leaf } = build(win);
 
@@ -387,7 +387,7 @@ describe.skipIf(!nativeAvailable)("T38 stable event behaviors", () => {
   });
 
   test("initEvent re-initializes and resets the cancellation flags", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const event = new win.Event("evt", { bubbles: false, cancelable: true });
@@ -412,7 +412,7 @@ describe.skipIf(!nativeAvailable)("T38 stable event behaviors", () => {
   });
 
   test("initCustomEvent re-initializes the CustomEvent payload", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const event = new win.CustomEvent("ready", { bubbles: true, detail: { a: 1 } });
       event.initCustomEvent("renamed", false, false, { b: 2 });
@@ -427,7 +427,7 @@ describe.skipIf(!nativeAvailable)("T38 stable event behaviors", () => {
   });
 
   test("cancelBubble reflects stopPropagation as a read-only getter", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const event = new win.Event("evt", { bubbles: true });
       expect(event.cancelBubble).toBe(false);
@@ -445,7 +445,7 @@ describe.skipIf(!nativeAvailable)("T38 stable event behaviors", () => {
   });
 
   test("KeyboardEvent.getModifierState honors the modifier flags", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const event = new win.KeyboardEvent("keydown", {
         altKey: true,
@@ -472,7 +472,7 @@ describe.skipIf(!nativeAvailable)("T38 stable event behaviors", () => {
 
 describe.skipIf(!nativeAvailable)("T38 dispatch integration and reuse guard", () => {
   test("a CustomEvent dispatches with identity and its detail readable in listeners", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, leaf } = build(win);
       const event = new win.CustomEvent("ready", { bubbles: true, cancelable: true, detail: { attempt: 1 } });
@@ -490,7 +490,7 @@ describe.skipIf(!nativeAvailable)("T38 dispatch integration and reuse guard", ()
   });
 
   test("a MouseEvent dispatches and reaches bubbling listeners with its payload", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { mid, leaf } = build(win);
       const event = new win.MouseEvent("click", { bubbles: true, clientX: 12, button: 1 });
@@ -504,7 +504,7 @@ describe.skipIf(!nativeAvailable)("T38 dispatch integration and reuse guard", ()
   });
 
   test("an already-dispatching event cannot be dispatched again", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const event = new win.Event("evt", { bubbles: true });
@@ -522,7 +522,7 @@ describe.skipIf(!nativeAvailable)("T38 dispatch integration and reuse guard", ()
   });
 
   test("a completed event can be dispatched again", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const event = new win.Event("evt", { bubbles: true });
@@ -539,7 +539,7 @@ describe.skipIf(!nativeAvailable)("T38 dispatch integration and reuse guard", ()
   });
 
   test("the baseline allows initEvent during a dispatch", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const event = new win.Event("orig", { bubbles: false, cancelable: false });

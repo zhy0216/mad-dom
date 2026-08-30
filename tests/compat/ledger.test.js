@@ -92,7 +92,7 @@ describe("compatibility ledger gate (T11)", () => {
     expect(run.stdout).toContain("duplicated ledger id");
     expect(run.stdout).toContain("non-MIT license");
     expect(run.stdout).toContain("non-pinned commit");
-    expect(run.stdout).toContain("trips the live regression gate");
+    expect(run.stdout).toContain("trips the live stale gate");
   }, 600_000);
 });
 

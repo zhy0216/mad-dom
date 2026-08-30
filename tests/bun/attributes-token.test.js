@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
 import { Node, Element } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
@@ -135,7 +135,7 @@ describe("attribute-node install surface (T34)", () => {
 
 describe.skipIf(!nativeAvailable)("NamedNodeMap read surface (T34)", () => {
   test("element.attributes is one live NamedNodeMap per element with the read surface", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("id", "root");
@@ -171,7 +171,7 @@ describe.skipIf(!nativeAvailable)("NamedNodeMap read surface (T34)", () => {
   });
 
   test("Attr wrappers keep stable identity per attribute name", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("a", "1");
@@ -185,7 +185,7 @@ describe.skipIf(!nativeAvailable)("NamedNodeMap read surface (T34)", () => {
   });
 
   test("Attr fixed fields and the live value write-through", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("id", "root");
@@ -210,7 +210,7 @@ describe.skipIf(!nativeAvailable)("NamedNodeMap read surface (T34)", () => {
   });
 
   test("a retained NamedNodeMap stays live after external attribute changes", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("a", "1");
@@ -237,7 +237,7 @@ describe.skipIf(!nativeAvailable)("NamedNodeMap read surface (T34)", () => {
   });
 
   test("document.createAttribute mints a detached Attr and validates the name", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     try {
       const created = doc.createAttribute("data-new");
@@ -262,7 +262,7 @@ describe.skipIf(!nativeAvailable)("NamedNodeMap read surface (T34)", () => {
   });
 
   test("non-element nodes read attributes and classList as null, and namespaceURI as null", () => {
-    const win = createWindow();
+    const win = new Window();
     const text = win.document.createTextNode("hi");
     try {
       expect(text.attributes).toBeNull();
@@ -276,7 +276,7 @@ describe.skipIf(!nativeAvailable)("NamedNodeMap read surface (T34)", () => {
 
 describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", () => {
   test("classList is one live DOMTokenList per element with the read surface", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("class", "x y");
@@ -316,7 +316,7 @@ describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", 
   });
 
   test("classList.add/remove write back through the class attribute (single Core state)", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("class", "x y");
@@ -341,7 +341,7 @@ describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", 
   });
 
   test("classList.toggle returns the resulting presence with and without force", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       const cl = el.classList;
@@ -364,7 +364,7 @@ describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", 
   });
 
   test("classList.replace returns true/false and updates the attribute", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("class", "a b");
@@ -379,7 +379,7 @@ describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", 
   });
 
   test("the value accessor stores and reads the raw attribute string verbatim", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       const cl = el.classList;
@@ -394,7 +394,7 @@ describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", 
   });
 
   test("a retained classList stays live after external class changes", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("class", "outer");
@@ -421,7 +421,7 @@ describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", 
   });
 
   test("empty and whitespace tokens fail with the frozen taxonomy and stay atomic", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     try {
       el.setAttribute("class", "keep");
@@ -455,7 +455,7 @@ describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", 
   });
 
   test("a destroyed document fails every attribute-node read/write per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const el = win.document.createElement("div");
     el.setAttribute("class", "x");
     const attrs = el.attributes;

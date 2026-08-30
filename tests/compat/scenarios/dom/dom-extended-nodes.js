@@ -22,7 +22,7 @@ export async function run(api) {
 
   let window;
   try {
-    window = typeof entry.createWindow === "function" ? entry.createWindow() : new entry.Window();
+    window = new entry.Window();
   } catch (error) {
     api.record.error(error, "setup");
     return;
@@ -178,7 +178,7 @@ export async function run(api) {
     api.record.value("import-pi-data", document.importNode(document.createProcessingInstruction("xml-stylesheet", "d=x"), false).data);
 
     // adoptNode.
-    const secondWindow = typeof entry.createWindow === "function" ? entry.createWindow() : new entry.Window();
+    const secondWindow = new entry.Window();
     const secondDocument = secondWindow.document;
     const container = secondDocument.createElement("container");
     const src = secondDocument.createElement("src");

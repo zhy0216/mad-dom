@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
 import { Event } from "../../js/facade/extensions/events.js";
 import { Node } from "../../js/facade/extensions/node.js";
-import { Window } from "../../js/facade/window.js";
 
 // T37 EventTarget integration tests.
 //
@@ -88,7 +87,7 @@ describe("T37 event surface shape", () => {
 
 describe.skipIf(!nativeAvailable)("T37 registration, order and removal", () => {
   test("listeners fire in registration order and duplicates are suppressed", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, leaf } = build(win);
       const order = [];
@@ -106,7 +105,7 @@ describe.skipIf(!nativeAvailable)("T37 registration, order and removal", () => {
   });
 
   test("removeEventListener removes the matching listener; the capture flag is ignored", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const order = [];
@@ -123,7 +122,7 @@ describe.skipIf(!nativeAvailable)("T37 registration, order and removal", () => {
   });
 
   test("removing a listener then re-adding it registers it afresh", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const order = [];
@@ -140,7 +139,7 @@ describe.skipIf(!nativeAvailable)("T37 registration, order and removal", () => {
   });
 
   test("a non-callable listener throws a TypeError at registration", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const err = thrown(() => leaf.addEventListener("evt", 42));
@@ -152,7 +151,7 @@ describe.skipIf(!nativeAvailable)("T37 registration, order and removal", () => {
   });
 
   test("an object with handleEvent is invoked as a listener", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const order = [];
@@ -172,7 +171,7 @@ describe.skipIf(!nativeAvailable)("T37 registration, order and removal", () => {
 
 describe.skipIf(!nativeAvailable)("T37 propagation order and phases", () => {
   test("capture, at-target and bubble structs run in the baseline order", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, mid, leaf } = build(win);
       const order = [];
@@ -197,7 +196,7 @@ describe.skipIf(!nativeAvailable)("T37 propagation order and phases", () => {
   });
 
   test("a non-bubbling event stops after the target", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { mid, leaf } = build(win);
       const order = [];
@@ -212,7 +211,7 @@ describe.skipIf(!nativeAvailable)("T37 propagation order and phases", () => {
   });
 
   test("stopPropagation ends the dispatch after the current target's listeners", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { mid, leaf } = build(win);
       const order = [];
@@ -232,7 +231,7 @@ describe.skipIf(!nativeAvailable)("T37 propagation order and phases", () => {
   });
 
   test("stopImmediatePropagation ends the dispatch immediately", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const order = [];
@@ -249,7 +248,7 @@ describe.skipIf(!nativeAvailable)("T37 propagation order and phases", () => {
   });
 
   test("the listener's `this` is the current target and the event identity is stable", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { mid, leaf } = build(win);
       const event = new win.Event("evt", { bubbles: true });
@@ -274,7 +273,7 @@ describe.skipIf(!nativeAvailable)("T37 propagation order and phases", () => {
 
 describe.skipIf(!nativeAvailable)("T37 options", () => {
   test("once removes the listener after its first invocation", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       let count = 0;
@@ -290,7 +289,7 @@ describe.skipIf(!nativeAvailable)("T37 options", () => {
   });
 
   test("preventDefault and the dispatchEvent return value respect cancelable", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
 
@@ -309,7 +308,7 @@ describe.skipIf(!nativeAvailable)("T37 options", () => {
   });
 
   test("a passive listener's preventDefault is ignored", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const event = new win.Event("evt", { bubbles: true, cancelable: true });
@@ -322,7 +321,7 @@ describe.skipIf(!nativeAvailable)("T37 options", () => {
   });
 
   test("a signal abort removes the listener", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const order = [];
@@ -350,7 +349,7 @@ describe.skipIf(!nativeAvailable)("T37 options", () => {
 
 describe.skipIf(!nativeAvailable)("T37 event state", () => {
   test("event properties read correctly before, during and after a dispatch", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, leaf } = build(win);
       const event = new win.Event("evt", { bubbles: true, cancelable: true });
@@ -381,7 +380,7 @@ describe.skipIf(!nativeAvailable)("T37 event state", () => {
   });
 
   test("dispatching on the document targets the document root", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, leaf } = build(win);
       const order = [];
@@ -396,7 +395,7 @@ describe.skipIf(!nativeAvailable)("T37 event state", () => {
   });
 
   test("a completed event can be dispatched again and keeps defaultPrevented", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const event = new win.Event("evt", { bubbles: true, cancelable: true });
@@ -417,7 +416,7 @@ describe.skipIf(!nativeAvailable)("T37 event state", () => {
 
 describe.skipIf(!nativeAvailable)("T37 reentrancy and mutation", () => {
   test("a listener added during dispatch is not invoked by it, but a later dispatch sees it", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const order = [];
@@ -435,7 +434,7 @@ describe.skipIf(!nativeAvailable)("T37 reentrancy and mutation", () => {
   });
 
   test("mutating the tree during dispatch does not change the propagation path", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, mid, leaf } = build(win);
       const order = [];
@@ -454,7 +453,7 @@ describe.skipIf(!nativeAvailable)("T37 reentrancy and mutation", () => {
   });
 
   test("a nested dispatch completes before the outer dispatch resumes", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { mid, leaf } = build(win);
       const order = [];
@@ -472,7 +471,7 @@ describe.skipIf(!nativeAvailable)("T37 reentrancy and mutation", () => {
   });
 
   test("a throwing listener is contained and dispatch continues", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { mid, leaf } = build(win);
       const order = [];
@@ -491,7 +490,7 @@ describe.skipIf(!nativeAvailable)("T37 reentrancy and mutation", () => {
   });
 
   test("removing a listener mid-dispatch still lets its captured struct run", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const order = [];
@@ -514,7 +513,7 @@ describe.skipIf(!nativeAvailable)("T37 reentrancy and mutation", () => {
 
 describe.skipIf(!nativeAvailable)("T37 errors", () => {
   test("dispatchEvent with a non-Event argument throws a TypeError", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const err = thrown(() => leaf.dispatchEvent({}));
@@ -526,7 +525,7 @@ describe.skipIf(!nativeAvailable)("T37 errors", () => {
   });
 
   test("a reentrant dispatch of the same event object is contained without corrupting the outer dispatch", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { leaf } = build(win);
       const event = new win.Event("evt", { bubbles: true });
@@ -547,7 +546,7 @@ describe.skipIf(!nativeAvailable)("T37 errors", () => {
   });
 
   test("a destroyed document fails every event surface per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const { doc, leaf } = build(win);
     const event = new win.Event("evt", { bubbles: true });
     const docListener = () => {};

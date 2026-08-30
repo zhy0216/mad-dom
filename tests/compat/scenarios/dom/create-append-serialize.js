@@ -1,10 +1,12 @@
 // Real differential scenario (T10): element creation, tree attachment and
 // serialization through the public entry of each implementation.
 //
-// The window-acquisition probe is uniform capability detection on the entry
-// object: implementations expose either createWindow() or a Window
-// constructor. Since T25, MAD DOM's createElement/createTextNode, tree
-// mutation and the attribute/textContent surface work, but the Document-level
+// The window-acquisition path is the single public construction surface:
+// `new entry.Window()` (since T48E the package entry no longer exports the
+// `createWindow` convenience, matching happy-dom). The `entry-create-window-type`
+// probe keeps recording `typeof entry.createWindow` so the entry-shape parity
+// stays honest in the ledger. Since T25, MAD DOM's createElement/createTextNode,
+// tree mutation and the attribute/textContent surface work, but the Document-level
 // members (body, readyState, serialization) are not implemented yet, so the
 // mad-dom side records a facade-phase error at document.body.appendChild and
 // reads readyState as undefined. These differences are reported (non-fatal) in
@@ -20,7 +22,7 @@ export async function run(api) {
 
   let window;
   try {
-    window = typeof entry.createWindow === "function" ? entry.createWindow() : new entry.Window();
+    window = new entry.Window();
   } catch (error) {
     api.record.error(error, "setup");
     return;

@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createWindow, Document as DocumentFacade } from "../../index.js";
+import { Window, Document as DocumentFacade } from "../../index.js";
 import { Node as NodeFacade } from "../../js/facade/extensions/node.js";
 import { NodeList as NodeListFacade } from "../../js/facade/extensions/child-nodelist.js";
 import { createHarness } from "./testharness.js";
@@ -127,7 +127,7 @@ async function main() {
 
   let windowFacade;
   try {
-    windowFacade = createWindow();
+    windowFacade = new Window();
   } catch (error) {
     envelope.infraError = { name: "Error", message: `cannot create window: ${error.message}` };
     writeFileSync(outPath, JSON.stringify(envelope));

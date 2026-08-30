@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, Document, isNativeAvailable } from "../../index.js";
+import { Window, Document, isNativeAvailable } from "../../index.js";
 import { Node } from "../../js/facade/extensions/node.js";
 
 // T24 cross-layer integration smoke tests.
@@ -61,7 +61,6 @@ describe("root entry mutation surface (T24)", () => {
       "WheelEvent",
       "Window",
       "createDocument",
-      "createWindow",
       "isNativeAvailable",
       "liveDocumentCount",
       "nativeAbiVersion",
@@ -81,7 +80,7 @@ describe("root entry mutation surface (T24)", () => {
 
 describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
   test("the Node mutation methods are fixed non-enumerable method descriptors on Node.prototype (T48A per-tag direct prototype)", () => {
-    const win = createWindow();
+    const win = new Window();
     const parent = win.document.createElement("parent");
     // T48A: the direct prototype is the per-tag class (empty); the mutation
     // methods are inherited from Node.prototype.
@@ -98,7 +97,7 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
   });
 
   test("append / insert / remove / replace build and reshape a tree through the entry", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const parent = doc.createElement("parent");
     const first = doc.createElement("first");
@@ -148,7 +147,7 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
   });
 
   test("DocumentFragment is created and spliced through the entry", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const fragment = doc.createDocumentFragment();
     expect(fragment.nodeType).toBe(11);
@@ -169,7 +168,7 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
   });
 
   test("a failed mutation leaves the observable tree unchanged", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const parent = doc.createElement("parent");
     const child = doc.createElement("child");
@@ -199,7 +198,7 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
     expect(candidate.parentNode).toBeNull();
 
     const wrongDocument = (() => {
-      const foreign = createWindow();
+      const foreign = new Window();
       try {
         const foreignNode = foreign.document.createElement("foreign");
         return throwAround(() => parent.appendChild(foreignNode));
@@ -214,7 +213,7 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
   });
 
   test("after entry-level destroy every mutation fails per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     const parent = doc.createElement("parent");
     const child = doc.createElement("child");

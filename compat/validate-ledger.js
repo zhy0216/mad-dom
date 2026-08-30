@@ -285,7 +285,20 @@ function runSelfTest(options) {
       name: "S1: known-gap entry without reason fails validation (exit 2)",
       run: () =>
         runGate(["--ledger", tamperedLedger((ledger) => {
-          delete ledger.entries.find((entry) => entry.status === "known-gap").reason;
+          // The live ledger may hold zero known-gap entries (T48E flipped the
+          // last ones to pass), so the tamper seeds its own before stripping
+          // the reason.
+          ledger.entries.push({
+            id: "hc-diff-selftest-reason",
+            suite: "diff",
+            status: "known-gap",
+            subsystem: "facade",
+            scenario: "dom-selftest-reason",
+            reason: "self-test tamper entry",
+            recordedAt: "2026-08-30T00:00:00Z",
+            addedIn: "T11",
+          });
+          delete ledger.entries.find((entry) => entry.id === "hc-diff-selftest-reason").reason;
         })]),
       expect: (result) => result.exitCode === 2 && /reason/.test(result.output),
     });
@@ -355,18 +368,21 @@ function runSelfTest(options) {
       expect: (result) => result.exitCode === 2 && /commit/.test(result.output),
     });
 
-    // S6 — simulating a pass regression (status flipped without the underlying
-    // improvement) must trip the live gate with exit 1.
+    // S6 — simulating a ledger entry that disagrees with the live differential
+    // must trip the live gate with exit 1. Since T48E flipped the last
+    // known-gap diff entries to pass (the whole real-pair differential is
+    // green), the drill now runs in the stale direction: marking a green pass
+    // scenario as a known-gap is a ledger regression the gate must catch.
     scenarios.push({
-      name: "S6: flipping a known-gap diff entry to pass trips the live regression gate (exit 1)",
+      name: "S6: flipping a pass diff entry to known-gap trips the live stale gate (exit 1)",
       run: () =>
         runGate(["--ledger", tamperedLedger((ledger) => {
           const entry = ledger.entries.find((item) => item.id === "hc-diff-node-create-append-serialize");
-          entry.status = "pass";
-          delete entry.reason;
-          delete entry.recordedAt;
+          entry.status = "known-gap";
+          entry.reason = "self-test tamper: simulated stale known-gap for a green scenario";
+          entry.recordedAt = "2026-08-30T00:00:00Z";
         })]),
-      expect: (result) => result.exitCode === 1 && /regression/.test(result.output),
+      expect: (result) => result.exitCode === 1 && /stale/.test(result.output),
     });
 
     let allPassed = true;

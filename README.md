@@ -18,6 +18,26 @@ The intended architecture includes:
 
 Do not use this release in production.
 
+## Public entry
+
+The package entry exposes the happy-dom-shaped construction surface: create a
+window with `new Window()` (or `new Window(options)` to honor the initial
+`url`, viewport and inner-dimension options), then reach the document through
+`window.document`:
+
+```js
+import { Window } from "mad-dom";
+
+const window = new Window({ url: "https://example.test/" });
+const { document } = window;
+// ... drive the DOM ...
+window.destroy();
+```
+
+Since T48E the `createWindow` convenience is retired from the package entry to
+match happy-dom (`typeof entry.createWindow === "undefined"`); the facade
+layer keeps it only as an internal compatibility alias.
+
 ## Development
 
 Development uses Bun `1.4.0` (recorded in `.bun-version`) and Rust `1.93.1` (pinned in `rust-toolchain.toml`).

@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import {
   AbortController,
   AbortSignal,
@@ -78,7 +78,7 @@ describe("fetch export shapes (T46)", () => {
 
 describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   test("a default window exposes the fetch constructors and window.fetch", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       expect(typeof win.Headers).toBe("function");
       expect(typeof win.Request).toBe("function");
@@ -97,8 +97,8 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("the constructors are per-window (identity is isolated per window)", () => {
-    const winA = createWindow();
-    const winB = createWindow();
+    const winA = new Window();
+    const winB = new Window();
     try {
       expect(winA.Request).not.toBe(winB.Request);
       expect(winA.Response).not.toBe(winB.Response);
@@ -111,7 +111,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Headers: construction, read surface, first-seen casing and no name validation", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { Headers: WindowHeaders } = win;
       const headers = new WindowHeaders({ a: "1", "X-B": "2" });
@@ -144,7 +144,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Headers: getSetCookie collects the Set-Cookie values", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { Headers: WindowHeaders } = win;
       const headers = new WindowHeaders();
@@ -159,7 +159,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Request: construction surface matches the baseline defaults", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const request = new win.Request("https://example.com/x", {
         method: "POST",
@@ -184,7 +184,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Request: bodyUsed flips on consumption and a double consumption throws InvalidStateError", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const request = new win.Request("https://example.com/x", { method: "POST", body: "hello" });
       expect(await request.text()).toBe("hello");
@@ -199,7 +199,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Request: clone() and Request-from-Request reuse the body independently", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const request = new win.Request("https://example.com/y", { method: "POST", body: "clone-me" });
       const copy = request.clone();
@@ -217,7 +217,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Request: validation errors match the baseline (name + message)", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const argError = thrown(() => new win.Request(undefined));
       expect(argError).toBeInstanceOf(TypeError);
@@ -249,7 +249,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Response: construction surface, Set-Cookie stripping and auto Content-Type", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const response = new win.Response("hello", {
         status: 201,
@@ -285,7 +285,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Response: bodyUsed flips on consumption and a double consumption throws", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const response = new win.Response("hello");
       expect(await response.text()).toBe("hello");
@@ -301,7 +301,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Response: the body stream is stable and readable (streaming)", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const response = new win.Response("stream-body");
       expect(response.body).not.toBeNull();
@@ -318,7 +318,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("Response: redirect / error / json statics and clone", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const redirect = win.Response.redirect("https://example.com/next", 301);
       expect(redirect.status).toBe(301);
@@ -353,7 +353,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("AbortController/AbortSignal: reason, event and read-only surface", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const controller = new win.AbortController();
       expect(controller.signal.aborted).toBe(false);
@@ -388,7 +388,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("window.fetch succeeds offline on data: URLs (status, headers, text)", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const response = await win.fetch("data:text/plain,hello%20world");
       expect(response.status).toBe(200);
@@ -411,7 +411,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("window.fetch rejects an already-aborted signal and an unsupported scheme", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const preAborted = new win.AbortController();
       preAborted.abort("canceled");
@@ -440,7 +440,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("window.fetch returns a Promise that resolves after a microtask boundary", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const promise = win.fetch("data:text/plain,hi");
       expect(promise instanceof Promise).toBe(true);
@@ -456,7 +456,7 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
   });
 
   test("window.fetch round-trips document.cookie over the loopback transport (cookie interaction)", async () => {
-    const win = createWindow();
+    const win = new Window();
     const server = Bun.serve({
       port: 0,
       fetch(request) {

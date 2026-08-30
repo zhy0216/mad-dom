@@ -1,8 +1,9 @@
 // Real differential scenario (T10): selector queries, returned-element
 // identity relations and event delivery order through the public entry of
-// each implementation. Same setup probe and same mad-dom facade gap as
-// dom-create-append-serialize: since T22 the window acquisition succeeds but
-// the node surface (body, querySelectorAll, ...) is not implemented yet.
+// each implementation. Same setup probe as dom-create-append-serialize:
+// `new entry.Window()` is the single public construction path (since T48E the
+// package entry no longer exports `createWindow`), and the
+// `entry-create-window-type` probe keeps the entry-shape parity honest.
 export const id = "dom-query-selector-identity";
 export const description = "real differential: querySelectorAll results, element identity across re-queries and bubbling click order";
 export const targets = "real";
@@ -14,7 +15,7 @@ export async function run(api) {
 
   let window;
   try {
-    window = typeof entry.createWindow === "function" ? entry.createWindow() : new entry.Window();
+    window = new entry.Window();
   } catch (error) {
     api.record.error(error, "setup");
     return;

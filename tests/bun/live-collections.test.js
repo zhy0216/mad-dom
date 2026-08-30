@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable } from "../../index.js";
+import { Window, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
 import { HTMLCollection } from "../../js/facade/extensions/live-collections.js";
 import { Node } from "../../js/facade/extensions/node.js";
@@ -86,7 +86,7 @@ describe("T32 live collection surface shape", () => {
 
 describe.skipIf(!nativeAvailable)("getElementsByTagName (T32)", () => {
   test("returns a live HTMLCollection in document order with case-insensitive tags", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const lis = doc.getElementsByTagName("li");
@@ -104,7 +104,7 @@ describe.skipIf(!nativeAvailable)("getElementsByTagName (T32)", () => {
   });
 
   test("an element scope matches descendants only", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const list = doc.getElementById("list");
@@ -118,7 +118,7 @@ describe.skipIf(!nativeAvailable)("getElementsByTagName (T32)", () => {
   });
 
   test("a fresh window's implied skeleton answers like happy-dom", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = win.document;
       expect(doc.getElementsByTagName("html").length).toBe(1);
@@ -133,7 +133,7 @@ describe.skipIf(!nativeAvailable)("getElementsByTagName (T32)", () => {
 
 describe.skipIf(!nativeAvailable)("getElementsByClassName (T32)", () => {
   test("matches every whitespace token, in document order", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const a = doc.getElementsByClassName("a");
@@ -150,7 +150,7 @@ describe.skipIf(!nativeAvailable)("getElementsByClassName (T32)", () => {
   });
 
   test("empty or whitespace-only class names are an empty collection", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       // The WHATWG rule; happy-dom throws a DOMException on these inputs
@@ -166,7 +166,7 @@ describe.skipIf(!nativeAvailable)("getElementsByClassName (T32)", () => {
 
 describe.skipIf(!nativeAvailable)("HTMLCollection read surface (T32)", () => {
   test("item / indexed reads / iteration behave like happy-dom", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const items = doc.getElementsByClassName("item");
@@ -183,7 +183,7 @@ describe.skipIf(!nativeAvailable)("HTMLCollection read surface (T32)", () => {
   });
 
   test("namedItem matches the id or name attribute, and the named getter works", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const uls = doc.getElementsByTagName("ul");
@@ -204,7 +204,7 @@ describe.skipIf(!nativeAvailable)("HTMLCollection read surface (T32)", () => {
 
 describe.skipIf(!nativeAvailable)("live semantics (T32)", () => {
   test("an existing collection reflects a later attribute change", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const items = doc.getElementsByClassName("item");
@@ -220,7 +220,7 @@ describe.skipIf(!nativeAvailable)("live semantics (T32)", () => {
   });
 
   test("an existing collection reflects a later tree mutation", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const divs = doc.getElementsByTagName("div");
@@ -240,7 +240,7 @@ describe.skipIf(!nativeAvailable)("live semantics (T32)", () => {
 
 describe.skipIf(!nativeAvailable)("identity semantics (T32)", () => {
   test("each call mints a fresh collection while elements keep identity", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const first = doc.getElementsByTagName("li");
@@ -260,7 +260,7 @@ describe.skipIf(!nativeAvailable)("identity semantics (T32)", () => {
 
 describe.skipIf(!nativeAvailable)("live collection errors and shaping (T32)", () => {
   test("non-ParentNode scopes fail with Hierarchy", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       const text = doc.createTextNode("plain");
@@ -272,7 +272,7 @@ describe.skipIf(!nativeAvailable)("live collection errors and shaping (T32)", ()
   });
 
   test("a destroyed document fails every live collection read per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     build(win);
     const lis = doc.getElementsByTagName("li");
@@ -286,7 +286,7 @@ describe.skipIf(!nativeAvailable)("live collection errors and shaping (T32)", ()
   });
 
   test("WebIDL DOMString shaping applies to the tag and class arguments", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const doc = build(win);
       // null becomes "null" — a valid tag/class that matches nothing.

@@ -2,8 +2,9 @@
 // querySelector/querySelectorAll, matches/closest and getElementById, plus the
 // static NodeList read surface (item + iteration).
 // Must typecheck with ZERO diagnostics against BOTH dom-under-test targets.
-// Instances are typed through function parameters because MAD DOM only mints
-// windows through createWindow() — its Window is not constructible.
+// Instances are typed through function parameters so the fixture stays a pure
+// signature check (no window construction on either target; `new Window()` is
+// the package-entry path since T48E).
 import { Document, Element } from "dom-under-test";
 
 function useSelectorSurface(document: Document, element: Element): void {

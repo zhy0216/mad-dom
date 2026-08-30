@@ -1,6 +1,6 @@
 # 48E 公开入口形态对齐（createWindow 与 Window 构造器）
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P2
 - 里程碑：M9
 - 条目 ID：`T48E`
@@ -14,7 +14,7 @@
 
 ## 条目
 
-- [ ] **T48E — 公开入口形态对齐（createWindow 与 Window 构造器）**
+- [x] **T48E — 公开入口形态对齐（createWindow 与 Window 构造器）**
   - 实现：
     - 把 `new Window()` / `new Window(options)` 确立为公开构造路径（T48 已让
       Window 可构造并支持 options），`createWindow()` 保留为兼容别名或从包入口

@@ -1,11 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
-  createWindow,
+  Window,
   Document,
   isNativeAvailable,
   liveDocumentCount,
   project,
-  Window,
 } from "../../index.js";
 
 test("package entry exposes frozen pre-alpha project metadata", () => {
@@ -18,18 +17,19 @@ test("package entry exposes frozen pre-alpha project metadata", () => {
 });
 
 describe("package entry Window/Document surface (T22)", () => {
-  test("createWindow, Window and Document are exported as the facade surface", () => {
-    expect(typeof createWindow).toBe("function");
-    expect(typeof Window).toBe("function");
-    expect(typeof Document).toBe("function");
+  test("Window and Document are exported, createWindow is not (happy-dom entry shape)", async () => {
+    const mod = await import("../../index.js");
+    expect(typeof mod.Window).toBe("function");
+    expect(typeof mod.Document).toBe("function");
+    expect(typeof mod.createWindow).toBe("undefined");
   });
 
-  test("createWindow no longer throws the pre-alpha placeholder", () => {
+  test("new Window() no longer throws the pre-alpha placeholder", () => {
     const available = isNativeAvailable();
     let error;
     let win;
     try {
-      win = createWindow();
+      win = new Window();
     } catch (caught) {
       error = caught;
     }

@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWindow, isNativeAvailable, liveDocumentCount } from "../../index.js";
-import { Window } from "../../js/facade/window.js";
+import { Window, isNativeAvailable, liveDocumentCount } from "../../index.js";
 
 // T41 MutationObserver integration tests.
 //
@@ -84,7 +83,7 @@ describe("T41 MutationObserver surface shape", () => {
     const descriptor = Object.getOwnPropertyDescriptor(Window.prototype, "MutationObserver");
     expect(typeof descriptor?.get).toBe("function");
 
-    const win = createWindow();
+    const win = new Window();
     try {
       const MO = win.MutationObserver;
       expect(typeof MO).toBe("function");
@@ -103,7 +102,7 @@ describe("T41 MutationObserver surface shape", () => {
 
   test("the callback's second argument is the very observer the caller constructed", async () => {
     if (!nativeAvailable) return;
-    const win = createWindow();
+    const win = new Window();
     try {
       const { parent } = build(win);
       let identity = false;
@@ -122,7 +121,7 @@ describe("T41 MutationObserver surface shape", () => {
 
 describe.skipIf(!nativeAvailable)("T41 option validation", () => {
   test("observe requires a genuine Node target", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { parent } = build(win);
       const observer = new win.MutationObserver(() => {});
@@ -137,7 +136,7 @@ describe.skipIf(!nativeAvailable)("T41 option validation", () => {
   });
 
   test("at least one of childList / attributes / characterData must be enabled", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { parent } = build(win);
       const observer = new win.MutationObserver(() => {});
@@ -156,7 +155,7 @@ describe.skipIf(!nativeAvailable)("T41 option validation", () => {
   });
 
   test("attributeOldValue / attributeFilter require attributes not be false", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { parent } = build(win);
       const observer = new win.MutationObserver(() => {});
@@ -175,7 +174,7 @@ describe.skipIf(!nativeAvailable)("T41 option validation", () => {
   });
 
   test("characterDataOldValue requires characterData not be false", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { parent } = build(win);
       const observer = new win.MutationObserver(() => {});
@@ -189,7 +188,7 @@ describe.skipIf(!nativeAvailable)("T41 option validation", () => {
   });
 
   test("a non-function callback throws at construction", () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const MO = win.MutationObserver;
       expect(() => new MO(42)).toThrow("parameter 1 is not of type 'Function'");
@@ -201,7 +200,7 @@ describe.skipIf(!nativeAvailable)("T41 option validation", () => {
 
 describe.skipIf(!nativeAvailable)("T41 childList records", () => {
   test("append and remove queue childList records with the baseline sibling fields", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent, a, b } = build(win);
       const order = [];
@@ -248,7 +247,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
   });
 
   test("a move reports a removal on the old parent and an addition on the new one", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent, a } = build(win);
       const other = doc.createElement("other");
@@ -272,7 +271,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
   });
 
   test("replaceChild reports the addition before the removal (baseline order)", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent, a, b } = build(win);
       const order = [];
@@ -297,7 +296,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
   });
 
   test("a DocumentFragment insertion records one addition per child", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent } = build(win);
       const order = [];
@@ -323,7 +322,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
   });
 
   test("subtree observations receive records of descendant mutations", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent, a } = build(win);
       const order = [];
@@ -343,7 +342,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
   });
 
   test("textContent on an observed element records the removals and the addition", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent } = build(win);
       const order = [];
@@ -368,7 +367,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
 
 describe.skipIf(!nativeAvailable)("T41 attributes and characterData records", () => {
   test("setAttribute and removeAttribute record the attribute with its old value", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { parent } = build(win);
       const order = [];
@@ -396,7 +395,7 @@ describe.skipIf(!nativeAvailable)("T41 attributes and characterData records", ()
   });
 
   test("attributeFilter selects only the listed attributes", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { parent } = build(win);
       const order = [];
@@ -415,7 +414,7 @@ describe.skipIf(!nativeAvailable)("T41 attributes and characterData records", ()
   });
 
   test("characterData writes record the old data", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       const text = doc.createTextNode("hi");
@@ -441,7 +440,7 @@ describe.skipIf(!nativeAvailable)("T41 attributes and characterData records", ()
   });
 
   test("splitText records the childList addition before the characterData change", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       const parent = doc.createElement("p");
@@ -470,7 +469,7 @@ describe.skipIf(!nativeAvailable)("T41 attributes and characterData records", ()
 
 describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery", () => {
   test("records from the same task batch into one callback in mutation order", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent } = build(win);
       const order = [];
@@ -490,7 +489,7 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
   });
 
   test("two observed targets are delivered by two separate callbacks (per-listener batching)", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc } = build(win);
       const t1 = doc.createElement("t1");
@@ -514,7 +513,7 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
   });
 
   test("takeRecords suppresses the queued delivery; a later mutation delivers again", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent } = build(win);
       const calls = [];
@@ -539,7 +538,7 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
   });
 
   test("disconnect stops delivery for later mutations", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent } = build(win);
       const calls = [];
@@ -556,7 +555,7 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
   });
 
   test("a throwing observer callback is contained: other observers still deliver", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent } = build(win);
       const calls = [];
@@ -591,7 +590,7 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
   });
 
   test("re-observing the same target replaces its options (spec behavior)", async () => {
-    const win = createWindow();
+    const win = new Window();
     try {
       const { doc, parent } = build(win);
       const order = [];
@@ -613,7 +612,7 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
 
 describe.skipIf(!nativeAvailable)("T41 lifecycle and errors", () => {
   test("a destroyed document fails the observer surface per T21", () => {
-    const win = createWindow();
+    const win = new Window();
     const { parent } = build(win);
     const observer = new win.MutationObserver(() => {});
     observer.observe(parent, { childList: true });
@@ -635,8 +634,8 @@ describe.skipIf(!nativeAvailable)("T41 lifecycle and errors", () => {
   });
 
   test("observing a node of another window's document fails per T21", () => {
-    const win = createWindow();
-    const foreign = createWindow();
+    const win = new Window();
+    const foreign = new Window();
     try {
       const { parent } = build(win);
       const foreignParent = foreign.document.createElement("other");
@@ -670,7 +669,7 @@ describe.skipIf(!nativeAvailable)("T41 lifecycle and errors", () => {
     let delivered = null;
     let win;
     const spawn = () => {
-      win = createWindow();
+      win = new Window();
       const parent = win.document.createElement("parent");
       win.document.body.appendChild(parent);
       const observer = new win.MutationObserver((records) => {
@@ -690,7 +689,7 @@ describe.skipIf(!nativeAvailable)("T41 lifecycle and errors", () => {
 
     // A later mutation on a fresh window is unaffected (no dangling observer
     // state leaks into the next document).
-    const freshWin = createWindow();
+    const freshWin = new Window();
     try {
       const { parent } = build(freshWin);
       const calls = [];

@@ -1,12 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
-  createWindow,
+  Window,
   createDocument,
   Document,
   isNativeAvailable,
   liveDocumentCount,
   project,
-  Window,
 } from "../../index.js";
 
 // T22 cross-layer integration smoke tests.
@@ -14,7 +13,7 @@ import {
 // They drive the Window/Document facade through the official package entry
 // (index.js → js/entry.js) and pin the acceptance criteria of the gate:
 //
-//   - createWindow() no longer throws the pre-alpha placeholder;
+//   - new Window() no longer throws the pre-alpha placeholder;
 //   - Window and Document are constructible, prototype-chained and
 //     descriptor-shaped per the frozen facade baseline
 //     (tests/bun/fixtures/facade-window-document.contract.json, T22B);
@@ -63,7 +62,6 @@ describe("root entry surface (T22)", () => {
       "WheelEvent",
       "Window",
       "createDocument",
-      "createWindow",
       "isNativeAvailable",
       "liveDocumentCount",
       "nativeAbiVersion",
@@ -112,9 +110,9 @@ describe("root entry surface (T22)", () => {
 });
 
 describe.skipIf(!nativeAvailable)("root entry Window/Document lifecycle (T22)", () => {
-  test("createWindow returns a Window facade strongly owning a fresh Document", () => {
+  test("new Window() returns a Window facade strongly owning a fresh Document", () => {
     const before = liveDocumentCount();
-    const win = createWindow();
+    const win = new Window();
     expect(win).toBeInstanceOf(Window);
     expect(Object.getPrototypeOf(win)).toBe(Window.prototype);
     expect(win.constructor).toBe(Window);
@@ -131,14 +129,14 @@ describe.skipIf(!nativeAvailable)("root entry Window/Document lifecycle (T22)", 
   });
 
   test("window.document hands back one and the same object on every read (T20 identity)", () => {
-    const win = createWindow();
+    const win = new Window();
     expect(win.document).toBe(win.document);
     win.destroy();
   });
 
   test("destroy is idempotent through the root entry and forward to the native handle", () => {
     const before = liveDocumentCount();
-    const win = createWindow();
+    const win = new Window();
     const doc = win.document;
     win.destroy();
     expect(() => win.destroy()).not.toThrow();

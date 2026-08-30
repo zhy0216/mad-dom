@@ -38,7 +38,7 @@ export async function run(api) {
 
   const makeWindow = () => {
     try {
-      return typeof entry.createWindow === "function" ? entry.createWindow() : new entry.Window();
+      return new entry.Window();
     } catch (error) {
       api.record.error(error, "setup");
       return null;

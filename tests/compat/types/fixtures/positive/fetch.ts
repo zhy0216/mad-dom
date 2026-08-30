@@ -3,8 +3,9 @@
 // and window.fetch — construction, the bodyUsed / clone surface, the
 // redirect / error / json statics and abort. Must typecheck with ZERO
 // diagnostics against BOTH dom-under-test targets. Instances are typed through
-// function parameters because MAD DOM only mints windows through
-// createWindow() — its Window is not constructible.
+// function parameters so the fixture stays a pure signature check (no window
+// construction on either target; `new Window()` is the package-entry path since
+// T48E).
 import { Window } from "dom-under-test";
 
 function useFetchSurface(window: Window): void {

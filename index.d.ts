@@ -12,7 +12,9 @@ export declare const project: MadDomProject;
 //
 // Public DOM facade surface. Since T48 `Window` is user-constructible like
 // happy-dom: `new Window()` / `new Window(options)` mint a fresh native
-// window+document pair through the constructor's mint path. The `Document`
+// window+document pair through the constructor's mint path, and since T48E it
+// is the only package-entry construction path (the `createWindow` convenience
+// is retired from the entry, matching happy-dom's surface). The `Document`
 // class still only constructs around a genuine native handle (throwing
 // TypeError otherwise), so no user-visible path fabricates a document. Nodes
 // (creation and navigation), tree mutation (append/insert/remove/replace) and
@@ -597,8 +599,6 @@ export declare class Document {
   /** WHATWG `EventTarget.dispatchEvent` (T37): returns `false` when a cancelable event was default-prevented. */
   dispatchEvent(event: Event): boolean;
 }
-
-export declare function createWindow(): Window;
 
 // --- Window platform objects (T45) -------------------------------------------
 //
