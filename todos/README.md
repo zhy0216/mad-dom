@@ -219,7 +219,7 @@ git diff --check
 | 25D | P0 | [25d-live-child-nodelist.md](done/25d-live-child-nodelist.md) | M4 | T24, T23 | 已完成 |
 | 25E | P0 | [25e-binding-attributes-text.md](done/25e-binding-attributes-text.md) | M4 | T23, T24, T25A, T25B, T25C, T25D | 已完成 |
 | 25 | P0 | [25-attributes-text-and-nodelist.md](done/25-attributes-text-and-nodelist.md) | M4 | T25A, T25B, T25C, T25D, T25E | 已完成 |
-| 26 | P1 | [26-html-document-parser.md](26-html-document-parser.md) | M5 | T05, T17, T25 | 待办 |
+| 26 | P1 | [26-html-document-parser.md](done/26-html-document-parser.md) | M5 | T05, T17, T25 | 已完成 |
 | 27 | P1 | [27-html-fragment-parser.md](27-html-fragment-parser.md) | M5 | T26 | 待办 |
 | 28 | P1 | [28-html-serializer.md](28-html-serializer.md) | M5 | T26 | 待办 |
 | 29 | P1 | [29-inner-outer-html-api.md](29-inner-outer-html-api.md) | M5 | T27, T28 | 待办 |
