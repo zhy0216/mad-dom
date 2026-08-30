@@ -360,6 +360,43 @@
       "subsystem": "facade",
       "scenario": "dom-shadow-dom",
       "addedIn": "T43"
+    },
+    {
+      "id": "hc-diff-window-timers",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-timers",
+      "addedIn": "T47"
+    },
+    {
+      "id": "hc-diff-task-ordering",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-task-order",
+      "addedIn": "T47"
+    },
+    {
+      "id": "hc-diff-script-eval",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-script-eval",
+      "addedIn": "T47"
+    },
+    {
+      "id": "hc-types-window-timers",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/timers.ts",
+      "reason": "The T47 timer / task-scheduling / script-evaluation surface is fully typed: setTimeout/clearTimeout/setInterval/clearInterval with inferred host timer ids, requestAnimationFrame/cancelAnimationFrame with a numeric timestamp callback, queueMicrotask, window.eval, the window EventTarget (error listener add/remove, dispatch of a window.ErrorEvent with its message/error payload) and the window/globalThis self-references all type-check on the mad-dom target. The only remaining diagnostic is the shared Window-constructor gap (MAD DOM's Window is not user-constructible; the happy-dom options-object shape is rejected), which this fixture exercises to reach window.timers.",
+      "recordedAt": "2026-08-30T19:00:00Z",
+      "addedIn": "T47",
+      "diagnostics": [
+        { "code": 2353, "line": 11 }
+      ]
     }
   ]
 }

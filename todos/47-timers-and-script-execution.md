@@ -1,6 +1,6 @@
 # 47 实现定时器、任务调度与脚本执行集成
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P2
 - 里程碑：M8
 - 条目 ID：`T47`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T47 — 实现定时器、任务调度与脚本执行集成**
+- [x] **T47 — 实现定时器、任务调度与脚本执行集成**
   - 实现：
     - 实现 timer/interval/immediate/animation frame 等基线公开表面及取消语义。
     - 固定事件、MutationObserver、Custom Elements、Promise 与 timer 的任务顺序。

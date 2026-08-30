@@ -35,12 +35,13 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/fetch.js", owner: "T46" },
   { path: "extensions/range-selection.js", owner: "T36" },
   { path: "extensions/shadow-dom.js", owner: "T43" },
+  { path: "extensions/timers.js", owner: "T47" },
 ];
 
 // The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29,
-// T31, T32, T33, T37, T34, T39, T45, T35, T41, T40, T46 and T43 capability
-// extensions are implemented and their seam status is flipped to "implemented";
-// no capability extension stays a placeholder.
+// T31, T32, T33, T37, T34, T39, T45, T35, T41, T40, T46, T43 and T47
+// capability extensions are implemented and their seam status is flipped to
+// "implemented"; no capability extension stays a placeholder.
 const IMPLEMENTED_FACADE_FILES = [
   { path: "window.js", owner: "T22B" },
   { path: "document.js", owner: "T22B" },
@@ -65,6 +66,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/fetch.js", owner: "T46" },
   { path: "extensions/range-selection.js", owner: "T36" },
   { path: "extensions/shadow-dom.js", owner: "T43" },
+  { path: "extensions/timers.js", owner: "T47" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 

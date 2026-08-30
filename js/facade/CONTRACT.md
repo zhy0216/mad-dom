@@ -34,6 +34,7 @@
 | `extensions/range-selection.js` | T36 | T36 | `createRange`/`getSelection`、`Range`/`Selection` 与 `window.Range`/`window.Selection`/`window.getSelection` facade |
 | `extensions/custom-elements.js` | T42 | T42 | `window.customElements` `CustomElementRegistry`（define/get/getName/whenDefined/upgrade）与同步生命周期反应（connected/disconnected/attributeChanged）facade |
 | `extensions/shadow-dom.js` | T43 | T43 | `Element.attachShadow`/`shadowRoot`、`ShadowRoot`（host/mode/innerHTML）与 `slot`/`assignedNodes`/`assignedElements` 基础 slot 分配 facade |
+| `extensions/timers.js` | T47 | T47 | `setTimeout`/`clearTimeout`/`setInterval`/`clearInterval`/`requestAnimationFrame`/`cancelAnimationFrame`/`queueMicrotask`、`eval`（document/window 全局绑定）与 window `error` 事件传播 facade |
 
 每个占位文件是合法 ESM 模块，导出冻结的 `seam` 元数据（`id`、`owner`、
 `gate`、`status`），由 `tests/bun/seam.test.js` 锁定；owner 接管实现后可删除

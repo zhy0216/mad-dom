@@ -43,6 +43,7 @@ import * as rangeSelectionExtension from "./range-selection.js";
 import * as shadowDomExtension from "./shadow-dom.js";
 import * as templateExtension from "./template.js";
 import * as textContentExtension from "./text-content.js";
+import * as timersExtension from "./timers.js";
 import * as treeTraversalExtension from "./tree-traversal.js";
 import * as windowPlatformExtension from "./window-platform.js";
 
@@ -75,6 +76,7 @@ const EXTENSIONS = [
   formsExtension,
   rangeSelectionExtension,
   shadowDomExtension,
+  timersExtension,
 ];
 
 /**

@@ -104,6 +104,27 @@ export declare class Window {
   readonly Selection: typeof Selection;
   /** WHATWG `window.getSelection` (T36): the per-document `Selection` singleton. */
   getSelection(): Selection;
+  /** The window timer surface (T47): every timer is scheduled by Bun, and the returned host timer id is what the matching clear call accepts. */
+  setTimeout(callback: Function, delay?: number, ...args: unknown[]): object;
+  clearTimeout(id: object): void;
+  setInterval(callback: Function, delay?: number, ...args: unknown[]): object;
+  clearInterval(id: object): void;
+  /** WHATWG `requestAnimationFrame` (T47): the callback receives a finite numeric timestamp; `cancelAnimationFrame` cancels it. */
+  requestAnimationFrame(callback: (timestamp: number) => void): object;
+  cancelAnimationFrame(id: object): void;
+  /** WHATWG `queueMicrotask` (T47): schedules `callback` on the microtask queue. */
+  queueMicrotask(callback: Function): void;
+  /** The window `eval` (T47): evaluates `code` with the owning window's surface bound as its globals (`document`, `window`, `HTMLElement`, ...). */
+  eval(code: string): any;
+  /** Window self-references (T47, happy-dom parity): `window.window === window` and `window.globalThis === window`. */
+  readonly window: Window;
+  readonly globalThis: Window;
+  /** The window-level EventTarget (T47): `addEventListener("error", ...)` receives the async-callback `error` events the timers dispatch. */
+  addEventListener(type: string, listener: (event: ErrorEvent) => void, options?: { once?: boolean } | null): void;
+  removeEventListener(type: string, listener: (event: ErrorEvent) => void): void;
+  dispatchEvent(event: ErrorEvent): boolean;
+  /** The WHATWG `ErrorEvent` constructor (T47): the `error` event dispatched on the window for async callback failures. */
+  readonly ErrorEvent: typeof ErrorEvent;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
@@ -348,6 +369,26 @@ export declare class InputEvent extends UIEvent {
   readonly inputType: string;
   readonly isComposing: boolean;
   constructor(type: string, eventInit?: IInputEventInit | null);
+}
+
+/** The WHATWG `ErrorEventInit` dictionary (T47): the `error` event payload happy-dom dispatches on the window for async callback failures. */
+export interface IErrorEventInit {
+  message?: string;
+  error?: unknown;
+  filename?: string;
+  lineno?: number;
+}
+
+/** The WHATWG `ErrorEvent` (T47): dispatched on the window when an async callback (timer / rAF / queueMicrotask) throws or rejects. */
+export declare class ErrorEvent {
+  readonly type: string;
+  readonly message: string;
+  readonly error: unknown;
+  readonly filename: string;
+  readonly lineno: number;
+  readonly target: Window | null;
+  readonly currentTarget: Window | null;
+  constructor(type: string, eventInit?: IErrorEventInit | null);
 }
 
 export declare class Document {
