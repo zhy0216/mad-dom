@@ -7,3 +7,9 @@ description = "Runtime-agnostic Rust DOM core for mad-dom."
 
 [lib]
 name = "mad_dom_core"
+
+[dependencies]
+# HTML parser (ADR-0004): servo html5ever (MIT OR Apache-2.0), pinned to the
+# version validated by the T05 spike. The TreeSink lets the parser stream
+# tokens straight into the unified per-document arena.
+html5ever = "0.39.0"

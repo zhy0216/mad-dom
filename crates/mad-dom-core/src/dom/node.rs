@@ -1,4 +1,5 @@
-//! Node type enumeration, per-type data storage and tree relations.//!
+//! Node type enumeration, per-type data storage and tree relations.
+//!
 //! This module holds the *data* model of a node: its kind, its name, its text,
 //! its attribute storage, and the tree relations linking it to its parent,
 //! children and siblings (T14). The relation fields are `pub(crate)`: only code
@@ -6,8 +7,23 @@
 //! corrupt the tree directly. Mutation of those fields is deliberately left to
 //! the unified mutation API (T15/T16); this milestone only establishes the
 //! storage, read-only navigation and an invariant checker.
+//!
+//! T26 (the HTML parser milestone) extends the model with the two structures
+//! the parser must write into the arena: a [`DocumentType`] node holding the
+//! doctype payload and the element namespace URI. Element names and namespaces
+//! are stored as string-cache atoms (the same atom type html5ever hands the
+//! parser), while the *string payload* — attribute values, text, comment and
+//! doctype data — stays an owned `String` per ADR-0004 decision 3.
 
 use crate::arena::NodeId;
+use html5ever::{LocalName, Namespace};
+
+/// The WHATWG HTML namespace URI.
+pub const HTML_NAMESPACE: &str = "http://www.w3.org/1999/xhtml";
+/// The WHATWG SVG namespace URI.
+pub const SVG_NAMESPACE: &str = "http://www.w3.org/2000/svg";
+/// The WHATWG MathML namespace URI.
+pub const MATHML_NAMESPACE: &str = "http://www.w3.org/1998/Math/MathML";
 
 /// The kind of a node, mirroring the WHATWG `Node.nodeType` values for the
 /// first batch of node types.
@@ -15,6 +31,8 @@ use crate::arena::NodeId;
 pub enum NodeType {
     /// A `Document` node.
     Document,
+    /// A `DocumentType` node.
+    DocumentType,
     /// A `DocumentFragment` node.
     DocumentFragment,
     /// An `Element` node.
@@ -30,15 +48,36 @@ pub enum NodeType {
 pub enum NodeData {
     /// A `Document` node. Payload arrives with tree relations (T14).
     Document,
+    /// A `DocumentType` node holding the doctype payload produced by the HTML
+    /// parser (T26).
+    DocumentType {
+        /// The doctype's name (e.g. `"html"`).
+        name: String,
+        /// The public identifier.
+        public_id: String,
+        /// The system identifier.
+        system_id: String,
+    },
     /// A `DocumentFragment` node. Payload arrives with tree relations (T14).
     DocumentFragment,
-    /// An `Element` node: its qualified name and its attribute list.
+    /// An `Element` node: its name, namespace, attribute list and the HTML5
+    /// element flags the parser must record.
     Element {
-        /// The element's name (e.g. `"div"`).
-        name: String,
+        /// The element's local name (e.g. `"div"`), stored as a string-cache
+        /// atom so the parser's `TreeSink::elem_name` can clone it cheaply.
+        name: LocalName,
+        /// The element's namespace URI, stored as a string-cache atom.
+        namespace: Namespace,
         /// Attribute storage as an ordered list of `(name, value)` pairs.
         /// The full attribute API is added in a later milestone.
         attributes: Vec<(String, String)>,
+        /// Whether this is a MathML `annotation-xml` element that is an HTML
+        /// integration point (recorded from `ElementFlags` by the parser).
+        mathml_annotation_xml_integration_point: bool,
+        /// Whether the tokenizer saw duplicate attributes on this element
+        /// (recorded from `ElementFlags` by the parser; used by CSP nonce
+        /// rules).
+        had_duplicate_attributes: bool,
     },
     /// A `Text` node holding its character data.
     Text { data: String },
@@ -51,6 +90,7 @@ impl NodeData {
     pub fn node_type(&self) -> NodeType {
         match self {
             Self::Document => NodeType::Document,
+            Self::DocumentType { .. } => NodeType::DocumentType,
             Self::DocumentFragment => NodeType::DocumentFragment,
             Self::Element { .. } => NodeType::Element,
             Self::Text { .. } => NodeType::Text,
@@ -62,6 +102,7 @@ impl NodeData {
     pub fn node_name(&self) -> &str {
         match self {
             Self::Document => "#document",
+            Self::DocumentType { name, .. } => name,
             Self::DocumentFragment => "#document-fragment",
             Self::Element { name, .. } => name,
             Self::Text { .. } => "#text",
@@ -72,7 +113,16 @@ impl NodeData {
     /// Returns the element's name, or `None` if this is not an element.
     pub fn element_name(&self) -> Option<&str> {
         match self {
-            Self::Element { name, .. } => Some(name),
+            Self::Element { name, .. } => Some(name.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Returns the element's namespace URI, or `None` if this is not an
+    /// element.
+    pub fn element_namespace(&self) -> Option<&str> {
+        match self {
+            Self::Element { namespace, .. } => Some(namespace.as_ref()),
             _ => None,
         }
     }
@@ -82,6 +132,30 @@ impl NodeData {
     pub fn element_attributes(&self) -> Option<&[(String, String)]> {
         match self {
             Self::Element { attributes, .. } => Some(attributes),
+            _ => None,
+        }
+    }
+
+    /// Returns whether this element is a MathML `annotation-xml` HTML
+    /// integration point, or `None` if this is not an element.
+    pub fn element_mathml_integration_point(&self) -> Option<bool> {
+        match self {
+            Self::Element {
+                mathml_annotation_xml_integration_point,
+                ..
+            } => Some(*mathml_annotation_xml_integration_point),
+            _ => None,
+        }
+    }
+
+    /// Returns whether the element's token had duplicate attributes, or `None`
+    /// if this is not an element.
+    pub fn element_had_duplicate_attributes(&self) -> Option<bool> {
+        match self {
+            Self::Element {
+                had_duplicate_attributes,
+                ..
+            } => Some(*had_duplicate_attributes),
             _ => None,
         }
     }
@@ -99,6 +173,19 @@ impl NodeData {
     pub fn comment_data(&self) -> Option<&str> {
         match self {
             Self::Comment { data } => Some(data),
+            _ => None,
+        }
+    }
+
+    /// Returns the doctype payload `(name, public_id, system_id)` as borrowed
+    /// strings, or `None` if this is not a `DocumentType` node.
+    pub fn doctype_data(&self) -> Option<(&str, &str, &str)> {
+        match self {
+            Self::DocumentType {
+                name,
+                public_id,
+                system_id,
+            } => Some((name, public_id, system_id)),
             _ => None,
         }
     }

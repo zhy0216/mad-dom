@@ -8,7 +8,8 @@
 //!
 //! # Getter ([`Document::text_content`])
 //!
-//! * a `Document` node reads as `None` (the WHATWG property is null);
+//! * a `Document` or `DocumentType` node reads as `None` (the WHATWG
+//!   property is null);
 //! * a `Text` or `Comment` node reads its own character data;
 //! * an `Element` or `DocumentFragment` reads the concatenation of every
 //!   descendant `Text` node's data in tree order; comments are excluded.
@@ -20,8 +21,8 @@
 //!
 //! # Setter ([`Document::set_text_content`])
 //!
-//! * a `Document` node is a no-op (the WHATWG setter on a Document does
-//!   nothing);
+//! * a `Document` or `DocumentType` node is a no-op (the WHATWG setter
+//!   on a Document or DocumentType does nothing);
 //! * a `Text` or `Comment` node updates its data in place through the
 //!   crate-internal [`Document::set_character_data`] entry, which validates
 //!   ownership, node kind and text-data well-formedness (rejecting NUL with
@@ -59,8 +60,8 @@ use super::Document;
 impl Document {
     /// Returns the `textContent` of the node for `id`.
     ///
-    /// Mirrors the WHATWG `Node.textContent` getter: a `Document` node has no
-    /// text content and reads as `None`; a `Text` or `Comment` node reads its
+    /// Mirrors the WHATWG `Node.textContent` getter: a `Document` or
+    /// `DocumentType` node has no text content and reads as `None`; a `Text` or `Comment` node reads its
     /// own data; an `Element` or `DocumentFragment` reads the concatenation of
     /// every descendant `Text` node's data in tree order (comments are
     /// excluded). The string is produced on demand from the arena; reading
@@ -73,7 +74,7 @@ impl Document {
     pub fn text_content(&self, id: NodeId) -> Result<Option<String>, CoreError> {
         let node = self.get(id)?;
         match node.data().node_type() {
-            NodeType::Document => Ok(None),
+            NodeType::Document | NodeType::DocumentType => Ok(None),
             NodeType::Text => Ok(Some(
                 node.data().text_data().unwrap_or_default().to_string(),
             )),
@@ -90,8 +91,8 @@ impl Document {
 
     /// Sets the `textContent` of the node for `id` to `value`.
     ///
-    /// Mirrors the WHATWG `Node.textContent` setter: a `Document` node is a
-    /// no-op; a `Text` or `Comment` node has its data replaced atomically
+    /// Mirrors the WHATWG `Node.textContent` setter: a `Document` or
+    /// `DocumentType` node is a no-op; a `Text` or `Comment` node has its data replaced atomically
     /// through the Core text seam; an `Element` or `DocumentFragment` has all
     /// of its children replaced by a single text node holding `value` (an
     /// empty value removes every child and inserts no text node). The
@@ -107,7 +108,7 @@ impl Document {
     pub fn set_text_content(&mut self, id: NodeId, value: &str) -> Result<(), CoreError> {
         let kind = self.get(id)?.data().node_type();
         match kind {
-            NodeType::Document => Ok(()),
+            NodeType::Document | NodeType::DocumentType => Ok(()),
             NodeType::Text | NodeType::Comment => self.set_character_data(id, value),
             NodeType::Element | NodeType::DocumentFragment => {
                 // WHATWG "string replace all": create the single replacement

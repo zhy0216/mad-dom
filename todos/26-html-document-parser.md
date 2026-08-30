@@ -1,6 +1,6 @@
 # 26 实现 HTML document parser
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M5
 - 条目 ID：`T26`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T26 — 实现 HTML document parser**
+- [x] **T26 — 实现 HTML document parser**
   - 实现：
     - 实现 tokenizer/tree builder 适配与节点创建回调。
     - 处理 doctype、html/head/body、畸形标记、实体、Raw Text/RCDATA 和命名空间边界。

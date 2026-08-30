@@ -258,6 +258,7 @@ pub(crate) fn node_type_value(node_type: NodeType) -> u32 {
         NodeType::Text => 3,
         NodeType::Comment => 8,
         NodeType::Document => 9,
+        NodeType::DocumentType => 10,
         NodeType::DocumentFragment => 11,
     }
 }

@@ -24,7 +24,9 @@
 use crate::arena::{Arena, NodeId};
 use crate::error::CoreError;
 
-use super::node::{Node, NodeData, NodeType};
+use super::node::{Node, NodeData, NodeType, HTML_NAMESPACE};
+
+use html5ever::{LocalName, Namespace};
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -67,8 +69,11 @@ impl Document {
         Ok(self.arena.allocate(
             self.id,
             Node::new(NodeData::Element {
-                name: name.to_string(),
+                name: LocalName::from(name.to_string()),
+                namespace: Namespace::from(HTML_NAMESPACE),
                 attributes: Vec::new(),
+                mathml_annotation_xml_integration_point: false,
+                had_duplicate_attributes: false,
             }),
         ))
     }

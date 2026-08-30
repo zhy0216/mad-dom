@@ -390,6 +390,7 @@ impl Document {
         match self.get(parent)?.node_type() {
             NodeType::Element | NodeType::DocumentFragment => Ok(()),
             NodeType::Document => Err(hierarchy("a Document node cannot be a parent")),
+            NodeType::DocumentType => Err(hierarchy("a DocumentType node cannot be a parent")),
             NodeType::Text => Err(hierarchy("a Text node cannot be a parent")),
             NodeType::Comment => Err(hierarchy("a Comment node cannot be a parent")),
         }

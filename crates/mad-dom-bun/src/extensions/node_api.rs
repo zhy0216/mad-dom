@@ -160,6 +160,7 @@ mod tests {
         assert_eq!(node_type_value(NodeType::Text), 3);
         assert_eq!(node_type_value(NodeType::Comment), 8);
         assert_eq!(node_type_value(NodeType::Document), 9);
+        assert_eq!(node_type_value(NodeType::DocumentType), 10);
         assert_eq!(node_type_value(NodeType::DocumentFragment), 11);
     }
 }
