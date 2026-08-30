@@ -245,7 +245,7 @@ git diff --check
 | 48A | P2 | [48a-element-class-hierarchy.md](48a-element-class-hierarchy.md) | M9 | T48 | 部分完成 |
 | 48B | P2 | [48b-error-taxonomy-and-validation-parity.md](done/48b-error-taxonomy-and-validation-parity.md) | M9 | T48, T48A | 已完成 |
 | 48C | P2 | [48c-form-constraint-validation.md](done/48c-form-constraint-validation.md) | M9 | T48 | 已完成 |
-| 48D | P2 | [48d-custom-element-upgrade-parity.md](48d-custom-element-upgrade-parity.md) | M9 | T48, T48A | 待办 |
+| 48D | P2 | [48d-custom-element-upgrade-parity.md](done/48d-custom-element-upgrade-parity.md) | M9 | T48, T48A | 已完成 |
 | 48E | P2 | [48e-entry-shape-alignment.md](48e-entry-shape-alignment.md) | M9 | T48 | 待办 |
 | 49 | P2 | [49-native-packaging-and-artifacts.md](49-native-packaging-and-artifacts.md) | M9 | T06, T21, T48 | 待办 |
 | 50 | P2 | [50-hardening-and-stable-release.md](50-hardening-and-stable-release.md) | M9 | T18, T20, T21, T48, T49 | 待办 |
