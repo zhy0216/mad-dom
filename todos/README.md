@@ -235,7 +235,7 @@ git diff --check
 | 39 | P1 | [39-html-element-base.md](done/39-html-element-base.md) | M7 | T29, T34, T37 | 已完成 |
 | 40 | P1 | [40-template-and-forms.md](done/40-template-and-forms.md) | M7 | T27, T34, T39 | 已完成 |
 | 41 | P2 | [41-mutation-observer.md](done/41-mutation-observer.md) | M7 | T24, T34, T37 | 已完成 |
-| 42 | P2 | [42-custom-elements.md](42-custom-elements.md) | M8 | T37, T39, T40, T41 | 待办 |
+| 42 | P2 | [42-custom-elements.md](done/42-custom-elements.md) | M8 | T37, T39, T40, T41 | 已完成 |
 | 43 | P2 | [43-shadow-dom.md](43-shadow-dom.md) | M8 | T31, T37, T42 | 待办 |
 | 44 | P2 | [44-cssom.md](44-cssom.md) | M8 | T34, T39, T43 | 待办 |
 | 45 | P2 | [45-window-platform-and-storage.md](done/45-window-platform-and-storage.md) | M8 | T22, T37 | 已完成 |
