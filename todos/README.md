@@ -230,7 +230,7 @@ git diff --check
 | 34 | P1 | [34-attributes-and-domtokenlist.md](34-attributes-and-domtokenlist.md) | M7 | T25, T33 | 待办 |
 | 35 | P1 | [35-treewalker-and-nodeiterator.md](35-treewalker-and-nodeiterator.md) | M7 | T25, T33 | 待办 |
 | 36 | P1 | [36-range-and-selection.md](36-range-and-selection.md) | M7 | T33, T35 | 待办 |
-| 37 | P1 | [37-event-target-and-propagation.md](37-event-target-and-propagation.md) | M7 | T25 | 待办 |
+| 37 | P1 | [37-event-target-and-propagation.md](done/37-event-target-and-propagation.md) | M7 | T25 | 已完成 |
 | 38 | P1 | [38-event-classes.md](38-event-classes.md) | M7 | T37 | 待办 |
 | 39 | P1 | [39-html-element-base.md](39-html-element-base.md) | M7 | T29, T34, T37 | 待办 |
 | 40 | P1 | [40-template-and-forms.md](40-template-and-forms.md) | M7 | T27, T34, T39 | 待办 |
