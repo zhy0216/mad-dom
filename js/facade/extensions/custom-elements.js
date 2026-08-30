@@ -5,10 +5,10 @@
 // whenDefined / upgrade) and the synchronous lifecycle reaction dispatch
 // (`connectedCallback` / `disconnectedCallback` / `attributeChangedCallback`).
 //
-// # Class hierarchy (T48A)
+// # Class hierarchy (T48A) and the upgrade identity (T48D)
 //
 // The facade owns the WHATWG class chain — `Node → Element → HTMLElement →
-// per-tag` — so an "upgraded" custom element is the *same wrapper* whose
+// per-tag` — so an upgraded custom element is the *same wrapper* whose
 // prototype has been re-parented onto the user class:
 // `Object.setPrototypeOf(wrapper, ElementClass.prototype)`. The user class
 // extends `window.HTMLElement`, so `instanceof ElementClass` and
@@ -16,12 +16,13 @@
 // `HTMLElement` method stays reachable. `new DefinedClass()` casts a real
 // detached element through the mint slot `define` stashes on the class
 // prototype (T48A), so `localName` reads the registered name like happy-dom.
-// This is an *in-place* upgrade: unlike happy-dom, which physically replaces
-// the element object when a connected candidate is defined later, MAD DOM
-// keeps the wrapper identity stable. The upgrade happens at the same native
-// entry points that mark the Core element custom (createElement, define, the
-// apply path, `upgrade()`), so the wrapper prototype and the Core custom state
-// are always in step — no second authoritative DOM state.
+// `define`-after-connect is the one path that *does not* upgrade in place:
+// happy-dom physically replaces each connected candidate with a fresh custom
+// element (the pre-created reference stays a plain `HTMLElement`), and MAD DOM
+// does the same (T48D) — Core mints a replacement element, moves the
+// candidate's attributes and children onto it, and the old wrapper keeps its
+// plain prototype. Every other upgrade entry point (createElement, the apply
+// path) is the in-place single-class upgrade.
 //
 // # Definitions live here; reactions are decided and queued in Core
 //
@@ -52,8 +53,10 @@
 // elements custom *and* queue their reactions inside one native call. The
 // wrapper prototypes must be set before the callbacks fire, so:
 //
-// * `defineCustomElement` returns the upgraded handles; this module sets each
-//   wrapper's prototype and only then flushes the `Connected` reactions;
+// * `defineCustomElement` returns the replacement handles (the fresh elements
+//   Core swapped in for the connected candidates); this module sets each
+//   replacement wrapper's prototype and only then flushes the `Connected`
+//   reactions;
 // * the apply path marks the parsed elements during the native call and the
 //   facade walks them afterwards with `listCustomElementCandidates` (the
 //   elements Core upgraded during the parse), sets the prototypes and flushes.
@@ -398,9 +401,10 @@ export function install(ctx) {
       localName: name,
     };
 
-    // Core registers the definition, upgrades the connected matching elements
-    // and queues their `Connected` reaction; the wrapper prototypes are set
-    // before the flush so the callbacks run on upgraded elements.
+    // Core registers the definition, physically replaces the connected
+    // matching elements with fresh custom elements and queues their
+    // `Connected` reaction; the replacement wrapper prototypes are set before
+    // the flush so the callbacks run on the upgraded (replacement) elements.
     const upgraded = this.native.defineCustomElement(this.docHandle, name, observed);
     this.definitions.set(name, new CustomElementDefinition(elementClass));
     this.classToName.set(elementClass, name);
@@ -455,15 +459,9 @@ export function install(ctx) {
     });
   });
 
-  ctx.defineMethod(CustomElementRegistry.prototype, "upgrade", function upgrade(root) {
-    const nodeHandle = ctx.documentContext.handleOf(root);
-    if (nodeHandle === null || nodeHandle === undefined) return;
-    const upgraded = this.native.upgradeCustomElements(nodeHandle);
-    for (const handle of upgraded) {
-      this.upgradePrototype(ctx.wrap(handle));
-    }
-    if (upgraded.length > 0) {
-      flushCustomElementReactions(ctx, nodeHandle);
-    }
+  ctx.defineMethod(CustomElementRegistry.prototype, "upgrade", function upgrade() {
+    // happy-dom parity (T48D): happy-dom documents `registry.upgrade(root)`
+    // as "Not implemented yet" — a no-op. It performs no genuine upgrade and
+    // fires no lifecycle reaction.
   });
 }

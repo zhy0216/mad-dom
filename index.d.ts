@@ -792,15 +792,17 @@ declare interface MutationRecord {
   readonly oldValue: string | null;
 }
 
-// --- Custom Element registry (T42) -------------------------------------------
+// --- Custom Element registry (T42 / T48D) ------------------------------------
 //
 // The WHATWG `CustomElementRegistry`, reached through `window.customElements`.
 // A custom element class extends `window.HTMLElement` and carries the optional
 // lifecycle callbacks; `define` registers it for a name, `createElement` /
-// the parser / `define`-after-connect upgrade the matching elements by
-// re-parenting their wrapper prototype onto the class (the single-class
-// in-place upgrade). The lifecycle callbacks fire synchronously at the mutation
-// point (happy-dom parity); `observedAttributes` is read once at define and
+// the parser upgrade the matching elements by re-parenting their wrapper
+// prototype onto the class (the single-class upgrade), and `define`-after-
+// connect physically replaces each connected candidate with a fresh custom
+// element (the pre-created reference stays a plain `HTMLElement`, happy-dom
+// parity). The lifecycle callbacks fire synchronously at the mutation point
+// (happy-dom parity); `observedAttributes` is read once at define and
 // lowercased.
 
 /** A custom element constructor: any `window.HTMLElement` subclass. */
@@ -823,7 +825,7 @@ export interface CustomElementRegistry {
   getName(elementClass: CustomElementConstructor): string | null;
   /** A promise resolving once `name` is defined (rejects for invalid names). */
   whenDefined(name: string): Promise<void>;
-  /** Upgrades every defined-name element in `root`'s subtree. */
+  /** A no-op (happy-dom parity: documented as "Not implemented yet"). */
   upgrade(root: Node): void;
 }
 

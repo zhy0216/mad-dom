@@ -710,7 +710,7 @@ impl Document {
     /// at `node`'s top-level ancestor, so a relinking bug surfaces in tests.
     /// The parent walk is capped at the number of live nodes so a (buggy)
     /// cyclic tree cannot hang the check.
-    fn verify_invariants(&self, node: NodeId) {
+    pub(crate) fn verify_invariants(&self, node: NodeId) {
         #[cfg(debug_assertions)]
         {
             let mut root = node;
@@ -737,7 +737,7 @@ impl Document {
     /// In debug builds, verifies that a node just detached by a mutation really
     /// is detached (no parent) and that its subtree still satisfies the tree
     /// invariants.
-    fn verify_detached(&self, node: NodeId) {
+    pub(crate) fn verify_detached(&self, node: NodeId) {
         #[cfg(debug_assertions)]
         {
             debug_assert_eq!(

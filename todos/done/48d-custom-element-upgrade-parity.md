@@ -1,6 +1,6 @@
 # 48D 自定义元素升级语义对齐
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P2
 - 里程碑：M9
 - 条目 ID：`T48D`
@@ -14,7 +14,7 @@
 
 ## 条目
 
-- [ ] **T48D — 自定义元素升级语义对齐**
+- [x] **T48D — 自定义元素升级语义对齐**
   - 实现：
     - `registry.upgrade(root)` 与 happy-dom 一致：happy-dom 将之记录为 no-op
       （"Not implemented yet"），对齐后不再执行 genuine 升级或派发生命周期反应。

@@ -42,11 +42,13 @@
 //!   [`Document::remove_attribute`](super::Document::remove_attribute) enqueue
 //!   `AttributeChanged` for custom elements whose observed snapshot contains the
 //!   attribute (case-insensitive, the happy-dom lowercased rule);
-//! * [`Document::define_custom_element`] upgrades the already-connected
-//!   elements of a newly defined name (the happy-dom define-after-connect path)
-//!   and enqueues their `Connected` reaction — like happy-dom it does *not*
-//!   upgrade detached candidates and fires no `AttributeChanged` for attributes
-//!   present before the definition;
+//! * [`Document::define_custom_element`] physically replaces every
+//!   already-connected element of a newly defined name with a fresh custom
+//!   element (the happy-dom define-after-connect path: the old reference stays
+//!   a plain `HTMLElement`, the replacement takes over its position,
+//!   attributes and children) and enqueues the replacement's `Connected`
+//!   reaction — like happy-dom it does *not* touch detached candidates and
+//!   fires no `AttributeChanged` for attributes present before the definition;
 //! * the T29 apply path (innerHTML / outerHTML / load_html) upgrades freshly
 //!   parsed elements of defined names and enqueues their `AttributeChanged`
 //!   reactions before the splice enqueues `Connected`, so a parsed custom
@@ -209,19 +211,27 @@ impl Document {
         Ok(self.custom_elements.is_custom(id))
     }
 
-    /// Registers a custom element definition and upgrades every *connected*
-    /// element of that name (the happy-dom define-after-connect path).
+    /// Registers a custom element definition and replaces every *connected*
+    /// element of that name with a freshly minted custom element (the happy-dom
+    /// define-after-connect path).
     ///
     /// Registers the observed-attribute snapshot first, then walks the
     /// connected tree from the document root (only reachable elements can be
-    /// connected, so the walk needs no arena iteration) and upgrades each
-    /// matching element that is not yet custom, enqueueing its `Connected`
-    /// reaction. Detached candidates are deliberately left uncustomized —
-    /// happy-dom only upgrades elements that registered their define callback
-    /// while connected.
+    /// connected, so the walk needs no arena iteration) and, for each matching
+    /// element that is not yet custom, physically replaces it: a new element
+    /// of the same name takes over the old element's position, attributes and
+    /// children, and the old element is left detached and plain. Only the
+    /// replacement gets a `Connected` reaction — the happy-dom replacement
+    /// fires `connectedCallback` on the new element and nothing else (no
+    /// `AttributeChanged` for pre-definition attributes, no reaction for the
+    /// old element or the moved children, and no MutationObserver record).
+    /// Detached candidates are deliberately left untouched — happy-dom only
+    /// replaces elements that registered their define callback while
+    /// connected.
     ///
-    /// Returns the upgraded [`NodeId`]s in document order; the binding hands
-    /// them to the facade so it can set each wrapper's prototype before the
+    /// Returns the replacement [`NodeId`]s in document order; the binding hands
+    /// them to the facade so it can set each wrapper's prototype onto the
+    /// user class (the old references stay plain `HTMLElement`s) before the
     /// reactions are dispatched.
     pub fn define_custom_element(
         &mut self,
@@ -233,6 +243,10 @@ impl Document {
         let Some(root) = self.cached_document_root() else {
             return upgraded;
         };
+        // Collect the connected, matching, not-yet-custom element ids in
+        // document order first (a read-only walk, so the mutation phase below
+        // never borrows the document immutably).
+        let mut candidates = Vec::new();
         let mut stack = vec![root];
         while let Some(id) = stack.pop() {
             if self
@@ -241,8 +255,7 @@ impl Document {
                 && self.node_name(id).ok() == Some(name)
                 && !self.custom_elements.is_custom(id)
             {
-                self.custom_elements.mark_custom(id);
-                upgraded.push(id);
+                candidates.push(id);
             }
             if let Ok(children) = self.children(id) {
                 for child in children.into_iter().rev() {
@@ -250,6 +263,92 @@ impl Document {
                 }
             }
         }
+
+        for old in candidates {
+            // A connected candidate always has a parent; skip defensively.
+            let Some(old_parent) = self.parent(old).ok().flatten() else {
+                continue;
+            };
+            let prev = self.get(old).ok().and_then(|node| node.previous_sibling());
+            let next = self.get(old).ok().and_then(|node| node.next_sibling());
+
+            // Create the replacement. The name is defined by now, so
+            // `create_element` already marks it custom.
+            let Ok(replacement) = self.create_element(name) else {
+                continue;
+            };
+
+            // Transfer the old element's attributes and children onto the
+            // replacement, then swap it into the old element's position. The
+            // whole transfer runs with the observer records and the custom
+            // element reactions suppressed: happy-dom performs the replacement
+            // without producing a MutationObserver record and without firing
+            // anything but the replacement's own `Connected` reaction. The
+            // children are reparented by pointer (their query-index entries
+            // stay valid — the subtree never leaves the document and keeps its
+            // document order), and only the fresh replacement is indexed.
+            self.with_custom_element_reactions_suppressed(|doc| {
+                doc.with_observer_records_suppressed(|doc| {
+                    let attributes: Vec<(String, String)> = doc
+                        .get(old)
+                        .expect("live candidate")
+                        .data()
+                        .element_attributes()
+                        .map(|pairs| pairs.to_vec())
+                        .unwrap_or_default();
+                    for (attribute, value) in attributes {
+                        let _ = doc.set_attribute(replacement, &attribute, &value);
+                    }
+
+                    let children = doc.children(old).expect("live candidate");
+                    for &child in &children {
+                        doc.node_mut(child).expect("live child").parent = Some(replacement);
+                    }
+                    let replacement_node = doc.node_mut(replacement).expect("live replacement");
+                    replacement_node.first_child = children.first().copied();
+                    replacement_node.last_child = children.last().copied();
+                    let old_node = doc.node_mut(old).expect("live candidate");
+                    old_node.first_child = None;
+                    old_node.last_child = None;
+
+                    // The old element is now empty; detaching it unlinks it
+                    // from its siblings and removes it from the query index
+                    // (suppressed, so it queues no record and no reaction — it
+                    // was never custom).
+                    doc.detach(old);
+
+                    // Link the replacement into the old element's position.
+                    let node = doc.node_mut(replacement).expect("live replacement");
+                    node.parent = Some(old_parent);
+                    node.previous_sibling = prev;
+                    node.next_sibling = next;
+                    if let Some(p) = prev {
+                        doc.node_mut(p).expect("live previous sibling").next_sibling =
+                            Some(replacement);
+                    }
+                    if let Some(n) = next {
+                        doc.node_mut(n).expect("live next sibling").previous_sibling =
+                            Some(replacement);
+                    }
+                    if prev.is_none() {
+                        doc.node_mut(old_parent)
+                            .expect("live old parent")
+                            .first_child = Some(replacement);
+                    }
+                    if next.is_none() {
+                        doc.node_mut(old_parent)
+                            .expect("live old parent")
+                            .last_child = Some(replacement);
+                    }
+                    let _ = doc.index_element_attached(replacement);
+                });
+            });
+
+            self.verify_invariants(old_parent);
+            self.verify_detached(old);
+            upgraded.push(replacement);
+        }
+
         for &id in &upgraded {
             self.custom_elements.enqueue(CustomElementReaction {
                 element: id,
@@ -538,24 +637,58 @@ mod tests {
     }
 
     #[test]
-    fn define_registers_and_upgrades_connected_elements() {
+    fn define_replaces_connected_elements_and_leaves_old_plain() {
         let mut doc = Document::new();
         let body = connected_body(&mut doc);
         let connected = doc.create_element("my-widget").unwrap();
+        let child = doc.create_element("span").unwrap();
+        doc.append_child(connected, child).unwrap();
+        doc.set_attribute(connected, "foo", "pre").unwrap();
         doc.append_child(body, connected).unwrap();
         let detached = doc.create_element("my-widget").unwrap();
 
         let upgraded = doc.define_custom_element("my-widget", vec!["foo".to_string()]);
-        assert_eq!(upgraded, vec![connected]);
+        assert_eq!(upgraded.len(), 1);
+        let replacement = upgraded[0];
+        assert_ne!(
+            replacement, connected,
+            "the old element is replaced, not upgraded"
+        );
         assert!(doc.is_custom_element_defined("my-widget"));
-        assert!(doc.is_custom_element(connected).unwrap());
+        assert!(
+            !doc.is_custom_element(connected).unwrap(),
+            "the old reference stays a plain element"
+        );
+        assert_eq!(
+            doc.parent(connected).unwrap(),
+            None,
+            "the old reference is detached"
+        );
+        assert!(doc.is_custom_element(replacement).unwrap());
+        assert_eq!(doc.parent(replacement).unwrap(), Some(body));
+        assert_eq!(doc.node_name(replacement).unwrap(), "my-widget");
+        assert_eq!(
+            doc.get_attribute(replacement, "foo").unwrap(),
+            Some("pre"),
+            "the attributes transfer to the replacement"
+        );
+        assert_eq!(
+            doc.children(replacement).unwrap(),
+            vec![child],
+            "the children move to the replacement (same node ids)"
+        );
+        assert_eq!(
+            doc.children(connected).unwrap(),
+            Vec::<NodeId>::new(),
+            "the old element is empty"
+        );
         assert!(
             !doc.is_custom_element(detached).unwrap(),
-            "detached candidates are not upgraded by define (happy-dom parity)"
+            "detached candidates are not replaced by define (happy-dom parity)"
         );
         let queued = reactions(&mut doc);
         assert_eq!(queued.len(), 1);
-        assert_eq!(queued[0].element, connected);
+        assert_eq!(queued[0].element, replacement);
         assert_eq!(queued[0].kind, CustomElementReactionKind::Connected);
     }
 

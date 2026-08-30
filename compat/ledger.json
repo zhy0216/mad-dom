@@ -289,11 +289,9 @@
     {
       "id": "hc-diff-custom-elements-upgrade",
       "suite": "diff",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-custom-elements-upgrade",
-      "reason": "The T42 registry (define/get/getName/whenDefined) and the synchronous lifecycle reactions match happy-dom; T48A closed the `new DefinedClass()` gap - define now stashes the document/name mint slot on the class prototype, so `new DefinedClass()` casts a real detached element whose localName reads the registered name. Two deliberate deviations remain, both tracked by T48D: happy-dom's CustomElementRegistry.upgrade() is a documented no-op while MAD DOM performs a genuine spec-style upgrade (firing connectedCallback), and the define-after-connect upgrade is in-place in MAD DOM while happy-dom physically replaces the element.",
-      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T42"
     },
     {

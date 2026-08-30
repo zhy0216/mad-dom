@@ -41,8 +41,8 @@
 //!
 //! | facade action | native entry | params → returns | behavior |
 //! | --- | --- | --- | --- |
-//! | `registry.define(name, observed)` | `defineCustomElement` | `(doc, name, observed[]) → NodeHandle[]` | registers the definition, upgrades the connected matching elements and enqueues their `Connected` reaction; returns the upgraded handles |
-//! | `registry.upgrade(root)` | `upgradeCustomElements` | `(root) → NodeHandle[]` | upgrades every defined-name element in the subtree (enqueueing its `AttributeChanged` and `Connected` reactions); returns the upgraded handles |
+//! | `registry.define(name, observed)` | `defineCustomElement` | `(doc, name, observed[]) → NodeHandle[]` | registers the definition, physically replaces the connected matching elements with fresh custom elements and enqueues the replacements' `Connected` reaction; returns the replacement handles |
+//! | `registry.upgrade(root)` (T48D no-op) | `upgradeCustomElements` | `(root) → NodeHandle[]` | retained for the frozen T42 contract; the facade no longer wires `registry.upgrade()` to it (happy-dom documents `upgrade()` as "Not implemented yet", so the facade is a no-op) |
 //! | clone/import/adopt | `markCustomElementsInSubtree` | `(root) → NodeHandle[]` | marks every defined-name element custom (no reactions); returns them |
 //! | post-apply | `listCustomElementCandidates` | `(root) → NodeHandle[]` | returns every upgraded custom element in the subtree |
 //! | post-mutation flush | `takeCustomElementReactions` | `(node) → CustomElementReactionHandle[]` | drains the document's reaction queue |
@@ -143,8 +143,12 @@ pub fn define_custom_element(
         .collect()
 }
 
-/// Upgrades every element of a defined name in the subtree rooted at `root`
-/// (the `registry.upgrade()` contract), returning the upgraded handles.
+/// Upgrades every element of a defined name in the subtree rooted at `root`.
+///
+/// Retained for the frozen T42 contract (and the T29 apply path symmetry, where
+/// Core upgrades parsed elements directly); the facade no longer calls it —
+/// `registry.upgrade()` is a happy-dom-parity no-op (T48D), so this entry is
+/// not reachable from the public API.
 #[napi(catch_unwind)]
 #[allow(dead_code)] // registered as a native module export by napi-derive's load-time ctor
 pub fn upgrade_custom_elements(

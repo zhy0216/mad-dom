@@ -617,6 +617,22 @@ impl Document {
         Ok(())
     }
 
+    /// Adds a single already-attached element to the index without touching its
+    /// subtree, whose entries were already maintained by the mutation that
+    /// moved the subtree (a no-op when the index is disabled).
+    ///
+    /// Used by the T42 define-after-connect replacement: it reparents a
+    /// connected candidate's children onto a fresh replacement element (their
+    /// index entries stay valid — the subtree never leaves the document and
+    /// keeps its document order) and therefore only needs to index the
+    /// replacement itself.
+    pub(crate) fn index_element_attached(&mut self, el: NodeId) -> Result<(), CoreError> {
+        if !self.query_index.enabled {
+            return Ok(());
+        }
+        self.index_insert_element(el)
+    }
+
     /// Re-syncs the index when an attribute write changes `id` or `class`;
     /// other attribute names do not affect any index key. Called from the
     /// attribute write API with the previous and the new value. A no-op when

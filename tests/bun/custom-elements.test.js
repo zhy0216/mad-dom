@@ -17,8 +17,11 @@ import { createWindow, isNativeAvailable } from "../../index.js";
 //     lowercased-snapshot rule), all fired synchronously at the mutation point;
 //   - the single-class upgrade — an element created with a defined name is
 //     `instanceof` the custom class *and* `instanceof window.HTMLElement`, keeps
-//     every Node method, and is upgraded in place when defined after it was
-//     already connected (the define-after-connect path fires `connectedCallback`);
+//     every Node method; `define`-after-connect physically replaces the
+//     connected candidate (the old reference stays a plain `HTMLElement`) and
+//     the replacement fires `connectedCallback`;
+//   - `registry.upgrade()` is a no-op (happy-dom documents it as "Not
+//     implemented yet");
 //   - the parser path — `innerHTML` parsing a defined element observes its
 //     attributes before it is connected (happy-dom parse order);
 //   - combination with MutationObserver — the synchronous custom element
@@ -226,7 +229,7 @@ runtimeDescribe("custom elements", () => {
     expect(document.body.querySelector("parsed-el")).toBeInstanceOf(Parsed);
   });
 
-  test("define-after-connect upgrades the connected element in place and fires connectedCallback", () => {
+  test("define-after-connect replaces the connected element and fires connectedCallback", () => {
     const { window, document } = makeWindow();
     const order = [];
     class Late extends window.HTMLElement {
@@ -244,15 +247,21 @@ runtimeDescribe("custom elements", () => {
     const element = document.createElement("late-upgrade");
     document.body.appendChild(element);
     // Attributes set before the definition do NOT fire attributeChangedCallback
-    // (happy-dom parity — the late upgrade only fires connectedCallback).
+    // (happy-dom parity — the replacement only fires connectedCallback).
     element.setAttribute("data-x", "pre");
     order.length = 0;
     window.customElements.define("late-upgrade", Late);
     expect(order).toEqual(["connected"]);
-    expect(element).toBeInstanceOf(Late);
-    expect(element.getAttribute("data-x")).toBe("pre");
-    // Attributes set after the upgrade fire the reaction.
-    element.setAttribute("data-x", "post");
+    // happy-dom physically replaces the connected candidate: the old reference
+    // stays a plain HTMLElement while the upgraded element lives in the tree
+    // with the candidate's attributes transferred onto it.
+    expect(element).not.toBeInstanceOf(Late);
+    const upgraded = document.body.querySelector("late-upgrade");
+    expect(upgraded).toBeInstanceOf(Late);
+    expect(upgraded).not.toBe(element);
+    expect(upgraded.getAttribute("data-x")).toBe("pre");
+    // Attributes set after the upgrade (on the replacement) fire the reaction.
+    upgraded.setAttribute("data-x", "post");
     expect(order).toEqual(["connected", "attr:data-x:pre:post"]);
   });
 
@@ -268,7 +277,7 @@ runtimeDescribe("custom elements", () => {
     expect(detached).not.toBeInstanceOf(window.customElements.get("detached-widget"));
   });
 
-  test("registry.upgrade upgrades the subtree and fires the reactions", () => {
+  test("registry.upgrade is a no-op (happy-dom parity)", () => {
     const { window, document } = makeWindow();
     const order = [];
     class Upgrade extends window.HTMLElement {
@@ -282,7 +291,7 @@ runtimeDescribe("custom elements", () => {
         order.push(`attr:${name}:${oldValue}:${newValue}`);
       }
     }
-    // Create the element before the definition so define (which only upgrades
+    // Create the element before the definition so define (which only replaces
     // connected candidates) leaves it uncustomized.
     const detached = document.createElement("upgrade-widget");
     detached.setAttribute("data-x", "pre");
@@ -292,11 +301,16 @@ runtimeDescribe("custom elements", () => {
     const holder = document.createElement("div");
     document.body.appendChild(holder);
     holder.appendChild(detached);
+    // A candidate connected after the definition stays plain too (the append
+    // path performs no upgrade).
+    expect(detached).not.toBeInstanceOf(Upgrade);
 
     order.length = 0;
+    // happy-dom documents `registry.upgrade()` as "Not implemented yet": it is
+    // a no-op, fires no reaction and upgrades nothing.
     window.customElements.upgrade(holder);
-    expect(order).toEqual(["attr:data-x:null:pre", "connected"]);
-    expect(detached).toBeInstanceOf(Upgrade);
+    expect(order).toEqual([]);
+    expect(detached).not.toBeInstanceOf(Upgrade);
   });
 
   test("whenDefined resolves after define and rejects invalid names", async () => {
