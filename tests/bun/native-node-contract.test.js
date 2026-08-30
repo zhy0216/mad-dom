@@ -119,11 +119,15 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
 
     // ABI pin: the module-level export surface is unchanged from the audited
     // T19/T20/T22 shape (extended by T37: createEvent / EventHandle; by T35:
-    // the TreeWalkerHandle / NodeIteratorHandle classes) (creating or renaming
-    // a module export breaks this).
+    // the TreeWalkerHandle / NodeIteratorHandle classes; by T41:
+    // createMutationObserver / deliverObserverRecords / registerObserverScheduler
+    // and the MutationObserverHandle / MutationRecordHandle classes) (creating
+    // or renaming a module export breaks this).
     expect(Object.keys(native).sort()).toEqual([
       "DocumentHandle",
       "EventHandle",
+      "MutationObserverHandle",
+      "MutationRecordHandle",
       "NodeHandle",
       "NodeIteratorHandle",
       "TreeWalkerHandle",
@@ -132,8 +136,11 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
       "bindingIdentity",
       "createDocument",
       "createEvent",
+      "createMutationObserver",
       "createWindow",
+      "deliverObserverRecords",
       "liveDocumentCount",
+      "registerObserverScheduler",
     ]);
   });
 

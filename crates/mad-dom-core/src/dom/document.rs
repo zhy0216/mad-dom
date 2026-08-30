@@ -25,6 +25,7 @@ use crate::arena::{Arena, NodeId};
 use crate::error::CoreError;
 use crate::selectors::live::QueryIndex;
 
+use super::mutation_observer::ObserverEntry;
 use super::node::{Node, NodeData, NodeType, HTML_NAMESPACE};
 
 use html5ever::{LocalName, Namespace};
@@ -58,6 +59,17 @@ pub struct Document {
     pub(crate) active_element_id: Option<NodeId>,
     /// The T32 optional id/class/tag query index (off by default).
     pub(crate) query_index: QueryIndex,
+    /// The T41 MutationObserver registry: one entry per observer, each holding
+    /// its per-target observations and record queues. Written only through the
+    /// `mutation_observer` module.
+    pub(crate) observers: Vec<ObserverEntry>,
+    /// Per-document counter minting the stable opaque keys that identify one
+    /// (observer, target) observation to the binding.
+    pub(crate) next_observation_key: u64,
+    /// Suppresses observer record generation while set (the `replace_child`
+    /// re-order and the T29 implied-skeleton build). Managed exclusively by
+    /// [`Document::with_observer_records_suppressed`].
+    pub(crate) suppress_observer_records: bool,
 }
 
 impl Document {
@@ -69,6 +81,9 @@ impl Document {
             document_root_id: None,
             active_element_id: None,
             query_index: QueryIndex::default(),
+            observers: Vec::new(),
+            next_observation_key: 0,
+            suppress_observer_records: false,
         }
     }
 
@@ -432,12 +447,23 @@ impl Document {
             });
         }
         validate_text_data(data, "text data")?;
+        let old_value = match node.data() {
+            NodeData::Text { data } | NodeData::Comment { data } => data.clone(),
+            NodeData::ProcessingInstruction { data, .. } => data.clone(),
+            _ => unreachable!("node kind validated above"),
+        };
         let slot = match node.data_mut() {
             NodeData::Text { data: slot } | NodeData::Comment { data: slot } => slot,
             NodeData::ProcessingInstruction { data: slot, .. } => slot,
             _ => unreachable!("node kind validated above"),
         };
         *slot = data.to_string();
+        // T41: every character-data write funnels through this single entry
+        // (the `data` / `nodeValue` setters, `appendData` / `insertData` /
+        // `deleteData` / `replaceData`, the `textContent` setter on character-
+        // data nodes and the `splitText` head), so the `characterData` record
+        // with the old data (baseline parity) is queued here.
+        self.queue_character_data_record(id, &old_value);
         Ok(())
     }
 }

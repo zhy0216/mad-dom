@@ -145,8 +145,13 @@ impl Document {
         let html = self.create_element("html")?;
         let head = self.create_element("head")?;
         let body = self.create_element("body")?;
-        self.link_detached_chain_between(root, &[html], None, None);
-        self.link_detached_chain_between(html, &[head, body], None, None);
+        // The implied skeleton is internal bookkeeping, not a user-visible DOM
+        // mutation, and the happy-dom baseline never records it; suppress the
+        // T41 observer records for this build so the two stay consistent.
+        self.with_observer_records_suppressed(|doc| {
+            doc.link_detached_chain_between(root, &[html], None, None);
+            doc.link_detached_chain_between(html, &[head, body], None, None);
+        });
         self.verify_apply(root);
         Ok(())
     }

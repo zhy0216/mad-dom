@@ -1,6 +1,6 @@
 # 41 实现 MutationObserver 与 microtask 交付
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P2
 - 里程碑：M7
 - 条目 ID：`T41`

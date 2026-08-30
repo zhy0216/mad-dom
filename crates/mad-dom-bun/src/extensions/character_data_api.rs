@@ -112,6 +112,7 @@ use napi_derive::napi;
 use mad_dom_core::arena::NodeId;
 
 use crate::error::BindingError;
+use crate::extensions::mutation_observer_api::schedule_pending_observer_deliveries;
 use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle};
 
@@ -238,7 +239,8 @@ impl DocumentHandle {
     #[napi(catch_unwind)]
     pub fn adopt_node(&self, env: Env, node: &NodeHandle) -> napi::Result<Reference<NodeHandle>> {
         check_affinity(self.shared(), &env)?;
-        let id: NodeId = if same_document(self.shared(), node) {
+        let cross_document = !same_document(self.shared(), node);
+        let id: NodeId = if !cross_document {
             with_document(self.shared(), |doc| {
                 if let Some(parent) = doc.parent(node.id())? {
                     doc.remove_child(parent, node.id())?;
@@ -255,6 +257,14 @@ impl DocumentHandle {
             })
         }
         .map_err(|err| err.into_napi(&env))?;
+        // T41: a same-document adopt mutates only this document; a cross-document
+        // adopt detaches in the source document (a removal record) and links in
+        // this one (an addition record), so both documents' observer microtasks
+        // are scheduled.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        if cross_document {
+            schedule_pending_observer_deliveries(&env, node.shared());
+        }
         self.shared().wrap_node(env, id)
     }
 
@@ -300,7 +310,10 @@ impl NodeHandle {
         with_document(self.shared(), |doc| {
             doc.set_data(self.id(), &value).map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Returns the WHATWG `CharacterData.length`: the UTF-16 length of this
@@ -336,7 +349,10 @@ impl NodeHandle {
         with_document(self.shared(), |doc| {
             doc.set_data(self.id(), &value).map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Returns the WHATWG `ProcessingInstruction.target`, or `null` for a
@@ -411,7 +427,10 @@ impl NodeHandle {
             doc.append_data(self.id(), &data)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Inserts the WHATWG `CharacterData.insertData(offset, data)`.
@@ -422,7 +441,10 @@ impl NodeHandle {
             doc.insert_data(self.id(), offset as usize, &data)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Deletes the WHATWG `CharacterData.deleteData(offset, count)`.
@@ -433,7 +455,10 @@ impl NodeHandle {
             doc.delete_data(self.id(), offset as usize, count as usize)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Replaces the WHATWG `CharacterData.replaceData(offset, count, data)`.
@@ -450,7 +475,10 @@ impl NodeHandle {
             doc.replace_data(self.id(), offset as usize, count as usize, &data)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Returns the WHATWG `Text.splitText(offset)`: the new tail node.
@@ -462,6 +490,8 @@ impl NodeHandle {
                 .map_err(BindingError::Core)
         })
         .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
         self.shared().wrap_node(env, id)
     }
 

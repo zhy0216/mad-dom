@@ -88,6 +88,7 @@ use napi::Env;
 use napi_derive::napi;
 
 use crate::error::BindingError;
+use crate::extensions::mutation_observer_api::schedule_pending_observer_deliveries;
 use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle};
 
@@ -211,7 +212,10 @@ impl NodeHandle {
             doc.attribute_token_add(self.id(), &name, &tokens)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Removes `tokens` from the token set of the attribute with `name` (the
@@ -229,7 +233,10 @@ impl NodeHandle {
             doc.attribute_token_remove(self.id(), &name, &tokens)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Toggles `token` in the token set of the attribute with `name` and
@@ -244,11 +251,14 @@ impl NodeHandle {
         force: Option<bool>,
     ) -> napi::Result<bool> {
         check_affinity(self.shared(), &env)?;
-        with_document(self.shared(), |doc| {
+        let result = with_document(self.shared(), |doc| {
             doc.attribute_token_toggle(self.id(), &name, &token, force)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(result)
     }
 
     /// Replaces `old_token` with `new_token` in the token set of the attribute
@@ -263,11 +273,14 @@ impl NodeHandle {
         new_token: String,
     ) -> napi::Result<bool> {
         check_affinity(self.shared(), &env)?;
-        with_document(self.shared(), |doc| {
+        let result = with_document(self.shared(), |doc| {
             doc.attribute_token_replace(self.id(), &name, &old_token, &new_token)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(result)
     }
 }
 

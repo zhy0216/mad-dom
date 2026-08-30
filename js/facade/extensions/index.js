@@ -33,6 +33,7 @@ import * as htmlElementExtension from "./html-element.js";
 import * as htmlExtension from "./html.js";
 import * as liveCollectionsExtension from "./live-collections.js";
 import * as mutationExtension from "./mutation.js";
+import * as mutationObserverExtension from "./mutation-observer.js";
 import * as nodeExtension from "./node.js";
 import * as queryExtension from "./query.js";
 import * as textContentExtension from "./text-content.js";
@@ -61,6 +62,7 @@ const EXTENSIONS = [
   htmlElementExtension,
   treeTraversalExtension,
   windowPlatformExtension,
+  mutationObserverExtension,
 ];
 
 /**

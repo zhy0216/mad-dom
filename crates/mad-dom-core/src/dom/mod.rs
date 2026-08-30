@@ -28,6 +28,7 @@ mod document;
 mod events;
 mod html_element;
 mod mutation;
+mod mutation_observer;
 mod node;
 mod text_content;
 mod tree;
@@ -37,5 +38,6 @@ pub use events::{
     Dispatch, DispatchInvocation, EventRegistration, EventState, EVENT_PHASE_AT_TARGET,
     EVENT_PHASE_BUBBLING, EVENT_PHASE_CAPTURING, EVENT_PHASE_NONE,
 };
+pub use mutation_observer::{MutationRecord, ObserverOptions, RecordType};
 pub use node::{Node, NodeData, NodeType, HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE};
 pub use tree::TreeViolation;

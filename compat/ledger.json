@@ -43,6 +43,14 @@
       "addedIn": "T45"
     },
     {
+      "id": "hc-diff-mutation-observer",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-mutation-observer",
+      "addedIn": "T41"
+    },
+    {
       "id": "hc-diff-attributes-read-write",
       "suite": "diff",
       "status": "known-gap",
@@ -236,6 +244,19 @@
       "addedIn": "T45",
       "diagnostics": [
         { "code": 2353, "line": 8 }
+      ]
+    },
+    {
+      "id": "hc-types-mutation-observer",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/mutation-observer.ts",
+      "reason": "The MutationObserver surface is fully typed (T41): the window.MutationObserver constructor, the (records, observer) callback, every MutationRecord read and the observe options all type-check on the mad-dom target. The only remaining diagnostic is the shared Window-constructor gap (MAD DOM's Window is not user-constructible; the happy-dom options-object shape is rejected), which this fixture exercises to reach window.MutationObserver.",
+      "recordedAt": "2026-08-30T00:00:00Z",
+      "addedIn": "T41",
+      "diagnostics": [
+        { "code": 2353, "line": 9 }
       ]
     }
   ]

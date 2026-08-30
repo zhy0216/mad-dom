@@ -137,6 +137,11 @@ impl Document {
         // T32: re-key the optional query index when an id/class write changes
         // the tokens an element matches (a no-op when the index is disabled).
         self.index_attribute_changed(id, name, old_value.as_deref(), Some(value))?;
+        // T41: every attribute write funnels through this single entry, so the
+        // `attributes` record (with the old value, baseline parity) is queued
+        // here — both for a fresh attribute (old value `None`) and for an
+        // in-place update.
+        self.queue_attribute_record(id, name, old_value.as_deref());
         Ok(())
     }
 
@@ -170,6 +175,9 @@ impl Document {
             // T32: drop the id/class tokens of the removed attribute from the
             // optional query index (a no-op when the index is disabled).
             self.index_attribute_changed(id, name, old_value.as_deref(), None)?;
+            // T41: queue the `attributes` record for the removal (only when an
+            // attribute was actually removed).
+            self.queue_attribute_record(id, name, old_value.as_deref());
         }
         Ok(removed)
     }

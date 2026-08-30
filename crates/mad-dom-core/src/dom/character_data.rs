@@ -293,8 +293,10 @@ impl Document {
         // Allocate the tail clone and validate the head before touching the
         // original's payload, so a failure leaves both nodes unchanged.
         let tail_id = self.create_text(&tail)?;
-        self.set_character_data(id, &head)?;
 
+        // Insert the tail first, then shorten the original: the baseline
+        // (`Text.splitText`) emits the childList addition record before the
+        // characterData record, so the observer record order matches.
         if let Some(p) = parent {
             let next = self.get(id)?.next_sibling();
             match next {
@@ -302,6 +304,7 @@ impl Document {
                 None => self.append_child(p, tail_id)?,
             }
         }
+        self.set_character_data(id, &head)?;
         Ok(tail_id)
     }
 

@@ -66,6 +66,7 @@ use napi::Env;
 use napi_derive::napi;
 
 use crate::error::BindingError;
+use crate::extensions::mutation_observer_api::schedule_pending_observer_deliveries;
 use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, NodeHandle};
 
@@ -111,7 +112,10 @@ impl NodeHandle {
             doc.set_text_content(self.id(), &value)
                 .map_err(BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 }
 

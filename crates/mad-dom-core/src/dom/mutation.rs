@@ -208,24 +208,93 @@ impl Document {
             return Ok(child);
         }
 
+        // Capture the pre-mutation relations the observer records need (they
+        // must be read before the relink clears them).
+        let node_relations = (
+            self.get(node)?.parent(),
+            self.get(node)?.previous_sibling(),
+            self.get(node)?.next_sibling(),
+        );
+        let child_prev = self.get(child)?.previous_sibling();
+        let child_next = self.get(child)?.next_sibling();
+
         // Mutation phase: every precondition was checked above, so from here
         // on the operation cannot fail. `anchor_prev`/`anchor_next` were
         // computed so that they never point at `node` itself even when `node`
-        // is one of `child`'s neighbours.
-        self.detach(child);
-        if let Some(children) = fragment_children {
-            if !children.is_empty() {
-                for &c in &children {
-                    self.detach(c);
+        // is one of `child`'s neighbours. The primitives run with observer
+        // records suppressed so `replace` can queue them in the baseline
+        // (WHATWG `replace` = insert then remove) order below.
+        self.with_observer_records_suppressed(|doc| {
+            doc.detach(child);
+            if let Some(children) = &fragment_children {
+                if !children.is_empty() {
+                    for &c in children {
+                        doc.detach(c);
+                    }
+                    doc.link_detached_chain_between(parent, children, anchor_prev, anchor_next);
                 }
-                self.link_detached_chain_between(parent, &children, anchor_prev, anchor_next);
+                // An empty fragment has nothing to insert; replacing with it just
+                // removes `child` (WHATWG `replace`).
+            } else {
+                doc.detach(node);
+                doc.link_detached_chain_between(parent, &[node], anchor_prev, anchor_next);
             }
-            // An empty fragment has nothing to insert; replacing with it just
-            // removes `child` (WHATWG `replace`).
-        } else {
-            self.detach(node);
-            self.link_detached_chain_between(parent, &[node], anchor_prev, anchor_next);
+        });
+
+        // Observer records, in the baseline order: the insert (removal from the
+        // replacement's old parent, then the addition to this parent) happens
+        // before the removal of the old child. For a fragment replacement each
+        // fragment child is first removed from the fragment (its previous
+        // sibling is `None` once the earlier children are gone) and then added
+        // here, one record per child.
+        match &fragment_children {
+            Some(children) => {
+                for (index, &fragment_child) in children.iter().enumerate() {
+                    self.queue_child_list_removed(
+                        node,
+                        fragment_child,
+                        None,
+                        children.get(index + 1).copied(),
+                    );
+                    self.queue_child_list_added(parent, fragment_child);
+                }
+            }
+            None => {
+                if let Some(old_parent) = node_relations.0 {
+                    self.queue_child_list_removed(
+                        old_parent,
+                        node,
+                        node_relations.1,
+                        node_relations.2,
+                    );
+                }
+                self.queue_child_list_added(parent, node);
+            }
         }
+        // The old child is removed last; at that point the replacement sits
+        // immediately before it, so the removal record's previous sibling is the
+        // last inserted node (the replacement, or the last fragment child) —
+        // matching the baseline `replace` (insert then remove). Its next sibling
+        // is the old child's original next, except when the replacement came
+        // from exactly that position (the adjacent-next case): then the node
+        // that followed the replacement becomes the old child's next sibling.
+        let (removal_prev, removal_next) = match &fragment_children {
+            Some(children) if !children.is_empty() => (children.last().copied(), child_next),
+            Some(_) => (child_prev, child_next), // empty fragment: nothing was inserted
+            None => {
+                let moved_from_after_child =
+                    node_relations.0 == Some(parent) && Some(node) == child_next;
+                (
+                    Some(node),
+                    if moved_from_after_child {
+                        node_relations.2
+                    } else {
+                        child_next
+                    },
+                )
+            }
+        };
+        self.queue_child_list_removed(parent, child, removal_prev, removal_next);
 
         self.verify_invariants(parent);
         self.verify_detached(child);
@@ -432,6 +501,13 @@ impl Document {
     /// first (a no-op when the index is disabled), so the index stays in lock
     /// step with the arena no matter which mutation path reaches this
     /// primitive.
+    ///
+    /// T41: this primitive is the single removal chokepoint, so it queues the
+    /// `childList` removal record (with the previous/next siblings captured
+    /// before the relink) for the node's old parent — every removal path —
+    /// `remove_child`, `replace_child`, the T29 apply path, the T17 adoption
+    /// detach and the fragment-children detach of `pre-insert` — funnels
+    /// through it and can never bypass the observer records.
     pub(crate) fn detach(&mut self, node: NodeId) {
         let _ = self.index_subtree_detached(node);
         let old_parent = self.get(node).expect("detaching a live node").parent();
@@ -443,6 +519,10 @@ impl Document {
             .get(node)
             .expect("detaching a live node")
             .next_sibling();
+
+        if let Some(op) = old_parent {
+            self.queue_child_list_removed(op, node, prev, next);
+        }
 
         if let Some(p) = prev {
             self.node_mut(p)
@@ -544,6 +624,16 @@ impl Document {
         // funnels index maintenance through this single primitive.
         if self.query_index.is_enabled() {
             let _ = self.index_subtree_attached(nodes);
+        }
+
+        // T41: this primitive is the single insertion chokepoint, so it queues
+        // one `childList` addition record per inserted node for the receiving
+        // parent — every insertion path (append/insert, the fragment splice,
+        // `replace_child` under suppression, the T29 apply path and the T17
+        // adoption attach) funnels through it and can never bypass the
+        // observer records. The baseline emits one record per inserted node.
+        for &c in nodes {
+            self.queue_child_list_added(parent, c);
         }
     }
 

@@ -88,6 +88,7 @@ use napi_derive::napi;
 
 use mad_dom_core::arena::NodeId;
 
+use crate::extensions::mutation_observer_api::schedule_pending_observer_deliveries;
 use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle, SharedDocument};
 
@@ -189,7 +190,10 @@ impl DocumentHandle {
             doc.load_html(&html)
                 .map_err(crate::error::BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 }
 
@@ -218,7 +222,10 @@ impl NodeHandle {
             doc.set_inner_html(self.id(), &html)
                 .map_err(crate::error::BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 
     /// Returns the WHATWG `outerHTML` of this node: the serialized node itself.
@@ -242,7 +249,10 @@ impl NodeHandle {
             doc.set_outer_html(self.id(), &html)
                 .map_err(crate::error::BindingError::Core)
         })
-        .map_err(|err| err.into_napi(&env))
+        .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, self.shared());
+        Ok(())
     }
 }
 

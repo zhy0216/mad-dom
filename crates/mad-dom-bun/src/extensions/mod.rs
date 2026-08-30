@@ -70,6 +70,7 @@ mod html_api;
 mod html_element_api;
 mod live_collections;
 mod mutation_insert_api;
+pub(crate) mod mutation_observer_api;
 mod mutation_remove_api;
 mod node_api;
 mod query_api;

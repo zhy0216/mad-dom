@@ -103,6 +103,7 @@ use napi_derive::napi;
 
 use crate::affinity::{AffinityError, AffinityToken};
 use crate::error::BindingError;
+use crate::extensions::mutation_observer_api::schedule_pending_observer_deliveries;
 
 /// Number of documents currently alive (created minus destroyed / collected).
 static LIVE_DOCUMENT_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -467,7 +468,10 @@ impl DocumentHandle {
     ) -> napi::Result<()> {
         check_affinity(&self.shared, &env)?;
         self.append_child_inner(parent, child)
-            .map_err(|err| err.into_napi(&env))
+            .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, &self.shared);
+        Ok(())
     }
 
     #[napi(catch_unwind)]
@@ -480,7 +484,10 @@ impl DocumentHandle {
     ) -> napi::Result<()> {
         check_affinity(&self.shared, &env)?;
         self.insert_before_inner(parent, child, reference)
-            .map_err(|err| err.into_napi(&env))
+            .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, &self.shared);
+        Ok(())
     }
 
     #[napi(catch_unwind)]
@@ -492,7 +499,10 @@ impl DocumentHandle {
     ) -> napi::Result<()> {
         check_affinity(&self.shared, &env)?;
         self.remove_child_inner(parent, child)
-            .map_err(|err| err.into_napi(&env))
+            .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, &self.shared);
+        Ok(())
     }
 
     #[napi(catch_unwind)]
@@ -505,7 +515,10 @@ impl DocumentHandle {
     ) -> napi::Result<()> {
         check_affinity(&self.shared, &env)?;
         self.replace_child_inner(parent, child, node)
-            .map_err(|err| err.into_napi(&env))
+            .map_err(|err| err.into_napi(&env))?;
+        // T41: schedule the observer microtasks queued by this mutation.
+        schedule_pending_observer_deliveries(&env, &self.shared);
+        Ok(())
     }
 
     #[napi(catch_unwind)]
