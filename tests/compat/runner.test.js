@@ -698,6 +698,176 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     );
   });
 
+
+  test("fetch headers/request real scenario passes exactly (Headers and Request surface)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-fetch-headers-request");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T46 Headers + Request slice matches happy-dom observation for
+    // observation (ledgered hc-diff-fetch-headers-request).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+
+    // Headers casing / validation absence / value joining.
+    expect(madRecord.values["h-iter"]).toEqual({
+      type: "array",
+      items: [
+        { type: "array", items: [{ type: "string", value: "a" }, { type: "string", value: "1" }] },
+        { type: "array", items: [{ type: "string", value: "X-B" }, { type: "string", value: "2" }] },
+      ],
+    });
+    expect(madRecord.values["h-invalid-name"]).toEqual({
+      type: "array",
+      items: [
+        { type: "array", items: [{ type: "string", value: "bad name" }, { type: "string", value: "v" }] },
+      ],
+    });
+    expect(madRecord.values["h-get-set-cookie"]).toEqual({
+      type: "array",
+      items: [
+        { type: "string", value: "a=b" },
+        { type: "string", value: "c=d" },
+      ],
+    });
+
+    // Request defaults, bodyUsed and clone.
+    expect(madRecord.values["req-credentials"]).toEqual({ type: "string", value: "same-origin" });
+    expect(madRecord.values["req-referrer"]).toEqual({ type: "string", value: "about:client" });
+    expect(madRecord.values["req-mode"]).toEqual({ type: "string", value: "cors" });
+    expect(madRecord.values["req-body-used-before"]).toEqual({ type: "boolean", value: false });
+    expect(madRecord.values["req-text"]).toEqual({ type: "string", value: "hello" });
+    expect(madRecord.values["req-body-used-after"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["req-own-keys"]).toEqual({ type: "array", items: [] });
+    expect(madRecord.values["req-tag"]).toEqual({ type: "string", value: "[object Request]" });
+
+    // The validation-error shapes match verbatim (name + message).
+    const errorNames = madRecord.errors.map((error) => error.name);
+    expect(errorNames).toEqual([
+      "InvalidStateError",
+      "InvalidStateError",
+      "TypeError",
+      "NotSupportedError",
+      "NotSupportedError",
+      "InvalidStateError",
+      "InvalidStateError",
+      "InvalidStateError",
+      "SecurityError",
+      "SecurityError",
+      "SyntaxError",
+      "SyntaxError",
+      "SyntaxError",
+    ]);
+    expect(madRecord.errors[1].message).toBe(
+      "Body has already been used for \"https://example.com/x\".",
+    );
+    expect(madRecord.errors[3].message).toBe(
+      "Failed to construct 'Request': Invalid URL \"/relative\" on document location 'about:blank'. Relative URLs are not permitted on current document location.",
+    );
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    // The recorded errors are the deliberately probed exceptions; both targets
+    // produce the same verbatim names/messages, so the records match exactly.
+    expect(happyRecord.errors).toEqual(madRecord.errors);
+    expect(happyRecord.values["h-iter"]).toEqual(madRecord.values["h-iter"]);
+  });
+
+  test("fetch response/fetch real scenario passes exactly (Response, Abort and offline data: fetch)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-fetch-response-fetch");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T46 Response + Abort + fetch slice matches happy-dom
+    // observation for observation (ledgered hc-diff-fetch-response-fetch).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+
+    // Response construction surface and own-key layout.
+    expect(madRecord.values["resp-status"]).toEqual({ type: "number", value: 201 });
+    expect(madRecord.values["resp-type"]).toEqual({ type: "string", value: "basic" });
+    expect(madRecord.values["resp-url"]).toEqual({ type: "string", value: "" });
+    expect(madRecord.values["resp-set-cookie-stripped"]).toEqual({ type: "boolean", value: false });
+    expect(madRecord.values["resp-own-keys"]).toEqual({
+      type: "array",
+      items: ["bodyUsed", "redirected", "type", "url", "status", "statusText", "ok", "headers"].map(
+        (key) => ({ type: "string", value: key }),
+      ),
+    });
+    expect(madRecord.values["resp-json"]).toEqual({ type: "object", entries: { a: { type: "number", value: 1 } } });
+
+    // Abort surface.
+    expect(madRecord.values["abort-aborted-after"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["abort-reason-name"]).toEqual({ type: "string", value: "AbortError" });
+    expect(madRecord.values["abort-reason-message"]).toEqual({
+      type: "string",
+      value: "signal is aborted without reason",
+    });
+    expect(madRecord.values["abort-events"]).toEqual({
+      type: "array",
+      items: [{ type: "object", entries: { isTarget: { type: "boolean", value: true }, type: { type: "string", value: "abort" } } }],
+    });
+
+    // Offline fetch surface.
+    expect(madRecord.values["fetch-status"]).toEqual({ type: "number", value: 200 });
+    expect(madRecord.values["fetch-type"]).toEqual({ type: "string", value: "basic" });
+    expect(madRecord.values["fetch-url"]).toEqual({ type: "string", value: "" });
+    expect(madRecord.values["fetch-text"]).toEqual({ type: "string", value: "hello world" });
+    expect(madRecord.values["fetch-timing-events"]).toEqual({
+      type: "array",
+      items: [
+        { type: "string", value: "microtask" },
+        { type: "string", value: "fetch-first" },
+        { type: "string", value: "after-await" },
+      ],
+    });
+    expect(madRecord.values["fetch-returns-promise"]).toEqual({ type: "boolean", value: true });
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    // The recorded errors are the deliberately probed rejections / throws; both
+    // targets produce the same verbatim names/messages, so the records match.
+    expect(happyRecord.errors).toEqual(madRecord.errors);
+    expect(happyRecord.values["fetch-timing-events"]).toEqual(madRecord.values["fetch-timing-events"]);
+  });
+
+  test("strict mode passes on the fetch scenarios exactly when they match happy-dom", () => {
+    for (const scenarioFile of ["dom-fetch-headers-request.js", "dom-fetch-response-fetch.js"]) {
+      const strictRun = runRunner([join(DOM_DIR, scenarioFile), "--json"]);
+      const strictReport = JSON.parse(strictRun.stdout);
+      expect(strictReport.mode).toBe("strict");
+      expect(strictReport.scenarios[0].id).toBe(scenarioFile.replace(".js", ""));
+      if (nativeAvailable) {
+        expect(strictRun.status).toBe(0);
+        expect(strictReport.exitCode).toBe(0);
+        expect(strictReport.scenarios[0].status).toBe("pass");
+        expect(strictReport.scenarios[0].differences).toEqual([]);
+      } else {
+        expect(strictRun.status).toBe(1);
+        expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+        expect(strictReport.totals.infraErrors).toBe(0);
+      }
+    }
+  });
+
   test("node navigation real scenario reports exactly the frozen nodeName casing gap", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-node-navigation");
     expect(scenario.status).toBe("differences-report");

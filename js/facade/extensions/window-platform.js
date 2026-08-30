@@ -930,6 +930,31 @@ function getCookies(cookies, url, clientSide) {
 // --- install ----------------------------------------------------------------
 
 /**
+ * Cookie-jar bridge for the fetch surface (T46).
+ *
+ * `window.fetch` must send the owning window's cookies on same-origin /
+ * credentials-include requests and fold `Set-Cookie` response headers back
+ * into the same per-window jar. The jar lives in this module's per-document
+ * platform state (T45); this small bridge hands the fetch facade read / parse
+ * / add access to it without exposing the rest of the platform state.
+ */
+export function fetchCookieJar(nativeDocumentHandle) {
+  const state = platformOfDocument(nativeDocumentHandle);
+  if (state === null) return null;
+  return {
+    readCookies(url, clientSide) {
+      return cookiesToString(getCookies(state.cookies, url, clientSide));
+    },
+    parseCookie(url, cookieString) {
+      return stringToCookie(url, cookieString);
+    },
+    addCookies(incoming) {
+      addCookies(state.cookies, incoming);
+    },
+  };
+}
+
+/**
  * Installs the T45 platform surface.
  *
  * `ctx.defineAccessor` / `ctx.defineMethod` are the only property-definition

@@ -32,12 +32,13 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/mutation-observer.js", owner: "T41" },
   { path: "extensions/template.js", owner: "T40" },
   { path: "extensions/forms.js", owner: "T40" },
+  { path: "extensions/fetch.js", owner: "T46" },
 ];
 
 // The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29,
-// T31, T32, T33, T37, T34, T39, T45, T35 and T41 capability extensions are
-// implemented and their seam status is flipped to "implemented"; no capability
-// extension stays a placeholder.
+// T31, T32, T33, T37, T34, T39, T45, T35, T41, T40 and T46 capability
+// extensions are implemented and their seam status is flipped to "implemented";
+// no capability extension stays a placeholder.
 const IMPLEMENTED_FACADE_FILES = [
   { path: "window.js", owner: "T22B" },
   { path: "document.js", owner: "T22B" },
@@ -59,6 +60,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/mutation-observer.js", owner: "T41" },
   { path: "extensions/template.js", owner: "T40" },
   { path: "extensions/forms.js", owner: "T40" },
+  { path: "extensions/fetch.js", owner: "T46" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 

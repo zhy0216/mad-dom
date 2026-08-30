@@ -49,6 +49,7 @@ describe("window platform export shapes (T45)", () => {
       "Location",
       "Navigator",
       "Storage",
+      "fetchCookieJar",
       "install",
       "seam",
     ]);

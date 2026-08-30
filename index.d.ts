@@ -82,6 +82,18 @@ export declare class Window {
   readonly HTMLOptionsCollection: typeof HTMLOptionsCollection;
   /** The WHATWG `SubmitEvent` constructor (T40). */
   readonly SubmitEvent: typeof SubmitEvent;
+  /** The WHATWG `Headers` constructor (T46): the happy-dom-calibrated compat surface (per-window). */
+  readonly Headers: typeof Headers;
+  /** The WHATWG `Request` constructor (T46): the happy-dom-calibrated compat surface (per-window). */
+  readonly Request: typeof Request;
+  /** The WHATWG `Response` constructor (T46): the happy-dom-calibrated compat surface (per-window). */
+  readonly Response: typeof Response;
+  /** The WHATWG `AbortController` constructor (T46): per-window. */
+  readonly AbortController: typeof AbortController;
+  /** The WHATWG `AbortSignal` constructor (T46): per-window. */
+  readonly AbortSignal: typeof AbortSignal;
+  /** WHATWG `window.fetch` (T46): offline `data:` support plus Bun-adapted `http(s)` I/O. */
+  fetch(url: TRequestInfo, init?: IRequestInit | null): Promise<Response>;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
@@ -582,6 +594,168 @@ declare interface MutationRecord {
   readonly attributeNamespace: string | null;
   /** The old value (attributes / characterData records), or `null`. */
   readonly oldValue: string | null;
+}
+
+// --- Fetch network surface (T46) ----------------------------------------------
+//
+// The WHATWG fetch classes live on `window` (reached through the `Window`
+// facade, never exported from the package entry): `Headers`, `Request`,
+// `Response`, `AbortController`, `AbortSignal` and `window.fetch`. They are
+// happy-dom-calibrated compat wrappers over the WHATWG / Bun primitives: the
+// baseline exception names and verbatim messages, `bodyUsed` / `clone` /
+// `Set-Cookie`-stripping semantics and the offline `data:` URL transport are
+// replicated exactly, while `http(s)` I/O is adapted to Bun's native fetch.
+// The constructors are per-window, so `window.Request` resolves against the
+// owning window's location / cookie jar / navigator.
+
+/** The WHATWG `RequestInfo` input accepted by `Request` / `fetch`. */
+export type TRequestInfo = Request | string | URL;
+/** The WHATWG `RequestBodyInit` subset this facade handles. */
+export type TRequestBody = ArrayBuffer | ArrayBufferView | string | URLSearchParams | null;
+/** The WHATWG `HeadersInit` accepted by `Headers` / `Request` / `Response`. */
+export type THeadersInit = string[][] | Record<string, string> | Headers;
+/** The WHATWG `RequestMode` enum. */
+export type TRequestMode = "navigate" | "same-origin" | "no-cors" | "cors" | "websocket";
+/** The WHATWG `RequestCredentials` enum. */
+export type TRequestCredentials = "omit" | "same-origin" | "include";
+/** The WHATWG `RequestRedirect` enum. */
+export type TRequestRedirect = "follow" | "error" | "manual";
+/** The WHATWG `ReferrerPolicy` enum. */
+export type TRequestReferrerPolicy =
+  | ""
+  | "no-referrer"
+  | "no-referrer-when-downgrade"
+  | "same-origin"
+  | "origin"
+  | "strict-origin"
+  | "origin-when-cross-origin"
+  | "strict-origin-when-cross-origin"
+  | "unsafe-url";
+
+/** The WHATWG `RequestInit` dictionary. */
+export interface IRequestInit {
+  body?: TRequestBody | null;
+  headers?: THeadersInit;
+  method?: string;
+  mode?: TRequestMode;
+  redirect?: TRequestRedirect;
+  signal?: AbortSignal | null;
+  referrer?: string | URL;
+  credentials?: TRequestCredentials;
+  referrerPolicy?: TRequestReferrerPolicy;
+}
+
+/** The WHATWG `ResponseInit` dictionary. */
+export interface IResponseInit {
+  headers?: THeadersInit;
+  status?: number;
+  statusText?: string;
+}
+
+/** A `Set-Cookie`-style response body. */
+export type TResponseBody = ArrayBuffer | ArrayBufferView | string | URLSearchParams | null;
+
+/** The WHATWG `Headers` constructor value (T46). */
+declare const Headers: {
+  readonly prototype: Headers;
+  new (init?: THeadersInit | null): Headers;
+};
+
+/** The WHATWG `Headers` instance surface (T46). */
+export interface Headers {
+  append(name: string, value: string): void;
+  delete(name: string): void;
+  get(name: string): string | null;
+  getSetCookie(): string[];
+  has(name: string): boolean;
+  set(name: string, value: string): void;
+  forEach(callback: (value: string, key: string, parent: Headers) => void, thisArg?: unknown): void;
+  keys(): IterableIterator<string>;
+  values(): IterableIterator<string>;
+  entries(): IterableIterator<[string, string]>;
+  [Symbol.iterator](): IterableIterator<[string, string]>;
+}
+
+/** The WHATWG `Request` constructor value (T46). */
+declare const Request: {
+  readonly prototype: Request;
+  new (input: TRequestInfo, init?: IRequestInit | null): Request;
+};
+
+/** The WHATWG `Request` instance surface (T46). */
+export interface Request {
+  readonly method: string;
+  readonly body: ReadableStream | null;
+  readonly mode: TRequestMode;
+  readonly headers: Headers;
+  readonly redirect: TRequestRedirect;
+  readonly referrerPolicy: TRequestReferrerPolicy;
+  readonly signal: AbortSignal;
+  readonly bodyUsed: boolean;
+  readonly credentials: TRequestCredentials;
+  readonly referrer: string;
+  readonly url: string;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+  clone(): Request;
+}
+
+/** The WHATWG `Response` constructor value (T46). */
+declare const Response: {
+  readonly prototype: Response;
+  new (body?: TResponseBody | null, init?: IResponseInit | null): Response;
+  readonly redirect: (url: string, status?: number) => Response;
+  readonly error: () => Response;
+  readonly json: (data: object, init?: IResponseInit | null) => Response;
+};
+
+/** The WHATWG `Response` instance surface (T46). */
+export interface Response {
+  readonly body: ReadableStream | null;
+  readonly bodyUsed: boolean;
+  readonly redirected: boolean;
+  readonly type: "basic" | "cors" | "default" | "error" | "opaque" | "opaqueredirect";
+  readonly url: string;
+  readonly status: number;
+  readonly statusText: string;
+  readonly ok: boolean;
+  readonly headers: Headers;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+  clone(): Response;
+}
+
+/** The WHATWG `AbortController` constructor value (T46). */
+declare const AbortController: {
+  readonly prototype: AbortController;
+  new (): AbortController;
+};
+
+/** The WHATWG `AbortController` instance surface (T46). */
+export interface AbortController {
+  readonly signal: AbortSignal;
+  abort(reason?: unknown): void;
+}
+
+/** The WHATWG `AbortSignal` constructor value (T46). */
+declare const AbortSignal: {
+  readonly prototype: AbortSignal;
+  new (): AbortSignal;
+  readonly abort: (reason?: unknown) => AbortSignal;
+  readonly timeout: (time: number) => AbortSignal;
+  readonly any: (signals: Iterable<AbortSignal>) => AbortSignal;
+};
+
+/** The WHATWG `AbortSignal` instance surface (T46). */
+export interface AbortSignal {
+  readonly aborted: boolean;
+  readonly reason: unknown;
+  onabort: ((event: unknown) => void) | null;
+  throwIfAborted(): void;
+  addEventListener(type: string, listener: ((event: unknown) => void) | { handleEvent(event: unknown): void } | null, options?: unknown): void;
+  removeEventListener(type: string, listener: ((event: unknown) => void) | { handleEvent(event: unknown): void } | null, options?: unknown): void;
 }
 
 // --- Node creation, navigation, mutation, attributes, text and NodeList (T23/T24/T25) --
