@@ -1,21 +1,22 @@
-//! HTML document parser (T26).
+//! HTML document and fragment parsing (T26 / T27).
 //!
-//! Parses a full HTML document with servo's `html5ever` (ADR-0004, validated
-//! by the T05 spike) and writes the result *directly* into a fresh
-//! [`Document`]'s arena through the [`TreeSink`] adapter in the sibling
-//! `sink` module. The arena holds the final tree the moment parsing finishes —
-//! no second, long-lived DOM is ever built or kept, which is the core
-//! acceptance constraint of this milestone.
+//! Parses a full HTML document — or an HTML *fragment* against a context
+//! element — with servo's `html5ever` (ADR-0004, validated by the T05 spike)
+//! and writes the result *directly* into a fresh [`Document`]'s arena through
+//! the [`TreeSink`] adapter in the sibling `sink` module. The arena holds the
+//! final tree the moment parsing finishes — no second, long-lived DOM is ever
+//! built or kept, which is the core acceptance constraint of this milestone.
 //!
 //! The tree builder and tokenizer are html5ever's; this module adapts them and
 //! implements the node-creation callbacks. Malformed markup never fails
 //! parsing: per the HTML5 error-recovery algorithm the tree is still built and
-//! the non-fatal diagnostics are collected in
-//! [`ParsedDocument::parse_errors`].
+//! the non-fatal diagnostics are collected in [`ParsedDocument::parse_errors`]
+//! / [`ParsedFragment::parse_errors`].
 //!
 //! # Scope
 //!
-//! Document parsing only. Fragment parsing (T27), serialization (T28) and any
+//! Document parsing ([`parse_html_document`], T26) and context-based fragment
+//! parsing ([`parse_html_fragment`], T27). Serialization (T28) and any
 //! JavaScript `innerHTML` surface are out of scope.
 //!
 //! # Resource behaviour
@@ -29,8 +30,9 @@
 //! spec's "has a p element in button scope" stack scan for every block-level
 //! start tag, so *pathologically* deep nesting of non-boundary elements is
 //! O(depth²) in the tree builder — browsers run the same scan. The fixed
-//! corpus, error and resource tests in `tests/t26_html_parser.rs` pin both the
-//! linear node accounting and the deep-nesting behaviour.
+//! corpus, error and resource tests in `tests/t26_html_parser.rs` and
+//! `tests/t27_html_fragment.rs` pin both the linear node accounting and the
+//! deep-nesting behaviour.
 
 use crate::arena::NodeId;
 use crate::dom::Document;
@@ -40,9 +42,11 @@ use html5ever::driver::{parse_document, ParseOpts};
 use html5ever::tendril::TendrilSink;
 use html5ever::tree_builder::QuirksMode;
 
+mod fragment;
 mod sink;
 
-pub use sink::HtmlSink;
+pub use fragment::{parse_html_fragment, FragmentContext, ParsedFragment};
+pub use sink::{DocumentMode, FragmentMode, HtmlSink, SinkMode};
 
 /// The outcome of parsing a full HTML document.
 ///

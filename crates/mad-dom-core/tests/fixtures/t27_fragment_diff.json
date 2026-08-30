@@ -1,0 +1,9170 @@
+[
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "<b>x</b> & y"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "div",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "<b>x</b> & y"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "span",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "tbody",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tr",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "td",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "text",
+          "d": "cell"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tbody",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tr",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "td",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "text",
+          "d": "cell"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tbody",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tr",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "td",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "text",
+          "d": "cell"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "b"
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "bold"
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "italic"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "inner"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "circle",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {
+     "cx": "4"
+    },
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "if (a < b) { x(); }"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "a >"
+   },
+   {
+    "t": "text",
+    "d": " b { color: red }"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "x"
+   },
+   {
+    "t": "text",
+    "d": " & y"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "<b>x</b> & y"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "A & B"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "tbody",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tr",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "td",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "text",
+          "d": "in"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tbody",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tr",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "td",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "text",
+          "d": "in"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "para"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "table",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "c"
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "b"
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "bold"
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "italic"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "inner"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "circle",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {
+     "cx": "4"
+    },
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "if (a < b) { x(); }"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "a >"
+   },
+   {
+    "t": "text",
+    "d": " b { color: red }"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "x"
+   },
+   {
+    "t": "text",
+    "d": " & y"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "<b>x</b> & y"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "A & B"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "in"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "in"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "para"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tbody",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "c"
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "b"
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "bold"
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "italic"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "inner"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "circle",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {
+     "cx": "4"
+    },
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "if (a < b) { x(); }"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "a >"
+   },
+   {
+    "t": "text",
+    "d": " b { color: red }"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "x"
+   },
+   {
+    "t": "text",
+    "d": " & y"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "<b>x</b> & y"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "A & B"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "in"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "in"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "para"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "tr",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "text",
+    "d": "c"
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "<b>x</b> & y"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "td",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "<b>x</b> & y"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "select",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "<b>x</b> & y"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tr",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "td",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "text",
+          "d": "in"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "template",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<tr><td>cell</td></tr>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<td>cell</td>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<div>a<p>b</div>c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<b>bold</b> and <i>italic</i>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<template><p>inner</p></template>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a &amp; b < c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<svg><circle cx='4'/></svg>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<script>if (a < b) { x(); }</script>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<style>a > b { color: red }</style>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<textarea><b>x</b> &amp; y</textarea>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<title>A &amp; B</title>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<!-- comment -->text"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<table><tr><td>in</td></tr></table>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<p>para</p>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "script",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a<b>c</b>d"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<tr><td>cell</td></tr>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<td>cell</td>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<div>a<p>b</div>c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<b>bold</b> and <i>italic</i>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<template><p>inner</p></template>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a &amp; b < c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<svg><circle cx='4'/></svg>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<script>if (a < b) { x(); }</script>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<style>a > b { color: red }</style>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<textarea><b>x</b> &amp; y</textarea>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<title>A &amp; B</title>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<!-- comment -->text"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<table><tr><td>in</td></tr></table>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<p>para</p>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "style",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a<b>c</b>d"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<tr><td>cell</td></tr>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<td>cell</td>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<div>a<p>b</div>c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<b>bold</b> and <i>italic</i>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<template><p>inner</p></template>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<svg><circle cx='4'/></svg>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<script>if (a < b) { x(); }</script>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<style>a > b { color: red }</style>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<textarea><b>x</b> & y</textarea>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<title>A & B</title>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<!-- comment -->text"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<table><tr><td>in</td></tr></table>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<p>para</p>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "textarea",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a<b>c</b>d"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<tr><td>cell</td></tr>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<tr><td>cell</td></tr>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<td>cell</td>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<td>cell</td>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<div>a<p>b</div>c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<div>a<p>b</div>c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<b>bold</b> and <i>italic</i>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<b>bold</b> and <i>italic</i>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<template><p>inner</p></template>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<template><p>inner</p></template>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a &amp; b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<svg><circle cx='4'/></svg>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<svg><circle cx='4'/></svg>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<script>if (a < b) { x(); }</script>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<script>if (a < b) { x(); }</script>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<style>a > b { color: red }</style>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<style>a > b { color: red }</style>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<textarea><b>x</b> &amp; y</textarea>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<textarea><b>x</b> & y</textarea>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<title>A &amp; B</title>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<title>A & B</title>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<!-- comment -->text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<!-- comment -->text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<table><tr><td>in</td></tr></table>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<table><tr><td>in</td></tr></table>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "<p>para</p>"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<p>para</p>"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "title",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a<b>c</b>d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a<b>c</b>d"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "inner"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "inner"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "x"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " & y"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/2000/svg",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/2000/svg",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "svg",
+  "ns": "http://www.w3.org/2000/svg",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1998/Math/MathML",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "inner"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/1998/Math/MathML",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "x"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " & y"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "math",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "tr",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "td",
+      "ns": "http://www.w3.org/1998/Math/MathML",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "cell"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "td",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "cell"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "inner"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": []
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "x"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " & y"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1998/Math/MathML",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "annotation-xml",
+  "ns": "http://www.w3.org/1998/Math/MathML",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<tr><td>cell</td></tr>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<tr><td>cell</td></tr>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<td>cell</td>",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "cell"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<td>cell</td>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<div>a<p>b</div>c",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "div",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a"
+     },
+     {
+      "t": "element",
+      "tag": "p",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "b"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<div>a<p>b</div>c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "plain text",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "plain text"
+   }
+  ],
+  "status": "pass"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<b>bold</b> and <i>italic</i>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "bold"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": " and "
+   },
+   {
+    "t": "element",
+    "tag": "i",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "italic"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<b>bold</b> and <i>italic</i>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<template><p>inner</p></template>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "template",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": []
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<template><p>inner</p></template>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a &amp; b < c",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a & b < c"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a &amp; b < c"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<svg><circle cx='4'/></svg>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "svg",
+    "ns": "http://www.w3.org/2000/svg",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "circle",
+      "ns": "http://www.w3.org/2000/svg",
+      "attrs": {
+       "cx": "4"
+      },
+      "c": []
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<svg><circle cx='4'/></svg>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<script>if (a < b) { x(); }</script>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "script",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "if (a < b) { x(); }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<script>if (a < b) { x(); }</script>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<style>a > b { color: red }</style>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "style",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "a > b { color: red }"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<style>a > b { color: red }</style>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<textarea><b>x</b> &amp; y</textarea>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "textarea",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "b",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "text",
+        "d": "x"
+       }
+      ]
+     },
+     {
+      "t": "text",
+      "d": " & y"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<textarea><b>x</b> &amp; y</textarea>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<title>A &amp; B</title>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "title",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "A & B"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<title>A &amp; B</title>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<!-- comment -->text",
+  "happyDom": [
+   {
+    "t": "comment",
+    "d": " comment "
+   },
+   {
+    "t": "text",
+    "d": "text"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<!-- comment -->text"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<table><tr><td>in</td></tr></table>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "table",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "element",
+      "tag": "tbody",
+      "ns": "http://www.w3.org/1999/xhtml",
+      "attrs": {},
+      "c": [
+       {
+        "t": "element",
+        "tag": "tr",
+        "ns": "http://www.w3.org/1999/xhtml",
+        "attrs": {},
+        "c": [
+         {
+          "t": "element",
+          "tag": "td",
+          "ns": "http://www.w3.org/1999/xhtml",
+          "attrs": {},
+          "c": [
+           {
+            "t": "text",
+            "d": "in"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<table><tr><td>in</td></tr></table>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "<p>para</p>",
+  "happyDom": [
+   {
+    "t": "element",
+    "tag": "p",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "para"
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "<p>para</p>"
+   }
+  ],
+  "status": "known-gap"
+ },
+ {
+  "context": "noscript",
+  "ns": "http://www.w3.org/1999/xhtml",
+  "input": "a<b>c</b>d",
+  "happyDom": [
+   {
+    "t": "text",
+    "d": "a"
+   },
+   {
+    "t": "element",
+    "tag": "b",
+    "ns": "http://www.w3.org/1999/xhtml",
+    "attrs": {},
+    "c": [
+     {
+      "t": "text",
+      "d": "c"
+     }
+    ]
+   },
+   {
+    "t": "text",
+    "d": "d"
+   }
+  ],
+  "expected": [
+   {
+    "t": "text",
+    "d": "a<b>c</b>d"
+   }
+  ],
+  "status": "known-gap"
+ }
+]

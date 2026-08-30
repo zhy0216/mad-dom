@@ -35,15 +35,24 @@
 //!
 //! # Scope simplifications
 //!
-//! * `<template>` contents are parsed as ordinary children of the template
-//!   element ([`TreeSink::get_template_contents`] returns the element itself).
-//!   The separate HTML5 template DocumentFragment belongs to T27;
 //! * `create_pi` is unreachable in HTML parsing — the tokenizer treats
 //!   `<?...?>` as a bogus comment — so it falls back to an empty comment to
 //!   keep the trait implementation total.
+//!
+//! # Fragment mode (T27)
+//!
+//! The sink is parameterised over its parse mode ([`SinkMode`]) so the single
+//! `TreeSink` implementation serves both the document parser (T26) and the
+//! fragment parser (T27) with distinct output types. In fragment mode
+//! ([`FragmentMode`]) the sink additionally carries [`FragmentState`]: a
+//! `template element -> template-contents fragment` map, so
+//! [`TreeSink::get_template_contents`] routes a `<template>`'s content into
+//! its own `DocumentFragment` instead of the T26 document-mode shortcut of
+//! parsing it as ordinary children of the template element.
 
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
+use std::marker::PhantomData;
 
 use html5ever::tendril::StrTendril;
 use html5ever::tree_builder::{ElemName, ElementFlags, NodeOrText, QuirksMode, TreeSink};
@@ -53,24 +62,98 @@ use crate::arena::NodeId;
 use crate::dom::Document;
 use crate::dom::NodeData;
 
+use super::fragment::ParsedFragment;
 use super::ParsedDocument;
+
+/// Output-mode selector for [`HtmlSink`].
+///
+/// The marker types [`DocumentMode`] and [`FragmentMode`] select which payload
+/// [`TreeSink::finish`] extracts from a finished sink. The marker is public
+/// only because it appears in the public [`HtmlSink`] type parameter; callers
+/// never construct it.
+pub trait SinkMode: Sized + 'static {
+    /// The parse output produced by [`TreeSink::finish`].
+    type Output;
+
+    /// Extracts the mode-specific output from a finished sink.
+    fn finish(sink: HtmlSink<Self>) -> Self::Output;
+}
+
+/// Marker selecting full-document parsing ([`ParsedDocument`]).
+pub enum DocumentMode {}
+
+/// Marker selecting context-based fragment parsing ([`ParsedFragment`]).
+pub enum FragmentMode {}
+
+impl SinkMode for DocumentMode {
+    type Output = ParsedDocument;
+
+    fn finish(sink: HtmlSink<Self>) -> Self::Output {
+        ParsedDocument {
+            document: sink.document.into_inner(),
+            root: sink.root,
+            parse_errors: sink.parse_errors.into_inner(),
+            quirks_mode: sink.quirks_mode.get(),
+        }
+    }
+}
+
+impl SinkMode for FragmentMode {
+    type Output = ParsedFragment;
+
+    fn finish(sink: HtmlSink<Self>) -> Self::Output {
+        let document = sink.document.into_inner();
+        let state = sink
+            .fragment
+            .into_inner()
+            .expect("fragment sink always carries fragment state");
+        // html5ever's fragment parsing builds the tree under the temporary
+        // root `<html>` element (`create_root`), which is the document node's
+        // first child; its children are the parsed fragment.
+        let root = document
+            .first_child(sink.root)
+            .expect("fragment root is readable")
+            .expect("fragment parsing appends the temporary root html element");
+        let nodes = document
+            .children(root)
+            .expect("fragment root is a live node of the target document");
+        ParsedFragment {
+            document,
+            document_root: sink.root,
+            root,
+            nodes,
+            template_contents: state.template_contents,
+            parse_errors: sink.parse_errors.into_inner(),
+        }
+    }
+}
+
+/// Fragment-parse state carried by a [`FragmentMode`] sink.
+struct FragmentState {
+    /// Every `template element -> its template-contents DocumentFragment`.
+    template_contents: Vec<(NodeId, NodeId)>,
+}
 
 /// The `TreeSink` whose arena is the parse target.
 ///
 /// `html5ever 0.39`'s `TreeSink` methods are all `&self`, so the sink holds the
 /// [`Document`] and the collected diagnostics behind interior mutability and
 /// exposes them through [`TreeSink::finish`].
-pub struct HtmlSink {
+pub struct HtmlSink<M: SinkMode = DocumentMode> {
     document: RefCell<Document>,
     /// The `Document`-kind node that is the root of the parsed tree. Slot
     /// allocations by the parser start after it.
     root: NodeId,
     parse_errors: RefCell<Vec<String>>,
     quirks_mode: Cell<QuirksMode>,
+    /// Fragment-parse state; `None` in document mode (T26).
+    fragment: RefCell<Option<FragmentState>>,
+    mode: PhantomData<M>,
 }
 
-impl HtmlSink {
-    /// Creates a fresh sink owning a new [`Document`] and its document root.
+impl HtmlSink<DocumentMode> {
+    /// Creates a fresh document-mode sink owning a new [`Document`] and its
+    /// document root.
     pub fn new() -> Self {
         let mut document = Document::new();
         let root = document.allocate_node(NodeData::Document);
@@ -79,11 +162,32 @@ impl HtmlSink {
             root,
             parse_errors: RefCell::new(Vec::new()),
             quirks_mode: Cell::new(QuirksMode::NoQuirks),
+            fragment: RefCell::new(None),
+            mode: PhantomData,
         }
     }
 }
 
-impl Default for HtmlSink {
+impl HtmlSink<FragmentMode> {
+    /// Creates a fresh fragment-mode sink owning a new [`Document`], its
+    /// document root and the fragment-parse state.
+    pub fn for_fragment() -> Self {
+        let mut document = Document::new();
+        let root = document.allocate_node(NodeData::Document);
+        Self {
+            document: RefCell::new(document),
+            root,
+            parse_errors: RefCell::new(Vec::new()),
+            quirks_mode: Cell::new(QuirksMode::NoQuirks),
+            fragment: RefCell::new(Some(FragmentState {
+                template_contents: Vec::new(),
+            })),
+            mode: PhantomData,
+        }
+    }
+}
+
+impl Default for HtmlSink<DocumentMode> {
     fn default() -> Self {
         Self::new()
     }
@@ -111,18 +215,13 @@ impl ElemName for HtmlElemName {
     }
 }
 
-impl TreeSink for HtmlSink {
+impl<M: SinkMode> TreeSink for HtmlSink<M> {
     type Handle = NodeId;
-    type Output = ParsedDocument;
+    type Output = M::Output;
     type ElemName<'a> = HtmlElemName;
 
     fn finish(self) -> Self::Output {
-        ParsedDocument {
-            document: self.document.into_inner(),
-            root: self.root,
-            parse_errors: self.parse_errors.into_inner(),
-            quirks_mode: self.quirks_mode.get(),
-        }
+        M::finish(self)
     }
 
     fn parse_error(&self, msg: Cow<'static, str>) {
@@ -152,18 +251,33 @@ impl TreeSink for HtmlSink {
         attrs: Vec<Attribute>,
         flags: ElementFlags,
     ) -> Self::Handle {
-        let mut doc = self.document.borrow_mut();
-        let attributes = attrs
-            .into_iter()
-            .map(|a| (qualified_name(&a.name), a.value.to_string()))
-            .collect();
-        doc.allocate_node(NodeData::Element {
-            name: name.local,
-            namespace: name.ns,
-            attributes,
-            mathml_annotation_xml_integration_point: flags.mathml_annotation_xml_integration_point,
-            had_duplicate_attributes: flags.had_duplicate_attributes,
-        })
+        let node = {
+            let mut doc = self.document.borrow_mut();
+            let attributes = attrs
+                .into_iter()
+                .map(|a| (qualified_name(&a.name), a.value.to_string()))
+                .collect();
+            doc.allocate_node(NodeData::Element {
+                name: name.local,
+                namespace: name.ns,
+                attributes,
+                mathml_annotation_xml_integration_point: flags
+                    .mathml_annotation_xml_integration_point,
+                had_duplicate_attributes: flags.had_duplicate_attributes,
+            })
+        };
+        if flags.template {
+            // HTML5 template contents: each template element gets its own
+            // DocumentFragment. Document mode (T26) keeps the shortcut of
+            // parsing contents as ordinary children, so only fragment mode
+            // records the fragment and routes into it (get_template_contents).
+            if let Some(state) = self.fragment.borrow_mut().as_mut() {
+                let mut doc = self.document.borrow_mut();
+                let contents = doc.allocate_node(NodeData::DocumentFragment);
+                state.template_contents.push((node, contents));
+            }
+        }
+        node
     }
 
     fn create_comment(&self, text: StrTendril) -> Self::Handle {
@@ -235,9 +349,20 @@ impl TreeSink for HtmlSink {
     }
 
     fn get_template_contents(&self, target: &Self::Handle) -> Self::Handle {
-        // T26 scope: template contents are parsed as ordinary children of the
-        // template element. Returning the element itself keeps the tree stable
-        // and valid; the HTML5 template DocumentFragment is T27's concern.
+        // Fragment mode gives every template element its HTML5
+        // template-contents DocumentFragment (recorded at create_element time);
+        // document mode keeps the T26 simplification of parsing contents as
+        // ordinary children of the template element.
+        let fragment = self.fragment.borrow();
+        if let Some(state) = fragment.as_ref() {
+            if let Some(&(_, contents)) = state
+                .template_contents
+                .iter()
+                .find(|(element, _)| element == target)
+            {
+                return contents;
+            }
+        }
         *target
     }
 
@@ -511,11 +636,13 @@ mod tests {
         // non-fatal diagnostics are collected.
         let mut doc = Document::new();
         let root = doc.allocate_node(NodeData::Document);
-        let sink = HtmlSink {
+        let sink: HtmlSink<DocumentMode> = HtmlSink {
             document: RefCell::new(doc),
             root,
             parse_errors: RefCell::new(Vec::new()),
             quirks_mode: Cell::new(QuirksMode::NoQuirks),
+            fragment: RefCell::new(None),
+            mode: PhantomData,
         };
         sink.set_quirks_mode(QuirksMode::Quirks);
         sink.parse_error(Cow::Borrowed("stray end tag"));

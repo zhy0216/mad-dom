@@ -1,6 +1,6 @@
 # 27 实现 HTML fragment parsing
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M5
 - 条目 ID：`T27`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T27 — 实现 HTML fragment parsing**
+- [x] **T27 — 实现 HTML fragment parsing**
   - 实现：
     - 实现 context element/namespace 与 fragment root 处理。
     - 覆盖 table、template、raw text 等上下文差异。
