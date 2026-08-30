@@ -389,7 +389,7 @@ describe.skipIf(!nativeAvailable)("T37 event state", () => {
         order.push(`${event.currentTarget.nodeName}:${event.target.nodeName}`);
       });
       leaf.dispatchEvent(new win.Event("evt", { bubbles: true }));
-      expect(order).toEqual(["#document:span"]);
+      expect(order).toEqual(["#document:SPAN"]);
     } finally {
       win.destroy();
     }

@@ -181,7 +181,7 @@ describe("facade node construction restrictions (T23B)", () => {
       const node = new Node(handle);
       expect(node).toBeInstanceOf(Node);
       expect(Object.getPrototypeOf(node)).toBe(Node.prototype);
-      expect(node.nodeName).toBe("div");
+      expect(node.nodeName).toBe("DIV");
 
       // A DocumentHandle must not construct a Node.
       expect(() => new Node(nativeDocument)).toThrow(TypeError);
@@ -255,7 +255,7 @@ describe.skipIf(!nativeAvailable)("facade node creation and navigation (T23B)", 
 
     expect(div).toBeInstanceOf(Node);
     expect(div.nodeType).toBe(1);
-    expect(div.nodeName).toBe("div");
+    expect(div.nodeName).toBe("DIV");
 
     expect(text).toBeInstanceOf(Node);
     expect(text.nodeType).toBe(3);
@@ -338,7 +338,7 @@ describe.skipIf(!nativeAvailable)("facade node creation and navigation (T23B)", 
     expect(a.nextSibling).toBe(b);
     expect(b.previousSibling).toBe(a);
     expect(a.parentNode).toBe(a.parentNode);
-    expect(a.parentNode.nodeName).toBe("ul");
+    expect(a.parentNode.nodeName).toBe("UL");
     expect(label.parentNode).toBe(a);
     expect(label.previousSibling).toBeNull();
     expect(label.nextSibling).toBeNull();

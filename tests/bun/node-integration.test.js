@@ -112,7 +112,7 @@ describe.skipIf(!nativeAvailable)("root entry node creation and navigation (T23)
     const text = doc.createTextNode("hello");
 
     expect(div.nodeType).toBe(1);
-    expect(div.nodeName).toBe("div");
+    expect(div.nodeName).toBe("DIV");
     expect(text.nodeType).toBe(3);
     expect(text.nodeName).toBe("#text");
 

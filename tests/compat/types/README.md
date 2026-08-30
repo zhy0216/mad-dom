@@ -91,10 +91,12 @@ T09 的临时 known-gap 清单已迁入 [T11](../../../todos/11-compatibility-le
 回真实仓库，两套 tsconfig 的路径改写为绝对路径），然后验证三个篡改场景都以
 exit 1 失败：
 
-- **A**：从 `compat/ledger.json` 临时副本删除任一 `hc-types-*` 条目 → 硬门禁
-  失败（模拟 "MAD DOM 拒绝 happy-dom 接受的公开用法时测试失败"）；
-- **B**：把某条 `hc-types-*` 模式改成永不匹配 → stale entry 失败（过期条目不可
-  静默残留）；
+- **A**：向临时副本注入一个 happy-dom 有而 mad-dom 类型面没有的成员 fixture
+  （`window.console`）→ 硬门禁失败（模拟 "MAD DOM 拒绝 happy-dom 接受的公开用法
+  时测试失败"；自 T48 起全部 `hc-types-*` 条目已翻转为 pass，故用未覆盖成员
+  而非删除条目触发同一门禁）；
+- **B**：把某条 `hc-types-*` 条目改成永不匹配的 known-gap 模式 → stale entry
+  失败（过期条目不可静默残留）；
 - **C**：删除负向 fixture 的某个 `@ts-expect-error` 标记 → happy-dom 目标出现
   未抑制诊断并失败（证明负向检测真实执行）。
 

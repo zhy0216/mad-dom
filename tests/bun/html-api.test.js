@@ -79,9 +79,9 @@ describe.skipIf(!nativeAvailable)("document structure accessors (T29)", () => {
       expect(doc.documentElement).toBeInstanceOf(Node);
       expect(doc.head).toBeInstanceOf(Node);
       expect(doc.body).toBeInstanceOf(Node);
-      expect(doc.documentElement.nodeName).toBe("html");
-      expect(doc.head.nodeName).toBe("head");
-      expect(doc.body.nodeName).toBe("body");
+      expect(doc.documentElement.nodeName).toBe("HTML");
+      expect(doc.head.nodeName).toBe("HEAD");
+      expect(doc.body.nodeName).toBe("BODY");
 
       expect(doc.documentElement).toBe(doc.documentElement);
       expect(doc.head).toBe(doc.head);
@@ -118,7 +118,7 @@ describe.skipIf(!nativeAvailable)("document structure accessors (T29)", () => {
       doc.parseHtml(
         "<!DOCTYPE html><html><head><title>T</title></head><body><p>full</p></body></html>",
       );
-      expect(doc.documentElement.nodeName).toBe("html");
+      expect(doc.documentElement.nodeName).toBe("HTML");
       expect(doc.documentElement.childNodes).toHaveLength(2);
       expect(doc.body.innerHTML).toBe("<p>full</p>");
       expect(doc.body).not.toBe(oldBody);
@@ -127,7 +127,7 @@ describe.skipIf(!nativeAvailable)("document structure accessors (T29)", () => {
       expect(doc.body).toBe(doc.body);
       // The old body wrapper stays valid (the old subtree is detached from the
       // document root, not freed).
-      expect(oldBody.parentNode.nodeName).toBe("html");
+      expect(oldBody.parentNode.nodeName).toBe("HTML");
       expect(oldBody.parentNode.parentNode).toBeNull();
       expect(doc.body).not.toBe(oldBody);
     } finally {
@@ -161,7 +161,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
         '<ul id="list"><li class="item">first</li><li>second</li></ul>',
       );
       expect(div.childNodes).toHaveLength(1);
-      expect(div.firstChild.nodeName).toBe("ul");
+      expect(div.firstChild.nodeName).toBe("UL");
       expect(div.firstChild.getAttribute("id")).toBe("list");
       expect(div.firstChild.childNodes).toHaveLength(2);
 
@@ -187,7 +187,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
 
       div.innerHTML = "<span>new</span>";
       expect(div.innerHTML).toBe("<span>new</span>");
-      expect(div.firstChild.nodeName).toBe("span");
+      expect(div.firstChild.nodeName).toBe("SPAN");
       expect(old.parentNode).toBeNull();
       expect(old.textContent).toBe("old");
     } finally {
@@ -217,7 +217,7 @@ describe.skipIf(!nativeAvailable)("innerHTML getter/setter (T29)", () => {
       const table = doc.createElement("table");
       table.innerHTML = "<tr><td>cell</td></tr>";
       expect(table.innerHTML).toBe("<tbody><tr><td>cell</td></tr></tbody>");
-      expect(table.firstChild.nodeName).toBe("tbody");
+      expect(table.firstChild.nodeName).toBe("TBODY");
     } finally {
       win.destroy();
     }
@@ -310,7 +310,7 @@ describe.skipIf(!nativeAvailable)("outerHTML getter/setter (T29)", () => {
 
       expect(host.innerHTML).toBe('<span id="new">new</span><i>keep</i>');
       expect(host.childNodes).toHaveLength(2);
-      expect(host.firstChild.nodeName).toBe("span");
+      expect(host.firstChild.nodeName).toBe("SPAN");
       expect(host.firstChild.getAttribute("id")).toBe("new");
       expect(old.parentNode).toBeNull();
       expect(old.textContent).toBe("old");

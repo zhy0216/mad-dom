@@ -108,19 +108,19 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
     expect(parent.appendChild(last)).toBe(last);
     expect(parent.insertBefore(middle, last)).toBe(middle);
     expect(Array.from(parent.childNodes, (node) => node.nodeName)).toEqual([
-      "first",
+      "FIRST",
       "#text",
-      "middle",
-      "last",
+      "MIDDLE",
+      "LAST",
     ]);
 
     // Move: re-appending an existing child reorders, it is not a duplicate.
     expect(parent.appendChild(first)).toBe(first);
     expect(Array.from(parent.childNodes, (node) => node.nodeName)).toEqual([
       "#text",
-      "middle",
-      "last",
-      "first",
+      "MIDDLE",
+      "LAST",
+      "FIRST",
     ]);
 
     // Delete: removeChild detaches the node but keeps it live and re-insertable.
@@ -136,10 +136,10 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
     expect(text.parentNode).toBeNull();
     expect(replacement.parentNode).toBe(parent);
     expect(Array.from(parent.childNodes, (node) => node.nodeName)).toEqual([
-      "replacement",
-      "middle",
-      "last",
-      "first",
+      "REPLACEMENT",
+      "MIDDLE",
+      "LAST",
+      "FIRST",
     ]);
     win.destroy();
   });
@@ -159,7 +159,7 @@ describe.skipIf(!nativeAvailable)("root entry tree mutation (T24)", () => {
     parent.appendChild(fragment);
 
     expect(fragment.childNodes).toHaveLength(0);
-    expect(Array.from(parent.childNodes, (node) => node.nodeName)).toEqual(["one", "two"]);
+    expect(Array.from(parent.childNodes, (node) => node.nodeName)).toEqual(["ONE", "TWO"]);
     expect(one.parentNode).toBe(parent);
     expect(two.parentNode).toBe(parent);
     win.destroy();

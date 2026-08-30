@@ -60,3 +60,19 @@ Individual commands:
 - `npm run dev:build` — build the local native artifact (`build/mad-dom.node`);
 - `npm run test:native` — native binding smoke tests;
 - `npm pack --dry-run` — package smoke test.
+
+### WPT subset (T48+)
+
+`tests/wpt/` vendors a small, commit-pinned subset of the
+[web-platform-tests](https://github.com/web-platform-tests/wpt) DOM suite as a
+**separate statistics track** (ADR-0002 section 8): the pass rate is reported
+independently and never changes the happy-dom compatibility contract
+(`compat/ledger.json` + the differential runner own the happy-dom conclusions).
+The subset is a measurement, not a gate:
+
+```sh
+npm run wpt:test    # run the subset and print the pass-rate report
+npm run wpt:json    # machine-readable report (mad-dom-wpt-report/1)
+```
+
+See `tests/wpt/README.md` for the manifest and how to update the subset.

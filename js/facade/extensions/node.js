@@ -37,6 +37,11 @@ import { Document } from "../document.js";
 import { liveChildNodes } from "./child-nodelist.js";
 import { upgradeElementPrototype } from "./custom-elements.js";
 
+// The WHATWG HTML namespace URI (mirrors crates/mad-dom-core/src/dom/node.rs):
+// `nodeName` / `tagName` report the tag name uppercased only for elements in
+// this namespace, matching happy-dom.
+const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+
 export const seam = Object.freeze({
   id: "facade/extensions/node",
   owner: "T23B",
@@ -122,8 +127,43 @@ export function install(ctx) {
     return NODE_HANDLES.get(this).nodeType();
   }, undefined);
 
+  // WHATWG nodeName: an element in the HTML namespace reports its tag name in
+  // uppercase ("DIV"), matching happy-dom; SVG/MathML and every other node kind
+  // report the Core value verbatim (`#text`, `#document-fragment`, the SVG
+  // lowercased tag, ...). The serializers and selectors keep using the Core
+  // lowercased local name, so this case change is only the observable accessor.
   ctx.defineAccessor(Node.prototype, "nodeName", function nodeName() {
-    return NODE_HANDLES.get(this).nodeName();
+    const handle = NODE_HANDLES.get(this);
+    if (handle === undefined) return undefined;
+    const name = handle.nodeName();
+    if (handle.nodeType() === 1 && handle.namespaceUri() === HTML_NAMESPACE) {
+      return name.toUpperCase();
+    }
+    return name;
+  }, undefined);
+
+  // WHATWG Element.localName: the lowercased local tag name for an element
+  // (the Core `nodeName`), `undefined` on non-element nodes like happy-dom. A
+  // bare custom-class object without a native handle also reads `undefined`
+  // (the `new DefinedClass()` single-class deviation).
+  ctx.defineAccessor(Node.prototype, "localName", function localName() {
+    const handle = NODE_HANDLES.get(this);
+    if (handle === undefined) return undefined;
+    if (handle.nodeType() !== 1) return undefined;
+    return handle.nodeName();
+  }, undefined);
+
+  // WHATWG Element.tagName: equal to `nodeName` for elements (uppercase for
+  // HTML namespace elements), `undefined` on non-element nodes like happy-dom.
+  ctx.defineAccessor(Node.prototype, "tagName", function tagName() {
+    const handle = NODE_HANDLES.get(this);
+    if (handle === undefined) return undefined;
+    if (handle.nodeType() !== 1) return undefined;
+    const name = handle.nodeName();
+    if (handle.namespaceUri() === HTML_NAMESPACE) {
+      return name.toUpperCase();
+    }
+    return name;
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "parentNode", function parentNode() {

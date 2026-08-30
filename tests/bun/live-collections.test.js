@@ -228,7 +228,7 @@ describe.skipIf(!nativeAvailable)("live semantics (T32)", () => {
 
       doc.body.appendChild(doc.createElement("div"));
       expect(divs.length, "the same collection reflects the append").toBe(1);
-      expect(divs[0].nodeName).toBe("div");
+      expect(divs[0].nodeName).toBe("DIV");
 
       doc.body.removeChild(divs[0]);
       expect(divs.length, "the same collection reflects the removal").toBe(0);

@@ -106,14 +106,14 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
       expect(parent.appendChild(first)).toBe(first);
       expect(parent.appendChild(last)).toBe(last);
       expect(parent.insertBefore(middle, last)).toBe(middle);
-      expect(names(parent)).toEqual(["first", "middle", "last"]);
+      expect(names(parent)).toEqual(["FIRST", "MIDDLE", "LAST"]);
       expect(parent.firstChild).toBe(first);
       expect(parent.lastChild).toBe(last);
       expect(middle.parentNode).toBe(parent);
 
       // Reordering is delegated to Core and does not mint a second wrapper.
       expect(parent.insertBefore(last, first)).toBe(last);
-      expect(names(parent)).toEqual(["last", "first", "middle"]);
+      expect(names(parent)).toEqual(["LAST", "FIRST", "MIDDLE"]);
       expect(parent.childNodes[0]).toBe(last);
     } finally {
       destroy(window);
@@ -199,7 +199,7 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
       fragment.appendChild(two);
 
       expect(parent.insertBefore(fragment, after)).toBe(fragment);
-      expect(names(parent)).toEqual(["before", "one", "two", "after"]);
+      expect(names(parent)).toEqual(["BEFORE", "ONE", "TWO", "AFTER"]);
       expect(fragment.childNodes).toHaveLength(0);
       expect(one.parentNode).toBe(parent);
       expect(two.parentNode).toBe(parent);
@@ -208,7 +208,7 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
       const three = document.createElement("three");
       replacement.appendChild(three);
       expect(parent.replaceChild(replacement, one)).toBe(one);
-      expect(names(parent)).toEqual(["before", "three", "two", "after"]);
+      expect(names(parent)).toEqual(["BEFORE", "THREE", "TWO", "AFTER"]);
       expect(replacement.childNodes).toHaveLength(0);
       expect(one.parentNode).toBeNull();
     } finally {

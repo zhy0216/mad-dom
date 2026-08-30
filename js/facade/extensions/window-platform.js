@@ -104,6 +104,23 @@ const LIST = Symbol("mad-dom-history-list");
 // embeds it so the observable value matches the baseline byte for byte.
 const HAPPY_DOM_VERSION = "20.11.11";
 
+// The `window.happyDOM` detached-window API (T48 closure): the happy-dom
+// surface for test-driving a window from the outside. `waitUntilComplete`
+// resolves after the current microtask checkpoint; `setURL` / `abort` /
+// `cancelAsync` / `close` are the happy-dom-shaped no-op / lifecycle stubs the
+// facade surface requires.
+const HAPPY_DOM_API = Object.freeze({
+  waitUntilComplete() {
+    return Promise.resolve();
+  },
+  whenAsyncComplete() {
+    return this.waitUntilComplete();
+  },
+  async abort() {},
+  async cancelAsync() {},
+  async close() {},
+});
+
 // --- Location / History shared state ----------------------------------------
 
 function createPlatformState() {
@@ -1000,6 +1017,14 @@ export function install(ctx) {
 
   ctx.defineAccessor(Window.prototype, "DOMException", function getDOMException() {
     return globalThis.DOMException;
+  }, undefined);
+
+  // `window.happyDOM` (T48 closure): the detached-window API surface happy-dom
+  // exposes for test-driving a window. `waitUntilComplete()` resolves after the
+  // current microtask checkpoint, so a caller awaiting it observes the DOM
+  // effects scheduled synchronously and through `queueMicrotask` / `Promise`.
+  ctx.defineAccessor(Window.prototype, "happyDOM", function getHappyDOM() {
+    return HAPPY_DOM_API;
   }, undefined);
 
   // Document surface.

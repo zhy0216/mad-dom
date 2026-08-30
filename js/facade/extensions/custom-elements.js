@@ -283,7 +283,9 @@ export class CustomElementRegistry {
    */
   upgradePrototype(element) {
     if (element === null || element === undefined) return;
-    const definition = this.definitions.get(element.nodeName);
+    // Definitions are keyed by the lowercased local name; `nodeName` is the
+    // uppercased tag since T48, so the lookup uses `localName`.
+    const definition = this.definitions.get(element.localName ?? element.nodeName.toLowerCase());
     if (
       definition !== undefined &&
       Object.getPrototypeOf(element) !== definition.elementClass.prototype
@@ -300,7 +302,9 @@ export class CustomElementRegistry {
     for (const reaction of reactions) {
       const element = ctx.wrap(reaction.element());
       if (element === null || element === undefined) continue;
-      const definition = this.definitions.get(element.nodeName);
+      // Definitions are keyed by the lowercased local name; `nodeName` is the
+      // uppercased tag since T48, so the lookup uses `localName`.
+      const definition = this.definitions.get(element.localName ?? element.nodeName.toLowerCase());
       if (definition === undefined) continue;
       if (Object.getPrototypeOf(element) !== definition.elementClass.prototype) continue;
       const kind = reaction.kind();

@@ -156,7 +156,7 @@ describe.skipIf(!nativeAvailable)("querySelector (T31)", () => {
       // The implied skeleton is discoverable on a fresh window.
       const fresh = createWindow();
       try {
-        expect(fresh.document.querySelector("body").nodeName).toBe("body");
+        expect(fresh.document.querySelector("body").nodeName).toBe("BODY");
         expect(fresh.document.querySelector("p")).toBeNull();
       } finally {
         fresh.destroy();
@@ -221,7 +221,7 @@ describe.skipIf(!nativeAvailable)("matches and closest (T31)", () => {
       expect(second.closest("li").getAttribute("data-i")).toBe("1");
       expect(second.closest("table")).toBeNull();
       // The receiver is a descendant of the body; the chain reaches the root.
-      expect(second.closest("body").nodeName).toBe("body");
+      expect(second.closest("body").nodeName).toBe("BODY");
     } finally {
       win.destroy();
     }
@@ -234,7 +234,7 @@ describe.skipIf(!nativeAvailable)("getElementById (T31)", () => {
     try {
       const doc = build(win);
       const list = doc.getElementById("list");
-      expect(list.nodeName).toBe("ul");
+      expect(list.nodeName).toBe("UL");
       expect(list).toBe(doc.body.firstChild);
       expect(doc.getElementById("nope")).toBeNull();
       expect(doc.getElementById("")).toBeNull();    } finally {

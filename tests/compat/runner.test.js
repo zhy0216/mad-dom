@@ -325,11 +325,10 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     for (const scenario of report.scenarios.filter((item) => item.id.startsWith("selftest-"))) {
       expect(scenario.status).toBe("pass");
     }
-    for (const id of [
-      "dom-create-append-serialize",
-      "dom-node-navigation",
-      "dom-query-selector-identity",
-    ]) {
+    // T48 closed the nodeName-casing gap (dom-node-navigation is now a clean
+    // pass); the two remaining real-target gaps are the createWindow entry
+    // shape, tracked by the T48E follow-up todo.
+    for (const id of ["dom-create-append-serialize", "dom-query-selector-identity"]) {
       const scenario = report.scenarios.find((item) => item.id === id);
       expect(scenario.status).toBe("differences-report");
       expect(scenario.reportOnly).toBe(true);
@@ -339,6 +338,8 @@ describe("real differential (happy-dom vs mad-dom)", () => {
         expect(scenario.sides[target].infraError).toBeNull();
       }
     }
+    const nodeNavigation = report.scenarios.find((item) => item.id === "dom-node-navigation");
+    expect(nodeNavigation.status).toBe("pass");
   });
 
   test("mad-dom's window facade gap is reported verbatim", () => {
@@ -373,28 +374,22 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     }
     expect(byPath["errors[0]"]).toBeUndefined();
 
-    expect(madRecord.values["document-ready-state"]).toEqual({ type: "undefined" });
-    expect(byPath["values.document-ready-state.value"]).toMatchObject({
-      kind: "left-only",
-      left: "interactive",
-    });
+    expect(madRecord.values["document-ready-state"]).toEqual({ type: "string", value: "interactive" });
+    expect(byPath["values.document-ready-state.value"]).toBeUndefined();
 
     // Since T29 the mad-dom side captures the body snapshot too. Its tree
     // structure, outerHTML, attributes and namespaceURI match happy-dom byte
-    // for byte (since T34), so the only snapshot-leaf differences that remain
-    // are the nodeName casing (T23A).
+    // for byte (since T34), and T48 closed the last snapshot-leaf difference:
+    // Element.nodeName now reports the uppercased tag, so the body nodeName
+    // matches happy-dom too.
     const madBody = madRecord.snapshots["body"];
     expect(madBody).toBeDefined();
     expect(madBody.nodeType).toBe(1);
-    expect(madBody.nodeName).toBe("body");
+    expect(madBody.nodeName).toBe("BODY");
     expect(madBody.outerHTML).toBe(
       '<body><section class="diff-probe" id="probe">differential body</section></body>',
     );
-    expect(byPath["snapshots.body.nodeName"]).toMatchObject({
-      kind: "changed",
-      left: "BODY",
-      right: "body",
-    });
+    expect(byPath["snapshots.body.nodeName"]).toBeUndefined();
     expect(madRecord.events).toEqual([]);
 
     // Since T31 the query that finds the appended section succeeds on both
@@ -411,8 +406,9 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-query-selector-identity");
     expect(scenario.status).toBe("differences-report");
     const paths = scenario.differences.map((difference) => difference.path);
-    expect(paths).toContain("snapshots.list.nodeName");
-    expect(paths).toContain("values.entry-create-window-type.value");
+    // T48 closed the snapshot nodeName casing (list children match happy-dom);
+    // the single remaining difference is the createWindow entry shape (T48E).
+    expect(paths).toEqual(["values.entry-create-window-type.value"]);
 
     // Since T31 the query surface matches: item-count is 2 and re-querying
     // returns the same element on both sides, so those paths are gone, and
@@ -917,9 +913,10 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(happyRecord.values).toEqual(madRecord.values);
   });
 
-  test("node navigation real scenario reports exactly the frozen nodeName casing gap", () => {
+  test("node navigation real scenario passes exactly (T48 closed the nodeName casing gap)", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-node-navigation");
-    expect(scenario.status).toBe("differences-report");
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toHaveLength(0);
 
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
@@ -932,19 +929,11 @@ describe("real differential (happy-dom vs mad-dom)", () => {
       return;
     }
 
-    // The whole T23 slice matches happy-dom except one value: Element.nodeName
-    // casing (MAD DOM freezes the lowercased tag, happy-dom uppercases it).
-    expect(scenario.differences).toHaveLength(1);
-    expect(scenario.differences[0]).toMatchObject({
-      path: "values.element-node-name.value",
-      kind: "changed",
-      left: "DIV",
-      right: "div",
-    });
-
+    // The whole T23 slice matches happy-dom observation for observation,
+    // including Element.nodeName (uppercased since T48).
     expect(madRecord.errors).toEqual([]);
     expect(madRecord.values["element-node-type"]).toEqual({ type: "number", value: 1 });
-    expect(madRecord.values["element-node-name"]).toEqual({ type: "string", value: "div" });
+    expect(madRecord.values["element-node-name"]).toEqual({ type: "string", value: "DIV" });
     expect(madRecord.values["text-node-type"]).toEqual({ type: "number", value: 3 });
     expect(madRecord.values["text-node-name"]).toEqual({ type: "string", value: "#text" });
     for (const suffix of ["parent-node", "first-child", "last-child", "previous-sibling", "next-sibling"]) {

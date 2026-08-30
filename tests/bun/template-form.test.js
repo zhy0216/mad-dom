@@ -75,7 +75,7 @@ describe.skipIf(!nativeAvailable)("T40 template content", () => {
     expect(template.content.nodeType).toBe(11);
     expect(template.childNodes.length).toBe(0);
     expect(template.content.childNodes.length).toBe(1);
-    expect(template.content.firstChild.nodeName).toBe("p");
+    expect(template.content.firstChild.nodeName).toBe("P");
     expect(template.content).toBe(template.content);
     expect(document.body.innerHTML).toBe("<template><p>in</p></template>");
   });
@@ -119,7 +119,7 @@ describe.skipIf(!nativeAvailable)("T40 template content", () => {
     const other = freshWindow().document;
     const adopted = other.adoptNode(template);
     expect(adopted.outerHTML).toBe("<template><p>in</p></template>");
-    expect(adopted.content.firstChild.nodeName).toBe("p");
+    expect(adopted.content.firstChild.nodeName).toBe("P");
   });
 });
 
@@ -233,8 +233,8 @@ describe.skipIf(!nativeAvailable)("T40 form.elements and reset", () => {
 
     expect(elements).toBe(form.elements);
     expect(elements.length).toBe(3);
-    expect(elements.namedItem("a").nodeName).toBe("input");
-    expect(elements[0].nodeName).toBe("input");
+    expect(elements.namedItem("a").nodeName).toBe("INPUT");
+    expect(elements[0].nodeName).toBe("INPUT");
     expect(form.length).toBe(3);
 
     const extra = document.createElement("textarea");

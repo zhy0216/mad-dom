@@ -10,18 +10,51 @@ export declare const project: MadDomProject;
 
 // --- Window / Document facade (T22) ----------------------------------------
 //
-// Public DOM facade surface. Windows are minted through `createWindow()`; the
-// `Window`/`Document` classes only construct around a genuine native handle
-// (throwing TypeError otherwise), so no user-visible path fabricates a
-// document. Nodes (creation and navigation), tree mutation
-// (append/insert/remove/replace) and the T25 surface — attributes,
-// `textContent` and the live `childNodes` `NodeList` — are declared below by
-// the T23, T24 and T25 gates.
+// Public DOM facade surface. Since T48 `Window` is user-constructible like
+// happy-dom: `new Window()` / `new Window(options)` mint a fresh native
+// window+document pair through the constructor's mint path. The `Document`
+// class still only constructs around a genuine native handle (throwing
+// TypeError otherwise), so no user-visible path fabricates a document. Nodes
+// (creation and navigation), tree mutation (append/insert/remove/replace) and
+// the T25 surface — attributes, `textContent` and the live `childNodes`
+// `NodeList` — are declared below by the T23, T24 and T25 gates.
+
+/** The happy-dom-style `Window` constructor options (T48 closure): accepted and
+ * loosely honored by `new Window(options)`. */
+export interface IWindowOptions {
+  /** Initial window URL; the T45 simulated location navigates to it. */
+  url?: string;
+  /** Viewport width (default 1024); accepted for happy-dom parity. */
+  width?: number;
+  /** Viewport height (default 768); accepted for happy-dom parity. */
+  height?: number;
+  /** Inner width (deprecated happy-dom alias); accepted for parity. */
+  innerWidth?: number;
+  /** Inner height (deprecated happy-dom alias); accepted for parity. */
+  innerHeight?: number;
+}
+
+/** The `window.happyDOM` detached-window API (T48 closure): the happy-dom
+ * surface for test-driving a window from the outside. */
+export interface DetachedWindowAPI {
+  /** Resolves after the current microtask checkpoint (async work settles). */
+  waitUntilComplete(): Promise<void>;
+  /** Deprecated alias of `waitUntilComplete`. */
+  whenAsyncComplete(): Promise<void>;
+  /** Aborts pending async work. */
+  abort(): Promise<void>;
+  /** Deprecated alias of `abort`. */
+  cancelAsync(): Promise<void>;
+  /** Aborts async work and closes the window. */
+  close(): Promise<void>;
+}
 
 export declare class Window {
-  constructor(nativeHandle: WindowHandle);
+  constructor(options?: IWindowOptions);
   /** The live Document facade of this window (T20 wrapper identity). */
   readonly document: Document;
+  /** The `window.happyDOM` detached-window API (T48): `waitUntilComplete()` etc. */
+  readonly happyDOM: DetachedWindowAPI;
   /** The WHATWG `Event` constructor (T37): `new window.Event("click", { bubbles: true })`. */
   readonly Event: typeof Event;
   /** The WHATWG `CustomEvent` constructor (T38). */
@@ -449,6 +482,10 @@ export declare class Document {
   readonly head: Element | null;
   /** The `<body>` element, or `null` (T29, implied skeleton on first read). */
   readonly body: Element | null;
+  /** WHATWG `Document.readyState` (T48): `"interactive"` for a detached window (happy-dom parity). */
+  readonly readyState: string;
+  /** WHATWG `Document.title` (T48): the first `<title>` element's tree-order text under head, `""` when absent; setting creates or updates that `<title>` element. */
+  title: string;
   /** The currently focused element (T39): the stored `focus()` target, or `body` / `documentElement` / `null` when nothing is focused. */
   readonly activeElement: Element | null;
   /** Replaces the whole document content with a freshly parsed full HTML document (T29). */
@@ -1044,6 +1081,10 @@ export interface CharacterData {
 
 /** A node minted by `Document.createElement` (T23 surface plus T25 element attributes and T29 inner/outerHTML). */
 export interface Element extends Node {
+  /** WHATWG `Element.localName` (T48): the lowercased local tag name for an element, `undefined` on non-element nodes (happy-dom parity). */
+  readonly localName: string;
+  /** WHATWG `Element.tagName` (T48): the uppercase tag name for an HTML element (equal to `nodeName`), `undefined` on non-element nodes. */
+  readonly tagName: string;
   /** WHATWG `Element.getAttribute` (T25): the attribute value, or `null` when absent. */
   getAttribute(name: string): string | null;
   /** WHATWG `Element.setAttribute` (T25): stores the string form of `value`; an invalid WHATWG "Name" throws `ERR_MAD_DOM_INVALID_CHARACTER` and leaves the element unchanged. */

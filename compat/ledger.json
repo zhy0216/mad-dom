@@ -56,7 +56,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-attributes",
-      "reason": "Since T25E, MAD DOM implements the attribute read/write surface (crates/mad-dom-bun/src/extensions/attributes_api.rs and js/facade/extensions/attributes.js) and every value round-trip, WebIDL DOMString argument shape and absent-name read matches happy-dom, but four genuine gaps remain. First, the T21A napi4 error degradation: a DOM-spec violation is thrown as a plain Error whose name is \"Error\" and which carries the frozen ERR_MAD_DOM_* code with the WHATWG name embedded in the message, while happy-dom throws a real DOMException, so error name/message differ. Second, Core validates the WHATWG Name production strictly, so a digit-led name (\"1bad\") is rejected with ERR_MAD_DOM_INVALID_CHARACTER while happy-dom accepts it. Third, non-Element access: MAD DOM owns the methods on Node.prototype, so a Text node's getAttribute reaches Core and throws the frozen HierarchyRequestError taxonomy, while happy-dom lacks the method on text nodes (TypeError \"not a function\"). Fourth, prototype layout: MAD DOM owns the methods on Node.prototype (the element's direct prototype), so getOwnPropertyDescriptor reports them present, while happy-dom inherits them from higher up the class chain (present: false).",
+      "reason": "T48 added Element.tagName/localName and the uppercased nodeName, but the four recorded attribute gaps remain. First, the prototype layout: MAD DOM owns the attribute methods on Node.prototype (the element's direct prototype), so getOwnPropertyDescriptor reports them present, while happy-dom inherits them from higher up the class chain (present: false) — the per-tag Element class hierarchy is tracked by T48A. Second, non-Element access: `text.getAttribute` reaches Core and throws the frozen HierarchyRequestError taxonomy, while happy-dom lacks the method on text nodes (TypeError \"not a function\") — also closed by T48A. Third, the napi4 error degradation: DOM-spec violations throw a plain Error carrying the frozen ERR_MAD_DOM_* code instead of a real DOMException with the happy-dom message, and fourth, Core validates the WHATWG Name production strictly (digit-led names rejected where happy-dom accepts them) — both tracked by T48B.",
       "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T25E"
     },
@@ -66,7 +66,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-text-content",
-      "reason": "Since T25E, MAD DOM implements the Node.textContent accessor (crates/mad-dom-bun/src/extensions/text_api.rs and js/facade/extensions/text-content.js) and every read/write, null-to-empty conversion, non-string coercion, deep-tree concatenation and text-node data round-trip matches happy-dom. Two genuine gaps remain. First, a NUL byte in the setter value: Core rejects it with ERR_MAD_DOM_INVALID_CHARACTER (text-data well-formedness, T25C) while happy-dom stores it verbatim. Second, prototype layout: MAD DOM owns the accessor on Node.prototype (the element's direct prototype), so getOwnPropertyDescriptor reports it present with a getter and a setter, while happy-dom inherits it from higher up the class chain (present: false).",
+      "reason": "T48 kept the Node.textContent accessor matching happy-dom for every read/write, null-to-empty conversion, non-string coercion and deep-tree concatenation. Two gaps remain. First, the prototype layout: MAD DOM owns the accessor on Node.prototype (present: true with getter/setter on the element's direct prototype) while happy-dom inherits it from higher up the class chain (present: false) — the per-tag Element class hierarchy is tracked by T48A. Second, a NUL byte in the setter value: Core rejects it with ERR_MAD_DOM_INVALID_CHARACTER while happy-dom stores it verbatim — tracked by T48B.",
       "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T25E"
     },
@@ -156,19 +156,17 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-create-append-serialize",
-      "reason": "Since T29, MAD DOM implements the document-structure accessors (documentElement/head/body with the implied skeleton), the innerHTML/outerHTML accessors and the T28 serializer, so document.body.appendChild(section) succeeds and the captured body outerHTML matches happy-dom byte for byte. Since T34, the snapshot leaf fields that previously read as absent now match too: element.attributes is a live NamedNodeMap (body captures an empty map, the section captures its class/id attributes) and element.namespaceURI reads the HTML namespace. The remaining differences are all outside T29's/T34's scope: document.readyState is still undefined (happy-dom reports \"interactive\"), Element.nodeName casing differs (MAD DOM lowercases, happy-dom uppercases, T23A), and the entry shape differs (mad-dom exports createWindow while happy-dom does not). First presented by the T10 real-pair runner; updated by T22/T23/T24/T25/T29/T34; collected into the compatibility ledger by T11.",
+      "reason": "T48 closed the document-readyState gap (now \"interactive\") and the Element.nodeName casing gap (HTML elements now report the uppercased tag, so the body snapshot's nodeName matches happy-dom byte for byte). The single remaining difference is the entry shape: mad-dom exports the extra createWindow() convenience while happy-dom's package entry does not, so `typeof entry.createWindow` reads \"function\" on mad-dom and \"undefined\" on happy-dom. Aligning the entry surface (making `new Window()` the documented construction path and retiring or masking the createWindow export) is tracked by the follow-up todo T48E; the scenario keeps recording the difference so the ledger stays honest until then.",
       "recordedAt": "2026-08-30T00:00:00Z",
-      "addedIn": "T10"
+      "addedIn": "T48"
     },
     {
       "id": "hc-diff-node-navigation",
       "suite": "diff",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-node-navigation",
-      "reason": "Since T23, detached Element/Text creation and the Node navigation surface match happy-dom observation for observation — nodeType, text nodeName (#text), null parent/first/last/previous/next relations, empty childNodes and per-create distinctness all record identically. The only divergence is Element.nodeName casing: MAD DOM returns the frozen lowercased tag (T23A/T23B contract) while happy-dom returns the uppercased WHATWG tag name (\"div\" vs \"DIV\"). The scenario intentionally keeps its probes detached so this ledger entry isolates the navigation contract; tree mutation is covered by dom-mutations (T24C).",
-      "recordedAt": "2026-08-28T00:00:00Z",
-      "addedIn": "T23"
+      "addedIn": "T48"
     },
     {
       "id": "hc-diff-node-mutations",
@@ -184,103 +182,65 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-query-selector-identity",
-      "reason": "Since T31, MAD DOM implements the selector/query surface (querySelector/querySelectorAll/matches/closest/getElementById, crates/mad-dom-bun/src/extensions/query_api.rs and js/facade/extensions/query.js), so the mad-dom side counts 2 items, re-queries the same element, and finds the list through getElementById exactly like happy-dom. Since T34, the list snapshot's .attributes and namespaceURI also match (element.attributes is a live NamedNodeMap and element.namespaceURI reads the HTML namespace). Since T39, the scenario's click events fire and match happy-dom observation for observation (HTMLElement.click dispatches the bubbling cancelable composed click, so the li and body listeners record identically, and the retained click dispatch of a preventDefault listener matches). The remaining differences are all outside T31/T34/T39's scope: Element.nodeName casing in the snapshot (MAD DOM lowercases, happy-dom uppercases, T23A) and the entry shape (mad-dom exports createWindow while happy-dom does not). First presented by the T10 real-pair runner; updated by T22/T29/T31/T37/T34/T39; collected into the compatibility ledger by T11.",
+      "reason": "T48 closed the Element.nodeName casing gap (HTML elements now report the uppercased tag, so the querySelectorAll list snapshot's nodeName fields match happy-dom). The single remaining difference is the entry shape: mad-dom exports the extra createWindow() convenience while happy-dom's package entry does not, so `typeof entry.createWindow` differs. Aligning the entry surface is tracked by the follow-up todo T48E; the scenario keeps recording the difference so the ledger stays honest until then.",
       "recordedAt": "2026-08-30T00:00:00Z",
-      "addedIn": "T10"
+      "addedIn": "T48"
     },
     {
       "id": "hc-types-element-enums-and-overloads",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/enums-and-overloads.ts",
-      "reason": "Since T44 exports CSSRule (and CSSStyleDeclaration) from the package entry, the enum-constants check now type-checks. The remaining gaps are the shared Window-constructor shape (MAD DOM's Window is not user-constructible — it requires a genuine native handle) and Element.tagName (the T23A lowercased nodeName divergence means happy-dom's tag-name narrowing is not declared on the mad-dom type surface). Updated by T22/T23/T31/T38/T44.",
-      "recordedAt": "2026-08-30T19:40:00Z",
-      "addedIn": "T09",
-      "diagnostics": [
-        { "code": 2554, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'tagName' does not exist" }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-types-event-callbacks",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/event-callbacks.ts",
-      "reason": "Since T37 the EventTarget surface is typed and since T38 Event and EventPhaseEnum are exported from the package entry, so the listener-parameter, handler-body and enum-member checks now type-check. The only remaining gap is the Window constructor shape (not user-constructible). Updated by T22, T37 and T38.",
-      "recordedAt": "2026-08-28T00:00:00Z",
-      "addedIn": "T09",
-      "diagnostics": [
-        { "code": 2554, "line": 7 }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-types-event-constructor-options",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/constructor-options.ts",
-      "reason": "Since T38 CustomEvent is exported with a typed constructor, so the option-object construction and detail payload now type-check. The remaining gaps are the Window constructor shape (not user-constructible) and the DetachedWindowAPI happyDOM accessor. Updated by T22 and T38.",
-      "recordedAt": "2026-08-28T00:00:00Z",
-      "addedIn": "T09",
-      "diagnostics": [
-        { "code": 2353, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'happyDOM' does not exist" }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-types-html-element",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/html-element.ts",
-      "reason": "Since T39 the HTMLElement base surface is typed: createElement returns an HTMLElement carrying the reflected attributes (id/className/title/dir/lang/hidden/inert/tabIndex/contentEditable/isContentEditable), the live dataset DOMStringMap, the click/focus/blur interaction and the window.HTMLElement constructor value with instanceof membership, so the whole fixture body type-checks. The only remaining diagnostic is the shared Window-constructor shape gap (MAD DOM's Window is not user-constructible), the same TS2554 the other positive fixtures record.",
-      "recordedAt": "2026-08-30T00:00:00Z",
-      "addedIn": "T39",
-      "diagnostics": [
-        { "code": 2554, "line": 9 }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-types-window-document-basics",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/window-document-basics.ts",
-      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); document.body, querySelectorAll and element.id are now typed (T29/T31/T39), so the fixture's body branch, querySelectorAll call and element.id assignment type-check, but document.title is still missing (Document.title is out of T39's HTMLElement scope) and the Window constructor shape still rejects the option object. Updated by T22/T23/T25/T29/T31/T39.",
-      "recordedAt": "2026-08-28T00:00:00Z",
-      "addedIn": "T09",
-      "diagnostics": [
-        { "code": 2353, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'title' does not exist" }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-types-window-platform",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/window-platform.ts",
-      "reason": "Since T45 the window platform surface is typed: location/history/navigator, localStorage/sessionStorage and document.cookie/URL/documentURI all type-check on the mad-dom target, as do the window.URL/window.DOMException constructors. The single remaining rejection is the pre-existing Window constructor shape (not user-constructible — it requires a genuine native handle), the same T22 gap every positive fixture records.",
-      "recordedAt": "2026-08-30T00:00:00Z",
-      "addedIn": "T45",
-      "diagnostics": [
-        { "code": 2353, "line": 8 }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-types-mutation-observer",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/mutation-observer.ts",
-      "reason": "The MutationObserver surface is fully typed (T41): the window.MutationObserver constructor, the (records, observer) callback, every MutationRecord read and the observe options all type-check on the mad-dom target. The only remaining diagnostic is the shared Window-constructor gap (MAD DOM's Window is not user-constructible; the happy-dom options-object shape is rejected), which this fixture exercises to reach window.MutationObserver.",
-      "recordedAt": "2026-08-30T00:00:00Z",
-      "addedIn": "T41",
-      "diagnostics": [
-        { "code": 2353, "line": 9 }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-diff-form-controls",
@@ -304,22 +264,17 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-form-validation",
-      "reason": "T40 implements the first-batch form contract (value/name/disabled/checked/selected, form.elements, submit/reset and event order) but not the advanced validation machinery: constraint validation is deliberately out of scope and explicitly recorded. MAD DOM's form.checkValidity()/reportValidity() always return true (no ValidityState, no constraint evaluation, no invalid event), while happy-dom evaluates the required/type constraints, so a form with a required empty input reports false and the per-control validation surface (validity / validationMessage / setCustomValidity / willValidate / checkValidity) is absent on controls. This scenario pins that known gap; the divergence is expected and reported non-fatally.",
-      "recordedAt": "2026-08-30T17:30:00Z",
+      "reason": "T40 implements the first-batch form contract (value/name/disabled/checked/selected, form.elements, submit/reset and event order) but not the advanced constraint-validation machinery, and T48 records it as a known gap: MAD DOM's form.checkValidity()/reportValidity() always return true (no ValidityState, no constraint evaluation, no invalid event), while happy-dom evaluates the required/type constraints and exposes the per-control validation surface (validity / validationMessage / setCustomValidity / willValidate / checkValidity). Implementing the WHATWG constraint validation is tracked by the follow-up todo T48C.",
+      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T40"
     },
     {
       "id": "hc-types-template-forms",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/template-forms.ts",
-      "reason": "MAD DOM's Window is not user-constructible (it needs a genuine native handle, T22), so the fixture's `new Window()` reports TS2554; everything else in the T40 template/form fixture type-checks (the single-class HTMLElement surface carries value/name/checked/selected, the live collections and the window constructor accessors). Added by T40.",
-      "recordedAt": "2026-08-30T17:21:20Z",
-      "addedIn": "T40",
-      "diagnostics": [
-        { "code": 2554, "line": 17 }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-diff-custom-elements",
@@ -335,22 +290,17 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-custom-elements-upgrade",
-      "reason": "The T42 registry (define/get/getName/whenDefined) and the synchronous lifecycle reactions (connected/disconnected/attributeChanged, observedAttributes, define-after-connect upgrade timing, parser upgrade order) match happy-dom, but three deliberate deviations remain. First, happy-dom's CustomElementRegistry.upgrade() is a documented no-op ('Not implemented yet'), while MAD DOM performs a genuine spec-style upgrade of the subtree (setting the wrapper prototypes and firing connectedCallback/attributeChangedCallback), so an upgraded element becomes an instance of the class and its connectedCallback fires where happy-dom reports neither. Second, `new DefinedClass()` in happy-dom mints a real detached element (the registry stashes the window/document symbols on the constructor's prototype), while MAD DOM's empty single-class HTMLElement base yields a bare object with no native handle, so its localName reads undefined. Third, the define-after-connect upgrade is in-place in MAD DOM's single-class model (the pre-created wrapper becomes an instance of the custom class), while happy-dom physically replaces the element object (the pre-created reference stays a plain HTMLElement). These are recorded here so the compatible surface stays a clean pass.",
-      "recordedAt": "2026-08-30T18:00:00Z",
+      "reason": "The T42 registry (define/get/getName/whenDefined) and the synchronous lifecycle reactions match happy-dom, but three deliberate deviations remain. First, happy-dom's CustomElementRegistry.upgrade() is a documented no-op while MAD DOM performs a genuine spec-style upgrade (firing connectedCallback) — aligning the upgrade semantics is tracked by T48D. Second, `new DefinedClass()` mints a real detached element in happy-dom while MAD DOM's empty single-class base yields a bare object whose localName reads undefined — the per-tag Element class hierarchy is tracked by T48A. Third, the define-after-connect upgrade is in-place in MAD DOM while happy-dom physically replaces the element — also tracked by T48D.",
+      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T42"
     },
     {
       "id": "hc-types-custom-elements",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/custom-elements.ts",
-      "reason": "The Custom Element surface is fully typed (T42): window.customElements (define/get/getName/whenDefined/upgrade), the window.HTMLElement subclass with the lifecycle callback signatures and observedAttributes, and the instanceof narrowing of a created element. The only remaining diagnostic is the shared Window-constructor gap (MAD DOM's Window is not user-constructible; the happy-dom options-object shape is rejected), which this fixture exercises to reach window.customElements.",
-      "recordedAt": "2026-08-30T18:00:00Z",
-      "addedIn": "T42",
-      "diagnostics": [
-        { "code": 2353, "line": 10 }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-diff-shadow-dom",
@@ -387,15 +337,10 @@
     {
       "id": "hc-types-window-timers",
       "suite": "types",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "types",
       "fixture": "positive/timers.ts",
-      "reason": "The T47 timer / task-scheduling / script-evaluation surface is fully typed: setTimeout/clearTimeout/setInterval/clearInterval with inferred host timer ids, requestAnimationFrame/cancelAnimationFrame with a numeric timestamp callback, queueMicrotask, window.eval, the window EventTarget (error listener add/remove, dispatch of a window.ErrorEvent with its message/error payload) and the window/globalThis self-references all type-check on the mad-dom target. The only remaining diagnostic is the shared Window-constructor gap (MAD DOM's Window is not user-constructible; the happy-dom options-object shape is rejected), which this fixture exercises to reach window.timers.",
-      "recordedAt": "2026-08-30T19:00:00Z",
-      "addedIn": "T47",
-      "diagnostics": [
-        { "code": 2353, "line": 11 }
-      ]
+      "addedIn": "T48"
     },
     {
       "id": "hc-diff-cssom-surface",

@@ -218,7 +218,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
           {
             type: "childList",
             targetType: 1,
-            targetName: "parent",
+            targetName: "PARENT",
             added: [3],
             removed: [],
             prev: null,
@@ -230,7 +230,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
           {
             type: "childList",
             targetType: 1,
-            targetName: "parent",
+            targetName: "PARENT",
             added: [],
             removed: [1],
             prev: null,
@@ -265,7 +265,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
 
       other.appendChild(a); // move a out of parent into other
       await flush();
-      expect(order).toEqual([[["parent", 1, 0]], [["other", 0, 1]]]);
+      expect(order).toEqual([[["PARENT", 1, 0]], [["OTHER", 0, 1]]]);
     } finally {
       win.destroy();
     }
@@ -313,8 +313,8 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
       await flush();
       expect(order).toEqual([
         [
-          [1, "parent"],
-          [1, "parent"],
+          [1, "PARENT"],
+          [1, "PARENT"],
         ],
       ]);
     } finally {
@@ -336,7 +336,7 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
 
       a.appendChild(doc.createElement("deep"));
       await flush();
-      expect(order).toEqual([[["a", 1]]]);
+      expect(order).toEqual([[["A", 1]]]);
     } finally {
       win.destroy();
     }
@@ -507,7 +507,7 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
       t1.appendChild(doc.createElement("c1"));
       t2.appendChild(doc.createElement("c2"));
       await flush();
-      expect(order).toEqual(["t1:1", "t2:1"]);
+      expect(order).toEqual(["T1:1", "T2:1"]);
     } finally {
       win.destroy();
     }

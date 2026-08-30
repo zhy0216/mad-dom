@@ -134,6 +134,42 @@ export function install(ctx) {
     undefined,
   );
 
+  // WHATWG `Document.readyState` (T48 closure): a freshly minted window is
+  // "interactive", matching the happy-dom baseline for a detached window (no
+  // page load has completed).
+  ctx.defineAccessor(
+    Document.prototype,
+    "readyState",
+    function readyState() {
+      return "interactive";
+    },
+    undefined,
+  );
+
+  // WHATWG `Document.title` (T48 closure): reads the first `<title>` element
+  // under head (its tree-order text), `""` when absent; setting creates or
+  // updates that `<title>` element, matching happy-dom.
+  ctx.defineAccessor(
+    Document.prototype,
+    "title",
+    function title() {
+      const head = this.head;
+      if (head === null) return "";
+      const titleElement = head.querySelector("title");
+      return titleElement !== null && titleElement !== undefined ? titleElement.textContent : "";
+    },
+    function title(value) {
+      const head = this.head;
+      if (head === null) return;
+      let titleElement = head.querySelector("title");
+      if (titleElement === null || titleElement === undefined) {
+        titleElement = this.createElement("title");
+        head.appendChild(titleElement);
+      }
+      titleElement.textContent = String(value);
+    },
+  );
+
   ctx.defineMethod(Document.prototype, "parseHtml", function parseHtml(html) {
     const documentHandle = facadeDocumentHandle(ctx, this, "parseHtml");
     documentHandle.parseHtml(String(html));

@@ -94,16 +94,16 @@ describe.skipIf(!nativeAvailable)("cross-module observation ordering (T25)", () 
 
       parent.insertBefore(middle, last);
       expect(list).toHaveLength(3);
-      expect(Array.from(list, (node) => node.nodeName)).toEqual(["first", "middle", "last"]);
+      expect(Array.from(list, (node) => node.nodeName)).toEqual(["FIRST", "MIDDLE", "LAST"]);
 
       parent.removeChild(middle);
       expect(list).toHaveLength(2);
-      expect(Array.from(list, (node) => node.nodeName)).toEqual(["first", "last"]);
+      expect(Array.from(list, (node) => node.nodeName)).toEqual(["FIRST", "LAST"]);
 
       const replacement = doc.createElement("replacement");
       parent.replaceChild(replacement, first);
       expect(list).toHaveLength(2);
-      expect(Array.from(list, (node) => node.nodeName)).toEqual(["replacement", "last"]);
+      expect(Array.from(list, (node) => node.nodeName)).toEqual(["REPLACEMENT", "LAST"]);
     } finally {
       win.destroy();
     }

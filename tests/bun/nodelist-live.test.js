@@ -161,25 +161,25 @@ describe.skipIf(!nativeAvailable)("live NodeList behaviour (T25D)", () => {
     doc.appendChild(parent, last);
     const list = new NodeList(parent);
     expect(list.length).toBe(2);
-    expect(namesOf(list)).toEqual(["first", "last"]);
+    expect(namesOf(list)).toEqual(["FIRST", "LAST"]);
 
     doc.insertBefore(parent, middle, last);
     expect(list.length).toBe(3);
-    expect(namesOf(list)).toEqual(["first", "middle", "last"]);
+    expect(namesOf(list)).toEqual(["FIRST", "MIDDLE", "LAST"]);
 
     // Moving an existing child is an ordinary native mutation, not a facade
     // tree update — the collection still reflects it.
     doc.appendChild(parent, first);
     expect(list.length).toBe(3);
-    expect(namesOf(list)).toEqual(["middle", "last", "first"]);
+    expect(namesOf(list)).toEqual(["MIDDLE", "LAST", "FIRST"]);
 
     doc.removeChild(parent, middle);
     expect(list.length).toBe(2);
-    expect(namesOf(list)).toEqual(["last", "first"]);
+    expect(namesOf(list)).toEqual(["LAST", "FIRST"]);
 
     doc.replaceChild(parent, first, replacement);
     expect(list.length).toBe(2);
-    expect(namesOf(list)).toEqual(["last", "replacement"]);
+    expect(namesOf(list)).toEqual(["LAST", "REPLACEMENT"]);
     doc.destroy();
   });
 
@@ -232,8 +232,8 @@ describe.skipIf(!nativeAvailable)("live NodeList behaviour (T25D)", () => {
       listArg.push(self);
     });
     expect(forEachSeen).toEqual([
-      [0, "li"],
-      [1, "li"],
+      [0, "LI"],
+      [1, "LI"],
     ]);
     expect(listArg[0]).toBe(list);
     expect(listArg[1]).toBe(list);

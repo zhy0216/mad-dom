@@ -143,12 +143,50 @@ describe("facade property descriptors (T22B)", () => {
   });
 });
 
-describe("facade construction restrictions (T22B)", () => {
-  test("Window cannot be constructed from nothing or from a non-window handle", () => {
-    expect(() => new Window()).toThrow(TypeError);
-    expect(() => new Window(null)).toThrow(TypeError);
-    expect(() => new Window({})).toThrow(TypeError);
-    expect(thrown(() => new Window()).message).toContain("genuine native Window handle");
+describe("facade construction restrictions (T22B, updated by T48)", () => {
+  test("Window is user-constructible like happy-dom: new Window() mints a fresh window", () => {
+    if (!nativeAvailable) return;
+    const before = liveDocumentCount();
+    const win = new Window();
+    expect(win).toBeInstanceOf(Window);
+    expect(win.document).toBeInstanceOf(Document);
+    expect(liveDocumentCount()).toBe(before + 1);
+    win.destroy();
+    expect(liveDocumentCount()).toBe(before);
+  });
+
+  test("new Window(options) mints a window and honors the url option", () => {
+    if (!nativeAvailable) return;
+    const win = new Window({ url: "https://mad-dom.test/x" });
+    expect(win).toBeInstanceOf(Window);
+    expect(win.location.href).toBe("https://mad-dom.test/x");
+    expect(win.document.URL).toBe("https://mad-dom.test/x");
+    win.destroy();
+  });
+
+  test("Window still throws for null, plain non-handle values and wrong native handles", () => {
+    if (!nativeAvailable) {
+      expect(() => new Window()).toThrow(TypeError);
+      return;
+    }
+    const nativeWindow = native().createWindow();
+    const nativeDocument = native().createDocument();
+    try {
+      expect(() => new Window(null)).toThrow(TypeError);
+      expect(() => new Window("nope")).toThrow(TypeError);
+      expect(() => new Window(nativeDocument)).toThrow(TypeError);
+    } finally {
+      nativeWindow.destroy();
+      nativeDocument.destroy();
+    }
+  });
+
+  test("Window can still be constructed from a genuine native window handle", () => {
+    if (!nativeAvailable) return;
+    const nativeWindow = native().createWindow();
+    const win = new Window(nativeWindow);
+    expect(win).toBeInstanceOf(Window);
+    win.destroy();
   });
 
   test("Document cannot be constructed from nothing or from a non-document handle", () => {

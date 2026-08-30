@@ -174,8 +174,18 @@ function describeLedgerTypesEntryProblems(entries, fixtureKeys) {
     } else if (!fixtureKeys.includes(entry.fixture)) {
       problems.push(`${at}: fixture must reference an existing fixture, got ${JSON.stringify(entry.fixture)}`);
     }
+    if (entry?.status === "known-gap") {
+      if (!Array.isArray(entry?.diagnostics)) {
+        problems.push(`${at}: diagnostics must be an array of diagnostic patterns when status is "known-gap"`);
+        return;
+      }
+    } else if (entry?.diagnostics !== undefined) {
+      problems.push(`${at}: diagnostics must be absent unless status is "known-gap"`);
+      return;
+    }
     if (!Array.isArray(entry?.diagnostics)) {
-      problems.push(`${at}: diagnostics must be an array of diagnostic patterns`);
+      // A pass entry carries no diagnostics (the ledger schema forbids them);
+      // there is nothing left to validate here.
       return;
     }
     entry.diagnostics.forEach((pattern, patternIndex) => {
@@ -233,6 +243,10 @@ function judgeFixture(fixture, happyDomDiagnostics, madDomDiagnostics, entriesFo
 
   const patterns = [];
   for (const entry of entriesForFixture) {
+    // A pass entry carries no diagnostics (the ledger schema forbids them), so
+    // it contributes no divergence patterns — zero mad-dom diagnostics then
+    // judge the fixture as a clean pass.
+    if (entry.status !== "known-gap") continue;
     for (const pattern of entry.diagnostics) {
       patterns.push({ entryId: entry.id, ...pattern });
     }
@@ -330,7 +344,7 @@ function printSummary({ typescriptVersion, happyDomVersion, madDomVersion, rows,
   console.log("");
   const happyDomTotal = rows.reduce((sum, row) => sum + row.happyDomCount, 0);
   const madDomTotal = rows.reduce((sum, row) => sum + row.madDomCount, 0);
-  const patternTotal = entries.reduce((sum, entry) => sum + entry.diagnostics.length, 0);
+  const patternTotal = entries.reduce((sum, entry) => sum + (entry.diagnostics ?? []).length, 0);
   console.log(
     `totals: happy-dom ${happyDomTotal} diagnostics · mad-dom ${madDomTotal} diagnostics · fixtures ${rows.length}` +
       ` (${rows.filter((row) => row.kind === "positive").length} positive, ${rows.filter((row) => row.kind === "negative").length} negative)`,
@@ -460,7 +474,7 @@ function main() {
           typescript: typescriptVersion,
           happyDom: happyDomVersion,
           madDom: madDomVersion,
-          divergences: { entries: typesEntries.length, patterns: typesEntries.reduce((sum, entry) => sum + entry.diagnostics.length, 0) },
+          divergences: { entries: typesEntries.length, patterns: typesEntries.reduce((sum, entry) => sum + (entry.diagnostics ?? []).length, 0) },
           targets: Object.fromEntries(
             TARGETS.map((target) => [target.id, { tsconfig: toPosix(relative(REPO_ROOT, target.config)) }]),
           ),
@@ -537,21 +551,27 @@ function runSelfTest(fixtureKeys) {
   const scenarios = [];
 
   scenarios.push({
-    name: "A: removing an hc-types ledger entry trips the hard gate (mad-dom must not silently reject what happy-dom accepts)",
+    name: "A: an uncovered mad-dom diagnostic trips the hard gate (mad-dom must not silently reject what happy-dom accepts)",
     run: () =>
       withFreshCopy((harnessDir, tempRoot) => {
-        const path = join(tempRoot, "compat", "ledger.json");
-        const original = readFileSync(path, "utf8");
-        const manifest = JSON.parse(original);
-        // Delete the first types entry, not entries[0]: the ledger opens with
-        // diff entries, and removing one of those would fail scenario mapping
-        // in the ledger gate instead of the hard gate exercised here.
-        const typesIndex = manifest.entries.findIndex((entry) => entry.suite === "types");
-        if (typesIndex === -1) {
-          throw new Error("self-test could not find an hc-types entry to delete from the copied ledger");
-        }
-        manifest.entries.splice(typesIndex, 1);
-        writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+        // A member the happy-dom Window surface declares but the mad-dom type
+        // surface does not (`window.console`): the happy-dom target typechecks
+        // cleanly, the mad-dom target reports TS2339, and no ledger entry
+        // covers it, so the hard gate must fail the run.
+        writeFileSync(
+          join(harnessDir, "fixtures", "positive", "hd-only-member.ts"),
+          [
+            "// Self-test fixture (temp copy only): `window.console` exists on the",
+            "// happy-dom Window surface but not on the mad-dom index.d.ts surface,",
+            "// so the mad-dom target reports an uncovered diagnostic and the hard",
+            "// gate must trip.",
+            'import { Window } from "dom-under-test";',
+            "const window = new Window();",
+            "const consoleValue = window.console;",
+            "export const exported = { consoleValue };",
+            "",
+          ].join("\n"),
+        );
       }),
     expect: (result) => result.exitCode === 1 && /hard gate: mad-dom rejects/.test(result.output),
   });
@@ -563,8 +583,11 @@ function runSelfTest(fixtureKeys) {
         const path = join(tempRoot, "compat", "ledger.json");
         const original = readFileSync(path, "utf8");
         const manifest = JSON.parse(original);
-        const entry = manifest.entries.find((item) => item.suite === "types" && Array.isArray(item.diagnostics));
-        entry.diagnostics[0].messageIncludes = "__never-matches__";
+        const entry = manifest.entries.find((item) => item.suite === "types");
+        entry.status = "known-gap";
+        entry.reason = "self-test tamper: stale pattern drill";
+        entry.recordedAt = "2026-08-30T00:00:00Z";
+        entry.diagnostics = [{ code: 9999, messageIncludes: "__never_matches__" }];
         writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
       }),
     expect: (result) => result.exitCode === 1 && /stale divergence entry/.test(result.output),

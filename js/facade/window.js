@@ -200,18 +200,43 @@ const WIN_HANDLES = new WeakMap();
 /**
  * Facade wrapper for a native `WindowHandle`.
  *
- * Construction is restricted: it requires a genuine native window handle (only
- * minted by the native binding through `createWindow()`). Everything else
- * throws a `TypeError`, so no facade surface can fabricate a window.
+ * T48 makes `Window` user-constructible like happy-dom: `new Window()` (or
+ * `new Window(options)`) mints a fresh native window through the same lazy
+ * loader `createWindow()` uses, so the happy-dom constructor shape works from
+ * user code. Passing a genuine native window handle (the internal `wrap`
+ * path) uses that handle directly. Anything else — `null`, a plain value, or a
+ * wrong native handle such as a `DocumentHandle` — throws a `TypeError`, so
+ * no facade surface can fabricate a window from a non-window.
  */
 export class Window {
   constructor(nativeHandle) {
+    let options = null;
+    if (nativeHandle === undefined) {
+      options = {};
+      nativeHandle = loadNative().createWindow();
+    } else if (
+      nativeHandle !== null &&
+      typeof nativeHandle === "object" &&
+      nativeHandle.constructor === Object
+    ) {
+      // A plain object literal is a happy-dom-style options object (native
+      // handles carry a real constructor class, so a wrong native handle —
+      // e.g. a DocumentHandle — never matches here and keeps throwing below).
+      options = nativeHandle;
+      nativeHandle = loadNative().createWindow();
+    }
     if (!isWindowHandle(nativeHandle)) {
       throw new TypeError(
         "Window can only be constructed from a genuine native Window handle (as returned by createWindow)",
       );
     }
     WIN_HANDLES.set(this, nativeHandle);
+    // happy-dom constructor options: honor `url` by simulating the initial
+    // navigation (the T45 simulated location), so `new Window({ url })`
+    // matches `new Window()` plus a synchronous navigation to that URL.
+    if (options !== null && typeof options.url === "string") {
+      this.location.href = options.url;
+    }
   }
 }
 
@@ -233,7 +258,9 @@ defineMethod(Window.prototype, "destroy", function destroy() {
  *
  * The native binding mints the window + document pair and hands back an opaque
  * `WindowHandle`; `createWindow` routes it through `ctx.wrap`, the single
- * native handle → facade wrapper conversion entry.
+ * native handle → facade wrapper conversion entry. This is the historical MAD
+ * DOM entry; since T48 `new Window()` / `new Window(options)` construct the
+ * same way through the constructor's mint path.
  */
 export function createWindow() {
   return wrap(loadNative().createWindow());
