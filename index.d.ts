@@ -181,6 +181,8 @@ export declare class Window {
   readonly HTMLOptionsCollection: typeof HTMLOptionsCollection;
   /** The WHATWG `SubmitEvent` constructor (T40). */
   readonly SubmitEvent: typeof SubmitEvent;
+  /** The WHATWG `ValidityState` constructor (T48C). */
+  readonly ValidityState: typeof ValidityState;
   /** The WHATWG `Headers` constructor (T46): the happy-dom-calibrated compat surface (per-window). */
   readonly Headers: typeof Headers;
   /** The WHATWG `Request` constructor (T46): the happy-dom-calibrated compat surface (per-window). */
@@ -1303,10 +1305,27 @@ export interface HTMLElement extends Element {
   requestSubmit(submitter?: HTMLElement): void;
   /** Form `reset()` (T40). */
   reset(): void;
-  /** Form `checkValidity()` (T40; always `true` — constraint validation is a gap). */
+  /** Form `checkValidity()` (T48C): evaluates every will-validating control and
+   * dispatches a bubbling cancelable `invalid` event on each invalid one;
+   * `false` when any control fails. */
   checkValidity(): boolean;
-  /** Form `reportValidity()` (T40; always `true`). */
+  /** Form `reportValidity()` (T48C): identical to `checkValidity()`. */
   reportValidity(): boolean;
+  /** The live `ValidityState` of a form control (T48C), or `undefined` for
+   * tags outside the validation surface (`fieldset` included). */
+  readonly validity: ValidityState | undefined;
+  /** Whether the control is a candidate for constraint validation (T48C). */
+  readonly willValidate: boolean | undefined;
+  /** The control's validation message (T48C): the `setCustomValidity` payload,
+   * or `"Constraints not satisfied"` for a will-validating control that fails
+   * a constraint, or `""`. */
+  readonly validationMessage: string | undefined;
+  /** Stores the custom validation message (T48C); `""` clears it (a no-op on
+   * `fieldset`). */
+  setCustomValidity(message: string): void;
+  /** The submitter-side `formnovalidate` reflection (T48C): lets a submit
+   * button / submit input bypass the form's validation gate. */
+  formNoValidate: boolean;
 }
 
 /** The WHATWG `DOMStringMap` behind `HTMLElement.dataset` (T39): a live,
@@ -1457,16 +1476,19 @@ export interface HTMLHtmlElement extends HTMLElement {}
 export interface HTMLQuoteElement extends HTMLElement {}
 export interface HTMLSlotElement extends HTMLElement {}
 
-// --- Form controls and template (T40) ----------------------------------------
+// --- Form controls and template (T40, validation T48C) -----------------------
 //
 // The first-batch form contract: `input` / `button` / `select` / `option` /
 // `textarea` value/name/disabled/checked/selected basics, the `form` element's
 // `elements` / `submit` / `requestSubmit` / `reset`, and
 // `HTMLTemplateElement.content`. The per-tag classes (T48A) give these the
 // happy-dom direct prototypes; the form surface itself is declared on the
-// `Element`/`Node` surface below. Constraint validation (`ValidityState`,
-// `checkValidity` evaluation, `setCustomValidity`) is a recorded gap:
-// `checkValidity` / `reportValidity` return `true`.
+// `Element`/`Node` surface below. Since T48C the constraint-validation surface
+// is real: the live `ValidityState` (`validity`), `willValidate`,
+// `validationMessage`, `setCustomValidity` and the control / form
+// `checkValidity` / `reportValidity` that dispatch the bubbling cancelable
+// `invalid` event and gate the `requestSubmit` path through `noValidate` /
+// `formnovalidate`.
 
 /** The WHATWG `SubmitEvent` (T40): dispatched by `form.requestSubmit`, carrying
  * the `submitter` button/input (or the form itself). */
@@ -1492,10 +1514,46 @@ export interface HTMLTemplateElement extends HTMLElement {
   getHTML(): string;
 }
 
-/** The WHATWG `HTMLInputElement` basics (T40): value/name/type/disabled/
- * checked/defaultChecked/defaultValue/required/readOnly/multiple. The dirty
- * text-like `value` and the dirty `checked` are stored in Core, not the
- * attribute list. */
+/** The WHATWG `ValidityState` (T48C): a control's live constraint-validation
+ * flags, recomputed from the element's attributes / value / checkedness on
+ * every flag read. `valid` is `true` only when every other flag is `false`.
+ * One cached instance per control: `el.validity === el.validity`. */
+export interface ValidityState {
+  /** The `input.type` is `number`/`range` and the value is not a valid
+   * number/range shape (`"12.5"` ok, `"abc"` not). */
+  readonly badInput: boolean;
+  /** A non-empty message was set with `setCustomValidity`. */
+  readonly customError: boolean;
+  /** The `input` has a `pattern` and the value is not covered by its first
+   * regex match. */
+  readonly patternMismatch: boolean;
+  /** The `input.type` is `number`/`range`, a `max` exists and the value is
+   * greater than it. */
+  readonly rangeOverflow: boolean;
+  /** The `input.type` is `number`/`range`, a `min` exists and the value is
+   * less than it. */
+  readonly rangeUnderflow: boolean;
+  /** The `input.type` is `number`/`range` and the value is not on the `step`
+   * grid (the default step is 1; `step="any"` never mismatches). */
+  readonly stepMismatch: boolean;
+  /** The input/textarea has a `maxlength` and the value is longer than it. */
+  readonly tooLong: boolean;
+  /** The input/textarea has a `minlength` and the value is shorter than it. */
+  readonly tooShort: boolean;
+  /** The `input.type` is `email`/`url` and the value does not match the type's
+   * format. */
+  readonly typeMismatch: boolean;
+  /** A `required` control (a checkbox/radio unchecked, or any other required
+   * control with an empty value) is missing its value. */
+  readonly valueMissing: boolean;
+  /** `true` only when every flag above is `false`. */
+  readonly valid: boolean;
+}
+
+/** The WHATWG `HTMLInputElement` basics (T40, validation T48C):
+ * value/name/type/disabled/checked/defaultChecked/defaultValue/required/
+ * readOnly/multiple plus the constraint-validation surface. The dirty text-like
+ * `value` and the dirty `checked` are stored in Core, not the attribute list. */
 export interface HTMLInputElement extends HTMLElement {
   value: string;
   name: string;
@@ -1509,9 +1567,24 @@ export interface HTMLInputElement extends HTMLElement {
   multiple: boolean;
   /** The nearest ancestor `<form>` element, or `null`. */
   readonly form: HTMLFormElement | null;
+  /** The live constraint-validation flags (T48C). */
+  readonly validity: ValidityState;
+  /** Whether the input is a candidate for constraint validation (T48C). */
+  readonly willValidate: boolean;
+  /** The input's validation message (T48C). */
+  readonly validationMessage: string;
+  /** Stores the custom validation message; `""` clears it (T48C). */
+  setCustomValidity(message: string): void;
+  /** Evaluates the input's constraints, dispatching `invalid` when it fails
+   * (T48C). */
+  checkValidity(): boolean;
+  /** Identical to `checkValidity()` (T48C). */
+  reportValidity(): boolean;
+  /** The submitter-side `formnovalidate` reflection (T48C). */
+  formNoValidate: boolean;
 }
 
-/** The WHATWG `HTMLButtonElement` basics (T40). */
+/** The WHATWG `HTMLButtonElement` basics (T40, validation T48C). */
 export interface HTMLButtonElement extends HTMLElement {
   value: string;
   name: string;
@@ -1519,10 +1592,26 @@ export interface HTMLButtonElement extends HTMLElement {
   disabled: boolean;
   /** The nearest ancestor `<form>` element, or `null`. */
   readonly form: HTMLFormElement | null;
+  /** The live constraint-validation flags (T48C). */
+  readonly validity: ValidityState;
+  /** Whether the button is a candidate for constraint validation (T48C). */
+  readonly willValidate: boolean;
+  /** The button's validation message (T48C). */
+  readonly validationMessage: string;
+  /** Stores the custom validation message; `""` clears it (T48C). */
+  setCustomValidity(message: string): void;
+  /** Evaluates the button's constraints, dispatching `invalid` when it fails
+   * (T48C). */
+  checkValidity(): boolean;
+  /** Identical to `checkValidity()` (T48C). */
+  reportValidity(): boolean;
+  /** The submitter-side `formnovalidate` reflection (T48C). */
+  formNoValidate: boolean;
 }
 
-/** The WHATWG `HTMLSelectElement` basics (T40): the value/selectedIndex
- * selection model, the live `options` and `selectedOptions` collections. */
+/** The WHATWG `HTMLSelectElement` basics (T40, validation T48C): the
+ * value/selectedIndex selection model, the live `options` and
+ * `selectedOptions` collections. */
 export interface HTMLSelectElement extends HTMLElement {
   value: string;
   name: string;
@@ -1538,6 +1627,19 @@ export interface HTMLSelectElement extends HTMLElement {
   item(index: number): HTMLOptionElement | null;
   /** The nearest ancestor `<form>` element, or `null`. */
   readonly form: HTMLFormElement | null;
+  /** The live constraint-validation flags (T48C). */
+  readonly validity: ValidityState;
+  /** Whether the select is a candidate for constraint validation (T48C). */
+  readonly willValidate: boolean;
+  /** The select's validation message (T48C). */
+  readonly validationMessage: string;
+  /** Stores the custom validation message; `""` clears it (T48C). */
+  setCustomValidity(message: string): void;
+  /** Evaluates the select's constraints, dispatching `invalid` when it fails
+   * (T48C). */
+  checkValidity(): boolean;
+  /** Identical to `checkValidity()` (T48C). */
+  reportValidity(): boolean;
 }
 
 /** The WHATWG `HTMLOptionElement` basics (T40). */
@@ -1551,7 +1653,7 @@ export interface HTMLOptionElement extends HTMLElement {
   readonly form: HTMLFormElement | null;
 }
 
-/** The WHATWG `HTMLTextAreaElement` basics (T40). */
+/** The WHATWG `HTMLTextAreaElement` basics (T40, validation T48C). */
 export interface HTMLTextAreaElement extends HTMLElement {
   value: string;
   name: string;
@@ -1561,11 +1663,24 @@ export interface HTMLTextAreaElement extends HTMLElement {
   defaultValue: string;
   /** The nearest ancestor `<form>` element, or `null`. */
   readonly form: HTMLFormElement | null;
+  /** The live constraint-validation flags (T48C). */
+  readonly validity: ValidityState;
+  /** Whether the textarea is a candidate for constraint validation (T48C). */
+  readonly willValidate: boolean;
+  /** The textarea's validation message (T48C). */
+  readonly validationMessage: string;
+  /** Stores the custom validation message; `""` clears it (T48C). */
+  setCustomValidity(message: string): void;
+  /** Evaluates the textarea's constraints, dispatching `invalid` when it
+   * fails (T48C). */
+  checkValidity(): boolean;
+  /** Identical to `checkValidity()` (T48C). */
+  reportValidity(): boolean;
 }
 
-/** The WHATWG `HTMLFormElement` basics (T40): the live `elements` collection,
- * the attribute reflections and the submit/reset surface. `submit()` performs
- * no navigation (T40 boundary). */
+/** The WHATWG `HTMLFormElement` basics (T40, validation T48C): the live
+ * `elements` collection, the attribute reflections and the submit/reset /
+ * validity surface. `submit()` performs no navigation (T40 boundary). */
 export interface HTMLFormElement extends HTMLElement {
   readonly elements: HTMLFormControlsCollection;
   readonly length: number;
@@ -1577,13 +1692,13 @@ export interface HTMLFormElement extends HTMLElement {
   noValidate: boolean;
   /** Submits without dispatching a `submit` event; navigation is a no-op. */
   submit(): void;
-  /** Dispatches a cancelable `SubmitEvent('submit')` (with `submitter`), then submits when not default-prevented. */
+  /** Dispatches a cancelable `SubmitEvent('submit')` (with `submitter`), then submits when not default-prevented; an invalid form (unless `noValidate` or a `formnovalidate` submitter) does not dispatch `submit`. */
   requestSubmit(submitter?: HTMLElement): void;
   /** Resets every control to its default value, then dispatches a cancelable `Event('reset')`. */
   reset(): void;
-  /** Returns `true` (constraint validation is a recorded gap). */
+  /** Evaluates every will-validating control, dispatching a bubbling cancelable `invalid` event on each invalid one; `false` when any control fails. */
   checkValidity(): boolean;
-  /** Returns `true` (constraint validation is a recorded gap). */
+  /** Identical to `checkValidity()`. */
   reportValidity(): boolean;
 }
 
@@ -1619,6 +1734,7 @@ declare const HTMLOptionElement: { readonly prototype: HTMLOptionElement; new ()
 declare const HTMLTextAreaElement: { readonly prototype: HTMLTextAreaElement; new (): HTMLTextAreaElement };
 declare const HTMLFormControlsCollection: { readonly prototype: HTMLFormControlsCollection; new (): HTMLFormControlsCollection };
 declare const HTMLOptionsCollection: { readonly prototype: HTMLOptionsCollection; new (): HTMLOptionsCollection };
+declare const ValidityState: { readonly prototype: ValidityState; new (): ValidityState };
 
 /** A live map of an element's attributes (T34). Each access re-reads the
  * element's ordered attribute list from Core, so an existing map reflects

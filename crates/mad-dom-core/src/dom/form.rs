@@ -83,7 +83,7 @@ const FORM_CONTROL_TAGS: &[&str] = &[
     "input", "select", "textarea", "button", "fieldset", "object", "output",
 ];
 
-/// Per-document form-control state (T40).
+/// Per-document form-control state (T40, extended by T48C).
 ///
 /// Keys are [`NodeId`]s into the owning document's arena. Every field is the
 /// single authoritative cell for the state it owns; attribute-reflected state
@@ -99,6 +99,11 @@ pub struct FormState {
     /// Option dirtyness: `option -> dirty` (set by the `selected` setter; used
     /// by the reset algorithm to know which selections are author-set).
     pub(crate) option_dirtyness: HashMap<NodeId, bool>,
+    /// Custom validation message (T48C): the `setCustomValidity` payload for
+    /// `element -> message`. An empty message is not stored — setting an empty
+    /// string clears the entry, so the `customError` validity flag reads this
+    /// map's presence.
+    pub(crate) custom_validity: HashMap<NodeId, String>,
 }
 
 /// Builds a [`CoreError::Hierarchy`] with `message`.
@@ -658,6 +663,43 @@ impl Document {
         owning_form(self, id)
     }
 
+    /// Returns the custom validation message of the node for `id` (T48C): the
+    /// message set by `setCustomValidity`, or `""` when none is set.
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::WrongDocument`] / [`CoreError::Arena`] for a foreign or
+    /// stale `id`.
+    pub fn custom_validity(&self, id: NodeId) -> Result<String, CoreError> {
+        self.get(id)?;
+        Ok(self
+            .form_state
+            .custom_validity
+            .get(&id)
+            .cloned()
+            .unwrap_or_default())
+    }
+
+    /// Stores the custom validation message of the node for `id` (T48C): the
+    /// WHATWG `setCustomValidity` payload. An empty message clears the entry
+    /// (setting an empty string removes the `customError` constraint).
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::WrongDocument`] / [`CoreError::Arena`] for a foreign or
+    /// stale `id`.
+    pub fn set_custom_validity(&mut self, id: NodeId, message: &str) -> Result<(), CoreError> {
+        self.get(id)?;
+        if message.is_empty() {
+            self.form_state.custom_validity.remove(&id);
+        } else {
+            self.form_state
+                .custom_validity
+                .insert(id, message.to_string());
+        }
+        Ok(())
+    }
+
     /// Returns every listed form-control descendant of the `<form>` for `id`
     /// (`form.elements`), in document order.
     pub fn form_elements(&self, id: NodeId) -> Result<Vec<NodeId>, CoreError> {
@@ -951,5 +993,39 @@ mod tests {
         assert_eq!(doc.input_value(number).unwrap(), "12.5");
         doc.set_input_value(number, "abc").unwrap();
         assert_eq!(doc.input_value(number).unwrap(), "");
+    }
+
+    #[test]
+    fn custom_validity_roundtrip_and_clear() {
+        let mut doc = Document::new();
+        let body = set_body(&mut doc, "<input id=\"a\"><input id=\"b\">");
+        let a = find_first(&doc, body, "input");
+        let b = doc
+            .children(body)
+            .unwrap()
+            .iter()
+            .find(|&&c| doc.get_attribute(c, "id").unwrap() == Some("b"))
+            .copied()
+            .unwrap();
+        assert_eq!(doc.custom_validity(a).unwrap(), "");
+        doc.set_custom_validity(a, "custom message").unwrap();
+        assert_eq!(doc.custom_validity(a).unwrap(), "custom message");
+        assert_eq!(doc.custom_validity(b).unwrap(), "");
+        doc.set_custom_validity(a, "").unwrap();
+        assert_eq!(doc.custom_validity(a).unwrap(), "");
+        assert!(
+            !doc.form_state.custom_validity.contains_key(&a),
+            "an empty message must clear the stored entry"
+        );
+    }
+
+    #[test]
+    fn form_reset_keeps_custom_validity() {
+        let mut doc = Document::new();
+        let body = set_body(&mut doc, "<input id=\"a\" value=\"v\">");
+        let a = find_first(&doc, body, "input");
+        doc.set_custom_validity(a, "kept").unwrap();
+        doc.form_reset(body).unwrap();
+        assert_eq!(doc.custom_validity(a).unwrap(), "kept");
     }
 }

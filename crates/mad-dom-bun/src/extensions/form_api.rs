@@ -130,6 +130,8 @@ pub(crate) const FORM_CONTRACT: &[&str] = &[
     "formElements",
     "formReset",
     "ownerForm",
+    "customValidity",
+    "setCustomValidity",
 ];
 
 /// Wraps every `NodeId` Core returned into a JS node wrapper through the
@@ -372,6 +374,33 @@ impl NodeHandle {
         })
         .map_err(|err| err.into_napi(&env))
     }
+
+    /// The `control.setCustomValidity(message)` write (T48C): stores the custom
+    /// validation message in Core's form state (the `customError` constraint);
+    /// an empty message clears it.
+    #[napi(catch_unwind)]
+    pub fn set_custom_validity(&self, env: Env, message: String) -> napi::Result<()> {
+        check_affinity(self.shared(), &env)?;
+        with_document(self.shared(), |doc| {
+            doc.set_custom_validity(self.id(), &message)
+                .map_err(crate::error::BindingError::Core)
+        })
+        .map_err(|err| err.into_napi(&env))
+    }
+
+    /// The `control.validationMessage` custom half (T48C): the message stored
+    /// by `setCustomValidity`, or `""` when none is set. The constraint-derived
+    /// message the facade reports is computed by the facade over the live
+    /// attribute/value contract; this entry only reads the stored payload.
+    #[napi(catch_unwind)]
+    pub fn custom_validity(&self, env: Env) -> napi::Result<String> {
+        check_affinity(self.shared(), &env)?;
+        with_document(self.shared(), |doc| {
+            doc.custom_validity(self.id())
+                .map_err(crate::error::BindingError::Core)
+        })
+        .map_err(|err| err.into_napi(&env))
+    }
 }
 
 #[cfg(test)]
@@ -383,11 +412,13 @@ mod tests {
     /// and innerHTML stay in the existing T25E / T29 entries).
     #[test]
     fn frozen_form_contract_surface() {
-        assert_eq!(FORM_CONTRACT.len(), 20, "the form surface is 20 entries");
+        assert_eq!(FORM_CONTRACT.len(), 22, "the form surface is 22 entries");
         assert_eq!(FORM_CONTRACT[0], "inputType");
         assert_eq!(FORM_CONTRACT[9], "optionSelected");
         assert_eq!(FORM_CONTRACT[10], "setOptionSelected");
         assert_eq!(FORM_CONTRACT[19], "ownerForm");
+        assert_eq!(FORM_CONTRACT[20], "customValidity");
+        assert_eq!(FORM_CONTRACT[21], "setCustomValidity");
     }
 
     /// The form surface must never drift into the reflected-attribute symbols

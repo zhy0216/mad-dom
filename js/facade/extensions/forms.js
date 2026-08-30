@@ -1,33 +1,45 @@
-// First-batch form-control facade extension (T40).
+// First-batch form-control facade extension (T40, constraint validation T48C).
 //
 // Installs the basic form surface on `Node.prototype` (the single-class model):
 // `input` / `button` / `select` / `option` / `textarea` value/name/type/
 // disabled/checked/selected reads and writes, the `form` element's
 // `elements` / `length` / `submit` / `requestSubmit` / `reset` and the live
 // collections behind `form.elements`, `select.options` and
-// `select.selectedOptions`.
+// `select.selectedOptions` — plus, since T48C, the WHATWG constraint-validation
+// surface: the live `validity` `ValidityState`, `validationMessage`,
+// `willValidate`, `setCustomValidity` and the control `checkValidity` /
+// `reportValidity`, and the `form.checkValidity()` / `reportValidity()` that
+// evaluate the `required`/`type`/`pattern`/range/step/length constraints and
+// dispatch the bubbling cancelable `invalid` event on every invalid control
+// (with the `noValidate` / `formnovalidate` gate in the submit path).
 //
 // # No second form state
 //
 // The stateful reads/writes delegate to the native T40 form contract
 // (crates/mad-dom-bun/src/extensions/form_api.rs) and through it to Core's
 // per-document `form_state` (mad_dom_core::dom::form): the dirty input value /
-// textarea value, the dirty checkedness, the option/select selection model and
-// the reset algorithm all live in Core. The attribute-only reflections
-// (`name` / `disabled` / `required` / `readOnly` / `multiple` / `method` /
-// `action` / `target` / `enctype` / ...) are pure reads/writes over the T25E
-// attribute contract, exactly like the T39 reflected accessors — so the facade
-// keeps **no second authoritative state** and the arena + Core's form state are
-// the single source of truth.
+// textarea value, the dirty checkedness, the option/select selection model, the
+// custom validation message and the reset algorithm all live in Core. The
+// attribute-only reflections (`name` / `disabled` / `required` / `readOnly` /
+// `multiple` / `method` / `action` / `target` / `enctype` / ...) are pure
+// reads/writes over the T25E attribute contract, exactly like the T39 reflected
+// accessors — so the facade keeps **no second authoritative state** and the
+// arena + Core's form state are the single source of truth.
 //
-// # Live collections
+// # Constraint validation is a live derived read (T48C)
 //
-// `form.elements`, `select.options` and `select.selectedOptions` are live
-// collections: every access re-reads Core through the native handle
-// (`formElements()` / `getElementsByTagName("option")` /
-// `selectSelectedOptions()`), so an existing collection reflects any tree or
-// attribute change immediately. One and the same collection object is returned
-// per form / per select (cached in a WeakMap), mirroring happy-dom.
+// The `validity` flags, `willValidate` and the constraint half of
+// `validationMessage` are **not** stored anywhere: every access recomputes them
+// from the live attribute/value/checkedness/selection reads of the native
+// contract (exactly like the T40 live collections), so a change through
+// `input.value`, `input.checked` or `setAttribute` is visible on the next flag
+// read. The only stored validation state is the `setCustomValidity` payload,
+// which lives in Core's `form_state` (`custom_validity`); the `customError`
+// flag reads it through the native `customValidity()` entry. The rule
+// evaluation mirrors happy-dom's `ValidityState` observation-for-observation:
+// the same `badInput` number/range value regex, the same `pattern` first-match
+// strip, the same email/url type regexes, the same `Number` range/step
+// comparisons and the same "Constraints not satisfied" message.
 //
 // # Submit / reset event order
 //
@@ -38,15 +50,18 @@
 // `input` or `button` dispatches the click event first and then triggers the
 // form's `requestSubmit` / `reset` (the happy-dom `dispatchEvent` default
 // action), with the checkbox/radio click toggle + `input`/`change` sequence.
-// Real navigation on `submit()` is out of scope (T40 boundary) and is a no-op.
+// Since T48C the invalid path is real: `form.checkValidity()` /
+// `reportValidity()` and the control `checkValidity()` dispatch a bubbling
+// cancelable `Event('invalid')` on each invalid control, and `requestSubmit`
+// (through `form.checkValidity()` unless the form has `noValidate` or the
+// submitter has `formnovalidate`) refuses to fire `submit` while the form is
+// invalid. Real navigation on `submit()` is out of scope (T40 boundary) and is
+// a no-op.
 //
 // # Recorded gaps (advanced form behavior)
 //
-// Constraint validation is **not** implemented: `ValidityState`,
-// `checkValidity` / `reportValidity` constraint evaluation, `setCustomValidity`
-// and the `invalid` event are absent, so `checkValidity` / `reportValidity`
-// return `true`. Also unimplemented and explicit gaps: `input` selection
-// ranges, `valueAsNumber` / `valueAsDate`, `FileList`, the `form` attribute's
+// Still unimplemented and explicit gaps: `input` selection ranges,
+// `valueAsNumber` / `valueAsDate`, `FileList`, the `form` attribute's
 // external-form association, `select.add` / `select.remove`, `form[name]`
 // named access and the per-tag `instanceof window.HTMLInputElement` split (the
 // single-class deviation). The date/time/color `input` value sanitizers store
@@ -83,6 +98,25 @@ export class SubmitEvent extends Event {
   constructor(type, eventInit = null) {
     super(type, eventInit);
     this.submitter = eventInit?.submitter ?? null;
+  }
+}
+
+/**
+ * Live `ValidityState` facade (T48C).
+ *
+ * One cached instance per control wrapper; its flag getters recompute the
+ * constraint evaluation from the live attribute/value/checkedness/selection
+ * reads of the native contract on every access, so the state is live by
+ * construction (a later `input.value` / `input.checked` / `setAttribute`
+ * change is visible on the next flag read) and `el.validity === el.validity`
+ * holds. The `element` own property mirrors happy-dom's instance shape; the
+ * flag getters are non-enumerable, non-configurable prototype accessors, so an
+ * own-key probe reports only `element` exactly like the baseline.
+ */
+export class ValidityState {
+  constructor(owner) {
+    VALIDITY_OWNERS.set(this, owner);
+    this.element = owner;
   }
 }
 
@@ -252,6 +286,323 @@ function installCollectionPrototype(ctx, CollectionClass) {
   ctx.defineAccessor(CollectionClass.prototype, Symbol.toStringTag, function toStringTag() {
     return CollectionClass.name;
   }, undefined);
+}
+
+// --- constraint validation (T48C) -------------------------------------------
+//
+// The `validity` flags, `willValidate` and the constraint half of
+// `validationMessage` are live derived reads: every access recomputes them from
+// the native attribute/value/checkedness/selection contract, so they never
+// store a second copy of the form state. Only the `setCustomValidity` payload
+// is stored, in Core's `form_state.custom_validity`; the `customError` flag
+// reads it through the native `customValidity()` entry. The evaluation mirrors
+// happy-dom's `ValidityState` (node_modules/happy-dom/lib/validity-state)
+// observation-for-observation, including the exact email/url regexes.
+
+// The happy-dom `badInput` value shape: an optional sign followed by either
+// digits or a decimal-comma/point number (European and US decimal separators).
+const BAD_INPUT_REGEXP = /^[-+]?(?:\d+|\d*[.,]\d+)$/;
+// The happy-dom `typeMismatch` email address regex (an RFC-style local part,
+// dot-joined labels, an `@`, a domain part with optional dotted labels).
+const EMAIL_REGEXP =
+  /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/;
+// The happy-dom `typeMismatch` url regex (http/https/ftp with a host, optional
+// port / path / query / fragment).
+const URL_REGEXP =
+  /^(?:(?:https?|HTTPS?|ftp|FTP):\/\/)(?:\S+(?::\S*)?@)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-zA-Z\u00a1-\uffff0-9]-*)*[a-zA-Z\u00a1-\uffff0-9]+)(?:\.(?:[a-zA-Z\u00a1-\uffff0-9]-*)*[a-zA-Z\u00a1-\uffff0-9]+)*)(?::\d{2,5})?(?:[\/?#]\S*)?$/;
+
+// The tags exposing the full validation surface (validity / willValidate /
+// validationMessage / setCustomValidity / checkValidity). `fieldset` exposes
+// every member *except* `validity` (happy-dom), so it lives in the surface set
+// but not the `validity` set.
+const VALIDITY_TAGS = ["input", "select", "textarea", "button", "output", "object"];
+const VALIDATION_SURFACE_TAGS = [...VALIDITY_TAGS, "fieldset"];
+
+// One cached `ValidityState` per control wrapper (stable identity, live reads).
+const CONTROL_VALIDITY = new WeakMap();
+// Reverse map: `ValidityState` instance -> the control wrapper it observes.
+const VALIDITY_OWNERS = new WeakMap();
+
+function isValidationSurface(handle) {
+  return VALIDATION_SURFACE_TAGS.includes(tagOf(handle));
+}
+
+function isValidityControl(handle) {
+  return VALIDITY_TAGS.includes(tagOf(handle));
+}
+
+/**
+ * The computed `type` of a control as happy-dom's `ValidityState` observes it:
+ * the input type state, the button type (defaulting to `submit`), or the
+ * select multiple/one state. `""` for tags that expose no computed type.
+ */
+function computedTypeOf(ctx, wrapper) {
+  const handle = ctx.documentContext.handleOf(wrapper);
+  const tag = tagOf(handle);
+  if (tag === "input") return handle.inputType();
+  if (tag === "button") {
+    const value = handle.getAttribute("type");
+    return value !== null && BUTTON_TYPES.includes(value) ? value : "submit";
+  }
+  if (tag === "select") {
+    return handle.hasAttribute("multiple") ? "select-multiple" : "select-one";
+  }
+  return "";
+}
+
+/**
+ * The value happy-dom's `ValidityState` evaluates: the type-dependent
+ * input/textarea/select value and the button's `value` attribute.
+ */
+function validationValueOf(ctx, wrapper) {
+  const handle = ctx.documentContext.handleOf(wrapper);
+  switch (tagOf(handle)) {
+    case "input":
+      return handle.inputValue();
+    case "textarea":
+      return handle.textareaValue();
+    case "select":
+      return handle.selectValue();
+    case "button":
+      return handle.getAttribute("value") || "";
+    default:
+      return "";
+  }
+}
+
+/**
+ * Returns whether any `input` of the radio group named `name` is checked in
+ * the scope happy-dom uses (the owning form, or — for a connected radio — the
+ * document root reached through the parent chain). Detached radios have no
+ * scope, so an unchecked required radio stays value-missing.
+ */
+function radioGroupHasChecked(ctx, wrapper, name) {
+  const handle = ctx.documentContext.handleOf(wrapper);
+  let scope = handle.ownerForm();
+  if (scope === null && handle.isConnected()) {
+    let cursor = handle;
+    while (cursor !== null) {
+      scope = cursor;
+      cursor = cursor.parentNode();
+    }
+  }
+  if (scope === null) return false;
+  for (const candidate of scope.querySelectorAll(`input[name="${name}"]`)) {
+    if (candidate.inputChecked()) return true;
+  }
+  return false;
+}
+
+/**
+ * Recomputes every happy-dom `ValidityState` flag for `wrapper` from the live
+ * native contract. `valid` is the conjunction of all ten flags exactly like
+ * happy-dom (so `customError` alone flips `valid` to false, while a
+ * `setCustomValidity("")` clear restores it).
+ */
+function validityFlagsOf(ctx, wrapper) {
+  const handle = ctx.documentContext.handleOf(wrapper);
+  const tag = tagOf(handle);
+  const type = computedTypeOf(ctx, wrapper);
+  const value = validationValueOf(ctx, wrapper);
+  const required =
+    (tag === "input" || tag === "select" || tag === "textarea") &&
+    handle.getAttribute("required") !== null;
+  const flags = {
+    badInput: false,
+    customError: false,
+    patternMismatch: false,
+    rangeOverflow: false,
+    rangeUnderflow: false,
+    stepMismatch: false,
+    tooLong: false,
+    tooShort: false,
+    typeMismatch: false,
+    valueMissing: false,
+    valid: false,
+  };
+  if (tag === "input") {
+    if (
+      (type === "number" || type === "range") &&
+      value.length > 0 &&
+      !BAD_INPUT_REGEXP.test(value)
+    ) {
+      flags.badInput = true;
+    }
+    const pattern = handle.getAttribute("pattern");
+    if (pattern !== null && value.length > 0 && value.replace(new RegExp(pattern), "").length > 0) {
+      flags.patternMismatch = true;
+    }
+    if (type === "number" || type === "range") {
+      const max = handle.getAttribute("max");
+      if (max !== null && value.length > 0 && Number(value) > Number(max)) {
+        flags.rangeOverflow = true;
+      }
+      const min = handle.getAttribute("min");
+      if (min !== null && value.length > 0 && Number(value) < Number(min)) {
+        flags.rangeUnderflow = true;
+      }
+      const step = handle.getAttribute("step");
+      if (
+        (step !== null && step !== "any" && Number(value) % Number(step) !== 0) ||
+        (step === null && Number(value) % 1 !== 0)
+      ) {
+        flags.stepMismatch = true;
+      }
+    }
+    if (value.length > 0) {
+      if (
+        (type === "email" && !EMAIL_REGEXP.test(value)) ||
+        (type === "url" && !URL_REGEXP.test(value))
+      ) {
+        flags.typeMismatch = true;
+      }
+    }
+    if (required) {
+      if (type === "checkbox") {
+        flags.valueMissing = !handle.inputChecked();
+      } else if (type === "radio") {
+        if (!handle.inputChecked()) {
+          const name = handle.getAttribute("name");
+          flags.valueMissing = !name || !radioGroupHasChecked(ctx, wrapper, name);
+        }
+      } else {
+        flags.valueMissing = value.length === 0;
+      }
+    }
+  } else if (required) {
+    flags.valueMissing = value.length === 0;
+  }
+  if (tag === "input" || tag === "textarea") {
+    const maxLength = parseInt(handle.getAttribute("maxlength"), 10);
+    if (maxLength > 0 && value.length > maxLength) flags.tooLong = true;
+    const minLength = parseInt(handle.getAttribute("minlength"), 10);
+    if (minLength > 0 && value.length > 0 && value.length < minLength) flags.tooShort = true;
+  }
+  flags.customError = handle.customValidity().length > 0;
+  flags.valid =
+    !flags.badInput &&
+    !flags.customError &&
+    !flags.patternMismatch &&
+    !flags.rangeOverflow &&
+    !flags.rangeUnderflow &&
+    !flags.stepMismatch &&
+    !flags.tooLong &&
+    !flags.tooShort &&
+    !flags.typeMismatch &&
+    !flags.valueMissing;
+  return flags;
+}
+
+/**
+ * The happy-dom `control.willValidate`: whether the control is a candidate for
+ * constraint validation. `undefined` for tags outside the validation surface.
+ */
+function controlWillValidate(ctx, wrapper) {
+  const handle = ctx.documentContext.handleOf(wrapper);
+  const tag = tagOf(handle);
+  if (tag === "output" || tag === "object" || tag === "fieldset") return false;
+  const disabled = handle.getAttribute("disabled") !== null;
+  if (tag === "select" || tag === "button") return !disabled;
+  if (tag === "textarea") {
+    return !disabled && handle.getAttribute("readonly") === null;
+  }
+  if (tag === "input") {
+    const type = handle.inputType();
+    return (
+      type !== "hidden" &&
+      type !== "reset" &&
+      type !== "button" &&
+      !disabled &&
+      handle.getAttribute("readonly") === null
+    );
+  }
+  return undefined;
+}
+
+/**
+ * The happy-dom `control.checkValidity()` validity: the control's own
+ * exemption (disabled / readonly / barred type) OR the live `validity.valid`.
+ * `fieldset` / `output` / `object` never fail.
+ */
+function controlValid(ctx, wrapper) {
+  const handle = ctx.documentContext.handleOf(wrapper);
+  const tag = tagOf(handle);
+  if (tag === "fieldset" || tag === "output" || tag === "object") return true;
+  const disabled = handle.getAttribute("disabled") !== null;
+  if (tag === "select") return disabled || validityFlagsOf(ctx, wrapper).valid;
+  const readOnly =
+    (tag === "input" || tag === "textarea") && handle.getAttribute("readonly") !== null;
+  let barred = false;
+  if (tag === "input") {
+    const type = handle.inputType();
+    barred = type === "hidden" || type === "reset" || type === "button";
+  } else if (tag === "button") {
+    const type = computedTypeOf(ctx, wrapper);
+    barred = type === "reset" || type === "button";
+  }
+  return disabled || readOnly || barred || validityFlagsOf(ctx, wrapper).valid;
+}
+
+/**
+ * The happy-dom `control.validationMessage`: the `setCustomValidity` payload
+ * first; otherwise `"Constraints not satisfied"` for a will-validating control
+ * that fails a constraint; otherwise `""`. `fieldset` is always `""`;
+ * `output` / `object` report only the custom payload.
+ */
+function validationMessageOf(ctx, wrapper) {
+  const handle = ctx.documentContext.handleOf(wrapper);
+  const tag = tagOf(handle);
+  const custom = handle.customValidity();
+  if (tag === "fieldset") return "";
+  if (tag === "output" || tag === "object") return custom;
+  if (custom) return custom;
+  if (controlWillValidate(ctx, wrapper) && !validityFlagsOf(ctx, wrapper).valid) {
+    return "Constraints not satisfied";
+  }
+  return "";
+}
+
+/**
+ * The invalid controls of a form, in document order, with the happy-dom
+ * radio-group dedup (only the first radio of a named group is evaluated).
+ */
+function formInvalidControls(ctx, form) {
+  const handle = facadeNodeHandle(ctx, form, "checkValidity");
+  const invalid = [];
+  const radioSeen = new Set();
+  for (const item of handle.formElements()) {
+    const wrapper = ctx.wrap(item);
+    const control = ctx.documentContext.handleOf(wrapper);
+    const tag = tagOf(control);
+    if (tag === "input" && control.inputType() === "radio" && control.getAttribute("name")) {
+      const name = control.getAttribute("name");
+      if (radioSeen.has(name)) continue;
+      radioSeen.add(name);
+    }
+    if (!controlValid(ctx, wrapper)) invalid.push(wrapper);
+  }
+  return invalid;
+}
+
+/**
+ * The `form.checkValidity()` evaluation: every invalid control gets a bubbling
+ * cancelable `invalid` event (in document order), and the method reports
+ * whether the form is valid.
+ */
+function formCheckValidity(ctx, form) {
+  const invalid = formInvalidControls(ctx, form);
+  for (const control of invalid) {
+    control.dispatchEvent(new Event("invalid", { bubbles: true, cancelable: true }));
+  }
+  return invalid.length === 0;
+}
+
+/** The `form.reportValidity()` / control `reportValidity()` result. */
+function reportValidityResult(ctx, wrapper) {
+  const handle = facadeNodeHandle(ctx, wrapper, "reportValidity");
+  if (tagOf(handle) === "form") return formCheckValidity(ctx, wrapper);
+  if (!isValidationSurface(handle)) return undefined;
+  return wrapper.checkValidity();
 }
 
 /**
@@ -634,17 +985,89 @@ export function install(ctx) {
 
   ctx.defineMethod(Node.prototype, "checkValidity", function checkValidity() {
     const handle = facadeNodeHandle(ctx, this, "checkValidity");
-    if (tagOf(handle) !== "form") return undefined;
-    // Constraint validation is not implemented (T40 gap): a form without the
-    // advanced validity machinery is always valid.
-    return true;
+    const tag = tagOf(handle);
+    if (tag === "form") return formCheckValidity(ctx, this);
+    if (!isValidationSurface(handle)) return undefined;
+    const valid = controlValid(ctx, this);
+    if (!valid) {
+      this.dispatchEvent(new Event("invalid", { bubbles: true, cancelable: true }));
+    }
+    return valid;
   });
 
   ctx.defineMethod(Node.prototype, "reportValidity", function reportValidity() {
-    const handle = facadeNodeHandle(ctx, this, "reportValidity");
-    if (tagOf(handle) !== "form") return undefined;
-    return true;
+    return reportValidityResult(ctx, this);
   });
+
+  // --- constraint validation (T48C) -----------------------------------------
+
+  ctx.defineAccessor(Node.prototype, "validity", function validity() {
+    const handle = facadeNodeHandle(ctx, this, "validity");
+    if (!isValidityControl(handle)) return undefined;
+    let state = CONTROL_VALIDITY.get(this);
+    if (state === undefined) {
+      state = new ValidityState(this);
+      CONTROL_VALIDITY.set(this, state);
+    }
+    return state;
+  }, undefined);
+
+  ctx.defineAccessor(Node.prototype, "willValidate", function willValidate() {
+    const handle = facadeNodeHandle(ctx, this, "willValidate");
+    if (!isValidationSurface(handle)) return undefined;
+    return controlWillValidate(ctx, this);
+  }, undefined);
+
+  ctx.defineAccessor(Node.prototype, "validationMessage", function validationMessage() {
+    const handle = facadeNodeHandle(ctx, this, "validationMessage");
+    if (!isValidationSurface(handle)) return undefined;
+    return validationMessageOf(ctx, this);
+  }, undefined);
+
+  ctx.defineMethod(Node.prototype, "setCustomValidity", function setCustomValidity(message) {
+    const handle = facadeNodeHandle(ctx, this, "setCustomValidity");
+    if (tagOf(handle) === "fieldset") return;
+    if (!isValidationSurface(handle)) return;
+    handle.setCustomValidity(String(message));
+  });
+
+  // `formNoValidate` (T48C): the submitter-side `formnovalidate` reflection
+  // that lets a single submit button bypass the form's validation gate.
+  ctx.defineAccessor(Node.prototype, "formNoValidate", function formNoValidate() {
+    const handle = facadeNodeHandle(ctx, this, "formNoValidate");
+    if (!isOneOf(handle, ["input", "button"])) return undefined;
+    return handle.getAttribute("formnovalidate") !== null;
+  }, function formNoValidate(v) {
+    const handle = facadeNodeHandle(ctx, this, "formNoValidate");
+    if (!isOneOf(handle, ["input", "button"])) return;
+    if (v) {
+      handle.setAttribute("formnovalidate", "");
+    } else {
+      handle.removeAttribute("formnovalidate");
+    }
+  });
+
+  // The `ValidityState` flag getters: live recomputations over the native
+  // contract, non-enumerable prototype accessors (the happy-dom instance shape
+  // keeps only the `element` own property).
+  for (const flag of [
+    "badInput",
+    "customError",
+    "patternMismatch",
+    "rangeOverflow",
+    "rangeUnderflow",
+    "stepMismatch",
+    "tooLong",
+    "tooShort",
+    "typeMismatch",
+    "valueMissing",
+    "valid",
+  ]) {
+    const flagName = flag;
+    ctx.defineAccessor(ValidityState.prototype, flag, function flagGetter() {
+      return validityFlagsOf(ctx, VALIDITY_OWNERS.get(this))[flagName];
+    }, undefined);
+  }
 
   // --- click (input / button default actions) -------------------------------
   //
@@ -707,5 +1130,9 @@ export function install(ctx) {
 
   ctx.defineAccessor(Window.prototype, "SubmitEvent", function getSubmitEvent() {
     return SubmitEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "ValidityState", function getValidityState() {
+    return ValidityState;
   }, undefined);
 }

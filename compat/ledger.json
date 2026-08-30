@@ -257,12 +257,18 @@
     {
       "id": "hc-diff-form-validation",
       "suite": "diff",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-form-validation",
-      "reason": "T40 implements the first-batch form contract (value/name/disabled/checked/selected, form.elements, submit/reset and event order) but not the advanced constraint-validation machinery, and T48 records it as a known gap: MAD DOM's form.checkValidity()/reportValidity() always return true (no ValidityState, no constraint evaluation, no invalid event), while happy-dom evaluates the required/type constraints and exposes the per-control validation surface (validity / validationMessage / setCustomValidity / willValidate / checkValidity). Implementing the WHATWG constraint validation is tracked by the follow-up todo T48C.",
-      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T40"
+    },
+    {
+      "id": "hc-diff-form-validation-flags",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-form-validation-flags",
+      "addedIn": "T48C"
     },
     {
       "id": "hc-types-template-forms",

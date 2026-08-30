@@ -1,6 +1,6 @@
 # 48C 表单约束校验（ValidityState / checkValidity / invalid 事件）
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P2
 - 里程碑：M9
 - 条目 ID：`T48C`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T48C — 表单约束校验（ValidityState / checkValidity / invalid 事件）**
+- [x] **T48C — 表单约束校验（ValidityState / checkValidity / invalid 事件）**
   - 实现：
     - 每控件 `validity`（live `ValidityState`：`valueMissing`/`typeMismatch`/
       `patternMismatch`/`tooLong`/`tooShort`/`rangeUnderflow`/`rangeOverflow`/
