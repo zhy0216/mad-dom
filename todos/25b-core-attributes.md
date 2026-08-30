@@ -1,6 +1,6 @@
 # 25B 实现 Core 基础属性模块
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P0
 - 里程碑：M4
 - 条目 ID：T25B
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T25B — 实现 Core 基础属性模块**
+- [x] **T25B — 实现 Core 基础属性模块**
   - 实现：
     - 在预留 attributes 模块中接入 getAttribute、setAttribute、removeAttribute、hasAttribute 及字符串转换。
     - 复用 T25A 提供的 Core payload seam 和错误模型，不在 binding/facade 保存第二份属性状态。
