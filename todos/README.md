@@ -224,7 +224,7 @@ git diff --check
 | 28 | P1 | [28-html-serializer.md](done/28-html-serializer.md) | M5 | T26 | 已完成 |
 | 29 | P1 | [29-inner-outer-html-api.md](done/29-inner-outer-html-api.md) | M5 | T27, T28 | 已完成 |
 | 30 | P1 | [30-selector-parser-and-matcher.md](done/30-selector-parser-and-matcher.md) | M6 | T05, T17, T25 | 已完成 |
-| 31 | P1 | [31-query-apis.md](31-query-apis.md) | M6 | T30 | 待办 |
+| 31 | P1 | [31-query-apis.md](done/31-query-apis.md) | M6 | T30 | 已完成 |
 | 32 | P1 | [32-live-query-collections.md](32-live-query-collections.md) | M6 | T31 | 待办 |
 | 33 | P1 | [33-extended-node-types.md](33-extended-node-types.md) | M7 | T17, T25, T29 | 待办 |
 | 34 | P1 | [34-attributes-and-domtokenlist.md](34-attributes-and-domtokenlist.md) | M7 | T25, T33 | 待办 |
