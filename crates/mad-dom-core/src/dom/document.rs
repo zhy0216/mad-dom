@@ -42,6 +42,11 @@ static NEXT_DOCUMENT_ID: AtomicU64 = AtomicU64::new(0);
 pub struct Document {
     id: u64,
     arena: Arena<Node>,
+    /// The `Document`-kind node that is the root of this document's tree,
+    /// allocated lazily on first access (T29). The HTML parser (T26/T27) and
+    /// the JS-facing document-structure API use it as the anchor whose children
+    /// are the doctype (if any) and the `<html>` element.
+    document_root_id: Option<NodeId>,
 }
 
 impl Document {
@@ -50,7 +55,32 @@ impl Document {
         Self {
             id: NEXT_DOCUMENT_ID.fetch_add(1, Ordering::Relaxed),
             arena: Arena::new(),
+            document_root_id: None,
         }
+    }
+
+    /// Returns the `Document`-kind node at the top of this document's tree,
+    /// allocating it into the arena on first use.
+    ///
+    /// Every document can have at most one `Document` root; the id is cached on
+    /// the [`Document`] so the HTML parser and the T29 document-structure API
+    /// (`documentElement` / `head` / `body` / `load_html`) agree on the anchor
+    /// without re-deriving it. Creating a fresh document leaves the arena empty
+    /// until the root is requested.
+    pub fn document_root(&mut self) -> NodeId {
+        if let Some(root) = self.document_root_id {
+            return root;
+        }
+        let root = self.allocate_node(NodeData::Document);
+        self.document_root_id = Some(root);
+        root
+    }
+
+    /// Returns the cached `Document` root id, or `None` before it has been
+    /// allocated. Crate-internal read used by the T29 document-structure API to
+    /// navigate without allocating.
+    pub(crate) fn cached_document_root(&self) -> Option<NodeId> {
+        self.document_root_id
     }
 
     /// Returns this document's unique id.

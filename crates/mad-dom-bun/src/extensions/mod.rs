@@ -26,6 +26,14 @@
 //! | `text_api` | `extensions/text_api.rs` | T25E | T25 |
 //! | `collection_api` | `extensions/collection_api.rs` | T25D | T25 |
 //! | `affinity` | `affinity.rs` | T21B | T21 |
+//! | `html_api` | `extensions/html_api.rs` | T29 | T29 |
+//!
+//! The first eight rows are the *frozen M4 boundaries* recorded in
+//! [`REGISTRY`]. `html_api` (T29, M5) follows the same seam pattern — its own
+//! file, a `SEAM` constant and `#[napi]` extensions on the existing handle
+//! classes — but is not part of the M4 freeze: T29 owns both the native module
+//! and the integration wiring (there is no separate M5 gate), so it is declared
+//! here but deliberately absent from [`REGISTRY`] and its structural tests.
 //!
 //! # Dependency direction
 //!
@@ -47,6 +55,7 @@
 
 mod attributes_api;
 mod collection_api;
+mod html_api;
 mod mutation_insert_api;
 mod mutation_remove_api;
 mod node_api;

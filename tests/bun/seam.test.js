@@ -20,12 +20,12 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/attributes.js", owner: "T25E" },
   { path: "extensions/text-content.js", owner: "T25E" },
   { path: "extensions/child-nodelist.js", owner: "T25D" },
+  { path: "extensions/html.js", owner: "T29" },
 ];
 
-// The T22B-owned files and the node (T23B), mutation (T24C) and T25E/T25D
-// capability extensions are implemented and their seam status is flipped to
-// "implemented"; no capability extension stays a placeholder — the T25 gate
-// completes the M4 extension set.
+// The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D and
+// T29 capability extensions are implemented and their seam status is flipped
+// to "implemented"; no capability extension stays a placeholder.
 const IMPLEMENTED_FACADE_FILES = [
   { path: "window.js", owner: "T22B" },
   { path: "document.js", owner: "T22B" },
@@ -35,6 +35,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/attributes.js", owner: "T25E" },
   { path: "extensions/text-content.js", owner: "T25E" },
   { path: "extensions/child-nodelist.js", owner: "T25D" },
+  { path: "extensions/html.js", owner: "T29" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 

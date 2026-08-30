@@ -31,12 +31,20 @@
       "addedIn": "T25E"
     },
     {
+      "id": "hc-diff-inner-outer-html",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-inner-outer-html",
+      "addedIn": "T29"
+    },
+    {
       "id": "hc-diff-node-create-append-serialize",
       "suite": "diff",
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-create-append-serialize",
-      "reason": "Since T25, MAD DOM's document.createElement / createTextNode, Node navigation, tree mutation (append/insert/remove/replace) and the attribute/textContent surface are implemented, so setAttribute and appendChild succeed on the mad-dom side; the facade gap has moved to the Document-level surface: document.body (and document.readyState) are not implemented yet, so the mad-dom side records a facade-phase TypeError at document.body.appendChild(section) and reads readyState as undefined while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22/T23/T24/T25; collected into the compatibility ledger by T11.",
+      "reason": "Since T29, MAD DOM implements the document-structure accessors (documentElement/head/body with the implied skeleton), the innerHTML/outerHTML accessors and the T28 serializer, so document.body.appendChild(section) succeeds and the captured body outerHTML matches happy-dom byte for byte. The remaining differences are all outside T29's scope: document.querySelector is still missing (selector surface, T31), document.readyState is still undefined, the snapshot's NamedNodeMap (.attributes) and namespaceURI are not implemented yet (T34), and Element.nodeName casing differs (MAD DOM lowercases, happy-dom uppercases, T23A). First presented by the T10 real-pair runner; updated by T22/T23/T24/T25/T29; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
     },
@@ -64,7 +72,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-query-selector-identity",
-      "reason": "Since T22, MAD DOM's createWindow() succeeds, but the Window/Document facade lacks the node surface (body, querySelectorAll, getElementById, events), so the mad-dom side records a facade-phase TypeError while the happy-dom side records the full observation. First presented by the T10 real-pair runner; updated by T22; collected into the compatibility ledger by T11.",
+      "reason": "Since T29, MAD DOM's document.body.innerHTML setter works (the implied skeleton and innerHTML surface landed), so the mad-dom side now builds the list structure exactly like happy-dom; the differences have narrowed to the still-missing selector/query surface (querySelectorAll, getElementById — T31), the events surface (addEventListener and the click propagation order — T37) and the createWindow export shape. First presented by the T10 real-pair runner; updated by T22/T29; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
     },
@@ -139,15 +147,14 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/window-document-basics.ts",
-      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); the element attribute surface is now typed (T25), so setAttribute type-checks, but the remaining element/document members — id, querySelectorAll, title and body — are still rejected on the mad-dom target. Updated by T22/T23/T25.",
+      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); document.body is now typed (T29), so the fixture's body branch type-checks, but the remaining element/document members — id, querySelectorAll and title — are still rejected on the mad-dom target. Updated by T22/T23/T25/T29.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2353, "line": 7 },
         { "code": 2339, "messageIncludes": "Property 'id' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'querySelectorAll' does not exist" },
-        { "code": 2339, "messageIncludes": "Property 'title' does not exist" },
-        { "code": 2339, "messageIncludes": "Property 'body' does not exist" }
+        { "code": 2339, "messageIncludes": "Property 'title' does not exist" }
       ]
     }
   ]

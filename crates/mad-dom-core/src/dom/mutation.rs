@@ -483,7 +483,12 @@ impl Document {
     /// This is the shared relinking primitive for every insertion point used by
     /// the mutation API: `insert_detached_chain` (before a reference / at the
     /// end) and `replace` (between two explicit sibling anchors).
-    fn link_detached_chain_between(
+    ///
+    /// `pub(crate)` so the T29 HTML apply path
+    /// ([`crate::html::apply`]) reuses the same O(1) primitive when it
+    /// atomically splices freshly parsed nodes into a live tree (the
+    /// `innerHTML`/`outerHTML` setters), keeping one relink implementation.
+    pub(crate) fn link_detached_chain_between(
         &mut self,
         parent: NodeId,
         nodes: &[NodeId],

@@ -15,9 +15,12 @@
 //!
 //! # Scope
 //!
-//! Document parsing ([`parse_html_document`], T26) and context-based fragment
-//! parsing ([`parse_html_fragment`], T27). Serialization (T28) and any
-//! JavaScript `innerHTML` surface are out of scope.
+//! Document parsing ([`parse_html_document`], T26), context-based fragment
+//! parsing ([`parse_html_fragment`], T27) and the T29 document-structure /
+//! fragment-application contract (`documentElement` / `head` / `body`,
+//! `innerHTML` / `outerHTML` setters, `load_html`, the implied skeleton) live
+//! here. Serialization (T28) is out of scope; the T29 read path calls into
+//! [`crate::serialize`].
 //!
 //! # Resource behaviour
 //!
@@ -42,6 +45,7 @@ use html5ever::driver::{parse_document, ParseOpts};
 use html5ever::tendril::TendrilSink;
 use html5ever::tree_builder::QuirksMode;
 
+mod apply;
 mod fragment;
 mod sink;
 

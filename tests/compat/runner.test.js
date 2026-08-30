@@ -357,15 +357,16 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     });
     expect(byPath["values.entry-window-type"]).toBeUndefined();
 
-    // The gap moved from the setup phase to the facade surface: with the dev
-    // artifact the window is acquired, createElement (T23), tree mutation (T24)
-    // and the attribute/textContent surface (T25) succeed, and the missing
-    // Document-level member (document.body) fails in the scenario body; without
-    // one, loading the native binding fails lazily at createWindow().
+    // The gap moved from the setup phase to the surface: with the dev artifact
+    // the window is acquired, createElement (T23), tree mutation (T24), the
+    // attribute/textContent surface (T25) and — since T29 — document.body with
+    // the implied skeleton all succeed, and the still-missing selector surface
+    // (document.querySelector) fails in the scenario body; without one, loading
+    // the native binding fails lazily at createWindow().
     expect(madRecord.errors).toHaveLength(1);
     if (nativeAvailable) {
       expect(madRecord.errors[0].name).toBe("TypeError");
-      expect(madRecord.errors[0].message).toContain("document.body");
+      expect(madRecord.errors[0].message).toContain("document.querySelector");
       expect(madRecord.errors[0].phase).toBe("facade");
     } else {
       expect(madRecord.errors[0].name).toBe("Error");
@@ -380,12 +381,24 @@ describe("real differential (happy-dom vs mad-dom)", () => {
       left: "interactive",
     });
 
-    expect(madRecord.snapshots).toEqual({});
+    // Since T29 the mad-dom side captures the body snapshot too. Its tree
+    // structure and outerHTML match happy-dom byte for byte, but the snapshot
+    // leaf fields that need the not-yet-implemented surface differ: nodeName
+    // casing (T23A), namespaceURI and .attributes (T34).
+    const madBody = madRecord.snapshots["body"];
+    expect(madBody).toBeDefined();
+    expect(madBody.nodeType).toBe(1);
+    expect(madBody.nodeName).toBe("body");
+    expect(madBody.outerHTML).toBe(
+      '<body><section class="diff-probe" id="probe">differential body</section></body>',
+    );
+    expect(byPath["snapshots.body.nodeName"]).toMatchObject({
+      kind: "changed",
+      left: "BODY",
+      right: "body",
+    });
     expect(madRecord.events).toEqual([]);
 
-    expect(byPath["snapshots.body"].kind).toBe("left-only");
-    expect(byPath["snapshots.body"].left.nodeType).toBe(1);
-    expect(byPath["snapshots.body"].left.nodeName).toBe("BODY");
     expect(byPath["identity.query-finds-appended-section"]).toMatchObject({ kind: "left-only", left: true });
 
     const happyRecord = scenario.sides["happy-dom"].record;

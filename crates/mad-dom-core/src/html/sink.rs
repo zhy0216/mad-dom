@@ -156,7 +156,7 @@ impl HtmlSink<DocumentMode> {
     /// document root.
     pub fn new() -> Self {
         let mut document = Document::new();
-        let root = document.allocate_node(NodeData::Document);
+        let root = document.document_root();
         Self {
             document: RefCell::new(document),
             root,
@@ -173,7 +173,7 @@ impl HtmlSink<FragmentMode> {
     /// document root and the fragment-parse state.
     pub fn for_fragment() -> Self {
         let mut document = Document::new();
-        let root = document.allocate_node(NodeData::Document);
+        let root = document.document_root();
         Self {
             document: RefCell::new(document),
             root,
@@ -481,7 +481,12 @@ fn append_text_to_node(doc: &mut Document, node: NodeId, text: &str) -> bool {
 /// Attaches `child` as the last child of `parent`, detaching it from any
 /// previous parent first. O(1); the relation fields are linked directly so the
 /// parser does not pay the mutation API's per-call invariant re-check.
-fn attach_last_child(doc: &mut Document, parent: NodeId, child: NodeId) {
+///
+/// `pub(crate)` so the T29 HTML apply path ([`super::apply`]) reuses the same
+/// O(1) primitive when it rebuilds document structure (skeleton / `load_html`)
+/// under a `Document`-kind node, which the public mutation API rejects as a
+/// parent.
+pub(crate) fn attach_last_child(doc: &mut Document, parent: NodeId, child: NodeId) {
     debug_assert_ne!(parent, child);
     doc.detach(child);
     let last = doc.get(parent).expect("live parent").last_child();

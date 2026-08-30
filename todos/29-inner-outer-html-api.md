@@ -1,6 +1,6 @@
 # 29 接入 innerHTML、outerHTML 与文档结构 API
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M5
 - 条目 ID：`T29`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T29 — 接入 innerHTML、outerHTML 与文档结构 API**
+- [x] **T29 — 接入 innerHTML、outerHTML 与文档结构 API**
   - 实现：
     - 实现 innerHTML getter/setter、outerHTML getter/setter。
     - 实现 documentElement、head、body 的首批行为。

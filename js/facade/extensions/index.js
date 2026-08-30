@@ -26,6 +26,7 @@
 
 import * as attributesExtension from "./attributes.js";
 import * as childNodeListExtension from "./child-nodelist.js";
+import * as htmlExtension from "./html.js";
 import * as mutationExtension from "./mutation.js";
 import * as nodeExtension from "./node.js";
 import * as textContentExtension from "./text-content.js";
@@ -43,6 +44,7 @@ const EXTENSIONS = [
   attributesExtension,
   textContentExtension,
   childNodeListExtension,
+  htmlExtension,
 ];
 
 /**

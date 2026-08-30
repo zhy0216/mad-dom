@@ -130,8 +130,9 @@ bun tests/compat/runner/run.js [paths...] [--report] [--selftest] [--json]
 | `selftest-isolation-read` | mock | 通过：在另一个探针里断言无污染；bun test 另断言两侧 pid 不同 |
 | `selftest-error-shape`（divergent/） | mock | 故意失败：`errors[0].phase`、`errors[1].name`、`errors[1].message`、`values.sync-mode.value` |
 | `selftest-dom-snapshot-events`（divergent/） | mock | 故意失败：事件顺序 ×2、`snapshots.tree.attributes.id`（left-only）、文本 data、outerHTML |
-| `dom-create-append-serialize` | real | 报告：mad-dom 侧 setup 阶段 `createWindow()` 抛错，如实可见 |
-| `dom-query-selector-identity` | real | 报告：同上的 setup 缺口（querySelectorAll / 身份 / click 冒泡顺序在 happy-dom 侧记录） |
+| `dom-create-append-serialize` | real | 报告：body 结构已实现（T29），outerHTML 逐字节一致；querySelector / readyState / .attributes / namespaceURI / nodeName 大小写仍为缺口 |
+| `dom-query-selector-identity` | real | 报告：body.innerHTML 已实现（T29）；querySelectorAll / getElementById / click 冒泡仍为缺口 |
+| `dom-inner-outer-html` | real | 通过（T29）：documentElement/head/body 与 innerHTML/outerHTML getter/setter 观察逐一一致 |
 
 mock-fail 的 5 处种子差异全部注明在 `mocks.js` 头注释（管线事件乱序、同步抛改
 异步拒、异步错误名+消息、文本大写、丢弃 `id` 属性）。

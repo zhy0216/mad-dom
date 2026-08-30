@@ -36,6 +36,14 @@ export declare class Document {
   createTextNode(data: string): Text;
   /** Creates a new empty DocumentFragment (WHATWG `createDocumentFragment`). */
   createDocumentFragment(): DocumentFragment;
+  /** The document element (`<html>`); `null` when the document has no root element (T29, implied skeleton on first read). */
+  readonly documentElement: Element | null;
+  /** The `<head>` element, or `null` (T29, implied skeleton on first read). */
+  readonly head: Element | null;
+  /** The `<body>` element, or `null` (T29, implied skeleton on first read). */
+  readonly body: Element | null;
+  /** Replaces the whole document content with a freshly parsed full HTML document (T29). */
+  parseHtml(html: string): void;
 }
 
 export declare function createWindow(): Window;
@@ -77,7 +85,7 @@ export interface Node {
   replaceChild(newChild: Node, oldChild: Node): Node;
 }
 
-/** A node minted by `Document.createElement` (T23 surface plus T25 element attributes). */
+/** A node minted by `Document.createElement` (T23 surface plus T25 element attributes and T29 inner/outerHTML). */
 export interface Element extends Node {
   /** WHATWG `Element.getAttribute` (T25): the attribute value, or `null` when absent. */
   getAttribute(name: string): string | null;
@@ -87,13 +95,20 @@ export interface Element extends Node {
   removeAttribute(name: string): void;
   /** WHATWG `Element.hasAttribute` (T25): whether the element has the named attribute. */
   hasAttribute(name: string): boolean;
+  /** WHATWG `Element.innerHTML` (T29): the serialized children; setting parses in the element's own context and atomically replaces the children. */
+  innerHTML: string;
+  /** WHATWG `Element.outerHTML` (T29): the serialized element itself; setting parses in the parent's context and atomically replaces the element (a detached element is a no-op). */
+  outerHTML: string;
 }
 
 /** A node minted by `Document.createTextNode` (T23 surface only). */
 export interface Text extends Node {}
 
-/** A node minted by `Document.createDocumentFragment` (T24 surface). */
-export interface DocumentFragment extends Node {}
+/** A node minted by `Document.createDocumentFragment` (T24 surface plus T29 innerHTML). */
+export interface DocumentFragment extends Node {
+  /** WHATWG `DocumentFragment.innerHTML` (T29): the serialized children; setting parses with the fallback body context and atomically replaces the children. */
+  innerHTML: string;
+}
 
 /** The T25D live `childNodes` collection bound to one parent node. */
 export interface NodeList {
@@ -140,6 +155,14 @@ export interface DocumentHandle {
   insertBefore(parent: NodeHandle, child: NodeHandle, reference: NodeHandle): void;
   removeChild(parent: NodeHandle, child: NodeHandle): void;
   replaceChild(parent: NodeHandle, child: NodeHandle, node: NodeHandle): void;
+  /** T29 native `documentElement` read; `null` when the document has no root element. */
+  documentElement(): NodeHandle | null;
+  /** T29 native `head` read. */
+  head(): NodeHandle | null;
+  /** T29 native `body` read. */
+  body(): NodeHandle | null;
+  /** T29 native full-document parse and replace. */
+  parseHtml(html: string): void;
   destroy(): void;
 }
 
@@ -165,4 +188,12 @@ export interface NodeHandle {
   textContent(): string | null;
   /** T25E native `textContent` write. */
   setTextContent(value: string): void;
+  /** T29 native `innerHTML` read: serialized children of an Element/DocumentFragment. */
+  innerHTML(): string;
+  /** T29 native `innerHTML` write: parse in the target's own context and atomically replace its children. */
+  setInnerHTML(html: string): void;
+  /** T29 native `outerHTML` read: the serialized node itself. */
+  outerHTML(): string;
+  /** T29 native `outerHTML` write: parse in the parent's context and atomically replace the node (detached is a no-op). */
+  setOuterHTML(html: string): void;
 }
