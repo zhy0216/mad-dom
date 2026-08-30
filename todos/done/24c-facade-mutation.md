@@ -1,6 +1,6 @@
 # 24C 实现 facade 树 mutation 模块
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P0
 - 里程碑：M4
 - 条目 ID：T24C
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T24C — 实现 facade 树 mutation 模块**
+- [x] **T24C — 实现 facade 树 mutation 模块**
   - 实现：
     - 在独立 facade extension 中实现 appendChild、insertBefore、removeChild、replaceChild 的 wrapper 参数转换和返回对象。
     - 覆盖异常类型、移动/DocumentFragment、reference node、失败原子性和对象身份。
