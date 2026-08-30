@@ -239,7 +239,7 @@ git diff --check
 | 43 | P2 | [43-shadow-dom.md](43-shadow-dom.md) | M8 | T31, T37, T42 | 待办 |
 | 44 | P2 | [44-cssom.md](44-cssom.md) | M8 | T34, T39, T43 | 待办 |
 | 45 | P2 | [45-window-platform-and-storage.md](done/45-window-platform-and-storage.md) | M8 | T22, T37 | 已完成 |
-| 46 | P2 | [46-fetch-and-network-surface.md](46-fetch-and-network-surface.md) | M8 | T38, T45 | 待办 |
+| 46 | P2 | [46-fetch-and-network-surface.md](done/46-fetch-and-network-surface.md) | M8 | T38, T45 | 已完成 |
 | 47 | P2 | [47-timers-and-script-execution.md](47-timers-and-script-execution.md) | M8 | T37, T41, T42, T46 | 待办 |
 | 48 | P2 | [48-compatibility-closure-and-wpt.md](48-compatibility-closure-and-wpt.md) | M8/M9 | T11, T25, T29, T32, T33, T34, T35, T36, T37, T38, T39, T40, T41, T42, T43, T44, T45, T46, T47 | 待办 |
 | 49 | P2 | [49-native-packaging-and-artifacts.md](49-native-packaging-and-artifacts.md) | M9 | T06, T21, T48 | 待办 |
