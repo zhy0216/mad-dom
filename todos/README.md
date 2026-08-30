@@ -213,7 +213,7 @@ git diff --check
 | 24B | P0 | [24b-native-remove-replace.md](done/24b-native-remove-replace.md) | M4 | T23 | 已完成 |
 | 24C | P0 | [24c-facade-mutation.md](done/24c-facade-mutation.md) | M4 | T24A, T24B | 已完成 |
 | 24 | P0 | [24-javascript-tree-mutations.md](done/24-javascript-tree-mutations.md) | M4 | T24A, T24B, T24C | 已完成 |
-| 25A | P0 | [25a-core-payload-seam.md](25a-core-payload-seam.md) | M4 | T24, T20A | 待办 |
+| 25A | P0 | [25a-core-payload-seam.md](done/25a-core-payload-seam.md) | M4 | T24, T20A | 已完成 |
 | 25B | P0 | [25b-core-attributes.md](25b-core-attributes.md) | M4 | T25A | 待办 |
 | 25C | P0 | [25c-core-text-content.md](25c-core-text-content.md) | M4 | T25A | 待办 |
 | 25D | P0 | [25d-live-child-nodelist.md](25d-live-child-nodelist.md) | M4 | T24, T23 | 待办 |
