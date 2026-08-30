@@ -206,10 +206,9 @@ impl Document {
 
     /// Creates a text node with `data` and returns its handle.
     ///
-    /// Errors with [`CoreError::InvalidCharacter`] when `data` contains a NUL
-    /// character, which is not a well-formed text-data character.
+    /// `data` is stored verbatim, including NUL characters (matching happy-dom
+    /// and the T48B text-data alignment).
     pub fn create_text(&mut self, data: &str) -> Result<NodeId, CoreError> {
-        validate_text_data(data, "text data")?;
         Ok(self.arena.allocate(
             self.id,
             Node::new(NodeData::Text {
@@ -220,9 +219,9 @@ impl Document {
 
     /// Creates a comment node with `data` and returns its handle.
     ///
-    /// See [`Document::create_text`] for the error condition.
+    /// See [`Document::create_text`]: `data` is stored verbatim, including NUL
+    /// characters.
     pub fn create_comment(&mut self, data: &str) -> Result<NodeId, CoreError> {
-        validate_text_data(data, "comment data")?;
         Ok(self.arena.allocate(
             self.id,
             Node::new(NodeData::Comment {
@@ -242,9 +241,9 @@ impl Document {
     /// returns its handle.
     ///
     /// Errors with [`CoreError::InvalidCharacter`] when `target` is not a valid
-    /// WHATWG-style "Name", when `data` contains the `?>` closing sequence, or
-    /// when `data` contains a NUL character (the crate text-data
-    /// well-formedness rule, [`validate_text_data`]).
+    /// WHATWG-style "Name", or when `data` contains the `?>` closing sequence.
+    /// `data` is otherwise stored verbatim, including NUL characters (the
+    /// T48B text-data alignment).
     pub fn create_processing_instruction(
         &mut self,
         target: &str,
@@ -257,7 +256,6 @@ impl Document {
                 character: Some('?'),
             });
         }
-        validate_text_data(data, "processing instruction data")?;
         Ok(self.arena.allocate(
             self.id,
             Node::new(NodeData::ProcessingInstruction {
@@ -478,7 +476,9 @@ impl Document {
     /// * [`CoreError::Arena`] when `id` is a stale or invalid handle.
     /// * [`CoreError::Hierarchy`] when the node for `id` is neither a `Text`
     ///   nor a `Comment` node.
-    /// * [`CoreError::InvalidCharacter`] when `data` contains a NUL character.
+    ///
+    /// `data` is stored verbatim, including NUL characters (the T48B text-data
+    /// alignment).
     ///
     /// Dormant by design: T25C consumes this entry after T25A archives, so the
     /// crate does not reference it yet.
@@ -496,7 +496,6 @@ impl Document {
                     .to_string(),
             });
         }
-        validate_text_data(data, "text data")?;
         let old_value = match node.data() {
             NodeData::Text { data } | NodeData::Comment { data } => data.clone(),
             NodeData::ProcessingInstruction { data, .. } => data.clone(),
@@ -579,8 +578,9 @@ fn validate_element_name(name: &str) -> Result<(), CoreError> {
 /// A "Name" must not be empty and every character must be a letter, digit,
 /// `-`, `.`, `_`, `:`, or a non-ASCII character, with the first character not
 /// being a digit. Shared by element creation (`validate_element_name`), the
-/// attribute name entry, the T33 processing-instruction target and the T34
-/// `createAttribute` qualified-name entry.
+/// T33 processing-instruction target and the T34 `createAttribute`
+/// qualified-name entry. (The `setAttribute` name rule is the separate
+/// happy-dom-boundary validator in `attributes.rs`.)
 pub(crate) fn validate_name(name: &str, what: &'static str) -> Result<(), CoreError> {
     let mut chars = name.chars();
     match chars.next() {
@@ -606,22 +606,6 @@ pub(crate) fn validate_name(name: &str, what: &'static str) -> Result<(), CoreEr
             Ok(())
         }
     }
-}
-
-/// Validates character data by rejecting NUL characters.
-///
-/// `pub(crate)` so the payload seam's text-update entry
-/// ([`Document::set_character_data`]) and the future `text_content` module
-/// (T25C) share the single well-formedness rule that `create_text` /
-/// `create_comment` enforce.
-pub(crate) fn validate_text_data(data: &str, what: &'static str) -> Result<(), CoreError> {
-    if let Some(c) = data.chars().find(|&c| c == '\0') {
-        return Err(CoreError::InvalidCharacter {
-            what,
-            character: Some(c),
-        });
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -728,23 +712,15 @@ mod tests {
     }
 
     #[test]
-    fn invalid_text_characters_are_rejected() {
+    fn text_and_comment_data_is_stored_verbatim() {
         let mut doc = Document::new();
-        assert!(doc.create_text("ok").is_ok());
-        assert!(matches!(
-            doc.create_text("bad\0char"),
-            Err(CoreError::InvalidCharacter {
-                character: Some('\0'),
-                ..
-            })
-        ));
-        assert!(matches!(
-            doc.create_comment("note\0with nul"),
-            Err(CoreError::InvalidCharacter {
-                character: Some('\0'),
-                ..
-            })
-        ));
+        let text = doc.create_text("ok\0char").unwrap();
+        assert_eq!(doc.get(text).unwrap().data().text_data(), Some("ok\0char"));
+        let comment = doc.create_comment("note\0with nul").unwrap();
+        assert_eq!(
+            doc.get(comment).unwrap().data().comment_data(),
+            Some("note\0with nul")
+        );
     }
 
     #[test]
@@ -928,21 +904,15 @@ mod tests {
     }
 
     #[test]
-    fn set_character_data_rejects_nul_atomically() {
+    fn set_character_data_stores_nul_atomically() {
         let mut doc = Document::new();
         let text = doc.create_text("hello").unwrap();
 
-        assert!(matches!(
-            doc.set_character_data(text, "bad\0data"),
-            Err(CoreError::InvalidCharacter {
-                character: Some('\0'),
-                ..
-            })
-        ));
+        doc.set_character_data(text, "bad\0data").unwrap();
         assert_eq!(
             doc.get(text).unwrap().data().text_data(),
-            Some("hello"),
-            "a rejected update leaves the data unchanged"
+            Some("bad\0data"),
+            "a NUL-bearing update is stored verbatim (T48B text-data alignment)"
         );
     }
 

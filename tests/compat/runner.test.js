@@ -1106,10 +1106,10 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(madRecord.identity["child-nodes-is-live-list"]).toBe(true);
   });
 
-  test("attribute real scenario reports exactly the frozen T25 known gaps", () => {
+  test("attribute real scenario passes exactly (T25E slice + T48B parity)", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-attributes");
     expect(scenario).toBeDefined();
-    expect(scenario.status).toBe("differences-report");
+    expect(scenario.reportOnly).toBe(true);
 
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
@@ -1119,19 +1119,25 @@ describe("real differential (happy-dom vs mad-dom)", () => {
       return;
     }
 
-    // The whole T25E attribute slice matches happy-dom except the four frozen
-    // gaps (ledgered hc-diff-attributes-read-write): the T21A error
-    // degradation on DOM-spec violations, the strict WHATWG "Name" validation
-    // (digit-led names rejected), the non-Element methods living on
-    // Node.prototype, and the descriptor present on the element's direct
-    // prototype.
-    const paths = scenario.differences.map((difference) => difference.path);
-    expect(paths).toContain("descriptors.getAttribute-descriptor.present");
-    expect(paths).toContain("descriptors.setAttribute-descriptor.present");
-    expect(paths).toContain("errors[0].name");
-    expect(paths).toContain("errors[1].name");
-    expect(paths).toContain("errors[2]");
-    expect(paths).toContain("values.digit-led-name");
+    // T48A moved the attribute methods onto Element.prototype (so the
+    // descriptor no longer sits on the element's direct prototype and
+    // text.getAttribute throws the happy-dom TypeError), and T48B aligned the
+    // DOMException shape (real InvalidCharacterError with the happy-dom
+    // message, code preserved) and the name boundary (digit-led accepted), so
+    // the whole T25E attribute slice matches happy-dom observation for
+    // observation — ledgered hc-diff-attributes-read-write as a genuine pass.
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+
+    // The empty-name error is the same real DOMException on both sides; the
+    // non-Element read throws the same TypeError.
+    expect(madRecord.errors).toHaveLength(2);
+    expect(madRecord.errors[0].name).toBe("InvalidCharacterError");
+    expect(madRecord.errors[0].message).toBe(
+      "Uncaught InvalidCharacterError: Failed to execute 'setAttribute' on 'Element': '' is not a valid attribute name.",
+    );
+    expect(madRecord.errors[1].name).toBe("TypeError");
+    expect(madRecord.values["digit-led-name"]).toEqual({ type: "string", value: "no-throw" });
 
     // The value round-trip, WebIDL DOMString shaping and absent-name reads
     // match happy-dom exactly.
@@ -1146,10 +1152,10 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(madRecord.values["empty-value"]).toEqual({ type: "string", value: "" });
   });
 
-  test("textContent real scenario reports exactly the frozen T25 known gaps", () => {
+  test("textContent real scenario passes exactly (T25E slice + T48B parity)", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-text-content");
     expect(scenario).toBeDefined();
-    expect(scenario.status).toBe("differences-report");
+    expect(scenario.reportOnly).toBe(true);
 
     const madRecord = scenario.sides["mad-dom"].record;
     if (!nativeAvailable) {
@@ -1159,14 +1165,14 @@ describe("real differential (happy-dom vs mad-dom)", () => {
       return;
     }
 
-    // The whole T25E textContent slice matches happy-dom except the two frozen
-    // gaps (ledgered hc-diff-text-content-accessor): the Core NUL rejection
-    // (text-data well-formedness) and the accessor descriptor living on the
-    // element's direct prototype.
-    const paths = scenario.differences.map((difference) => difference.path);
-    expect(paths).toContain("descriptors.textContent-descriptor.present");
-    expect(paths).toContain("errors[0]");
-    expect(paths).toContain("values.nul-stored");
+    // T48A removed the accessor descriptor gap, and T48B stores NUL bytes in
+    // the setter value verbatim (happy-dom parity), so the whole T25E
+    // textContent slice matches happy-dom observation for observation —
+    // ledgered hc-diff-text-content-accessor as a genuine pass.
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+    expect(madRecord.values["nul-stored"]).toEqual({ type: "string", value: "a\u0000b" });
 
     // Reads, writes, null clearing, coercion and deep-tree concatenation match.
     expect(madRecord.values["empty-get"]).toEqual({ type: "string", value: "" });

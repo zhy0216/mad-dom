@@ -25,10 +25,12 @@
 //!
 //! # Atomicity
 //!
-//! All validation (node kind, offset bounds, NUL well-formedness) happens
+//! All validation (node kind, offset bounds) happens
 //! before the single data-field replacement, which is done through the
 //! validated [`Document::set_character_data`] entry — a failed call leaves the
 //! node byte-for-byte unchanged and never touches the tree relations.
+//! Character data is stored verbatim, including NUL bytes (the T48B text-data
+//! alignment).
 //!
 //! # Split
 //!
@@ -135,8 +137,8 @@ impl Document {
     /// For any other node kind this is a no-op (the WHATWG `data` / `nodeValue`
     /// setters on non-`CharacterData` nodes do nothing; happy-dom reads them
     /// as absent). The write is atomic through
-    /// [`Document::set_character_data`]: a NUL byte in `value` fails with
-    /// [`CoreError::InvalidCharacter`] and leaves the node unchanged.
+    /// [`Document::set_character_data`]; `value` is stored verbatim, including
+    /// NUL bytes.
     pub fn set_data(&mut self, id: NodeId, value: &str) -> Result<(), CoreError> {
         match self.get(id)?.data().node_type() {
             NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction => {
@@ -173,16 +175,14 @@ impl Document {
 
     /// Appends `data` to the character data of the node for `id`.
     ///
-    /// The combined value is validated before the single data-field write, so
-    /// a NUL byte in `data` fails with [`CoreError::InvalidCharacter`] and
-    /// leaves the node unchanged.
+    /// The combined value is written through the single data-field entry;
+    /// `data` is stored verbatim, including NUL bytes.
     ///
     /// # Errors
     ///
     /// * [`CoreError::WrongDocument`] / [`CoreError::Arena`] for a foreign or
     ///   stale handle.
     /// * [`CoreError::Hierarchy`] when `id` is not a character-data node.
-    /// * [`CoreError::InvalidCharacter`] when `data` contains a NUL.
     pub fn append_data(&mut self, id: NodeId, data: &str) -> Result<(), CoreError> {
         let current = self.require_character_data(id)?.to_string();
         self.set_character_data(id, &format!("{current}{data}"))
@@ -198,7 +198,6 @@ impl Document {
     /// * [`CoreError::Hierarchy`] when `id` is not a character-data node.
     /// * [`CoreError::IndexOutOfBounds`] when `offset` is greater than the
     ///   data length (the WHATWG `IndexSizeError`).
-    /// * [`CoreError::InvalidCharacter`] when `data` contains a NUL.
     pub fn insert_data(&mut self, id: NodeId, offset: usize, data: &str) -> Result<(), CoreError> {
         let current = self.require_character_data(id)?;
         let len = utf16_len(current);
@@ -242,7 +241,6 @@ impl Document {
     /// * [`CoreError::Hierarchy`] when `id` is not a character-data node.
     /// * [`CoreError::IndexOutOfBounds`] when `offset` is greater than the
     ///   data length (the WHATWG `IndexSizeError`).
-    /// * [`CoreError::InvalidCharacter`] when `data` contains a NUL.
     pub fn replace_data(
         &mut self,
         id: NodeId,

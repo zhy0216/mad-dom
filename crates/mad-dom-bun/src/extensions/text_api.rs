@@ -41,10 +41,10 @@
 //! Every entry checks the T21B affinity guard before touching Core state, then
 //! propagates the frozen table: a destroyed document fails with
 //! `ERR_MAD_DOM_DOCUMENT_DESTROYED`, a foreign handle with
-//! `ERR_MAD_DOM_WRONG_DOCUMENT`, a stale handle with `ERR_MAD_DOM_STALE_HANDLE`,
-//! and a NUL byte in the setter value with `ERR_MAD_DOM_INVALID_CHARACTER`
-//! while leaving the target unchanged (Core validates before mutating, so the
-//! replacement is all-or-nothing).
+//! `ERR_MAD_DOM_WRONG_DOCUMENT`, a stale handle with `ERR_MAD_DOM_STALE_HANDLE`.
+//! The setter value is stored verbatim, including NUL bytes (the T48B text-data
+//! alignment, matching happy-dom); a failed call leaves the target unchanged
+//! (Core validates before mutating, so the replacement is all-or-nothing).
 //!
 //! # Safety preconditions
 //!
@@ -103,7 +103,7 @@ impl NodeHandle {
     /// Sets the `textContent` of this node per the WHATWG setter.
     ///
     /// Delegates verbatim to Core ([`mad_dom_core::dom::Document::set_text_content`]);
-    /// a NUL byte in `value` fails with `ERR_MAD_DOM_INVALID_CHARACTER` and
+    /// the value is stored verbatim, including NUL bytes, and a failed call
     /// leaves the node unchanged.
     #[napi(catch_unwind)]
     pub fn set_text_content(&self, env: Env, value: String) -> napi::Result<()> {

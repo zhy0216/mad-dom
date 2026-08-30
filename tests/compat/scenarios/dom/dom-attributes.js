@@ -2,12 +2,14 @@
 //
 // Scope is exactly the WHATWG attribute surface the T25E binding/facade
 // implements — reads, writes, WebIDL DOMString argument shaping, return values,
-// the frozen error taxonomy and the property descriptors. Observations that
+// the DOM-spec error shape and the property descriptors. Observations that
 // depend on surfaces MAD DOM does not own yet (`.attributes`, `.outerHTML`,
 // ordering) are intentionally absent. The scenario records an error wherever a
-// side throws, so a stricter Core rule (invalid WHATWG "Name") or the napi4
-// error degradation surfaces as a recorded difference rather than an
-// infrastructure failure.
+// side throws, so a mismatch in the DOMException shape (name/message) or the
+// attribute-name boundary surfaces as a recorded difference rather than an
+// infrastructure failure. Since T48B the DOM-spec violation is a real
+// `DOMException` with the happy-dom message and the name boundary matches
+// happy-dom.
 export const id = "dom-attributes";
 export const description = "real differential: element attribute get/set/remove/has, string conversion, errors and descriptors";
 export const targets = "real";
@@ -61,8 +63,9 @@ export async function run(api) {
     api.record.value("empty-value", el.getAttribute("data-empty"));
     api.record.value("empty-has", el.hasAttribute("data-empty"));
 
-    // Invalid attribute name: Core validates the WHATWG "Name" production; the
-    // empty name is rejected by both sides (as different error objects).
+    // Invalid attribute name: Core validates the happy-dom `validateAttributeName`
+    // boundary; the empty name is rejected by both sides with the same real
+    // DOMException (T48B).
     try {
       el.setAttribute("", "x");
       api.record.value("invalid-empty-name", "no-throw");
@@ -70,7 +73,7 @@ export async function run(api) {
       api.record.error(error, "sync-throw");
     }
 
-    // Digit-led names: happy-dom accepts them, Core rejects the WHATWG Name.
+    // Digit-led names: accepted by both sides (T48B happy-dom parity).
     try {
       el.setAttribute("1bad", "x");
       api.record.value("digit-led-name", "no-throw");
@@ -78,9 +81,9 @@ export async function run(api) {
       api.record.error(error, "sync-throw");
     }
 
-    // Non-Element behaviour: attribute access on a Text node. Both sides throw,
-    // but as different error objects (TypeError "not a function" vs the frozen
-    // HierarchyRequestError from Core).
+    // Non-Element behaviour: attribute access on a Text node. Both sides throw
+    // the same TypeError ("not a function"), because the methods live on
+    // Element.prototype (T48A).
     const text = document.createTextNode("hi");
     try {
       text.getAttribute("x");
@@ -89,9 +92,9 @@ export async function run(api) {
       api.record.error(error, "sync-throw");
     }
 
-    // Property descriptors on the element's direct prototype: MAD DOM owns the
-    // methods on Node.prototype, happy-dom inherits them from higher up the
-    // class chain.
+    // Property descriptors on the element's direct prototype: MAD DOM and
+    // happy-dom both keep the attribute methods off the element's direct
+    // prototype (T48A), so the descriptor reads present: false on it.
     const proto = Object.getPrototypeOf(el);
     api.record.descriptor("getAttribute-descriptor", proto, "getAttribute");
     api.record.descriptor("setAttribute-descriptor", proto, "setAttribute");

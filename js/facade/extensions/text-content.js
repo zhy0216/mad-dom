@@ -21,10 +21,11 @@
 //
 // # Errors
 //
-// The native contract owns the DOM rules (Core rejects a NUL byte in the setter
-// value with `ERR_MAD_DOM_INVALID_CHARACTER` while leaving the node unchanged —
-// failure atomicity — and a destroyed document fails per T21); the facade only
-// forwards the frozen error.
+// The native contract owns the DOM rules; since T48B the setter value is stored
+// verbatim (including NUL bytes, matching happy-dom), and a destroyed document
+// fails per T21. A degraded DOMException-classed violation (e.g. a wrong-
+// document handle) is re-raised by the facade as a real `DOMException` with a
+// WebIDL message while preserving the stable `code` (see `dom-error.js`).
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
 // by exporting `install(ctx)`; nothing in the registry changes. The `seam`
@@ -32,6 +33,7 @@
 // (tests/bun/seam.test.js pins that shape).
 
 import { Node } from "./node.js";
+import { rethrowDomError, webidlMessage } from "./dom-error.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/text-content",
@@ -75,12 +77,20 @@ export function install(ctx) {
     Node.prototype,
     "textContent",
     function textContent() {
-      return facadeNodeHandle(ctx, this, "textContent").textContent();
+      const handle = facadeNodeHandle(ctx, this, "textContent");
+      try {
+        return handle.textContent();
+      } catch (error) {
+        rethrowDomError(error, webidlMessage(error, "textContent", "Node"));
+      }
     },
     function textContent(value) {
-      facadeNodeHandle(ctx, this, "textContent").setTextContent(
-        value === null ? "" : String(value),
-      );
+      const handle = facadeNodeHandle(ctx, this, "textContent");
+      try {
+        handle.setTextContent(value === null ? "" : String(value));
+      } catch (error) {
+        rethrowDomError(error, webidlMessage(error, "textContent", "Node"));
+      }
     },
   );
 }

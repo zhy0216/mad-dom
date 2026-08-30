@@ -30,7 +30,7 @@
 //!
 //! | WHATWG name (facade) | native method | params → returns | behavior |
 //! | --- | --- | --- | --- |
-//! | `document.createProcessingInstruction` | `createProcessingInstruction` | `(target, data) → NodeHandle` | a detached `ProcessingInstruction`; Core rejects a non-"Name" target, a `?>` in data and a NUL in data with `ERR_MAD_DOM_INVALID_CHARACTER` |
+//! | `document.createProcessingInstruction` | `createProcessingInstruction` | `(target, data) → NodeHandle` | a detached `ProcessingInstruction`; Core rejects a non-"Name" target and a `?>` in data with `ERR_MAD_DOM_INVALID_CHARACTER` |
 //! | `document.importNode` | `importNode` | `(node, deep) → NodeHandle` | copies `node` (a whole subtree when `deep`) into this document under a brand-new handle; the source is never modified |
 //! | `document.adoptNode` | `adoptNode` | `(node) → NodeHandle` | moves `node` and its subtree from its own document into this one; a same-document node is detached from its parent and returned unchanged |
 //! | `document.doctype` | `doctype` | `() → NodeHandle \| null` | the document's parsed `DocumentType`, or `null`; a pure read that never materializes a skeleton |
@@ -40,7 +40,7 @@
 //! | WHATWG name (facade) | native method | params → returns | behavior |
 //! | --- | --- | --- | --- |
 //! | `CharacterData.data` | `data` | `() → String \| null` | the character data of a `Text`/`Comment`/`ProcessingInstruction` node; `null` for any other kind |
-//! | `CharacterData.data` setter | `setData` | `(value) → ()` | atomic replacement; a no-op for non-character-data kinds; a NUL byte fails with `ERR_MAD_DOM_INVALID_CHARACTER` |
+//! | `CharacterData.data` setter | `setData` | `(value) → ()` | atomic replacement; a no-op for non-character-data kinds; the value is stored verbatim, including NUL bytes (T48B) |
 //! | `CharacterData.length` | `dataLength` | `() → number \| null` | the UTF-16 length of the data; `null` for non-character-data kinds |
 //! | `Node.nodeValue` | `nodeValue` | `() → String \| null` | the data for character-data kinds, `null` otherwise |
 //! | `Node.nodeValue` setter | `setNodeValue` | `(value) → ()` | same semantics as `setData` |
@@ -49,7 +49,7 @@
 //! | `DocumentType.publicId` | `publicId` | `() → String \| null` | the doctype public identifier; `null` for other kinds |
 //! | `DocumentType.systemId` | `systemId` | `() → String \| null` | the doctype system identifier; `null` for other kinds |
 //! | `CharacterData.substringData` | `substringData` | `(offset, count) → String` | the WHATWG substring (UTF-16 units, offset past the end yields `""`) |
-//! | `CharacterData.appendData` | `appendData` | `(data) → ()` | appends; NUL in `data` fails atomically |
+//! | `CharacterData.appendData` | `appendData` | `(data) → ()` | appends; the combined value is stored verbatim, including NUL bytes |
 //! | `CharacterData.insertData` | `insertData` | `(offset, data) → ()` | inserts at the UTF-16 offset; an out-of-range offset fails with `ERR_MAD_DOM_INDEX_OUT_OF_BOUNDS` |
 //! | `CharacterData.deleteData` | `deleteData` | `(offset, count) → ()` | deletes with clamped count |
 //! | `CharacterData.replaceData` | `replaceData` | `(offset, count, data) → ()` | replaces with clamped count |

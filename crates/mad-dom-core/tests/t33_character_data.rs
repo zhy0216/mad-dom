@@ -90,12 +90,10 @@ fn create_processing_instruction_rejects_question_greater_than_in_data() {
 }
 
 #[test]
-fn create_processing_instruction_rejects_nul_in_data() {
+fn create_processing_instruction_stores_nul_in_data() {
     let mut doc = Document::new();
-    assert_invalid_character(
-        doc.create_processing_instruction("target", "a\0b")
-            .unwrap_err(),
-    );
+    let pi = doc.create_processing_instruction("target", "a\0b").unwrap();
+    assert_eq!(doc.character_data(pi).unwrap(), Some("a\0b"));
 }
 
 // ---- data surface ----
@@ -144,11 +142,11 @@ fn set_data_updates_data_kinds_and_is_a_noop_elsewhere() {
 }
 
 #[test]
-fn set_data_rejects_nul_atomically() {
+fn set_data_stores_nul_verbatim() {
     let mut doc = Document::new();
     let text = doc.create_text("keep").unwrap();
-    assert_invalid_character(doc.set_data(text, "a\0b").unwrap_err());
-    assert_eq!(doc.character_data(text).unwrap(), Some("keep"));
+    doc.set_data(text, "a\0b").unwrap();
+    assert_eq!(doc.character_data(text).unwrap(), Some("a\0b"));
 }
 
 // ---- CharacterData mutators ----
@@ -247,13 +245,15 @@ fn mutators_require_a_character_data_node() {
 }
 
 #[test]
-fn mutators_reject_nul_in_new_data_atomically() {
+fn mutators_store_nul_verbatim() {
     let mut doc = Document::new();
     let text = doc.create_text("ok").unwrap();
-    assert_invalid_character(doc.append_data(text, "a\0b").unwrap_err());
-    assert_invalid_character(doc.insert_data(text, 0, "a\0b").unwrap_err());
-    assert_invalid_character(doc.replace_data(text, 0, 1, "a\0b").unwrap_err());
-    assert_eq!(doc.character_data(text).unwrap(), Some("ok"));
+    doc.append_data(text, "a\0b").unwrap();
+    assert_eq!(doc.character_data(text).unwrap(), Some("oka\0b"));
+    doc.insert_data(text, 0, "a\0b").unwrap();
+    assert_eq!(doc.character_data(text).unwrap(), Some("a\0boka\0b"));
+    doc.replace_data(text, 0, 1, "a\0b").unwrap();
+    assert_eq!(doc.character_data(text).unwrap(), Some("a\0b\0boka\0b"));
 }
 
 #[test]

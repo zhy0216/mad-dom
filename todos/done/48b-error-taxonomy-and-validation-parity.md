@@ -1,6 +1,6 @@
 # 48B 错误分类与校验对齐（真实 DOMException + happy-dom 消息）
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P2
 - 里程碑：M9
 - 条目 ID：`T48B`
@@ -15,7 +15,7 @@ happy-dom 的可观察行为。
 
 ## 条目
 
-- [ ] **T48B — 错误分类与校验对齐（真实 DOMException + happy-dom 消息）**
+- [x] **T48B — 错误分类与校验对齐（真实 DOMException + happy-dom 消息）**
   - 实现：
     - 在 FFI/facade 边界构造并抛出真实 `DOMException`（`InvalidCharacterError`、
       `HierarchyRequestError` 等），保留稳定 `code`；移除 `[ERR_MAD_DOM_*]` 前缀

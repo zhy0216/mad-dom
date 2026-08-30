@@ -35,10 +35,10 @@
 // # Errors
 //
 // The native contract owns the DOM rules (out-of-range `splitText` /
-// `insertData` offsets fail with `ERR_MAD_DOM_INDEX_OUT_OF_BOUNDS`, a NUL in
-// a data write with `ERR_MAD_DOM_INVALID_CHARACTER`, and an ineligible mutator
-// receiver with `ERR_MAD_DOM_HIERARCHY`); the facade only forwards the frozen
-// error.
+// `insertData` offsets fail with `ERR_MAD_DOM_INDEX_OUT_OF_BOUNDS` and an
+// ineligible mutator receiver with `ERR_MAD_DOM_HIERARCHY`; character data is
+// stored verbatim, including NUL bytes, since T48B); the facade only forwards
+// the frozen error.
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
 // by exporting `install(ctx)`; nothing in the registry changes.

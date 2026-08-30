@@ -30,7 +30,10 @@
 // The native contract owns the DOM rules (Core rejects a non-Element node with
 // `ERR_MAD_DOM_HIERARCHY` and an invalid attribute name on `setAttribute` with
 // `ERR_MAD_DOM_INVALID_CHARACTER`, leaving the list unchanged; a destroyed
-// document fails per T21); the facade only forwards the frozen error.
+// document fails per T21); the facade only forwards the frozen error. T48B
+// re-raises the DOMException-classed violations as real `DOMException` objects
+// with the happy-dom WebIDL message while preserving the stable `code` (see
+// `dom-error.js`); lifecycle/argument errors pass through unchanged.
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
 // by exporting `install(ctx)`; nothing in the registry changes. The `seam`
@@ -39,6 +42,7 @@
 
 import { Element } from "./node.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
+import { domErrorName, rethrowDomError, webidlMessage } from "./dom-error.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/attributes",
@@ -79,15 +83,35 @@ function facadeNodeHandle(ctx, value, role) {
  * `ctx.defineMethod` is the only property-definition path used here; its
  * default descriptor is fixed, non-enumerable and non-configurable, matching
  * the rest of the facade surface.
+ *
+ * Every native read/write is wrapped so a degraded DOMException-classed
+ * violation is re-raised as a real `DOMException` with the happy-dom WebIDL
+ * message and the stable `code` (T48B).
  */
 export function install(ctx) {
   ctx.defineMethod(Element.prototype, "getAttribute", function getAttribute(name) {
-    return facadeNodeHandle(ctx, this, "getAttribute").getAttribute(String(name));
+    const handle = facadeNodeHandle(ctx, this, "getAttribute");
+    try {
+      return handle.getAttribute(String(name));
+    } catch (error) {
+      rethrowDomError(error, webidlMessage(error, "getAttribute", "Element"));
+    }
   });
 
   ctx.defineMethod(Element.prototype, "setAttribute", function setAttribute(name, value) {
     const handle = facadeNodeHandle(ctx, this, "setAttribute");
-    handle.setAttribute(String(name), String(value));
+    try {
+      handle.setAttribute(String(name), String(value));
+    } catch (error) {
+      // The happy-dom verbatim message for an invalid attribute name; the
+      // `Uncaught InvalidCharacterError: ` prefix is happy-dom's own literal
+      // message text, compared byte-for-byte by the differential runner.
+      const message =
+        domErrorName(error) === "InvalidCharacterError"
+          ? `Uncaught InvalidCharacterError: Failed to execute 'setAttribute' on 'Element': '${String(name)}' is not a valid attribute name.`
+          : webidlMessage(error, "setAttribute", "Element");
+      rethrowDomError(error, message);
+    }
     // T42: the write queued the `attributeChangedCallback` reaction for a
     // custom element observing the attribute; flush it synchronously.
     flushCustomElementReactions(ctx, handle);
@@ -95,11 +119,20 @@ export function install(ctx) {
 
   ctx.defineMethod(Element.prototype, "removeAttribute", function removeAttribute(name) {
     const handle = facadeNodeHandle(ctx, this, "removeAttribute");
-    handle.removeAttribute(String(name));
+    try {
+      handle.removeAttribute(String(name));
+    } catch (error) {
+      rethrowDomError(error, webidlMessage(error, "removeAttribute", "Element"));
+    }
     flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineMethod(Element.prototype, "hasAttribute", function hasAttribute(name) {
-    return facadeNodeHandle(ctx, this, "hasAttribute").hasAttribute(String(name));
+    const handle = facadeNodeHandle(ctx, this, "hasAttribute");
+    try {
+      return handle.hasAttribute(String(name));
+    } catch (error) {
+      rethrowDomError(error, webidlMessage(error, "hasAttribute", "Element"));
+    }
   });
 }

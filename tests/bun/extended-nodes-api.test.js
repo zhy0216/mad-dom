@@ -150,15 +150,15 @@ describe("CharacterData surface (T33)", () => {
     expect(text.data).toBe("abc");
   });
 
-  test("a NUL byte in a data write throws ERR_MAD_DOM_INVALID_CHARACTER atomically", () => {
+  test("a NUL byte in a data write is stored verbatim", () => {
     const document = fresh();
     const text = document.createTextNode("keep");
-    expect(() => {
-      text.data = "a\u0000b";
-    }).toThrow(/.+ERR_MAD_DOM_INVALID_CHARACTER/);
-    expect(() => text.appendData("a\u0000b")).toThrow(/.+ERR_MAD_DOM_INVALID_CHARACTER/);
-    expect(() => text.replaceData(0, 1, "a\u0000b")).toThrow(/.+ERR_MAD_DOM_INVALID_CHARACTER/);
-    expect(text.data).toBe("keep");
+    text.data = "a\u0000b";
+    expect(text.data).toBe("a\u0000b");
+    text.appendData("c\u0000d");
+    expect(text.data).toBe("a\u0000bc\u0000d");
+    text.replaceData(0, 1, "\u0000");
+    expect(text.data).toBe("\u0000\u0000bc\u0000d");
   });
 });
 
@@ -236,7 +236,7 @@ describe("ProcessingInstruction (T33)", () => {
     expect(pi.parentNode).toBeNull();
   });
 
-  test("invalid targets and ?>/NUL data throw ERR_MAD_DOM_INVALID_CHARACTER", () => {
+  test("invalid targets and ?>/NUL data", () => {
     const document = fresh();
     expect(() => document.createProcessingInstruction("", "d")).toThrow(
       /.+ERR_MAD_DOM_INVALID_CHARACTER/,
@@ -250,9 +250,9 @@ describe("ProcessingInstruction (T33)", () => {
     expect(() => document.createProcessingInstruction("target", "a?>b")).toThrow(
       /.+ERR_MAD_DOM_INVALID_CHARACTER/,
     );
-    expect(() => document.createProcessingInstruction("target", "a\u0000b")).toThrow(
-      /.+ERR_MAD_DOM_INVALID_CHARACTER/,
-    );
+    // NUL in PI data is stored verbatim (T48B text-data alignment).
+    const pi = document.createProcessingInstruction("target", "a\u0000b");
+    expect(pi.data).toBe("a\u0000b");
   });
 
   test("target reads undefined on other node kinds", () => {

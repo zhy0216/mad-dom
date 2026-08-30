@@ -217,7 +217,9 @@ fn set_attribute_rejects_invalid_names_atomically() {
     doc.set_attribute(el, "keep", "me").unwrap();
     let before = ordered(&doc, el);
 
-    for name in ["", "1abc", "a b", "a/b", "a\tb", "a\nb", "-x", ".x"] {
+    for name in [
+        "", "a b", "a/b", "a\tb", "a\nb", "-x", "a b c", "a\0b", "a'b",
+    ] {
         let err = doc.set_attribute(el, name, "v").unwrap_err();
         assert!(
             matches!(
@@ -250,11 +252,16 @@ fn set_attribute_accepts_valid_names() {
         "a1",
         "aria-label",
         "中文属性",
+        "1bad",
+        ".x",
+        "a-b",
+        "a.b",
+        "é",
     ] {
         doc.set_attribute(el, name, "v").unwrap();
         assert_eq!(doc.get_attribute(el, name).unwrap(), Some("v"));
     }
-    assert_eq!(ordered(&doc, el).len(), 7);
+    assert_eq!(ordered(&doc, el).len(), 12);
 }
 
 // ---- error taxonomy: non-element, foreign and stale handles ----

@@ -53,21 +53,17 @@
     {
       "id": "hc-diff-attributes-read-write",
       "suite": "diff",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-attributes",
-      "reason": "T48A introduced the per-tag Element class hierarchy: the attribute methods now live on Element.prototype and the element's direct prototype is a per-tag class, so getAttribute/ setAttribute report present: false on it (matching happy-dom), and non-Element access is closed - `text.getAttribute` reads undefined and calling it throws the same TypeError (\"not a function\") as happy-dom. Two attribute gaps remain, both tracked by T48B: the napi4 error degradation (DOM-spec violations throw a plain Error carrying the frozen ERR_MAD_DOM_* code instead of a real DOMException with the happy-dom message) and Core's strict WHATWG Name validation (digit-led names rejected where happy-dom accepts them; the extra recorded digit-led error shifts the errors array, so the now-matching text.getAttribute TypeError sits at a different index).",
-      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T25E"
     },
     {
       "id": "hc-diff-text-content-accessor",
       "suite": "diff",
-      "status": "known-gap",
+      "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-text-content",
-      "reason": "T48A introduced the per-tag Element class hierarchy: textContent stays on Node.prototype (matching happy-dom) and the element's direct prototype is a per-tag class, so the textContent accessor reports present: false on it. The single remaining gap: a NUL byte in the setter value - Core rejects it with ERR_MAD_DOM_INVALID_CHARACTER while happy-dom stores it verbatim - tracked by T48B.",
-      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T25E"
     },
     {

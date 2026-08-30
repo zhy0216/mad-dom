@@ -3,10 +3,10 @@
 // Scope is exactly the WHATWG `textContent` getter/setter the T25E binding/
 // facade implements — reads, writes, the WebIDL `DOMString?` setter conversion
 // (null clears, numbers stringify), tree-order concatenation over deep trees,
-// text-node data, failure atomicity and the property descriptor. The scenario
-// records an error wherever a side throws, so the Core NUL rejection or the
-// napi4 error degradation surfaces as a recorded difference rather than an
-// infrastructure failure.
+// text-node data, NUL-byte storage and the property descriptor. The scenario
+// records an error wherever a side throws, so a mismatch in the stored value
+// surfaces as a recorded difference rather than an infrastructure failure.
+// Since T48B NUL bytes are stored verbatim, matching happy-dom.
 export const id = "dom-text-content";
 export const description = "real differential: Node.textContent getter/setter reads, writes, string conversion, null, deep trees and descriptors";
 export const targets = "real";
@@ -69,8 +69,8 @@ export async function run(api) {
     text.textContent = "changed";
     api.record.value("text-get-after-set", text.textContent);
 
-    // A NUL byte in the setter value: Core rejects it (ERR_MAD_DOM_INVALID_CHARACTER)
-    // while happy-dom stores it.
+    // A NUL byte in the setter value: stored verbatim by both sides (T48B
+    // happy-dom parity).
     try {
       el.textContent = "a\u0000b";
       api.record.value("nul-stored", el.textContent);
@@ -78,9 +78,9 @@ export async function run(api) {
       api.record.error(error, "sync-throw");
     }
 
-    // Property descriptor on the element's direct prototype: MAD DOM owns the
-    // accessor on Node.prototype, happy-dom inherits it from higher up the
-    // class chain.
+    // Property descriptor on the element's direct prototype: MAD DOM and
+    // happy-dom both keep the accessor off the element's direct prototype
+    // (T48A), so the descriptor reads present: false on it.
     const proto = Object.getPrototypeOf(el);
     api.record.descriptor("textContent-descriptor", proto, "textContent");
   } catch (error) {

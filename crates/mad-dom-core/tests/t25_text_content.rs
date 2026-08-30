@@ -309,68 +309,53 @@ fn setting_text_again_replaces_previous_content() {
 // ---- atomicity ----
 
 #[test]
-fn set_element_with_nul_fails_atomically() {
+fn set_element_stores_nul_verbatim() {
     let mut doc = Document::new();
     let root = element(&mut doc, "div");
     let t_a = text(&mut doc, "a");
     let span = element(&mut doc, "span");
     append(&mut doc, root, t_a);
     append(&mut doc, root, span);
-    let original = doc.children(root).unwrap();
 
-    assert!(matches!(
-        doc.set_text_content(root, "bad\0value"),
-        Err(CoreError::InvalidCharacter {
-            character: Some('\0'),
-            ..
-        })
-    ));
+    doc.set_text_content(root, "bad\0value").unwrap();
 
-    // The child list is byte-for-byte unchanged and still readable.
-    assert_eq!(doc.children(root).unwrap(), original);
-    assert_eq!(doc.first_child(root).unwrap(), Some(original[0]));
-    assert_eq!(doc.last_child(root).unwrap(), Some(original[1]));
-    assert_eq!(doc.text_content(root).unwrap(), Some("a".to_string()));
+    // The NUL-bearing value replaces the children verbatim (T48B text-data
+    // alignment, matching happy-dom).
+    assert_eq!(
+        doc.text_content(root).unwrap(),
+        Some("bad\0value".to_string())
+    );
     assert_eq!(doc.check_invariants(root).unwrap(), ());
 }
 
 #[test]
-fn set_fragment_with_nul_fails_atomically() {
+fn set_fragment_stores_nul_verbatim() {
     let mut doc = Document::new();
     let frag = fragment(&mut doc);
     let t_x = text(&mut doc, "x");
     append(&mut doc, frag, t_x);
 
-    assert!(matches!(
-        doc.set_text_content(frag, "bad\0value"),
-        Err(CoreError::InvalidCharacter {
-            character: Some('\0'),
-            ..
-        })
-    ));
+    doc.set_text_content(frag, "bad\0value").unwrap();
 
     assert_eq!(doc.children(frag).unwrap().len(), 1);
-    assert_eq!(doc.text_content(frag).unwrap(), Some("x".to_string()));
+    assert_eq!(
+        doc.text_content(frag).unwrap(),
+        Some("bad\0value".to_string())
+    );
     assert_eq!(doc.check_invariants(frag).unwrap(), ());
 }
 
 #[test]
-fn set_text_node_with_nul_fails_atomically() {
+fn set_text_node_stores_nul_verbatim() {
     let mut doc = Document::new();
     let t = text(&mut doc, "hello");
 
-    assert!(matches!(
-        doc.set_text_content(t, "bad\0value"),
-        Err(CoreError::InvalidCharacter {
-            character: Some('\0'),
-            ..
-        })
-    ));
+    doc.set_text_content(t, "bad\0value").unwrap();
 
     assert_eq!(
         doc.get(t).unwrap().data().text_data(),
-        Some("hello"),
-        "a rejected update leaves the data unchanged"
+        Some("bad\0value"),
+        "a NUL-bearing update is stored verbatim (T48B text-data alignment)"
     );
 }
 

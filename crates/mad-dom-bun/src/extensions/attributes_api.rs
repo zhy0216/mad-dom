@@ -27,7 +27,7 @@
 //! | WHATWG name (facade) | native method | params → returns | behavior |
 //! | --- | --- | --- | --- |
 //! | `getAttribute` | `getAttribute` | `(name: String) → Option<String>` | value of the named attribute, `null` when absent |
-//! | `setAttribute` | `setAttribute` | `(name: String, value: String) → ()` | stores the value verbatim; Core rejects an invalid WHATWG "Name" with `ERR_MAD_DOM_INVALID_CHARACTER` |
+//! | `setAttribute` | `setAttribute` | `(name: String, value: String) → ()` | stores the value verbatim; Core rejects an invalid attribute name (the happy-dom `validateAttributeName` boundary) with `ERR_MAD_DOM_INVALID_CHARACTER` |
 //! | `removeAttribute` | `removeAttribute` | `(name: String) → ()` | removes the named attribute; absent names are a no-op |
 //! | `hasAttribute` | `hasAttribute` | `(name: String) → bool` | whether the element has the named attribute |
 //!
@@ -121,8 +121,9 @@ impl NodeHandle {
     /// verbatim.
     ///
     /// Delegates verbatim to Core ([`mad_dom_core::dom::Document::set_attribute`]);
-    /// an invalid WHATWG "Name" fails with `ERR_MAD_DOM_INVALID_CHARACTER` and
-    /// leaves the attribute list unchanged.
+    /// an invalid attribute name (the happy-dom `validateAttributeName` boundary)
+    /// fails with `ERR_MAD_DOM_INVALID_CHARACTER` and leaves the attribute list
+    /// unchanged.
     #[napi(catch_unwind)]
     pub fn set_attribute(&self, env: Env, name: String, value: String) -> napi::Result<()> {
         check_affinity(self.shared(), &env)?;

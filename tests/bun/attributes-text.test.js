@@ -33,9 +33,10 @@ import {
 //     non-Element behaviour, deep trees, failure atomicity and wrapper identity
 //     are covered end to end;
 //   - error names/codes follow the frozen taxonomy: an invalid attribute name
-//     fails with ERR_MAD_DOM_INVALID_CHARACTER (list unchanged), a NUL
-//     textContent setter value with ERR_MAD_DOM_INVALID_CHARACTER (node
-//     unchanged), and a destroyed document with ERR_MAD_DOM_DOCUMENT_DESTROYED.
+//     fails with ERR_MAD_DOM_INVALID_CHARACTER (list unchanged; digit-led names
+//     are accepted, happy-dom parity since T48B), a NUL textContent setter
+//     value is stored verbatim (happy-dom parity since T48B), and a destroyed
+//     document with ERR_MAD_DOM_DOCUMENT_DESTROYED.
 //     Since T48A a Text/Comment node holds no attribute members at all
 //     (happy-dom parity: reads undefined, calls throw TypeError), so no Core
 //     element check is reached for non-Element attribute access.
@@ -250,7 +251,7 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
     const win = createWindow();
     const el = win.document.createElement("div");
     try {
-      for (const bad of ["", "1bad", "has space", "-dash"]) {
+      for (const bad of ["", "has space", "-dash"]) {
         const err = thrown(() => el.setAttribute(bad, "x"));
         expect(err, `setAttribute(${JSON.stringify(bad)}) must throw`).toBeInstanceOf(Error);
         expect(err.code).toBe("ERR_MAD_DOM_INVALID_CHARACTER");
@@ -259,6 +260,9 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
         expect(el.getAttribute(bad)).toBeNull();
         expect(el.hasAttribute(bad)).toBe(false);
       }
+      // Digit-led names are accepted (happy-dom parity, T48B).
+      el.setAttribute("1bad", "x");
+      expect(el.getAttribute("1bad")).toBe("x");
     } finally {
       win.destroy();
     }
@@ -425,34 +429,21 @@ describe.skipIf(!nativeAvailable)("textContent behaviour (T25E)", () => {
     }
   });
 
-  test("a NUL byte in the setter fails with ERR_MAD_DOM_INVALID_CHARACTER and keeps failure atomicity", () => {
+  test("a NUL byte in the setter is stored verbatim (T48B happy-dom parity)", () => {
     const win = createWindow();
     const doc = win.document;
     const el = doc.createElement("div");
-    const child = doc.createElement("span");
-    el.appendChild(child);
     const text = doc.createTextNode("keep");
     try {
-      const err = thrown(() => {
-        el.textContent = "a\u0000b";
-      });
-      expect(err).toBeInstanceOf(Error);
-      expect(err.code).toBe("ERR_MAD_DOM_INVALID_CHARACTER");
-      expect(err.message).toContain("InvalidCharacterError");
-
-      // Atomicity: the failed replacement leaves every child in place.
+      el.textContent = "a\u0000b";
+      expect(el.textContent).toBe("a\u0000b");
+      // The child list is replaced by the single NUL-bearing text node.
       expect(el.childNodes).toHaveLength(1);
-      expect(el.firstChild).toBe(child);
-      expect(el.textContent).toBe("");
+      expect(el.firstChild.nodeType).toBe(3);
 
-      // A Text node's data is replaced atomically too: a NUL value is rejected
-      // before the data field is written, so the old data survives.
-      const textErr = thrown(() => {
-        text.textContent = "a\u0000b";
-      });
-      expect(textErr).toBeInstanceOf(Error);
-      expect(textErr.code).toBe("ERR_MAD_DOM_INVALID_CHARACTER");
-      expect(text.textContent).toBe("keep");
+      // A Text node's data is replaced verbatim too.
+      text.textContent = "a\u0000b";
+      expect(text.textContent).toBe("a\u0000b");
     } finally {
       win.destroy();
     }

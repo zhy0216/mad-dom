@@ -45,16 +45,13 @@ describe.skipIf(!nativeAvailable)("native error taxonomy (T21)", () => {
     doc.destroy();
   });
 
-  test("character-data validation: NUL is an InvalidCharacter error", () => {
+  test("character data stores NUL verbatim (T48B text-data alignment)", () => {
     const doc = createDocument();
-    const text = thrown(() => doc.createText("a\u0000b"));
-    expect(text).toBeInstanceOf(Error);
-    expect(text.code).toBe("ERR_MAD_DOM_INVALID_CHARACTER");
-    expect(text.message).toContain("invalid character in text data");
+    const text = doc.createText("a\u0000b");
+    expect(text.data()).toBe("a\u0000b");
 
-    const comment = thrown(() => doc.createComment("a\u0000b"));
-    expect(comment.code).toBe("ERR_MAD_DOM_INVALID_CHARACTER");
-    expect(comment.message).toContain("invalid character in comment data");
+    const comment = doc.createComment("a\u0000b");
+    expect(comment.data()).toBe("a\u0000b");
     doc.destroy();
   });
 

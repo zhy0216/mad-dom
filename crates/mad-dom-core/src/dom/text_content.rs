@@ -25,8 +25,7 @@
 //!   on a Document or DocumentType does nothing);
 //! * a `Text` or `Comment` node updates its data in place through the
 //!   crate-internal [`Document::set_character_data`] entry, which validates
-//!   ownership, node kind and text-data well-formedness (rejecting NUL with
-//!   [`CoreError::InvalidCharacter`]) before the single data field is written;
+//!   ownership and node kind before the single data field is written;
 //! * an `Element` or `DocumentFragment` replaces all of its children with a
 //!   single text node holding the value (WHATWG "string replace all") via the
 //!   unified mutation API ([`Document::create_text`],
@@ -41,10 +40,11 @@
 //!
 //! # Error and atomicity boundary
 //!
-//! A foreign handle fails with [`CoreError::WrongDocument`], a stale handle
-//! with [`CoreError::Arena`], and a NUL byte in the setter value fails with
-//! [`CoreError::InvalidCharacter`] while leaving the target unchanged. No raw
-//! arena pointer escapes this crate and there is no second text state.
+//! A foreign handle fails with [`CoreError::WrongDocument`] and a stale handle
+//! with [`CoreError::Arena`], both while leaving the target unchanged. The
+//! setter value is stored verbatim, including NUL bytes (the T48B text-data
+//! alignment, matching happy-dom). No raw arena pointer escapes this crate and
+//! there is no second text state.
 //!
 //! Owned by **T25C**; integration gate: **T25**. T25C may only edit this file
 //! and its dedicated tests (`tests/t25_text_content.rs`); it must not modify
@@ -107,7 +107,8 @@ impl Document {
     ///
     /// * [`CoreError::WrongDocument`] when `id` belongs to another document.
     /// * [`CoreError::Arena`] when `id` is a stale or invalid handle.
-    /// * [`CoreError::InvalidCharacter`] when `value` contains a NUL character.
+    ///
+    /// `value` is stored verbatim, including NUL bytes.
     pub fn set_text_content(&mut self, id: NodeId, value: &str) -> Result<(), CoreError> {
         let kind = self.get(id)?.data().node_type();
         match kind {

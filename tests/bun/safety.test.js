@@ -105,8 +105,6 @@ describe.skipIf(!nativeAvailable)("native safety boundary (T21)", () => {
       () => doc.createElement(""),
       () => doc.createElement(" "),
       () => doc.createElement("1div"),
-      () => doc.createText("\u0000"),
-      () => doc.createComment("a\u0000b"),
       () => doc.appendChild(div, 42),
       () => doc.appendChild(null, div),
       () => doc.createElement(1e9),
@@ -119,6 +117,13 @@ describe.skipIf(!nativeAvailable)("native safety boundary (T21)", () => {
         Error,
       );
     }
+
+    // Text data is stored verbatim, including NUL bytes (T48B text-data
+    // alignment, matching happy-dom) — these succeed cleanly.
+    const nulText = doc.createText("\u0000");
+    expect(nulText.data()).toBe("\u0000");
+    const nulComment = doc.createComment("a\u0000b");
+    expect(nulComment.data()).toBe("a\u0000b");
 
     // Large-but-valid inputs are handled without crashing.
     const big = doc.createText("x".repeat(1_000_000));

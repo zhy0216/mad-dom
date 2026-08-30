@@ -46,10 +46,11 @@
 //! * a foreign handle fails with [`CoreError::WrongDocument`];
 //! * a stale handle fails with [`CoreError::Arena`];
 //! * a non-element node fails with [`CoreError::Hierarchy`];
-//! * `set_attribute` rejects an invalid attribute name (a WHATWG-style "Name":
-//!   non-empty, first character a letter, `_`, `:`, or non-ASCII, later
-//!   characters also digits, `-` or `.`) with
-//!   [`CoreError::InvalidCharacter`].
+//! * `set_attribute` rejects an invalid attribute name (an empty name, a name
+//!   starting with `-`, or a name containing an HTML-invalid character such as
+//!   ASCII whitespace, `"`, `'`, `>`, `<`, `=` or `/` — the happy-dom
+//!   `validateAttributeName` boundary; digit-led, `.`-led, `:` and non-ASCII
+//!   names are accepted) with [`CoreError::InvalidCharacter`].
 //!
 //! The read entries ([`Document::get_attribute`], [`Document::has_attribute`])
 //! and [`Document::remove_attribute`] do *not* validate the name: per the DOM,
@@ -119,8 +120,10 @@ impl Document {
     ///
     /// # Errors
     ///
-    /// * [`CoreError::InvalidCharacter`] when `name` is not a valid WHATWG
-    ///   "Name"; the storage is left unchanged.
+    /// * [`CoreError::InvalidCharacter`] when `name` is not a valid attribute
+    ///   name per the happy-dom `validateAttributeName` boundary (empty,
+    ///   `-`-led, or containing an HTML-invalid character); the storage is
+    ///   left unchanged.
     /// * [`CoreError::WrongDocument`] when `id` belongs to another document.
     /// * [`CoreError::Arena`] when `id` is a stale or invalid handle.
     /// * [`CoreError::Hierarchy`] when the node for `id` is not an `Element`.
@@ -197,48 +200,47 @@ fn hierarchy(message: impl Into<String>) -> CoreError {
     }
 }
 
-/// Whether `c` may start a WHATWG-style "Name" (letter, `_`, `:`, or
-/// non-ASCII).
-fn is_name_start(c: char) -> bool {
-    c == '_' || c == ':' || c.is_ascii_alphabetic() || u32::from(c) > 0x7F
-}
-
-/// Whether `c` may continue a WHATWG-style "Name" (start characters plus
-/// digits, `-` and `.`).
-fn is_name_char(c: char) -> bool {
-    is_name_start(c) || c.is_ascii_digit() || c == '-' || c == '.'
-}
-
-/// Validates an attribute name against the WHATWG "Name" production.
+/// Whether `c` is forbidden in an HTML attribute name.
 ///
-/// Mirrors `validate_element_name` in `document.rs` (the same Name production
-/// used for element names) with the label `"attribute name"`. The check covers
-/// the whole name, so `"data-x"`, `"xml:lang"` and non-ASCII names are accepted
-/// while empty, digit-led or space-containing names are rejected with
-/// [`CoreError::InvalidCharacter`].
+/// Mirrors happy-dom's `validateAttributeName` boundary (the
+/// `HTML_INVALID_ATTRIBUTE_NAME_CHARACTER_REGEX` over the lowercased name):
+/// ASCII control characters and C1 controls, the ASCII space, the HTML
+/// syntax characters `" ' > < = /`, and the Unicode noncharacters. It accepts
+/// digit-led names, a leading `.`, `:` and non-ASCII characters.
+fn is_invalid_attribute_name_char(c: char) -> bool {
+    let code = u32::from(c);
+    matches!(code, 0x00..=0x1F | 0x7F | 0x80..=0x9F)
+        || matches!(c, ' ' | '"' | '\'' | '>' | '<' | '=' | '/')
+        || (0xFDD0..=0xFDEF).contains(&code)
+        || (code & 0xFFFE) == 0xFFFE
+}
+
+/// Validates an attribute name against happy-dom's `validateAttributeName`
+/// boundary.
+///
+/// The check mirrors happy-dom's observable rule: an empty name, a name
+/// starting with `-`, or a name containing any character of
+/// [`is_invalid_attribute_name_char`] is rejected with
+/// [`CoreError::InvalidCharacter`]; everything else — digit-led names,
+/// `.`-led names, `:` and non-ASCII characters — is accepted.
 fn validate_attribute_name(name: &str) -> Result<(), CoreError> {
-    let mut chars = name.chars();
-    match chars.next() {
-        None => Err(CoreError::InvalidCharacter {
+    if name.is_empty() {
+        return Err(CoreError::InvalidCharacter {
             what: "attribute name",
             character: None,
-        }),
-        Some(first) => {
-            if !is_name_start(first) {
-                return Err(CoreError::InvalidCharacter {
-                    what: "attribute name",
-                    character: Some(first),
-                });
-            }
-            for c in chars {
-                if !is_name_char(c) {
-                    return Err(CoreError::InvalidCharacter {
-                        what: "attribute name",
-                        character: Some(c),
-                    });
-                }
-            }
-            Ok(())
-        }
+        });
     }
+    if name.starts_with('-') {
+        return Err(CoreError::InvalidCharacter {
+            what: "attribute name",
+            character: Some('-'),
+        });
+    }
+    if let Some(c) = name.chars().find(|&c| is_invalid_attribute_name_char(c)) {
+        return Err(CoreError::InvalidCharacter {
+            what: "attribute name",
+            character: Some(c),
+        });
+    }
+    Ok(())
 }

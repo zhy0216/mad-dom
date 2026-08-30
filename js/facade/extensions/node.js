@@ -48,6 +48,7 @@ import { Document } from "../document.js";
 import { Window } from "../window.js";
 import { liveChildNodes } from "./child-nodelist.js";
 import { upgradeElementPrototype } from "./custom-elements.js";
+import { domErrorName, rethrowDomError, webidlMessage } from "./dom-error.js";
 
 export {
   Node,
@@ -102,7 +103,20 @@ export function install(ctx) {
   // node through `ctx.wrap`.
   ctx.defineMethod(Document.prototype, "createElement", function createElement(name) {
     const documentHandle = ctx.documentContext.handleOf(this);
-    const element = ctx.wrap(documentHandle.createElement(name));
+    let element;
+    try {
+      element = ctx.wrap(documentHandle.createElement(name));
+    } catch (error) {
+      // T48B: re-raise the invalid-element-name violation as a real
+      // DOMException with the stable `code`, keeping the WHATWG name visible in
+      // the WebIDL message (the frozen T21A name embedded in the native message
+      // is part of the contract consumers key on).
+      const message =
+        domErrorName(error) === "InvalidCharacterError"
+          ? `Uncaught InvalidCharacterError: Failed to execute 'createElement' on 'Document': '${String(name)}' is not a valid element name.`
+          : webidlMessage(error, "createElement", "Document");
+      rethrowDomError(error, message);
+    }
     // T42: an element created with a defined custom name is an upgraded custom
     // element — Core marked it custom at creation, so the wrapper's prototype
     // is re-parented onto the user class (the in-place single-class upgrade).
