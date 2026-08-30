@@ -30,15 +30,16 @@
 //! | `query_api` | `extensions/query_api.rs` | T31 | T31 |
 //! | `live_collections` | `extensions/live_collections.rs` | T32 | T32 |
 //! | `character_data_api` | `extensions/character_data_api.rs` | T33 | T33 |
+//! | `attribute_nodes_api` | `extensions/attribute_nodes_api.rs` | T34 | T34 |
 //!
 //! The first eight rows are the *frozen M4 boundaries* recorded in
 //! [`REGISTRY`]. `html_api` (T29, M5), `query_api` (T31, M6),
-//! `live_collections` (T32, M6) and `character_data_api` (T33, M7) follow the
-//! same seam pattern — their own file, a `SEAM` constant and `#[napi]`
-//! extensions on the existing handle classes — but are not part of the M4
-//! freeze: each owns both the native module and the integration wiring (there
-//! is no separate M5/M6/M7 gate), so it is declared here but deliberately
-//! absent from [`REGISTRY`] and its
+//! `live_collections` (T32, M6), `character_data_api` (T33, M7) and
+//! `attribute_nodes_api` (T34, M7) follow the same seam pattern — their own
+//! file, a `SEAM` constant and `#[napi]` extensions on the existing handle
+//! classes — but are not part of the M4 freeze: each owns both the native
+//! module and the integration wiring (there is no separate M5/M6/M7 gate), so
+//! it is declared here but deliberately absent from [`REGISTRY`] and its
 //! structural tests.
 //!
 //! # Dependency direction
@@ -59,6 +60,7 @@
 //!   integration owner (the matching T2x gate) and are never written by a
 //!   subtask.
 
+mod attribute_nodes_api;
 mod attributes_api;
 mod character_data_api;
 mod collection_api;

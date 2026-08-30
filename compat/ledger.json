@@ -63,6 +63,14 @@
       "addedIn": "T32"
     },
     {
+      "id": "hc-diff-attributes-token",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-attributes-token",
+      "addedIn": "T34"
+    },
+    {
       "id": "hc-diff-extended-nodes",
       "suite": "diff",
       "status": "pass",
@@ -76,8 +84,8 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-create-append-serialize",
-      "reason": "Since T29, MAD DOM implements the document-structure accessors (documentElement/head/body with the implied skeleton), the innerHTML/outerHTML accessors and the T28 serializer, so document.body.appendChild(section) succeeds and the captured body outerHTML matches happy-dom byte for byte. The remaining differences are all outside T29's scope: document.querySelector is still missing (selector surface, T31), document.readyState is still undefined, the snapshot's NamedNodeMap (.attributes) and namespaceURI are not implemented yet (T34), and Element.nodeName casing differs (MAD DOM lowercases, happy-dom uppercases, T23A). First presented by the T10 real-pair runner; updated by T22/T23/T24/T25/T29; collected into the compatibility ledger by T11.",
-      "recordedAt": "2026-08-28T00:00:00Z",
+      "reason": "Since T29, MAD DOM implements the document-structure accessors (documentElement/head/body with the implied skeleton), the innerHTML/outerHTML accessors and the T28 serializer, so document.body.appendChild(section) succeeds and the captured body outerHTML matches happy-dom byte for byte. Since T34, the snapshot leaf fields that previously read as absent now match too: element.attributes is a live NamedNodeMap (body captures an empty map, the section captures its class/id attributes) and element.namespaceURI reads the HTML namespace. The remaining differences are all outside T29's/T34's scope: document.readyState is still undefined (happy-dom reports \"interactive\"), Element.nodeName casing differs (MAD DOM lowercases, happy-dom uppercases, T23A), and the entry shape differs (mad-dom exports createWindow while happy-dom does not). First presented by the T10 real-pair runner; updated by T22/T23/T24/T25/T29/T34; collected into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T10"
     },
     {
@@ -104,8 +112,8 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-query-selector-identity",
-      "reason": "Since T31, MAD DOM implements the selector/query surface (querySelector/querySelectorAll/matches/closest/getElementById, crates/mad-dom-bun/src/extensions/query_api.rs and js/facade/extensions/query.js), so the mad-dom side now counts 2 items, re-queries the same element, and finds the list through getElementById exactly like happy-dom. The remaining differences are all outside T31/T37's scope: the scenario's click events never fire on mad-dom because Element.click() is not implemented yet (T39) — addEventListener and dispatchEvent themselves now match happy-dom (hc-diff-event-target) — plus the snapshot's NamedNodeMap .attributes and namespaceURI (T34), the Element.nodeName casing gap (T23A), and the createWindow export shape. First presented by the T10 real-pair runner; updated by T22/T29/T31/T37; collected into the compatibility ledger by T11.",
-      "recordedAt": "2026-08-28T00:00:00Z",
+      "reason": "Since T31, MAD DOM implements the selector/query surface (querySelector/querySelectorAll/matches/closest/getElementById, crates/mad-dom-bun/src/extensions/query_api.rs and js/facade/extensions/query.js), so the mad-dom side now counts 2 items, re-queries the same element, and finds the list through getElementById exactly like happy-dom. Since T34, the list snapshot's .attributes and namespaceURI also match (element.attributes is a live NamedNodeMap and element.namespaceURI reads the HTML namespace). The remaining differences are all outside T31/T34/T37's scope: the scenario's click events never fire on mad-dom because Element.click() is not implemented yet (T39) — addEventListener and dispatchEvent themselves now match happy-dom (hc-diff-event-target) — plus the Element.nodeName casing gap (T23A) and the createWindow export shape. First presented by the T10 real-pair runner; updated by T22/T29/T31/T37/T34; collected into the compatibility ledger by T11.",
+      "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T10"
     },
     {

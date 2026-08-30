@@ -20,6 +20,7 @@
 //! plus the unified mutation API — they never write back to `node.rs` or
 //! `document.rs`.
 
+mod attribute_nodes;
 mod attributes;
 mod character_data;
 mod cross_document;

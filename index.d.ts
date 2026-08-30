@@ -103,6 +103,8 @@ export declare class Document {
   adoptNode<T extends Node>(node: T): T;
   /** WHATWG `Document.doctype` (T33): the document's parsed `DocumentType`, or `null` on a fresh/empty document. */
   readonly doctype: DocumentType | null;
+  /** WHATWG `Document.createAttribute` (T34): a detached `Attr` with the given qualified name; an invalid WHATWG "Name" throws `ERR_MAD_DOM_INVALID_CHARACTER`. */
+  createAttribute(name: string): Attr;
 
   /** WHATWG `EventTarget.addEventListener` (T37), registered on the document-root node. */
   addEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean; once?: boolean; passive?: boolean; signal?: unknown }): void;
@@ -207,6 +209,90 @@ export interface Element extends Node {
   getElementsByTagName(tagName: string): HTMLCollection<Element>;
   /** WHATWG `Element.getElementsByClassName` (T32): the descendant elements whose `class` attribute contains every whitespace token of `classNames`, in document order, as a live `HTMLCollection`. */
   getElementsByClassName(classNames: string): HTMLCollection<Element>;
+  /** WHATWG `Element.attributes` (T34): a live `NamedNodeMap` of this element's attributes, re-read from Core on every access (one and the same map per element). */
+  readonly attributes: NamedNodeMap;
+  /** WHATWG `Element.classList` (T34): a live `DOMTokenList` over the `class` attribute, kept bidirectionally in sync with it (one and the same list per element). */
+  readonly classList: DOMTokenList;
+  /** WHATWG `Element.namespaceURI` (T34): the element's namespace URI (the WHATWG HTML namespace for a `createElement` element), `null` for non-elements. */
+  readonly namespaceURI: string | null;
+}
+
+/** A live map of an element's attributes (T34). Each access re-reads the
+ * element's ordered attribute list from Core, so an existing map reflects
+ * later attribute writes immediately, and one and the same map is returned per
+ * element. Indexed reads, the named getter and the iteration surface mirror the
+ * WHATWG `NamedNodeMap`. */
+export interface NamedNodeMap {
+  /** Live number of attributes; re-read from Core on every access. */
+  readonly length: number;
+  /** Returns the `Attr` at `index`, or `null` past the end (WHATWG `NamedNodeMap.item`). */
+  item(index: number): Attr | null;
+  /** Returns the `Attr` whose name equals `name`, or `null` (WHATWG `NamedNodeMap.getNamedItem`). */
+  getNamedItem(name: string): Attr | null;
+  [index: number]: Attr;
+  [Symbol.iterator](): IterableIterator<Attr>;
+}
+
+/** A single element attribute (T34). `value` re-reads (and writes through to)
+ * the element's Core attribute storage when the `Attr` is attached, and its own
+ * stored string when detached. One live `Attr` wrapper is cached per
+ * `(element, attribute-name)`, so identity is stable across reads. */
+export interface Attr {
+  /** The attribute's qualified name (also `localName` in the no-namespace model). */
+  readonly name: string;
+  /** The attribute's local name. */
+  readonly localName: string;
+  /** The attribute's namespace prefix (`null` for the no-namespace model). */
+  readonly prefix: string | null;
+  /** The attribute's namespace URI (`null` for the no-namespace model). */
+  readonly namespaceURI: string | null;
+  /** Whether the attribute was explicitly set (always `true` for the current model). */
+  readonly specified: boolean;
+  /** WHATWG `Node.nodeType`: 2 for an `Attr`. */
+  readonly nodeType: number;
+  /** WHATWG `Node.nodeName`: the attribute's qualified name. */
+  readonly nodeName: string;
+  /** The attribute's owner element, or `null` when detached/removed. */
+  readonly ownerElement: Element | null;
+  /** The attribute's value: reads/writes the element's attribute when attached. */
+  value: string;
+  /** WHATWG `Node.nodeValue`: an alias of the value. */
+  nodeValue: string | null;
+  /** WHATWG `Node.textContent`: an alias of the value (`""` for a null value). */
+  textContent: string;
+}
+
+/** A live token list over an element attribute (T34). `Element.classList`
+ * returns the list over the `class` attribute; every read re-derives the
+ * WHATWG ordered set from the attribute value in Core and every mutation
+ * writes back through the attribute storage, so the two stay bidirectionally in
+ * sync. One and the same list is returned per element. */
+export interface DOMTokenList {
+  /** Live number of tokens; re-read from Core on every access. */
+  readonly length: number;
+  /** The raw attribute string (verbatim); setting stores the raw string. */
+  value: string;
+  /** Returns the token at `index`, or `null` past the end (WHATWG `DOMTokenList.item`). */
+  item(index: number): string | null;
+  /** Whether the token set contains `token` (an empty token is absent; never throws). */
+  contains(token: string): boolean;
+  /** Adds the tokens to the set (an empty token throws `ERR_MAD_DOM_SYNTAX`, a whitespace token `ERR_MAD_DOM_INVALID_CHARACTER`, atomically). */
+  add(...tokens: string[]): void;
+  /** Removes the tokens from the set (same validation as `add`). */
+  remove(...tokens: string[]): void;
+  /** Toggles `token` and returns whether it is present afterwards; `force` makes the operation one-way. */
+  toggle(token: string, force?: boolean): boolean;
+  /** Replaces `oldToken` with `newToken`, returning whether the replacement happened (missing `oldToken` yields `false`). */
+  replace(oldToken: string, newToken: string): boolean;
+  /** Iterates the tokens in order (WHATWG `DOMTokenList.forEach`). */
+  forEach(callback: (token: string, index: number, list: DOMTokenList) => void, thisArg?: unknown): void;
+  /** Yields `[index, token]` pairs. */
+  entries(): IterableIterator<[number, string]>;
+  /** Yields the indices. */
+  keys(): IterableIterator<number>;
+  /** Yields the tokens in order. */
+  values(): IterableIterator<string>;
+  [Symbol.iterator](): IterableIterator<string>;
 }
 
 /** A node minted by `Document.createTextNode` (T23 surface plus the T33 CharacterData surface). */
@@ -330,6 +416,8 @@ export interface DocumentHandle {
   adoptNode(node: NodeHandle): NodeHandle;
   /** T33 native `doctype`: the document's parsed `DocumentType`, or `null`. */
   doctype(): NodeHandle | null;
+  /** T34 native `createAttribute` name check: throws `ERR_MAD_DOM_INVALID_CHARACTER` for a non-"Name" qualified name. */
+  validateAttributeName(name: string): void;
   /** T37 native `addEventListener` on the document-root node. */
   addEventListener(type: string, listener: unknown, capture: boolean, once: boolean, passive: boolean): void;
   /** T37 native `removeEventListener` on the document-root node. */
@@ -413,6 +501,22 @@ export interface NodeHandle {
   splitText(offset: number): NodeHandle;
   /** T33 native `cloneNode(deep)`: a detached copy under a fresh handle. */
   cloneNode(deep: boolean): NodeHandle;
+  /** T34 native `getAttributes`: the element's ordered `[name, value]` pairs (backing `Element.attributes`). */
+  getAttributes(): [string, string][];
+  /** T34 native `namespaceUri`: the element's namespace URI, or `null` for non-elements. */
+  namespaceUri(): string | null;
+  /** T34 native `tokenList(name)`: the ordered de-duplicated token set of the named attribute. */
+  tokenList(name: string): string[];
+  /** T34 native `tokenListContains(name, token)`. */
+  tokenListContains(name: string, token: string): boolean;
+  /** T34 native `tokenListAdd(name, tokens)`. */
+  tokenListAdd(name: string, tokens: string[]): void;
+  /** T34 native `tokenListRemove(name, tokens)`. */
+  tokenListRemove(name: string, tokens: string[]): void;
+  /** T34 native `tokenListToggle(name, token, force?)`: whether the token is present afterwards. */
+  tokenListToggle(name: string, token: string, force?: boolean): boolean;
+  /** T34 native `tokenListReplace(name, oldToken, newToken)`: whether the replacement happened. */
+  tokenListReplace(name: string, oldToken: string, newToken: string): boolean;
   /** T37 native `addEventListener` on this node. */
   addEventListener(type: string, listener: unknown, capture: boolean, once: boolean, passive: boolean): void;
   /** T37 native `removeEventListener` on this node. */

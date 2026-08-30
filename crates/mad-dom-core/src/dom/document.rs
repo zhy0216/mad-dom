@@ -499,8 +499,9 @@ fn validate_element_name(name: &str) -> Result<(), CoreError> {
 /// A "Name" must not be empty and every character must be a letter, digit,
 /// `-`, `.`, `_`, `:`, or a non-ASCII character, with the first character not
 /// being a digit. Shared by element creation (`validate_element_name`), the
-/// attribute name entry and the T33 processing-instruction target.
-fn validate_name(name: &str, what: &'static str) -> Result<(), CoreError> {
+/// attribute name entry, the T33 processing-instruction target and the T34
+/// `createAttribute` qualified-name entry.
+pub(crate) fn validate_name(name: &str, what: &'static str) -> Result<(), CoreError> {
     let mut chars = name.chars();
     match chars.next() {
         None => Err(CoreError::InvalidCharacter {

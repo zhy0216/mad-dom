@@ -380,9 +380,9 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     });
 
     // Since T29 the mad-dom side captures the body snapshot too. Its tree
-    // structure and outerHTML match happy-dom byte for byte, but the snapshot
-    // leaf fields that need the not-yet-implemented surface differ: nodeName
-    // casing (T23A), namespaceURI and .attributes (T34).
+    // structure, outerHTML, attributes and namespaceURI match happy-dom byte
+    // for byte (since T34), so the only snapshot-leaf differences that remain
+    // are the nodeName casing (T23A).
     const madBody = madRecord.snapshots["body"];
     expect(madBody).toBeDefined();
     expect(madBody.nodeType).toBe(1);
@@ -416,11 +416,12 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(paths).toContain("values.entry-create-window-type.value");
 
     // Since T31 the query surface matches: item-count is 2 and re-querying
-    // returns the same element on both sides, so those paths are gone. The
+    // returns the same element on both sides, so those paths are gone, and
+    // since T34 the list snapshot's .attributes and namespaceURI match too. The
     // remaining differences are the scenario's click events (Element.click()
     // is T39 — addEventListener/dispatchEvent themselves match, hc-diff-events),
-    // the snapshot leaf fields (nodeName casing T23A, namespaceURI/.attributes
-    // T34) and the createWindow export shape.
+    // the snapshot leaf nodeName casing (T23A) and the createWindow export
+    // shape.
     expect(paths).not.toContain("values.item-count");
     expect(paths).not.toContain("identity.requery-returns-same-element");
 
@@ -810,6 +811,97 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const strictReport = JSON.parse(strictRun.stdout);
     expect(strictReport.mode).toBe("strict");
     expect(strictReport.scenarios[0].id).toBe("dom-extended-nodes");
+    if (nativeAvailable) {
+      expect(strictRun.status).toBe(0);
+      expect(strictReport.exitCode).toBe(0);
+      expect(strictReport.scenarios[0].status).toBe("pass");
+      expect(strictReport.scenarios[0].differences).toEqual([]);
+    } else {
+      expect(strictRun.status).toBe(1);
+      expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+      expect(strictReport.totals.infraErrors).toBe(0);
+    }
+  });
+
+  test("attribute-node/token real scenario passes exactly (NamedNodeMap/Attr, classList, createAttribute)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-attributes-token");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T34 slice matches happy-dom observation for observation, so
+    // the scenario is a genuine pass (ledgered hc-diff-attributes-token). It
+    // deliberately avoids the frozen deviations (invalid tokens, the
+    // empty-token-set attribute removal, Attr.nodeName/nodeValue, the
+    // NamedNodeMap own-key leak and the Attr identity replacement).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+
+    // NamedNodeMap reads, Attr fields and the value write-through.
+    expect(madRecord.values["attributes-length"]).toEqual({ type: "number", value: 3 });
+    expect(madRecord.values["attributes-item-0-name"]).toEqual({ type: "string", value: "id" });
+    expect(madRecord.values["attributes-index-99"]).toEqual({ type: "null" });
+    expect(madRecord.values["attributes-getNamedItem-class"]).toEqual({
+      type: "string",
+      value: "a b c",
+    });
+    expect(madRecord.values["attributes-named-getter-missing"]).toEqual({ type: "undefined" });
+    expect(madRecord.values["attributes-in-id"]).toEqual({ type: "boolean", value: false });
+    expect(madRecord.values["attributes-in-0"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["attributes-toStringTag"]).toEqual({
+      type: "string",
+      value: "[object NamedNodeMap]",
+    });
+    expect(madRecord.values["attr-node-type"]).toEqual({ type: "number", value: 2 });
+    expect(madRecord.values["attr-value-write-through"]).toEqual({ type: "string", value: "newroot" });
+    expect(madRecord.values["created-attr-owner"]).toEqual({ type: "null" });
+    expect(madRecord.identity["attributes-map-identity"]).toBe(true);
+    expect(madRecord.identity["attributes-owner-element"]).toBe(true);
+
+    // The live retained-collection reads and the bidirectional class sync.
+    expect(madRecord.values["live-attributes-length"]).toEqual({ type: "number", value: 3 });
+    expect(madRecord.values["live-getNamedItem-class"]).toEqual({ type: "string", value: "x y" });
+    expect(madRecord.values["classlist-after-add"]).toEqual({ type: "string", value: "x y z" });
+    expect(madRecord.values["classlist-replace"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["classlist-replace-missing"]).toEqual({ type: "boolean", value: false });
+    expect(madRecord.values["classlist-value-attr"]).toEqual({ type: "string", value: "  p  q   r " });
+    expect(madRecord.values["classlist-value-length"]).toEqual({ type: "number", value: 3 });
+    expect(madRecord.values["classlist-live-after-remove"]).toEqual({ type: "string", value: "" });
+    expect(madRecord.values["classlist-live-contains-outer"]).toEqual({
+      type: "boolean",
+      value: false,
+    });
+    expect(madRecord.values["element-namespace-uri"]).toEqual({
+      type: "string",
+      value: "http://www.w3.org/1999/xhtml",
+    });
+    expect(madRecord.identity["classlist-identity"]).toBe(true);
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.errors).toEqual([]);
+    expect(happyRecord.values["attributes-getNamedItem-class"]).toEqual({
+      type: "string",
+      value: "a b c",
+    });
+    expect(happyRecord.values["classlist-after-add"]).toEqual({ type: "string", value: "x y z" });
+    expect(happyRecord.identity["classlist-identity"]).toBe(true);
+  });
+
+  test("strict mode passes on the attribute-node/token scenario exactly when it matches happy-dom", () => {
+    const strictRun = runRunner([join(DOM_DIR, "dom-attributes-token.js"), "--json"]);
+    const strictReport = JSON.parse(strictRun.stdout);
+    expect(strictReport.mode).toBe("strict");
+    expect(strictReport.scenarios[0].id).toBe("dom-attributes-token");
     if (nativeAvailable) {
       expect(strictRun.status).toBe(0);
       expect(strictReport.exitCode).toBe(0);

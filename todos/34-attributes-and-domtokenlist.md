@@ -1,6 +1,6 @@
 # 34 实现 Attr、NamedNodeMap 与 DOMTokenList
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M7
 - 条目 ID：`T34`

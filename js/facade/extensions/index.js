@@ -24,6 +24,7 @@
 // The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
 // tests/bun/seam.test.js pins that shape.
 
+import * as attributeNodesExtension from "./attribute-nodes.js";
 import * as attributesExtension from "./attributes.js";
 import * as childNodeListExtension from "./child-nodelist.js";
 import * as eventsExtension from "./events.js";
@@ -53,6 +54,7 @@ const EXTENSIONS = [
   liveCollectionsExtension,
   extendedNodesExtension,
   eventsExtension,
+  attributeNodesExtension,
 ];
 
 /**
