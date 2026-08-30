@@ -247,7 +247,7 @@ git diff --check
 | 48C | P2 | [48c-form-constraint-validation.md](done/48c-form-constraint-validation.md) | M9 | T48 | 已完成 |
 | 48D | P2 | [48d-custom-element-upgrade-parity.md](done/48d-custom-element-upgrade-parity.md) | M9 | T48, T48A | 已完成 |
 | 48E | P2 | [48e-entry-shape-alignment.md](done/48e-entry-shape-alignment.md) | M9 | T48 | 已完成 |
-| 49 | P2 | [49-native-packaging-and-artifacts.md](49-native-packaging-and-artifacts.md) | M9 | T06, T21, T48 | 待办 |
+| 49 | P2 | [49-native-packaging-and-artifacts.md](49-native-packaging-and-artifacts.md) | M9 | T06, T21, T48 | 部分完成 |
 | 50 | P2 | [50-hardening-and-stable-release.md](50-hardening-and-stable-release.md) | M9 | T18, T20, T21, T48, T49 | 待办 |
 
 ## 优先级含义
