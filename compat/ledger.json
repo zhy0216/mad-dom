@@ -27,6 +27,22 @@
       "addedIn": "T37"
     },
     {
+      "id": "hc-diff-window-platform",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-platform-location-history",
+      "addedIn": "T45"
+    },
+    {
+      "id": "hc-diff-storage-cookie",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-storage-cookie",
+      "addedIn": "T45"
+    },
+    {
       "id": "hc-diff-attributes-read-write",
       "suite": "diff",
       "status": "known-gap",
@@ -199,6 +215,19 @@
       "diagnostics": [
         { "code": 2353, "line": 7 },
         { "code": 2339, "messageIncludes": "Property 'title' does not exist" }
+      ]
+    },
+    {
+      "id": "hc-types-window-platform",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/window-platform.ts",
+      "reason": "Since T45 the window platform surface is typed: location/history/navigator, localStorage/sessionStorage and document.cookie/URL/documentURI all type-check on the mad-dom target, as do the window.URL/window.DOMException constructors. The single remaining rejection is the pre-existing Window constructor shape (not user-constructible — it requires a genuine native handle), the same T22 gap every positive fixture records.",
+      "recordedAt": "2026-08-30T00:00:00Z",
+      "addedIn": "T45",
+      "diagnostics": [
+        { "code": 2353, "line": 8 }
       ]
     }
   ]

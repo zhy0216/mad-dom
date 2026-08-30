@@ -27,6 +27,7 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/events.js", owner: "T37" },
   { path: "extensions/attribute-nodes.js", owner: "T34" },
   { path: "extensions/html-element.js", owner: "T39" },
+  { path: "extensions/window-platform.js", owner: "T45" },
 ];
 
 // The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29,
@@ -49,6 +50,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/events.js", owner: "T37" },
   { path: "extensions/attribute-nodes.js", owner: "T34" },
   { path: "extensions/html-element.js", owner: "T39" },
+  { path: "extensions/window-platform.js", owner: "T45" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 

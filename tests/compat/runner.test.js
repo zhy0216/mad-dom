@@ -485,6 +485,165 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(happyRecord.values["struct-order-return"]).toEqual(madRecord.values["struct-order-return"]);
   });
 
+  test("platform location/history real scenario passes exactly (URL, Location, History, Navigator)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-platform-location-history");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T45 location/history/navigator slice matches happy-dom
+    // observation for observation (ledgered hc-diff-window-platform).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    // The four recorded errors are the deliberately probed exceptions
+    // (cross-origin pushState SecurityError, arg-count TypeErrors, invalid URL)
+    // and match happy-dom name for name and message for message.
+    expect(madRecord.errors.map((error) => error.name)).toEqual([
+      "SecurityError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+    ]);
+    expect(madRecord.errors[0].message).toBe(
+      "Failed to execute 'pushState' on 'History': A history state object with URL 'https://evil.example.com/x' cannot be created in a document with origin 'null' and URL 'about:blank'.",
+    );
+    expect(madRecord.errors[3].message).toBe("Invalid URL");
+
+    expect(madRecord.values["loc-href"]).toEqual({ type: "string", value: "about:blank" });
+    expect(madRecord.values["loc-origin"]).toEqual({ type: "string", value: "null" });
+    expect(madRecord.values["loc-pathname"]).toEqual({ type: "string", value: "blank" });
+    expect(madRecord.values["loc-proto-name"]).toEqual({ type: "string", value: "Location" });
+    expect(madRecord.values["doc-url-eq-loc"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["hash-set-length-delta"]).toEqual({ type: "number", value: 1 });
+    expect(madRecord.values["push-relative-state"]).toEqual({
+      type: "object",
+      entries: { a: { type: "number", value: 1 } },
+    });
+    expect(madRecord.values["replace-length-delta"]).toEqual({ type: "number", value: 0 });
+    expect(madRecord.values["hist-scroll-restoration"]).toEqual({ type: "string", value: "auto" });
+    expect(madRecord.values["nav-platform"]).toEqual({ type: "string", value: "X11; Darwin arm64" });
+    expect(madRecord.values["nav-languages"]).toEqual({
+      type: "array",
+      items: [
+        { type: "string", value: "en-US" },
+        { type: "string", value: "en" },
+      ],
+    });
+    expect(madRecord.identity["loc-identity"]).toBe(true);
+    expect(madRecord.identity["ls-ss-distinct"]).toBe(false);
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.errors.map((error) => error.name)).toEqual(
+      madRecord.errors.map((error) => error.name),
+    );
+    expect(happyRecord.values["loc-href"]).toEqual(madRecord.values["loc-href"]);
+  });
+
+  test("storage/cookie real scenario passes exactly (isolation, ordering, string conversion, cookies)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-storage-cookie");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T45 storage + cookie slice matches happy-dom observation for
+    // observation (ledgered hc-diff-storage-cookie).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+
+    expect(madRecord.values["ls-coerced"]).toEqual({
+      type: "array",
+      items: [
+        { type: "string", value: "1" },
+        { type: "string", value: "null" },
+        { type: "string", value: "undefined" },
+        { type: "string", value: "[object Object]" },
+        { type: "string", value: "true" },
+      ],
+    });
+    expect(madRecord.values["ls-keys-order"]).toEqual({
+      type: "array",
+      items: [
+        { type: "string", value: "2" },
+        { type: "string", value: "10" },
+        { type: "string", value: "a" },
+      ],
+    });
+    expect(madRecord.descriptors["ls-prop-f-desc"]).toMatchObject({
+      present: true,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+      hasGet: false,
+      hasSet: false,
+    });
+    expect(madRecord.values["ls-isolation"]).toEqual({ type: "string", value: "ls" });
+    expect(madRecord.values["ss-isolation"]).toEqual({ type: "string", value: "ss" });
+    expect(madRecord.values["win2-ls-get"]).toEqual({ type: "null" });
+
+    expect(madRecord.values["cookie-multi"]).toEqual({
+      type: "string",
+      value: "name=value; a=1; b=2",
+    });
+    expect(madRecord.values["cookie-httponly-filtered"]).toEqual({
+      type: "string",
+      value: "a=1; b=2; flag; name=newvalue",
+    });
+    expect(madRecord.values["cookie-secure-prefix-invalid"]).toEqual({
+      type: "string",
+      value: "a=1; b=2; flag; name=newvalue; hidden=2",
+    });
+    expect(madRecord.values["cookie-expired"]).toEqual({
+      type: "string",
+      value: "a=1; b=2; flag; name=newvalue; hidden=2",
+    });
+    expect(madRecord.values["cookie-order"]).toEqual({
+      type: "string",
+      value: "a=1; b=2; flag; name=newvalue; hidden=2; kept=1; nosamesite=1; zz=1; aa=2",
+    });
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.errors).toEqual([]);
+    expect(happyRecord.values["cookie-order"]).toEqual(madRecord.values["cookie-order"]);
+  });
+
+  test("strict mode passes on the platform and storage/cookie scenarios exactly when they match happy-dom", () => {
+    for (const scenarioFile of ["dom-platform-location-history.js", "dom-storage-cookie.js"]) {
+      const strictRun = runRunner([join(DOM_DIR, scenarioFile), "--json"]);
+      const strictReport = JSON.parse(strictRun.stdout);
+      expect(strictReport.mode).toBe("strict");
+      expect(strictReport.scenarios[0].id).toBe(scenarioFile.replace(".js", ""));
+      if (nativeAvailable) {
+        expect(strictRun.status).toBe(0);
+        expect(strictReport.exitCode).toBe(0);
+        expect(strictReport.scenarios[0].status).toBe("pass");
+        expect(strictReport.scenarios[0].differences).toEqual([]);
+      } else {
+        expect(strictRun.status).toBe(1);
+        expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+        expect(strictReport.totals.infraErrors).toBe(0);
+      }
+    }
+  });
+
   test("node navigation real scenario reports exactly the frozen nodeName casing gap", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-node-navigation");
     expect(scenario.status).toBe("differences-report");

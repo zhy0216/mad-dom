@@ -40,6 +40,20 @@ export declare class Window {
   readonly InputEvent: typeof InputEvent;
   /** The WHATWG `HTMLElement` constructor (T39): every `createElement` wrapper is `instanceof window.HTMLElement`. */
   readonly HTMLElement: typeof HTMLElement;
+  /** WHATWG `window.location` (T45): the live per-window Location (URL state linked to the document). */
+  readonly location: Location;
+  /** WHATWG `window.history` (T45): the per-window session History stack. */
+  readonly history: History;
+  /** WHATWG `window.navigator` (T45): the fixed mock Navigator surface (calibrated to the happy-dom baseline). */
+  readonly navigator: Navigator;
+  /** WHATWG `window.localStorage` (T45): the per-window local storage area. */
+  readonly localStorage: Storage;
+  /** WHATWG `window.sessionStorage` (T45): the per-window session storage area. */
+  readonly sessionStorage: Storage;
+  /** WHATWG `URL` constructor (T45): the standard URL, reused from the Bun/Web host. */
+  readonly URL: typeof URL;
+  /** WHATWG `DOMException` constructor (T45): reused from the Bun/Web host. */
+  readonly DOMException: typeof DOMException;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
@@ -329,6 +343,12 @@ export declare class Document {
   readonly doctype: DocumentType | null;
   /** WHATWG `Document.createAttribute` (T34): a detached `Attr` with the given qualified name; an invalid WHATWG "Name" throws `ERR_MAD_DOM_INVALID_CHARACTER`. */
   createAttribute(name: string): Attr;
+  /** WHATWG `Document.URL` (T45): the owning window's current location href (`"about:blank"` for a window-less document). */
+  readonly URL: string;
+  /** WHATWG `Document.documentURI` (T45): an alias of `URL`. */
+  readonly documentURI: string;
+  /** WHATWG `Document.cookie` (T45): the per-window cookie jar read as a `key=value; ...` string, written as a `Set-Cookie`-style string. */
+  cookie: string;
 
   /** WHATWG `EventTarget.addEventListener` (T37), registered on the document-root node. */
   addEventListener(type: string, listener: TEventListener | null, options?: boolean | IEventListenerOptions | null): void;
@@ -339,6 +359,82 @@ export declare class Document {
 }
 
 export declare function createWindow(): Window;
+
+// --- Window platform objects (T45) -------------------------------------------
+//
+// The platform objects live on `window` (reached through the `Window` facade,
+// never exported from the package entry): `location`, `history`, `navigator`,
+// `localStorage`, `sessionStorage` and the `URL` / `DOMException` constructors
+// reused from the Bun/Web host. `Location` and `History` share one per-window
+// URL / session-history state; `document.URL` / `documentURI` read the same
+// state. Navigation is simulated (T45 boundary): `href` assignment and the
+// property setters update the URL and history state synchronously without any
+// real page load, and `reload()` / `history.back/forward/go` are no-ops.
+
+declare class Location {
+  hash: string;
+  readonly host: string;
+  readonly hostname: string;
+  readonly href: string;
+  readonly origin: string;
+  readonly pathname: string;
+  readonly port: string;
+  readonly protocol: string;
+  readonly search: string;
+  assign(url: string | URL): void;
+  replace(url: string | URL): void;
+  reload(): void;
+  toString(): string;
+}
+
+declare class History {
+  readonly length: number;
+  readonly state: object | null;
+  scrollRestoration: string;
+  back(): void;
+  forward(): void;
+  go(delta?: number): void;
+  pushState(state: unknown, unused: unknown, url?: string | URL | null): void;
+  replaceState(state: unknown, unused: unknown, url?: string | URL | null): void;
+}
+
+declare class Navigator {
+  readonly cookieEnabled: boolean;
+  readonly credentials: null;
+  readonly geolocation: null;
+  readonly language: string;
+  readonly languages: string[];
+  readonly locks: null;
+  readonly maxTouchPoints: number;
+  readonly hardwareConcurrency: number;
+  readonly appCodeName: string;
+  readonly appName: string;
+  readonly appVersion: string;
+  readonly platform: string;
+  readonly product: string;
+  readonly productSub: string;
+  readonly vendor: string;
+  readonly vendorSub: string;
+  readonly userAgent: string;
+  readonly onLine: boolean;
+  readonly permissions: null;
+  readonly clipboard: null;
+  readonly webdriver: boolean;
+  readonly doNotTrack: string;
+  readonly mimeTypes: object;
+  readonly plugins: object;
+  sendBeacon(url: string, data?: unknown): boolean;
+  toString(): string;
+}
+
+declare class Storage {
+  readonly length: number;
+  key(index: number): string | null;
+  setItem(name: string, item: string): void;
+  getItem(name: string): string | null;
+  removeItem(name: string): void;
+  clear(): void;
+}
 
 // --- Node creation, navigation, mutation, attributes, text and NodeList (T23/T24/T25) --
 //

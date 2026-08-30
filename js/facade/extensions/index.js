@@ -36,6 +36,7 @@ import * as mutationExtension from "./mutation.js";
 import * as nodeExtension from "./node.js";
 import * as queryExtension from "./query.js";
 import * as textContentExtension from "./text-content.js";
+import * as windowPlatformExtension from "./window-platform.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/index",
@@ -57,6 +58,7 @@ const EXTENSIONS = [
   eventsExtension,
   attributeNodesExtension,
   htmlElementExtension,
+  windowPlatformExtension,
 ];
 
 /**
