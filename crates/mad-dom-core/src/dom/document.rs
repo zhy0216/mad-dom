@@ -13,6 +13,13 @@
 //! is the job of the unified mutation API (T15/T16) in the sibling `mutation`
 //! module; this module only exposes the crate-internal [`Document::node_mut`]
 //! accessor that mutation and tests use.
+//!
+//! The M4 attribute / `textContent` payload seam (T25A) also lives here: the
+//! crate-internal [`Document::element_attributes_mut`] and
+//! [`Document::set_character_data`] entries are the *only* way to mutate an
+//! element's ordered attribute storage or a text/comment node's character
+//! data, so the future `attributes` / `text_content` modules (owned by T25B /
+//! T25C) never need to reach into the arena or the raw [`Node`] fields.
 
 use crate::arena::{Arena, NodeId};
 use crate::error::CoreError;
@@ -255,6 +262,80 @@ impl Document {
     pub(crate) fn live_node_count(&self) -> usize {
         self.arena.len()
     }
+
+    /// Crate-internal: returns the ordered attribute storage of the element for
+    /// `id`, validated for document ownership and node kind.
+    ///
+    /// This is the attribute-payload half of the Core seam (T25A). The M4
+    /// attribute API (`attributes` module, owned by T25B) reaches the ordered
+    /// `(name, value)` list *only* through this entry — never through the arena
+    /// or the raw [`Node`] fields. The returned reference is live into the
+    /// node's arena slot (no copy of the DOM state is made), so any mutation is
+    /// immediately visible to the public readers. A failed call leaves the
+    /// storage untouched.
+    ///
+    /// # Errors
+    ///
+    /// * [`CoreError::WrongDocument`] when `id` belongs to another document.
+    /// * [`CoreError::Arena`] when `id` is a stale or invalid handle.
+    /// * [`CoreError::Hierarchy`] when the node for `id` is not an `Element`.
+    ///
+    /// Dormant by design: T25B consumes this entry after T25A archives, so the
+    /// crate does not reference it yet.
+    #[allow(dead_code)]
+    pub(crate) fn element_attributes_mut(
+        &mut self,
+        id: NodeId,
+    ) -> Result<&mut Vec<(String, String)>, CoreError> {
+        match self.node_mut(id)?.data_mut() {
+            NodeData::Element { attributes, .. } => Ok(attributes),
+            _ => Err(CoreError::Hierarchy {
+                message: "attribute operations require an Element node".to_string(),
+            }),
+        }
+    }
+
+    /// Crate-internal: atomically replaces the character data of the text or
+    /// comment node for `id`.
+    ///
+    /// This is the text-update half of the Core seam (T25A). The M4
+    /// `textContent` API (`text_content` module, owned by T25C) writes
+    /// `Text`/`Comment` data only through this entry, and every other text
+    /// change goes through the unified mutation API (`append_child`,
+    /// `remove_child`, `replace_child`, ...), so no code ever edits a payload
+    /// field behind an entry's back. The write is a single field replacement on
+    /// a validated node, so a failed call leaves the node byte-for-byte
+    /// unchanged and the tree relations are never touched.
+    ///
+    /// # Errors
+    ///
+    /// * [`CoreError::WrongDocument`] when `id` belongs to another document.
+    /// * [`CoreError::Arena`] when `id` is a stale or invalid handle.
+    /// * [`CoreError::Hierarchy`] when the node for `id` is neither a `Text`
+    ///   nor a `Comment` node.
+    /// * [`CoreError::InvalidCharacter`] when `data` contains a NUL character.
+    ///
+    /// Dormant by design: T25C consumes this entry after T25A archives, so the
+    /// crate does not reference it yet.
+    #[allow(dead_code)]
+    pub(crate) fn set_character_data(&mut self, id: NodeId, data: &str) -> Result<(), CoreError> {
+        let node = self.node_mut(id)?;
+        if !matches!(
+            node.data(),
+            NodeData::Text { .. } | NodeData::Comment { .. }
+        ) {
+            return Err(CoreError::Hierarchy {
+                message: "character data operations require a Text or Comment node".to_string(),
+            });
+        }
+        validate_text_data(data, "text data")?;
+        let slot = match node.data_mut() {
+            NodeData::Text { data: slot } | NodeData::Comment { data: slot } => slot,
+            _ => unreachable!("node kind validated above"),
+        };
+        *slot = data.to_string();
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -337,7 +418,12 @@ fn validate_element_name(name: &str) -> Result<(), CoreError> {
 }
 
 /// Validates character data by rejecting NUL characters.
-fn validate_text_data(data: &str, what: &'static str) -> Result<(), CoreError> {
+///
+/// `pub(crate)` so the payload seam's text-update entry
+/// ([`Document::set_character_data`]) and the future `text_content` module
+/// (T25C) share the single well-formedness rule that `create_text` /
+/// `create_comment` enforce.
+pub(crate) fn validate_text_data(data: &str, what: &'static str) -> Result<(), CoreError> {
     if let Some(c) = data.chars().find(|&c| c == '\0') {
         return Err(CoreError::InvalidCharacter {
             what,
@@ -555,6 +641,153 @@ mod tests {
         assert!(matches!(
             b.get(foreign),
             Err(CoreError::WrongDocument { .. })
+        ));
+    }
+
+    // ---- payload seam (T25A) ----
+
+    #[test]
+    fn element_attributes_mut_exposes_ordered_storage() {
+        let mut doc = Document::new();
+        let el = doc.create_element("div").unwrap();
+
+        let attributes = doc.element_attributes_mut(el).unwrap();
+        attributes.push(("id".to_string(), "root".to_string()));
+        attributes.push(("class".to_string(), "a b".to_string()));
+        assert_eq!(doc.element_attributes_mut(el).unwrap().len(), 2);
+
+        let expected: &[(String, String)] = &[
+            ("id".to_string(), "root".to_string()),
+            ("class".to_string(), "a b".to_string()),
+        ];
+        assert_eq!(
+            doc.get(el).unwrap().data().element_attributes(),
+            Some(expected),
+            "mutations through the seam are immediately visible to the public reader"
+        );
+    }
+
+    #[test]
+    fn element_attributes_mut_rejects_non_elements() {
+        let mut doc = Document::new();
+        let text = doc.create_text("hi").unwrap();
+        let comment = doc.create_comment("note").unwrap();
+        let frag = doc.create_document_fragment().unwrap();
+        let doc_node = doc.create_document_node_for_test();
+
+        for id in [text, comment, frag, doc_node] {
+            assert!(
+                matches!(
+                    doc.element_attributes_mut(id),
+                    Err(CoreError::Hierarchy { .. })
+                ),
+                "non-element {id:?} must be rejected by the attribute seam"
+            );
+        }
+    }
+
+    #[test]
+    fn element_attributes_mut_rejects_foreign_and_stale_handles() {
+        let mut a = Document::new();
+        let mut b = Document::new();
+        let el = a.create_element("div").unwrap();
+        assert!(matches!(
+            b.element_attributes_mut(el),
+            Err(CoreError::WrongDocument { .. })
+        ));
+
+        b.create_element("x").unwrap();
+        let bogus = NodeId::new(b.id(), u32::MAX, 0);
+        assert!(matches!(
+            b.element_attributes_mut(bogus),
+            Err(CoreError::Arena(ArenaError::OutOfBounds { .. }))
+        ));
+    }
+
+    #[test]
+    fn set_character_data_updates_text_and_comment_in_place() {
+        let mut doc = Document::new();
+        let text = doc.create_text("hello").unwrap();
+        let comment = doc.create_comment("note").unwrap();
+
+        doc.set_character_data(text, "world").unwrap();
+        doc.set_character_data(comment, "updated").unwrap();
+
+        assert_eq!(doc.node_type(text).unwrap(), NodeType::Text);
+        assert_eq!(doc.get(text).unwrap().data().text_data(), Some("world"));
+        assert_eq!(doc.node_type(comment).unwrap(), NodeType::Comment);
+        assert_eq!(
+            doc.get(comment).unwrap().data().comment_data(),
+            Some("updated")
+        );
+    }
+
+    #[test]
+    fn set_character_data_leaves_tree_relations_untouched() {
+        let mut doc = Document::new();
+        let parent = doc.create_element("p").unwrap();
+        let text = doc.create_text("hello").unwrap();
+        doc.append_child(parent, text).unwrap();
+
+        doc.set_character_data(text, "bye").unwrap();
+        assert_eq!(doc.parent(text).unwrap(), Some(parent));
+        assert_eq!(doc.first_child(parent).unwrap(), Some(text));
+        assert_eq!(doc.last_child(parent).unwrap(), Some(text));
+        assert_eq!(doc.check_invariants(parent).unwrap(), ());
+    }
+
+    #[test]
+    fn set_character_data_rejects_nul_atomically() {
+        let mut doc = Document::new();
+        let text = doc.create_text("hello").unwrap();
+
+        assert!(matches!(
+            doc.set_character_data(text, "bad\0data"),
+            Err(CoreError::InvalidCharacter {
+                character: Some('\0'),
+                ..
+            })
+        ));
+        assert_eq!(
+            doc.get(text).unwrap().data().text_data(),
+            Some("hello"),
+            "a rejected update leaves the data unchanged"
+        );
+    }
+
+    #[test]
+    fn set_character_data_rejects_non_character_data() {
+        let mut doc = Document::new();
+        let el = doc.create_element("div").unwrap();
+        let frag = doc.create_document_fragment().unwrap();
+        let doc_node = doc.create_document_node_for_test();
+
+        for id in [el, frag, doc_node] {
+            assert!(
+                matches!(
+                    doc.set_character_data(id, "x"),
+                    Err(CoreError::Hierarchy { .. })
+                ),
+                "non-text/comment {id:?} must be rejected by the text seam"
+            );
+        }
+    }
+
+    #[test]
+    fn set_character_data_rejects_foreign_and_stale_handles() {
+        let mut a = Document::new();
+        let mut b = Document::new();
+        let text = a.create_text("hi").unwrap();
+        assert!(matches!(
+            b.set_character_data(text, "x"),
+            Err(CoreError::WrongDocument { .. })
+        ));
+
+        b.create_element("x").unwrap();
+        let bogus = NodeId::new(b.id(), u32::MAX, 0);
+        assert!(matches!(
+            b.set_character_data(bogus, "x"),
+            Err(CoreError::Arena(ArenaError::OutOfBounds { .. }))
         ));
     }
 }

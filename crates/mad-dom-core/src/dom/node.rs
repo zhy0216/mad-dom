@@ -145,6 +145,19 @@ impl Node {
         &self.data
     }
 
+    /// Crate-internal: returns mutable access to the node's payload.
+    ///
+    /// This is the payload seam (T25A): the M4 attribute and `textContent`
+    /// modules reach the payload only through the validated entries in
+    /// [`Document`](super::Document) — [`Document::element_attributes_mut`] and
+    /// [`Document::set_character_data`] — which check document ownership and
+    /// node kind before exposing it. Code outside this crate only ever sees the
+    /// payload through the read-only [`Node::data`] accessor, so the arena-held
+    /// state can never be mutated behind the unified entry's back.
+    pub(crate) fn data_mut(&mut self) -> &mut NodeData {
+        &mut self.data
+    }
+
     /// Consumes the node and returns its payload, dropping the tree relations.
     ///
     /// Used by the cross-document adoption path

@@ -1,6 +1,6 @@
 # 25A 建立 Core 属性与 textContent payload seam
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P0
 - 里程碑：M4
 - 条目 ID：T25A
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T25A — 建立 Core 属性与 textContent payload seam**
+- [x] **T25A — 建立 Core 属性与 textContent payload seam**
   - 实现：
     - 在 node.rs/document.rs 中一次性补齐后续属性、文本读取和更新所需的 crate 内访问 trait 或方法。
     - 预登记 attributes.rs 与 text_content.rs 模块，并明确所有更新仍经由统一 mutation/文本入口。
