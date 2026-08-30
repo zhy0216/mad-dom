@@ -33,6 +33,25 @@ import {
   UIEvent,
   WheelEvent,
 } from "./facade/extensions/events.js";
+import {
+  CSSConditionRule,
+  CSSContainerRule,
+  CSSFontFaceRule,
+  CSSGroupingRule,
+  CSSKeyframeRule,
+  CSSKeyframesRule,
+  CSSKeywordValue,
+  CSSMediaRule,
+  CSSRule,
+  CSSScopeRule,
+  CSSStyleDeclaration,
+  CSSStyleRule,
+  CSSStyleSheet,
+  CSSStyleValue,
+  CSSSupportsRule,
+  MediaList,
+  MediaQueryListEvent,
+} from "./facade/extensions/cssom.js";
 
 export const project = Object.freeze({
   name: "mad-dom",
@@ -108,4 +127,4 @@ export function nativeAbiVersion() {
   return loadNative().abiVersion();
 }
 
-export { createWindow, Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum };
+export { createWindow, Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum, CSSStyleDeclaration, CSSRule, CSSStyleSheet, CSSStyleRule, CSSMediaRule, CSSKeyframesRule, CSSKeyframeRule, CSSFontFaceRule, CSSSupportsRule, CSSGroupingRule, CSSConditionRule, CSSContainerRule, CSSScopeRule, CSSStyleValue, CSSKeywordValue, MediaList, MediaQueryListEvent };

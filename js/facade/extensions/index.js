@@ -27,6 +27,7 @@
 import * as attributeNodesExtension from "./attribute-nodes.js";
 import * as attributesExtension from "./attributes.js";
 import * as childNodeListExtension from "./child-nodelist.js";
+import * as cssomExtension from "./cssom.js";
 import * as customElementsExtension from "./custom-elements.js";
 import * as eventsExtension from "./events.js";
 import * as extendedNodesExtension from "./extended-nodes.js";
@@ -60,6 +61,7 @@ const EXTENSIONS = [
   attributesExtension,
   textContentExtension,
   childNodeListExtension,
+  cssomExtension,
   customElementsExtension,
   htmlExtension,
   queryExtension,

@@ -194,11 +194,10 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/enums-and-overloads.ts",
-      "reason": "MAD DOM still does not export CSSRule (T44), its Window is not user-constructible (it needs a genuine native handle), and Document.createElement returns the minimal Element surface, so tag-name narrowing (tagName) cannot be checked yet (T39), while EventPhaseEnum now type-checks (T38) and querySelectorAll iteration type-checks (T31). Updated by T22/T23/T31/T38.",
-      "recordedAt": "2026-08-28T00:00:00Z",
+      "reason": "Since T44 exports CSSRule (and CSSStyleDeclaration) from the package entry, the enum-constants check now type-checks. The remaining gaps are the shared Window-constructor shape (MAD DOM's Window is not user-constructible — it requires a genuine native handle) and Element.tagName (the T23A lowercased nodeName divergence means happy-dom's tag-name narrowing is not declared on the mad-dom type surface). Updated by T22/T23/T31/T38/T44.",
+      "recordedAt": "2026-08-30T19:40:00Z",
       "addedIn": "T09",
       "diagnostics": [
-        { "code": 2305, "messageIncludes": "no exported member 'CSSRule'" },
         { "code": 2554, "line": 7 },
         { "code": 2339, "messageIncludes": "Property 'tagName' does not exist" }
       ]
@@ -397,6 +396,14 @@
       "diagnostics": [
         { "code": 2353, "line": 11 }
       ]
+    },
+    {
+      "id": "hc-diff-cssom-surface",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-cssom",
+      "addedIn": "T44"
     }
   ]
 }

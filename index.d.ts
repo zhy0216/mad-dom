@@ -125,6 +125,46 @@ export declare class Window {
   dispatchEvent(event: ErrorEvent): boolean;
   /** The WHATWG `ErrorEvent` constructor (T47): the `error` event dispatched on the window for async callback failures. */
   readonly ErrorEvent: typeof ErrorEvent;
+  /** WHATWG `window.CSSStyleDeclaration` constructor (T44). */
+  readonly CSSStyleDeclaration: typeof CSSStyleDeclaration;
+  /** WHATWG `window.CSSRule` constructor (T44). */
+  readonly CSSRule: typeof CSSRule;
+  /** WHATWG `window.CSSStyleSheet` constructor (T44). */
+  readonly CSSStyleSheet: typeof CSSStyleSheet;
+  /** WHATWG `window.CSSStyleRule` constructor (T44). */
+  readonly CSSStyleRule: typeof CSSStyleRule;
+  /** WHATWG `window.CSSMediaRule` constructor (T44). */
+  readonly CSSMediaRule: typeof CSSMediaRule;
+  /** WHATWG `window.CSSKeyframesRule` constructor (T44). */
+  readonly CSSKeyframesRule: typeof CSSKeyframesRule;
+  /** WHATWG `window.CSSKeyframeRule` constructor (T44). */
+  readonly CSSKeyframeRule: typeof CSSKeyframeRule;
+  /** WHATWG `window.CSSFontFaceRule` constructor (T44). */
+  readonly CSSFontFaceRule: typeof CSSFontFaceRule;
+  /** WHATWG `window.CSSSupportsRule` constructor (T44). */
+  readonly CSSSupportsRule: typeof CSSSupportsRule;
+  /** WHATWG `window.CSSGroupingRule` constructor (T44). */
+  readonly CSSGroupingRule: typeof CSSGroupingRule;
+  /** WHATWG `window.CSSConditionRule` constructor (T44). */
+  readonly CSSConditionRule: typeof CSSConditionRule;
+  /** WHATWG `window.MediaList` constructor (T44). */
+  readonly MediaList: typeof MediaList;
+  /** WHATWG `window.MediaQueryListEvent` constructor (T44). */
+  readonly MediaQueryListEvent: typeof MediaQueryListEvent;
+  /** WHATWG `window.CSSStyleValue` constructor (T44). */
+  readonly CSSStyleValue: typeof CSSStyleValue;
+  /** WHATWG `window.CSSKeywordValue` constructor (T44). */
+  readonly CSSKeywordValue: typeof CSSKeywordValue;
+  /** WHATWG `window.CSS` namespace (T44): the CSS unit-value factories and `supports`. */
+  readonly CSS: CSS;
+  /** WHATWG `window.matchMedia` (T44): a `MediaQueryList` for the given media query, evaluated against the default viewport (1024×768). */
+  matchMedia(mediaQuery: string): MediaQueryList;
+  /** WHATWG `window.getComputedStyle` (T44): a layout-free computed `CSSStyleDeclaration` for the element (default tag CSS + inline style + inherited properties; empty for detached elements). */
+  getComputedStyle(element: Element, pseudoElt?: string | null): CSSStyleDeclaration;
+  /** WHATWG `window.innerWidth` (T44): the default viewport width (1024; no layout engine). */
+  readonly innerWidth: number;
+  /** WHATWG `window.innerHeight` (T44): the default viewport height (768; no layout engine). */
+  readonly innerHeight: number;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
@@ -1049,6 +1089,8 @@ export interface Element extends Node {
   assignedNodes(options?: { flatten?: boolean }): Node[];
   /** WHATWG `HTMLSlotElement.assignedElements` (T43): the assigned element children (basic named assignment), or `[]` for other nodes. */
   assignedElements(options?: { flatten?: boolean }): Element[];
+  /** WHATWG `Element.style` (T44): a live `CSSStyleDeclaration` over the element's `style` attribute — every read re-parses the attribute and every mutation writes back through it, so the Core attribute stays the single authoritative state. */
+  readonly style: CSSStyleDeclaration;
 }
 
 /** The WHATWG `ShadowRootInit` dictionary (T43): the `attachShadow` option object. */
@@ -1083,6 +1125,8 @@ export interface HTMLElement extends Element {
   readonly isContentEditable: boolean;
   /** WHATWG `HTMLElement.dataset` (T39): a live `DOMStringMap` over the element's `data-*` attributes (camelCase keys ↔ kebab-case attribute names). */
   readonly dataset: DOMStringMap;
+  /** WHATWG `HTMLStyleElement.sheet` (T44): the `CSSStyleSheet` parsed from this `<style>` element's `textContent` (re-parsed when the text changes), or `null` when the element is not a connected `<style>` element. */
+  readonly sheet: CSSStyleSheet | null;
   /** WHATWG `HTMLElement.click` (T39): dispatches a bubbling, cancelable, composed `click` event on the element. */
   click(): void;
   /** WHATWG `HTMLElement.focus` (T39): makes this element the document's active element and dispatches `focus`/`focusin` (a no-op when detached, inert or already focused). */
@@ -1675,4 +1719,462 @@ export interface NodeHandle {
   slotAssignedNodes(flatten: boolean): NodeHandle[];
   /** T43 native `slotAssignedElements(flatten)`: the assigned element children of this `<slot>` element. */
   slotAssignedElements(flatten: boolean): NodeHandle[];
+}
+
+// --- CSSOM (T44) -------------------------------------------------------------
+//
+// The CSS Object Model surface: `CSSStyleDeclaration` (a live view over the
+// `style` attribute), the first batch of stylesheet/rule types
+// (`CSSStyleSheet`, `CSSRule` and the concrete rule classes), `MediaList`,
+// `MediaQueryList` / `MediaQueryListEvent` (from `window.matchMedia`) and the
+// `CSS` unit-value namespace. `document.styleSheets` and `document.adoptedStyleSheets`
+// are declared on `Document`. The rule / declaration classes are exported from
+// the package entry like the baseline.
+
+/** WHATWG `CSSRuleTypeEnum` numbers (T44): the `CSSRule.type` constants. */
+export declare enum CSSRuleTypeEnum {
+  CONTAINER_RULE = 0,
+  STYLE_RULE = 1,
+  IMPORT_RULE = 3,
+  MEDIA_RULE = 4,
+  FONT_FACE_RULE = 5,
+  PAGE_RULE = 6,
+  KEYFRAMES_RULE = 7,
+  KEYFRAME_RULE = 8,
+  NAMESPACE_RULE = 10,
+  COUNTER_STYLE_RULE = 11,
+  SUPPORTS_RULE = 12,
+  DOCUMENT_RULE = 13,
+  FONT_FEATURE_VALUES_RULE = 14,
+  REGION_STYLE_RULE = 16,
+}
+
+/** A single stored CSS declaration (`name → { value, important }`). */
+export interface IProperty {
+  value: string;
+  important: boolean;
+}
+
+/** WHATWG `CSSRule` (T44): the base interface of every parsed rule. */
+export declare class CSSRule {
+  static readonly CONTAINER_RULE: number;
+  static readonly STYLE_RULE: number;
+  static readonly IMPORT_RULE: number;
+  static readonly MEDIA_RULE: number;
+  static readonly FONT_FACE_RULE: number;
+  static readonly PAGE_RULE: number;
+  static readonly KEYFRAMES_RULE: number;
+  static readonly KEYFRAME_RULE: number;
+  static readonly NAMESPACE_RULE: number;
+  static readonly COUNTER_STYLE_RULE: number;
+  static readonly SUPPORTS_RULE: number;
+  static readonly DOCUMENT_RULE: number;
+  static readonly FONT_FEATURE_VALUES_RULE: number;
+  static readonly REGION_STYLE_RULE: number;
+  readonly type: number;
+  readonly cssText: string;
+  readonly parentRule: CSSRule | null;
+  readonly parentStyleSheet: CSSStyleSheet | null;
+}
+
+/** WHATWG `CSSStyleRule` (T44): a selector + declaration-block rule. */
+export declare class CSSStyleRule extends CSSRule {
+  readonly type: number;
+  readonly cssText: string;
+  readonly selectorText: string;
+  readonly style: CSSStyleDeclaration;
+}
+
+/** WHATWG `CSSGroupingRule` (T44): a rule that owns nested rules. */
+export declare class CSSGroupingRule extends CSSRule {
+  readonly cssRules: CSSRule[];
+  insertRule(rule: string, index?: number): number;
+  deleteRule(index: number): void;
+}
+
+/** WHATWG `CSSConditionRule` (T44): a grouping rule with a condition text. */
+export declare class CSSConditionRule extends CSSGroupingRule {
+  readonly conditionText: string;
+}
+
+/** WHATWG `CSSMediaRule` (T44): an `@media` grouping rule. */
+export declare class CSSMediaRule extends CSSConditionRule {
+  readonly type: number;
+  readonly cssText: string;
+  readonly media: MediaList;
+}
+
+/** WHATWG `CSSSupportsRule` (T44): an `@supports` grouping rule. */
+export declare class CSSSupportsRule extends CSSConditionRule {
+  readonly type: number;
+  readonly cssText: string;
+}
+
+/** WHATWG `CSSContainerRule` (T44): an `@container` grouping rule. */
+export declare class CSSContainerRule extends CSSConditionRule {
+  readonly type: number;
+  readonly cssText: string;
+}
+
+/** WHATWG `CSSScopeRule` (T44): an `@scope` grouping rule. */
+export declare class CSSScopeRule extends CSSGroupingRule {
+  readonly type: number;
+  readonly cssText: string;
+  readonly start: string;
+  readonly end: string;
+}
+
+/** WHATWG `CSSKeyframesRule` (T44): an `@keyframes` rule. */
+export declare class CSSKeyframesRule extends CSSRule {
+  readonly type: number;
+  readonly cssText: string;
+  readonly cssRules: CSSKeyframeRule[];
+  readonly name: string;
+  readonly length: number;
+  appendRule(rule: string): void;
+  deleteRule(select: string): void;
+  findRule(select: string): CSSKeyframeRule | null;
+}
+
+/** WHATWG `CSSKeyframeRule` (T44): one `from`/`to`/percentage keyframe. */
+export declare class CSSKeyframeRule extends CSSRule {
+  readonly type: number;
+  readonly cssText: string;
+  readonly keyText: string;
+  readonly style: CSSStyleDeclaration;
+}
+
+/** WHATWG `CSSFontFaceRule` (T44): an `@font-face` rule. */
+export declare class CSSFontFaceRule extends CSSRule {
+  readonly type: number;
+  readonly cssText: string;
+  readonly style: CSSStyleDeclaration;
+}
+
+/** WHATWG `CSSStyleDeclaration` (T44): a live CSS declaration block — the
+ * element-backed form re-parses the `style` attribute on every read and writes
+ * every mutation back through it (single authoritative state), while a
+ * standalone form (rule.style / getComputedStyle result) owns its own manager. */
+export declare class CSSStyleDeclaration {
+  /** The owning rule, or `null` for an element style / computed style. */
+  parentRule: CSSRule | null;
+  /** The serialized declaration text (`name: value;` joined by space). */
+  cssText: string;
+  /** The number of expanded longhand properties (shorthands count their sub-properties). */
+  readonly length: number;
+  /** The property name at `index` (expanded longhands), or `""`. */
+  item(index: number): string;
+  /** The value of `name` (kebab-case; the camelCase accessors map onto this), or `""`. */
+  getPropertyValue(name: string): string;
+  /** `"important"` when the named property carries the `!important` priority, else `""`. */
+  getPropertyPriority(name: string): string;
+  /** Sets `name` to `value` with the optional priority (`"important"`); an empty value removes the property. */
+  setProperty(name: string, value: string, priority?: string): void;
+  /** Removes the named property. */
+  removeProperty(name: string): void;
+  readonly accentColor: string;
+  readonly alignContent: string;
+  readonly alignItems: string;
+  readonly alignSelf: string;
+  readonly all: string;
+  readonly animation: string;
+  readonly animationDelay: string;
+  readonly animationDirection: string;
+  readonly animationDuration: string;
+  readonly animationFillMode: string;
+  readonly animationIterationCount: string;
+  readonly animationName: string;
+  readonly animationPlayState: string;
+  readonly animationTimingFunction: string;
+  readonly appearance: string;
+  readonly backdropFilter: string;
+  readonly backfaceVisibility: string;
+  readonly background: string;
+  readonly backgroundAttachment: string;
+  readonly backgroundClip: string;
+  readonly backgroundColor: string;
+  readonly backgroundImage: string;
+  readonly backgroundOrigin: string;
+  readonly backgroundPosition: string;
+  readonly backgroundRepeat: string;
+  readonly backgroundSize: string;
+  readonly border: string;
+  readonly borderBottom: string;
+  readonly borderBottomColor: string;
+  readonly borderBottomLeftRadius: string;
+  readonly borderBottomRightRadius: string;
+  readonly borderBottomStyle: string;
+  readonly borderBottomWidth: string;
+  readonly borderCollapse: string;
+  readonly borderColor: string;
+  readonly borderImage: string;
+  readonly borderLeft: string;
+  readonly borderLeftColor: string;
+  readonly borderLeftStyle: string;
+  readonly borderLeftWidth: string;
+  readonly borderRadius: string;
+  readonly borderRight: string;
+  readonly borderRightColor: string;
+  readonly borderRightStyle: string;
+  readonly borderRightWidth: string;
+  readonly borderStyle: string;
+  readonly borderTop: string;
+  readonly borderTopColor: string;
+  readonly borderTopLeftRadius: string;
+  readonly borderTopRightRadius: string;
+  readonly borderTopStyle: string;
+  readonly borderTopWidth: string;
+  readonly borderWidth: string;
+  readonly bottom: string;
+  readonly boxShadow: string;
+  readonly boxSizing: string;
+  readonly captionSide: string;
+  readonly caretColor: string;
+  readonly clear: string;
+  readonly clip: string;
+  readonly clipPath: string;
+  readonly color: string;
+  readonly columnCount: string;
+  readonly columnFill: string;
+  readonly columnGap: string;
+  readonly columnRule: string;
+  readonly columnRuleColor: string;
+  readonly columnRuleStyle: string;
+  readonly columnRuleWidth: string;
+  readonly columnSpan: string;
+  readonly columnWidth: string;
+  readonly columns: string;
+  readonly content: string;
+  readonly counterIncrement: string;
+  readonly counterReset: string;
+  readonly cssFloat: string;
+  readonly cursor: string;
+  readonly direction: string;
+  readonly display: string;
+  readonly emptyCells: string;
+  readonly fill: string;
+  readonly fillOpacity: string;
+  readonly fillRule: string;
+  readonly filter: string;
+  readonly flex: string;
+  readonly flexBasis: string;
+  readonly flexDirection: string;
+  readonly flexFlow: string;
+  readonly flexGrow: string;
+  readonly flexShrink: string;
+  readonly flexWrap: string;
+  readonly float: string;
+  readonly floodColor: string;
+  readonly floodOpacity: string;
+  readonly font: string;
+  readonly fontFamily: string;
+  readonly fontSize: string;
+  readonly fontStretch: string;
+  readonly fontStyle: string;
+  readonly fontVariant: string;
+  readonly fontWeight: string;
+  readonly gap: string;
+  readonly grid: string;
+  readonly gridArea: string;
+  readonly gridAutoColumns: string;
+  readonly gridAutoFlow: string;
+  readonly gridAutoRows: string;
+  readonly gridColumn: string;
+  readonly gridColumnEnd: string;
+  readonly gridColumnGap: string;
+  readonly gridColumnStart: string;
+  readonly gridRow: string;
+  readonly gridRowEnd: string;
+  readonly gridRowGap: string;
+  readonly gridRowStart: string;
+  readonly gridTemplate: string;
+  readonly gridTemplateAreas: string;
+  readonly gridTemplateColumns: string;
+  readonly gridTemplateRows: string;
+  readonly height: string;
+  readonly justifyContent: string;
+  readonly justifyItems: string;
+  readonly justifySelf: string;
+  readonly left: string;
+  readonly letterSpacing: string;
+  readonly lineHeight: string;
+  readonly listStyle: string;
+  readonly listStyleImage: string;
+  readonly listStylePosition: string;
+  readonly listStyleType: string;
+  readonly margin: string;
+  readonly marginBottom: string;
+  readonly marginLeft: string;
+  readonly marginRight: string;
+  readonly marginTop: string;
+  readonly maxHeight: string;
+  readonly maxWidth: string;
+  readonly minHeight: string;
+  readonly minWidth: string;
+  readonly mixBlendMode: string;
+  readonly objectFit: string;
+  readonly objectPosition: string;
+  readonly opacity: string;
+  readonly order: string;
+  readonly orphans: string;
+  readonly outline: string;
+  readonly outlineColor: string;
+  readonly outlineOffset: string;
+  readonly outlineStyle: string;
+  readonly outlineWidth: string;
+  readonly overflow: string;
+  readonly overflowX: string;
+  readonly overflowY: string;
+  readonly padding: string;
+  readonly paddingBottom: string;
+  readonly paddingLeft: string;
+  readonly paddingRight: string;
+  readonly paddingTop: string;
+  readonly pageBreakAfter: string;
+  readonly pageBreakBefore: string;
+  readonly pageBreakInside: string;
+  readonly perspective: string;
+  readonly perspectiveOrigin: string;
+  readonly pointerEvents: string;
+  readonly position: string;
+  readonly quotes: string;
+  readonly resize: string;
+  readonly right: string;
+  readonly rowGap: string;
+  readonly scrollBehavior: string;
+  readonly tabSize: string;
+  readonly tableLayout: string;
+  readonly textAlign: string;
+  readonly textAlignLast: string;
+  readonly textDecoration: string;
+  readonly textDecorationColor: string;
+  readonly textDecorationLine: string;
+  readonly textDecorationStyle: string;
+  readonly textIndent: string;
+  readonly textOverflow: string;
+  readonly textShadow: string;
+  readonly textTransform: string;
+  readonly top: string;
+  readonly touchAction: string;
+  readonly transform: string;
+  readonly transformOrigin: string;
+  readonly transformStyle: string;
+  readonly transition: string;
+  readonly transitionDelay: string;
+  readonly transitionDuration: string;
+  readonly transitionProperty: string;
+  readonly transitionTimingFunction: string;
+  readonly unicodeBidi: string;
+  readonly userSelect: string;
+  readonly verticalAlign: string;
+  readonly visibility: string;
+  readonly whiteSpace: string;
+  readonly widows: string;
+  readonly width: string;
+  readonly willChange: string;
+  readonly wordBreak: string;
+  readonly wordSpacing: string;
+  readonly wordWrap: string;
+  readonly writingMode: string;
+  readonly zIndex: string;
+  readonly zoom: string;
+}
+
+/** WHATWG `CSSStyleSheet` (T44): the parsed rule list of a `<style>` element
+ * (or a standalone constructible sheet). `insertRule` / `deleteRule` mutate the
+ * sheet's own rule list; `replaceSync` re-parses the given CSS text. */
+export declare class CSSStyleSheet {
+  cssRules: CSSRule[];
+  media: string;
+  title: string;
+  alternate: boolean;
+  disabled: boolean;
+  insertRule(rule: string, index?: number): number;
+  deleteRule(index: number): void;
+  replaceSync(text: string): void;
+  replace(text: string): Promise<void>;
+}
+
+/** WHATWG `MediaList` (T44): the comma-separated media list of a `CSSMediaRule`. */
+export declare class MediaList {
+  readonly length: number;
+  mediaText: string;
+  item(index: number): string | null;
+  appendMedium(medium: string): void;
+  deleteMedium(medium: string): void;
+}
+
+/** WHATWG `MediaQueryListEventInit` (T44). */
+export interface IMediaQueryListEventInit extends IEventInit {
+  media?: string;
+  matches?: boolean;
+}
+
+/** WHATWG `MediaQueryListEvent` (T44): the `change` event payload. */
+export declare class MediaQueryListEvent extends Event {
+  readonly media: string;
+  readonly matches: boolean;
+  constructor(type: string, eventInit?: IMediaQueryListEventInit | null);
+}
+
+/** WHATWG `MediaQueryList` (T44): returned by `window.matchMedia`. */
+export declare class MediaQueryList {
+  readonly media: string;
+  readonly matches: boolean;
+  onchange: ((event: MediaQueryListEvent) => void) | null;
+  addListener(callback: (event: MediaQueryListEvent) => void): void;
+  removeListener(callback: (event: MediaQueryListEvent) => void): void;
+  addEventListener(type: string, listener: (event: MediaQueryListEvent) => void): void;
+  removeEventListener(type: string, listener: (event: MediaQueryListEvent) => void): void;
+  dispatchEvent(event: MediaQueryListEvent): boolean;
+}
+
+/** WHATWG `CSSStyleValue` (T44): the base of the typed-OM value classes. */
+export declare class CSSStyleValue {
+  toString(): string;
+}
+
+/** WHATWG `CSSKeywordValue` (T44): a keyword CSS value. */
+export declare class CSSKeywordValue {
+  value: string;
+  constructor(value: string);
+}
+
+/** WHATWG `CSS` namespace (T44): unit-value factories and `supports`. */
+export declare class CSS {
+  static supports(conditionText: string): boolean;
+  static escape(value: string): string;
+  readonly px: (value: number) => CSSUnitValue;
+  readonly em: (value: number) => CSSUnitValue;
+  readonly rem: (value: number) => CSSUnitValue;
+  readonly percent: (value: number) => CSSUnitValue;
+  readonly number: (value: number) => CSSUnitValue;
+  readonly vw: (value: number) => CSSUnitValue;
+  readonly vh: (value: number) => CSSUnitValue;
+  readonly s: (value: number) => CSSUnitValue;
+  readonly ms: (value: number) => CSSUnitValue;
+  readonly deg: (value: number) => CSSUnitValue;
+  readonly rad: (value: number) => CSSUnitValue;
+  readonly turn: (value: number) => CSSUnitValue;
+  readonly Hz: (value: number) => CSSUnitValue;
+  readonly kHz: (value: number) => CSSUnitValue;
+  readonly cm: (value: number) => CSSUnitValue;
+  readonly mm: (value: number) => CSSUnitValue;
+  readonly in: (value: number) => CSSUnitValue;
+  readonly pt: (value: number) => CSSUnitValue;
+  readonly pc: (value: number) => CSSUnitValue;
+  readonly Q: (value: number) => CSSUnitValue;
+}
+
+/** WHATWG `CSSUnitValue` (T44): a typed value with a unit. */
+export declare class CSSUnitValue {
+  value: number;
+  readonly unit: string;
+  toString(): string;
+}
+
+/** T44 native `Document.styleSheets`: the array of sheets for the document's connected `<style>` elements. */
+export interface Document {
+  readonly styleSheets: CSSStyleSheet[];
+  adoptedStyleSheets: CSSStyleSheet[];
 }

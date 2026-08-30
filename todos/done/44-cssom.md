@@ -1,6 +1,6 @@
 # 44 实现 CSSOM 与样式相关 API
 
-- 状态：待办
+- 状态：已完成
 - 优先级：P2
 - 里程碑：M8
 - 条目 ID：`T44`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T44 — 实现 CSSOM 与样式相关 API**
+- [x] **T44 — 实现 CSSOM 与样式相关 API**
   - 实现：
     - 先从兼容清单拆出 CSSOM 数据模型、解析和序列化范围。
     - 实现 Element.style、style 属性双向同步和首批 stylesheet/rule API。

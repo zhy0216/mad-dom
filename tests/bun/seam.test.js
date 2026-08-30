@@ -36,6 +36,7 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/range-selection.js", owner: "T36" },
   { path: "extensions/shadow-dom.js", owner: "T43" },
   { path: "extensions/timers.js", owner: "T47" },
+  { path: "extensions/cssom.js", owner: "T44" },
 ];
 
 // The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29,
@@ -67,6 +68,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/range-selection.js", owner: "T36" },
   { path: "extensions/shadow-dom.js", owner: "T43" },
   { path: "extensions/timers.js", owner: "T47" },
+  { path: "extensions/cssom.js", owner: "T44" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 
