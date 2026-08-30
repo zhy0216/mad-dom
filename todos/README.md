@@ -214,7 +214,7 @@ git diff --check
 | 24C | P0 | [24c-facade-mutation.md](done/24c-facade-mutation.md) | M4 | T24A, T24B | 已完成 |
 | 24 | P0 | [24-javascript-tree-mutations.md](done/24-javascript-tree-mutations.md) | M4 | T24A, T24B, T24C | 已完成 |
 | 25A | P0 | [25a-core-payload-seam.md](done/25a-core-payload-seam.md) | M4 | T24, T20A | 已完成 |
-| 25B | P0 | [25b-core-attributes.md](25b-core-attributes.md) | M4 | T25A | 待办 |
+| 25B | P0 | [25b-core-attributes.md](done/25b-core-attributes.md) | M4 | T25A | 已完成 |
 | 25C | P0 | [25c-core-text-content.md](25c-core-text-content.md) | M4 | T25A | 待办 |
 | 25D | P0 | [25d-live-child-nodelist.md](done/25d-live-child-nodelist.md) | M4 | T24, T23 | 已完成 |
 | 25E | P0 | [25e-binding-attributes-text.md](25e-binding-attributes-text.md) | M4 | T23, T24, T25A, T25B, T25C, T25D | 待办 |
