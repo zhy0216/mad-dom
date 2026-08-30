@@ -36,9 +36,7 @@
 // by exporting `install(ctx)`; nothing in the registry changes beyond the
 // import and array entry.
 
-import { createRequire } from "node:module";
-import { isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { loadNative } from "../../native-loader.js";
 
 import { Window } from "../window.js";
 
@@ -61,37 +59,11 @@ const OBSERVER_OWNERS = new WeakMap();
 // record accessors can mint facade wrappers.
 let ctx = null;
 
-// --- Native loader (mirrors js/facade/window.js) ------------------------------
-
-let native = null;
-let nativeLoadError = null;
-
-function resolveNativePath() {
-  const explicit = process.env.MAD_DOM_NATIVE_PATH;
-  if (explicit) return isAbsolute(explicit) ? explicit : resolve(process.cwd(), explicit);
-  return fileURLToPath(new URL("../../../build/mad-dom.node", import.meta.url));
-}
-
-function loadNative() {
-  if (native !== null) return native;
-  if (nativeLoadError !== null) throw nativeLoadError;
-  const path = resolveNativePath();
-  const require = createRequire(import.meta.url);
-  try {
-    native = require(path);
-    return native;
-  } catch (error) {
-    nativeLoadError = new Error(
-      `mad-dom native binding could not be loaded from ${path}. ` +
-        "Build it with `npm run dev:build` in a source checkout, or point " +
-        "MAD_DOM_NATIVE_PATH at a built artifact. " +
-        `Original error: ${error?.message ?? error}`,
-      { cause: error },
-    );
-    nativeLoadError.code = "MAD_DOM_NATIVE_NOT_FOUND";
-    throw nativeLoadError;
-  }
-}
+// --- Native binding (T19 / T49) ---------------------------------------------
+//
+// Shares the unified resolution chain and load-time ABI probe with the entry
+// (js/native-loader.js): explicit `MAD_DOM_NATIVE_PATH` → npm platform package
+// → repository-local dev artifact (ADR-0005 §6).
 
 // --- handle guards -----------------------------------------------------------
 

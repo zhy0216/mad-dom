@@ -38,6 +38,36 @@ Since T48E the `createWindow` convenience is retired from the package entry to
 match happy-dom (`typeof entry.createWindow === "undefined"`); the facade
 layer keeps it only as an internal compatibility alias.
 
+## Support matrix
+
+The native binding ships as a per-platform npm package (`@mad-dom/platform-*`,
+ADR-0005). The main package loads its binary at runtime through the
+`@mad-dom/platform-<os>-<arch>[-<libc>]` optional dependency that matches the
+installing machine (linux tries the detected libc variant first, then the
+other once). `win32` needs no libc suffix; `linux` always carries an explicit
+`gnu`/`musl` suffix.
+
+| Platform package | Target triple | libc | Phase |
+| --- | --- | --- | --- |
+| `@mad-dom/platform-darwin-arm64` | `aarch64-apple-darwin` | — | first (alpha+) |
+| `@mad-dom/platform-darwin-x64` | `x86_64-apple-darwin` | — | first (alpha+) |
+| `@mad-dom/platform-linux-x64-gnu` | `x86_64-unknown-linux-gnu` | glibc | first (alpha+) |
+| `@mad-dom/platform-linux-arm64-gnu` | `aarch64-unknown-linux-gnu` | glibc | first (alpha+) |
+| `@mad-dom/platform-win32-x64` | `x86_64-pc-windows-msvc` | — | first (beta+) |
+| `@mad-dom/platform-linux-x64-musl` | `x86_64-unknown-linux-musl` | musl | second (beta+) |
+| `@mad-dom/platform-linux-arm64-musl` | `aarch64-unknown-linux-musl` | musl | second (beta+) |
+
+Alpha releases may omit `win32-x64`; beta and stable ship the full matrix.
+Platforms outside this matrix (e.g. 32-bit `arm`, FreeBSD) are not supported.
+
+Load failures are never silent: the first native-backed call throws an `Error`
+with a stable `code` — `MAD_DOM_UNSUPPORTED_PLATFORM` (platform outside the
+matrix, platform package missing, or its binary failed to load),
+`MAD_DOM_ABI_MISMATCH` (mixed-version install), or `MAD_DOM_NATIVE_NOT_FOUND`
+(source checkout without a built dev artifact). The message always names the
+current platform/arch, every package it tried, and this section. See
+`docs/release.md` for build, publish and rollback details.
+
 ## Development
 
 Development uses Bun `1.4.0` (recorded in `.bun-version`) and Rust `1.93.1` (pinned in `rust-toolchain.toml`).
@@ -80,6 +110,31 @@ Individual commands:
 - `npm run dev:build` — build the local native artifact (`build/mad-dom.node`);
 - `npm run test:native` — native binding smoke tests;
 - `npm pack --dry-run` — package smoke test.
+
+### Native packaging and release (T49+)
+
+The published form splits the binary into per-platform npm packages
+(`@mad-dom/platform-*`, see the support matrix above). The runtime loader in
+`js/native-loader.js` resolves, in order: `MAD_DOM_NATIVE_PATH` → the matching
+platform package (linux: detected-libc variant, then the other once) → the
+repository-local dev artifact. It runs an ABI probe after every successful
+load. Local commands:
+
+```sh
+npm run platform:build     # build the host platform package (build/platform/)
+npm run smoke:install      # no-Cargo install smoke against the packed tarballs
+npm run release:draft -- --stage alpha    # rehearsal: pack + checksums + ordered publish plan
+npm run release:draft -- --stage beta
+npm run release:draft -- --stage stable
+npm run release:rollback -- --tag next --last-healthy <v>
+```
+
+The release workflow (`.github/workflows/release.yml`) builds the platform
+matrix on native runners, runs the install smoke per platform, verifies the
+sha256 checksum manifest, and only publishes when explicitly authorized
+(platform packages first, registry verification, main package last). See
+`docs/release.md` for the full manual, the measured glibc floor, Bun installer
+`libc`-trimming notes, dist-tag policy and rollback procedures.
 
 ### WPT subset (T48+)
 

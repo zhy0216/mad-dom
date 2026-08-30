@@ -1,0 +1,151 @@
+name: Release
+
+# T49 native release build (ADR-0005 §3, §7, §10). Builds the platform matrix on
+# native runners, runs the install smoke per platform, verifies checksums, and
+# (only when explicitly authorized) publishes: every platform package first, a
+# registry integrity check, then the main package last. Nothing is published by
+# default — `dry_run` defaults to true and `publish` additionally requires the
+# release script's MAD_DOM_ALLOW_PUBLISH guard.
+#
+# Stage → shipped platform set (ADR-0005 §2):
+#   alpha  — darwin-arm64, darwin-x64, linux-x64-gnu, linux-arm64-gnu
+#            (win32-x64 and the musl targets are deferred to beta);
+#   beta   — the full 7-platform matrix;
+#   stable — the full matrix (the stable gate, T50, owns the final dist-tag
+#            migration to `latest`).
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "Release stage (alpha / beta / stable)"
+        required: true
+        default: alpha
+        type: choice
+        options:
+          - alpha
+          - beta
+          - stable
+      version:
+        description: "Version to release (default: package.json version)"
+        required: false
+        type: string
+      dry_run:
+        description: "Rehearsal only — build, pack, checksum and print the publish plan without touching the registry"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write # npm provenance (ADR-0005 §7)
+
+jobs:
+  build:
+    name: "Build + install smoke: ${{ matrix.platform }}"
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: darwin-arm64
+            triple: aarch64-apple-darwin
+            runs-on: macos-14
+          - platform: darwin-x64
+            triple: x86_64-apple-darwin
+            runs-on: macos-13
+          - platform: linux-x64-gnu
+            triple: x86_64-unknown-linux-gnu
+            runs-on: ubuntu-latest
+          - platform: linux-arm64-gnu
+            triple: aarch64-unknown-linux-gnu
+            runs-on: ubuntu-24.04-arm
+          - platform: win32-x64
+            triple: x86_64-pc-windows-msvc
+            runs-on: windows-latest
+          - platform: linux-x64-musl
+            triple: x86_64-unknown-linux-musl
+            runs-on: ubuntu-latest
+          - platform: linux-arm64-musl
+            triple: aarch64-unknown-linux-musl
+            runs-on: ubuntu-24.04-arm
+    if: |
+      !(inputs.stage == 'alpha' &&
+        (matrix.platform == 'win32-x64' || contains(matrix.platform, 'musl')))
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.1
+
+      - name: Add musl cross toolchain
+        if: contains(matrix.platform, 'musl')
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.triple }}
+
+      - name: Install pinned Bun version
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Build the platform package
+        run: bun scripts/build-platform-package.mjs --triple ${{ matrix.triple }}
+
+      - name: Pack the platform package tarball
+        shell: bash
+        run: |
+          pkg_dir="build/platform/@mad-dom/platform-${{ matrix.platform }}"
+          npm pack "$pkg_dir" --pack-destination build/smoke --json
+
+      - name: Run install smoke on the native runner
+        shell: bash
+        run: |
+          tgz="build/smoke/mad-dom-platform-${{ matrix.platform }}-$(node -p "require('./package.json').version").tgz"
+          bun scripts/install-smoke.mjs --platform-tgz "$tgz"
+
+      - name: Upload platform package
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-${{ matrix.platform }}
+          path: build/platform/@mad-dom
+          if-no-files-found: error
+
+  verify:
+    name: "Verify checksums + release plan (${{ inputs.stage || 'alpha' }})"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Bun version
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Download platform packages
+        uses: actions/download-artifact@v4
+        with:
+          path: build/release/platform
+          merge-multiple: true
+
+      - name: "Rehearse the release (pack + checksums + ordered plan)"
+        env:
+          MAD_DOM_ALLOW_PUBLISH: ${{ !inputs.dry_run && '1' || '0' }}
+        run: |
+          stage="${{ inputs.stage || 'alpha' }}"
+          if [ "${{ inputs.dry_run }}" = "false" ]; then
+            bun scripts/release.mjs publish --stage "$stage" --no-build --no-dry-run
+          else
+            bun scripts/release.mjs draft --stage "$stage" --no-build
+          fi

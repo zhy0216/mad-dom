@@ -41,9 +41,7 @@
 // The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
 // tests/bun/seam.test.js pins that shape.
 
-import { createRequire } from "node:module";
-import { isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { loadNative } from "../native-loader.js";
 
 import { Document } from "./document.js";
 import { installExtensions } from "./extensions/index.js";
@@ -55,44 +53,13 @@ export const seam = Object.freeze({
   status: "implemented",
 });
 
-// --- Native binding loader (dev form, T19 / ADR-0005 §3) -----------------
+// --- Native binding (T19 / T49) --------------------------------------------
 //
-// Mirrors index.js so the facade does not depend on the root entry's internal
-// wiring (which only the T22 gate may touch). Resolution order:
-//   1. `MAD_DOM_NATIVE_PATH` — explicit override (absolute, or relative to
-//      the current working directory);
-//   2. the repository-local dev artifact `build/mad-dom.node` (produced by
-//      `npm run dev:build`; git-ignored). Loading is lazy: `createWindow()`
-//      fails fast with `MAD_DOM_NATIVE_NOT_FOUND` when no artifact exists.
-let native = null;
-let nativeLoadError = null;
-
-function resolveNativePath() {
-  const explicit = process.env.MAD_DOM_NATIVE_PATH;
-  if (explicit) return isAbsolute(explicit) ? explicit : resolve(process.cwd(), explicit);
-  return fileURLToPath(new URL("../../build/mad-dom.node", import.meta.url));
-}
-
-function loadNative() {
-  if (native !== null) return native;
-  if (nativeLoadError !== null) throw nativeLoadError;
-  const path = resolveNativePath();
-  const require = createRequire(import.meta.url);
-  try {
-    native = require(path);
-    return native;
-  } catch (error) {
-    nativeLoadError = new Error(
-      `mad-dom native binding could not be loaded from ${path}. ` +
-        "Build it with `npm run dev:build` in a source checkout, or point " +
-        "MAD_DOM_NATIVE_PATH at a built artifact. " +
-        `Original error: ${error?.message ?? error}`,
-      { cause: error },
-    );
-    nativeLoadError.code = "MAD_DOM_NATIVE_NOT_FOUND";
-    throw nativeLoadError;
-  }
-}
+// Shares the unified resolution chain and load-time ABI probe with the entry
+// (js/native-loader.js): explicit `MAD_DOM_NATIVE_PATH` → npm platform package
+// → repository-local dev artifact. Loading is lazy but fail-fast on first use
+// with a stable `MAD_DOM_UNSUPPORTED_PLATFORM` / `MAD_DOM_ABI_MISMATCH` /
+// `MAD_DOM_NATIVE_NOT_FOUND` error (ADR-0005 §6, §8, §9).
 
 // --- The unique conversion entry -----------------------------------------
 

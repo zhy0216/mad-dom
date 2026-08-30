@@ -50,3 +50,37 @@ jobs:
 
       - name: Smoke test package packing
         run: npm pack --dry-run
+
+  install-smoke:
+    name: Install smoke (host platform, no Cargo)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.1
+
+      - name: Install pinned Bun version
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Build the host platform package
+        run: bun scripts/build-platform-package.mjs
+
+      - name: Pack the platform package tarball
+        run: |
+          pkg_name="$(bun -e 'import { platformInfo, platformPackageName } from "./js/native-loader.js"; const i = platformInfo(); console.log(platformPackageName(i.platform, i.arch, i.libc));')"
+          echo "platform package: ${pkg_name}"
+          npm pack "build/platform/${pkg_name}" --pack-destination build/smoke --json
+
+      - name: Run install smoke (packed package, no Cargo environment)
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          bun scripts/install-smoke.mjs --platform-tgz "build/smoke/mad-dom-platform-linux-x64-gnu-${version}.tgz"
