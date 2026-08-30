@@ -185,12 +185,15 @@ describe("facade registry (T22B)", () => {
       registerHandleType: (...args) => calls.push(["registerHandleType", ...args]),
     };
     expect(() => installExtensions(mockCtx)).not.toThrow();
-    // node.js (T23B) now exports `install` and is picked up automatically; the
-    // other capability extensions are still placeholders and stay silent. The
-    // exact node surface it registers is pinned in facade-node.test.js; here we
-    // only pin that the registry drives it through `ctx` without further edits.
+    // node.js (T23B), query.js (T31) and events.js (T37) export `install` and
+    // are picked up automatically; the remaining capability extensions stay
+    // silent. Here we only pin that the registry drives them through `ctx`
+    // without further edits: the two wrapper types registered so far.
     const registered = calls.filter(([kind]) => kind === "registerHandleType");
-    expect(registered).toEqual([["registerHandleType", "NodeHandle", expect.any(Function)]]);
+    expect(registered).toEqual([
+      ["registerHandleType", "NodeHandle", expect.any(Function)],
+      ["registerHandleType", "EventHandle", expect.any(Function)],
+    ]);
     expect(calls.some(([kind, target]) => kind === "method" && target === Document.prototype)).toBe(true);
     expect(calls.length).toBeGreaterThan(0);
   });

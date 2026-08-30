@@ -11,6 +11,14 @@
       "addedIn": "T25D"
     },
     {
+      "id": "hc-diff-event-target",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-events",
+      "addedIn": "T37"
+    },
+    {
       "id": "hc-diff-attributes-read-write",
       "suite": "diff",
       "status": "known-gap",
@@ -96,7 +104,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-query-selector-identity",
-      "reason": "Since T31, MAD DOM implements the selector/query surface (querySelector/querySelectorAll/matches/closest/getElementById, crates/mad-dom-bun/src/extensions/query_api.rs and js/facade/extensions/query.js), so the mad-dom side now counts 2 items, re-queries the same element, and finds the list through getElementById exactly like happy-dom. The remaining differences are all outside T31's scope: the events surface (addEventListener and the click propagation order — T37, mad-dom records a TypeError where happy-dom records the bubbling events), the snapshot's NamedNodeMap .attributes and namespaceURI (T34) plus the Element.nodeName casing gap (T23A), and the createWindow export shape. First presented by the T10 real-pair runner; updated by T22/T29/T31; collected into the compatibility ledger by T11.",
+      "reason": "Since T31, MAD DOM implements the selector/query surface (querySelector/querySelectorAll/matches/closest/getElementById, crates/mad-dom-bun/src/extensions/query_api.rs and js/facade/extensions/query.js), so the mad-dom side now counts 2 items, re-queries the same element, and finds the list through getElementById exactly like happy-dom. The remaining differences are all outside T31/T37's scope: the scenario's click events never fire on mad-dom because Element.click() is not implemented yet (T39) — addEventListener and dispatchEvent themselves now match happy-dom (hc-diff-event-target) — plus the snapshot's NamedNodeMap .attributes and namespaceURI (T34), the Element.nodeName casing gap (T23A), and the createWindow export shape. First presented by the T10 real-pair runner; updated by T22/T29/T31/T37; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
     },
@@ -122,15 +130,12 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/event-callbacks.ts",
-      "reason": "MAD DOM still does not export Event or EventPhaseEnum, and its Window is not user-constructible while its Document lacks addEventListener: listener parameter typing and enum comparison in event handlers cannot be checked yet. Updated by T22 when Window became an exported, non-constructible class.",
+      "reason": "Since T37 the EventTarget surface is typed: Document/Node addEventListener listeners receive a typed Event (window.Event), so the listener-parameter and handler-body checks now type-check. The remaining gaps are the module-level exports (MAD DOM does not export Event or EventPhaseEnum from the package entry — the Event value is reached through window.Event and the full export lands with T38) and the Window constructor shape (not user-constructible). Updated by T22 and T37.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
-        { "code": 2305, "messageIncludes": "no exported member 'Event'" },
         { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
-        { "code": 2554, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'addEventListener' does not exist" },
-        { "code": 7006, "messageIncludes": "Parameter 'event' implicitly has an 'any' type" }
+        { "code": 2554, "line": 7 }
       ]
     },
     {
@@ -154,13 +159,12 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/type-exports.ts",
-      "reason": "MAD DOM does not export the Event value or the IEventInit/TEventListener type exports; annotations that reference them degrade to implicit any (TS7006) while the module-level gap exists. First recorded in T09 as div-types-type-exports; migrated into the compatibility ledger by T11.",
+      "reason": "Since T37 the Event value is declared (non-exported) so type-only references to it in annotations resolve against the typed window.Event surface; the remaining gaps are the module-level type exports IEventInit and TEventListener (whose full definitions land with T38) and the annotations that degrade to implicit any (TS7006) while those exports are missing. First recorded in T09 as div-types-type-exports; migrated into the compatibility ledger by T11; updated by T37.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2305, "messageIncludes": "no exported member 'IEventInit'" },
         { "code": 2305, "messageIncludes": "no exported member 'TEventListener'" },
-        { "code": 2305, "messageIncludes": "no exported member 'Event'" },
         { "code": 7006, "messageIncludes": "Parameter 'event' implicitly has an 'any' type" }
       ]
     },

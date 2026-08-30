@@ -118,14 +118,16 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     expect(documentProto.createTextNode).toBeUndefined();
 
     // ABI pin: the module-level export surface is unchanged from the audited
-    // T19/T20/T22 shape (creating or renaming a module export breaks this).
+    // T19/T20/T22 shape (extended by T37: createEvent / EventHandle) (creating or renaming a module export breaks this).
     expect(Object.keys(native).sort()).toEqual([
       "DocumentHandle",
+      "EventHandle",
       "NodeHandle",
       "WindowHandle",
       "abiVersion",
       "bindingIdentity",
       "createDocument",
+      "createEvent",
       "createWindow",
       "liveDocumentCount",
     ]);

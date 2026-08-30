@@ -62,6 +62,7 @@
 mod attributes_api;
 mod character_data_api;
 mod collection_api;
+mod events_api;
 mod html_api;
 mod live_collections;
 mod mutation_insert_api;

@@ -24,11 +24,16 @@ mod attributes;
 mod character_data;
 mod cross_document;
 mod document;
+mod events;
 mod mutation;
 mod node;
 mod text_content;
 mod tree;
 
 pub use document::Document;
+pub use events::{
+    Dispatch, DispatchInvocation, EventRegistration, EventState, EVENT_PHASE_AT_TARGET,
+    EVENT_PHASE_BUBBLING, EVENT_PHASE_CAPTURING, EVENT_PHASE_NONE,
+};
 pub use node::{Node, NodeData, NodeType, HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE};
 pub use tree::TreeViolation;

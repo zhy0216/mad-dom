@@ -22,8 +22,46 @@ export declare class Window {
   constructor(nativeHandle: WindowHandle);
   /** The live Document facade of this window (T20 wrapper identity). */
   readonly document: Document;
+  /** The WHATWG `Event` constructor (T37): `new window.Event("click", { bubbles: true })`. */
+  readonly Event: typeof Event;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
+}
+
+// --- Event / EventTarget (T37) -----------------------------------------------
+//
+// The base `Event` value is not exported from the package entry in T37 — it is
+// reached through `window.Event` — so the concrete subclasses, constants and
+// `composedPath`/`timeStamp`/`initEvent` surface land with T38. The
+// EventTarget methods on `Node` / `Document` delegate to the Core propagation
+// engine. The listener-option shapes are inlined (the WHATWG `EventInit`,
+// `EventListenerOptions` and `AddEventListenerOptions` type exports arrive with
+// T38 alongside the runtime `Event` export).
+
+declare class Event {
+  constructor(type: string, eventInit?: { bubbles?: boolean; cancelable?: boolean; composed?: boolean } | null);
+  /** The event's type string. */
+  readonly type: string;
+  /** Whether the event bubbles past its target. */
+  readonly bubbles: boolean;
+  /** Whether `preventDefault` may set `defaultPrevented`. */
+  readonly cancelable: boolean;
+  /** Whether the event is composed across shadow boundaries. */
+  readonly composed: boolean;
+  /** Whether `preventDefault` was called by a non-passive cancelable listener. */
+  readonly defaultPrevented: boolean;
+  /** The current phase: 0 none, 1 capturing, 2 at target, 3 bubbling. */
+  readonly eventPhase: number;
+  /** The node `dispatchEvent` was called on, or `null` before the first dispatch. */
+  readonly target: Node | null;
+  /** The node whose listeners are running, or `null` outside a dispatch. */
+  readonly currentTarget: Node | null;
+  /** Sets `defaultPrevented` when the event is cancelable and not passive. */
+  preventDefault(): void;
+  /** Ends the dispatch after the current target's listeners finish. */
+  stopPropagation(): void;
+  /** Ends the dispatch immediately. */
+  stopImmediatePropagation(): void;
 }
 
 export declare class Document {
@@ -65,6 +103,13 @@ export declare class Document {
   adoptNode<T extends Node>(node: T): T;
   /** WHATWG `Document.doctype` (T33): the document's parsed `DocumentType`, or `null` on a fresh/empty document. */
   readonly doctype: DocumentType | null;
+
+  /** WHATWG `EventTarget.addEventListener` (T37), registered on the document-root node. */
+  addEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean; once?: boolean; passive?: boolean; signal?: unknown }): void;
+  /** WHATWG `EventTarget.removeEventListener` (T37), matching the registered callback. */
+  removeEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean }): void;
+  /** WHATWG `EventTarget.dispatchEvent` (T37): returns `false` when a cancelable event was default-prevented. */
+  dispatchEvent(event: Event): boolean;
 }
 
 export declare function createWindow(): Window;
@@ -108,6 +153,13 @@ export interface Node {
   cloneNode(deep?: boolean): Node;
   /** WHATWG `Node.nodeValue` (T33): the character data of a `Text`/`Comment`/`ProcessingInstruction` node, `null` otherwise (setting is a no-op on other kinds). */
   nodeValue: string | null;
+
+  /** WHATWG `EventTarget.addEventListener` (T37). */
+  addEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean; once?: boolean; passive?: boolean; signal?: unknown }): void;
+  /** WHATWG `EventTarget.removeEventListener` (T37), matching the registered callback. */
+  removeEventListener(type: string, listener: ((event: Event) => void) | { handleEvent(event: Event): void } | null, options?: boolean | { capture?: boolean }): void;
+  /** WHATWG `EventTarget.dispatchEvent` (T37): returns `false` when a cancelable event was default-prevented. */
+  dispatchEvent(event: Event): boolean;
 }
 
 /** The WHATWG `CharacterData` mutation surface (T33), shared by `Text`, `Comment` and `ProcessingInstruction`. */
@@ -278,6 +330,12 @@ export interface DocumentHandle {
   adoptNode(node: NodeHandle): NodeHandle;
   /** T33 native `doctype`: the document's parsed `DocumentType`, or `null`. */
   doctype(): NodeHandle | null;
+  /** T37 native `addEventListener` on the document-root node. */
+  addEventListener(type: string, listener: unknown, capture: boolean, once: boolean, passive: boolean): void;
+  /** T37 native `removeEventListener` on the document-root node. */
+  removeEventListener(type: string, listener: unknown, capture: boolean): void;
+  /** T37 native `dispatchEvent` on the document-root node; returns the WHATWG boolean. */
+  dispatchEvent(event: unknown): boolean;
   destroy(): void;
 }
 
@@ -355,4 +413,10 @@ export interface NodeHandle {
   splitText(offset: number): NodeHandle;
   /** T33 native `cloneNode(deep)`: a detached copy under a fresh handle. */
   cloneNode(deep: boolean): NodeHandle;
+  /** T37 native `addEventListener` on this node. */
+  addEventListener(type: string, listener: unknown, capture: boolean, once: boolean, passive: boolean): void;
+  /** T37 native `removeEventListener` on this node. */
+  removeEventListener(type: string, listener: unknown, capture: boolean): void;
+  /** T37 native `dispatchEvent` on this node; returns the WHATWG boolean. */
+  dispatchEvent(event: unknown): boolean;
 }

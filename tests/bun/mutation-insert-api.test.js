@@ -123,14 +123,16 @@ describe.skipIf(!nativeAvailable)("native append/insert mutation contract (T24A)
     expect(nodeProto.insertBefore).toBeUndefined();
 
     // ABI pin: the module-level export surface is unchanged from the audited
-    // T19/T20/T22/T23 shape (creating or renaming a module export breaks this).
+    // T19/T20/T22/T23 shape (extended by T37: createEvent / EventHandle) (creating or renaming a module export breaks this).
     expect(Object.keys(native).sort()).toEqual([
       "DocumentHandle",
+      "EventHandle",
       "NodeHandle",
       "WindowHandle",
       "abiVersion",
       "bindingIdentity",
       "createDocument",
+      "createEvent",
       "createWindow",
       "liveDocumentCount",
     ]);

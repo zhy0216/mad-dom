@@ -417,9 +417,10 @@ describe("real differential (happy-dom vs mad-dom)", () => {
 
     // Since T31 the query surface matches: item-count is 2 and re-querying
     // returns the same element on both sides, so those paths are gone. The
-    // remaining differences are the events surface (T37), the snapshot leaf
-    // fields (nodeName casing T23A, namespaceURI/.attributes T34) and the
-    // createWindow export shape.
+    // remaining differences are the scenario's click events (Element.click()
+    // is T39 — addEventListener/dispatchEvent themselves match, hc-diff-events),
+    // the snapshot leaf fields (nodeName casing T23A, namespaceURI/.attributes
+    // T34) and the createWindow export shape.
     expect(paths).not.toContain("values.item-count");
     expect(paths).not.toContain("identity.requery-returns-same-element");
 
@@ -433,6 +434,52 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(happyRecord.events.map((event) => event.name)).toEqual(["click", "click"]);
     expect(happyRecord.events[0].detail.entries.target).toEqual({ type: "string", value: "li.item:first" });
     expect(happyRecord.events[1].detail.entries.target).toEqual({ type: "string", value: "body" });
+  });
+
+  test("events real scenario passes exactly (order, options, cancellation, reentrancy)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-events");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T37 slice matches happy-dom observation for observation, so
+    // the scenario is a genuine pass (ledgered hc-diff-events).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+
+    expect(madRecord.values["struct-order-return"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["prevent-default-return"]).toEqual({ type: "boolean", value: false });
+    expect(madRecord.values["prevent-default-flag"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["passive-return"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["after-phase"]).toEqual({ type: "number", value: 0 });
+    expect(madRecord.identity["after-target-is-leaf"]).toBe(true);
+    // The ordered capture/target/bubble structs.
+    const roles = madRecord.events.map((event) => event.detail?.entries?.role?.value);
+    expect(roles.slice(0, 8)).toEqual([
+      "doc-capture",
+      "body-capture",
+      "mid-capture",
+      "leaf-capture",
+      "leaf-target",
+      "mid-bubble",
+      "body-bubble",
+      "doc-bubble",
+    ]);
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.errors).toEqual([]);
+    expect(happyRecord.events.length).toBe(madRecord.events.length);
+    expect(happyRecord.values["struct-order-return"]).toEqual(madRecord.values["struct-order-return"]);
   });
 
   test("node navigation real scenario reports exactly the frozen nodeName casing gap", () => {

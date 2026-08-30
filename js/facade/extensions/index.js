@@ -26,6 +26,7 @@
 
 import * as attributesExtension from "./attributes.js";
 import * as childNodeListExtension from "./child-nodelist.js";
+import * as eventsExtension from "./events.js";
 import * as extendedNodesExtension from "./extended-nodes.js";
 import * as htmlExtension from "./html.js";
 import * as liveCollectionsExtension from "./live-collections.js";
@@ -51,6 +52,7 @@ const EXTENSIONS = [
   queryExtension,
   liveCollectionsExtension,
   extendedNodesExtension,
+  eventsExtension,
 ];
 
 /**

@@ -18,6 +18,8 @@
 use crate::arena::NodeId;
 use html5ever::{LocalName, Namespace};
 
+use super::events::EventRegistration;
+
 /// The WHATWG HTML namespace URI.
 pub const HTML_NAMESPACE: &str = "http://www.w3.org/1999/xhtml";
 /// The WHATWG SVG namespace URI.
@@ -232,6 +234,14 @@ pub struct Node {
     pub(crate) previous_sibling: Option<NodeId>,
     /// The node's next sibling, if any.
     pub(crate) next_sibling: Option<NodeId>,
+    /// The registered event listeners on this node (T37).
+    ///
+    /// Event targets live on every node: `addEventListener` / `removeEventListener`
+    /// / `dispatchEvent` are installed on the `Node` prototype by the facade and
+    /// the propagation engine in the sibling `events` module reads this list
+    /// through the crate-internal accessors. Only code inside `mad-dom-core`
+    /// can reach it (the binding never mutates a node payload directly).
+    pub(crate) event_listeners: Vec<EventRegistration>,
 }
 
 impl Node {
@@ -244,6 +254,7 @@ impl Node {
             last_child: None,
             previous_sibling: None,
             next_sibling: None,
+            event_listeners: Vec::new(),
         }
     }
 
@@ -307,6 +318,21 @@ impl Node {
     /// Returns the node's next sibling, if any. Only reachable inside the crate.
     pub(crate) fn next_sibling(&self) -> Option<NodeId> {
         self.next_sibling
+    }
+
+    /// Returns the node's registered event listeners (T37). Only reachable
+    /// inside the crate.
+    pub(crate) fn event_listeners(&self) -> &[EventRegistration] {
+        &self.event_listeners
+    }
+
+    /// Crate-internal: returns mutable access to the node's registered event
+    /// listeners (T37).
+    ///
+    /// Only the propagation engine in the sibling `events` module writes this
+    /// list — registration, removal and once-cleanup — never the binding layer.
+    pub(crate) fn event_listeners_mut(&mut self) -> &mut Vec<EventRegistration> {
+        &mut self.event_listeners
     }
 }
 
