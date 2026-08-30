@@ -411,23 +411,25 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-query-selector-identity");
     expect(scenario.status).toBe("differences-report");
     const paths = scenario.differences.map((difference) => difference.path);
-    expect(paths).toContain("errors[0]");
     expect(paths).toContain("snapshots.list.nodeName");
     expect(paths).toContain("values.entry-create-window-type.value");
 
     // Since T31 the query surface matches: item-count is 2 and re-querying
     // returns the same element on both sides, so those paths are gone, and
-    // since T34 the list snapshot's .attributes and namespaceURI match too. The
-    // remaining differences are the scenario's click events (Element.click()
-    // is T39 — addEventListener/dispatchEvent themselves match, hc-diff-events),
-    // the snapshot leaf nodeName casing (T23A) and the createWindow export
-    // shape.
+    // since T34 the list snapshot's .attributes and namespaceURI match too.
+    // Since T39 Element.click() is implemented, so the scenario's click events
+    // fire and record identically on both sides (no errors[0] difference
+    // anymore). The remaining differences are the snapshot leaf nodeName
+    // casing (T23A) and the createWindow export shape.
+    expect(paths).not.toContain("errors[0]");
     expect(paths).not.toContain("values.item-count");
     expect(paths).not.toContain("identity.requery-returns-same-element");
 
     const madRecord = scenario.sides["mad-dom"].record;
     expect(madRecord.values["item-count"]).toEqual({ type: "number", value: 2 });
     expect(madRecord.identity["requery-returns-same-element"]).toBe(true);
+    expect(madRecord.errors).toEqual([]);
+    expect(madRecord.events.map((event) => event.name)).toEqual(["click", "click"]);
 
     const happyRecord = scenario.sides["happy-dom"].record;
     expect(happyRecord.values["item-count"]).toEqual({ type: "number", value: 2 });

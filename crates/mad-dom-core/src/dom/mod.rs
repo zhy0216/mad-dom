@@ -26,6 +26,7 @@ mod character_data;
 mod cross_document;
 mod document;
 mod events;
+mod html_element;
 mod mutation;
 mod node;
 mod text_content;

@@ -47,6 +47,14 @@
       "addedIn": "T25E"
     },
     {
+      "id": "hc-diff-html-element",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-html-element",
+      "addedIn": "T39"
+    },
+    {
       "id": "hc-diff-inner-outer-html",
       "suite": "diff",
       "status": "pass",
@@ -120,7 +128,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-query-selector-identity",
-      "reason": "Since T31, MAD DOM implements the selector/query surface (querySelector/querySelectorAll/matches/closest/getElementById, crates/mad-dom-bun/src/extensions/query_api.rs and js/facade/extensions/query.js), so the mad-dom side now counts 2 items, re-queries the same element, and finds the list through getElementById exactly like happy-dom. Since T34, the list snapshot's .attributes and namespaceURI also match (element.attributes is a live NamedNodeMap and element.namespaceURI reads the HTML namespace). The remaining differences are all outside T31/T34/T37's scope: the scenario's click events never fire on mad-dom because Element.click() is not implemented yet (T39) — addEventListener and dispatchEvent themselves now match happy-dom (hc-diff-event-target) — plus the Element.nodeName casing gap (T23A) and the createWindow export shape. First presented by the T10 real-pair runner; updated by T22/T29/T31/T37/T34; collected into the compatibility ledger by T11.",
+      "reason": "Since T31, MAD DOM implements the selector/query surface (querySelector/querySelectorAll/matches/closest/getElementById, crates/mad-dom-bun/src/extensions/query_api.rs and js/facade/extensions/query.js), so the mad-dom side counts 2 items, re-queries the same element, and finds the list through getElementById exactly like happy-dom. Since T34, the list snapshot's .attributes and namespaceURI also match (element.attributes is a live NamedNodeMap and element.namespaceURI reads the HTML namespace). Since T39, the scenario's click events fire and match happy-dom observation for observation (HTMLElement.click dispatches the bubbling cancelable composed click, so the li and body listeners record identically, and the retained click dispatch of a preventDefault listener matches). The remaining differences are all outside T31/T34/T39's scope: Element.nodeName casing in the snapshot (MAD DOM lowercases, happy-dom uppercases, T23A) and the entry shape (mad-dom exports createWindow while happy-dom does not). First presented by the T10 real-pair runner; updated by T22/T29/T31/T37/T34/T39; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-30T00:00:00Z",
       "addedIn": "T10"
     },
@@ -167,17 +175,29 @@
       ]
     },
     {
+      "id": "hc-types-html-element",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/html-element.ts",
+      "reason": "Since T39 the HTMLElement base surface is typed: createElement returns an HTMLElement carrying the reflected attributes (id/className/title/dir/lang/hidden/inert/tabIndex/contentEditable/isContentEditable), the live dataset DOMStringMap, the click/focus/blur interaction and the window.HTMLElement constructor value with instanceof membership, so the whole fixture body type-checks. The only remaining diagnostic is the shared Window-constructor shape gap (MAD DOM's Window is not user-constructible), the same TS2554 the other positive fixtures record.",
+      "recordedAt": "2026-08-30T00:00:00Z",
+      "addedIn": "T39",
+      "diagnostics": [
+        { "code": 2554, "line": 9 }
+      ]
+    },
+    {
       "id": "hc-types-window-document-basics",
       "suite": "types",
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/window-document-basics.ts",
-      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); document.body and querySelectorAll are now typed (T29/T31), so the fixture's body branch and querySelectorAll call type-check, but the remaining element/document members — id and title — are still rejected on the mad-dom target. Updated by T22/T23/T25/T29/T31.",
+      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); document.body, querySelectorAll and element.id are now typed (T29/T31/T39), so the fixture's body branch, querySelectorAll call and element.id assignment type-check, but document.title is still missing (Document.title is out of T39's HTMLElement scope) and the Window constructor shape still rejects the option object. Updated by T22/T23/T25/T29/T31/T39.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2353, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'id' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'title' does not exist" }
       ]
     }

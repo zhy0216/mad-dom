@@ -31,16 +31,17 @@
 //! | `live_collections` | `extensions/live_collections.rs` | T32 | T32 |
 //! | `character_data_api` | `extensions/character_data_api.rs` | T33 | T33 |
 //! | `attribute_nodes_api` | `extensions/attribute_nodes_api.rs` | T34 | T34 |
+//! | `html_element_api` | `extensions/html_element_api.rs` | T39 | T39 |
 //!
 //! The first eight rows are the *frozen M4 boundaries* recorded in
 //! [`REGISTRY`]. `html_api` (T29, M5), `query_api` (T31, M6),
-//! `live_collections` (T32, M6), `character_data_api` (T33, M7) and
-//! `attribute_nodes_api` (T34, M7) follow the same seam pattern — their own
-//! file, a `SEAM` constant and `#[napi]` extensions on the existing handle
-//! classes — but are not part of the M4 freeze: each owns both the native
-//! module and the integration wiring (there is no separate M5/M6/M7 gate), so
-//! it is declared here but deliberately absent from [`REGISTRY`] and its
-//! structural tests.
+//! `live_collections` (T32, M6), `character_data_api` (T33, M7),
+//! `attribute_nodes_api` (T34, M7) and `html_element_api` (T39, M7) follow the
+//! same seam pattern — their own file, a `SEAM` constant and `#[napi]`
+//! extensions on the existing handle classes — but are not part of the M4
+//! freeze: each owns both the native module and the integration wiring (there
+//! is no separate M5/M6/M7 gate), so it is declared here but deliberately
+//! absent from [`REGISTRY`] and its structural tests.
 //!
 //! # Dependency direction
 //!
@@ -66,6 +67,7 @@ mod character_data_api;
 mod collection_api;
 mod events_api;
 mod html_api;
+mod html_element_api;
 mod live_collections;
 mod mutation_insert_api;
 mod mutation_remove_api;

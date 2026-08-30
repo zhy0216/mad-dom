@@ -38,6 +38,8 @@ export declare class Window {
   readonly WheelEvent: typeof WheelEvent;
   /** The WHATWG `InputEvent` constructor (T38). */
   readonly InputEvent: typeof InputEvent;
+  /** The WHATWG `HTMLElement` constructor (T39): every `createElement` wrapper is `instanceof window.HTMLElement`. */
+  readonly HTMLElement: typeof HTMLElement;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
@@ -289,7 +291,7 @@ export declare class Document {
   /** Eagerly destroys the document; idempotent. */
   destroy(): void;
   /** Creates a new detached Element (WHATWG `createElement`). */
-  createElement(name: string): Element;
+  createElement(name: string): HTMLElement;
   /** Creates a new detached Text node (WHATWG `createTextNode`). */
   createTextNode(data: string): Text;
   /** Creates a new empty DocumentFragment (WHATWG `createDocumentFragment`). */
@@ -302,6 +304,8 @@ export declare class Document {
   readonly head: Element | null;
   /** The `<body>` element, or `null` (T29, implied skeleton on first read). */
   readonly body: Element | null;
+  /** The currently focused element (T39): the stored `focus()` target, or `body` / `documentElement` / `null` when nothing is focused. */
+  readonly activeElement: Element | null;
   /** Replaces the whole document content with a freshly parsed full HTML document (T29). */
   parseHtml(html: string): void;
 
@@ -412,6 +416,10 @@ export interface Element extends Node {
   removeAttribute(name: string): void;
   /** WHATWG `Element.hasAttribute` (T25): whether the element has the named attribute. */
   hasAttribute(name: string): boolean;
+  /** WHATWG `Element.id` (T39): the `id` attribute, two-way reflected (setting stores the string form; the getter reads `""` when absent). */
+  id: string;
+  /** WHATWG `Element.className` (T39): the `class` attribute, two-way reflected (`""` when absent). */
+  className: string;
   /** WHATWG `Element.innerHTML` (T29): the serialized children; setting parses in the element's own context and atomically replaces the children. */
   innerHTML: string;
   /** WHATWG `Element.outerHTML` (T29): the serialized element itself; setting parses in the parent's context and atomically replaces the element (a detached element is a no-op). */
@@ -436,6 +444,56 @@ export interface Element extends Node {
   /** WHATWG `Element.namespaceURI` (T34): the element's namespace URI (the WHATWG HTML namespace for a `createElement` element), `null` for non-elements. */
   readonly namespaceURI: string | null;
 }
+
+/** A node minted by `Document.createElement` — the WHATWG `HTMLElement`
+ * surface (T39). In the single-`Node`-class model every element wrapper's
+ * prototype chain runs `Node.prototype → HTMLElement.prototype`, so
+ * `el instanceof window.HTMLElement` holds and the reflected attribute
+ * accessors (`title` / `dir` / `lang` / `hidden` / `inert` / `tabIndex` /
+ * `contentEditable`) plus `dataset` and the `click`/`focus`/`blur`
+ * interaction live here, two-way synced with the element's attribute storage. */
+export interface HTMLElement extends Element {
+  /** WHATWG `HTMLElement.title`: the `title` attribute (`""` when absent). */
+  title: string;
+  /** WHATWG `HTMLElement.dir`: the `dir` attribute (`""` when absent). */
+  dir: string;
+  /** WHATWG `HTMLElement.lang`: the `lang` attribute (`""` when absent). */
+  lang: string;
+  /** WHATWG `HTMLElement.hidden`: whether the `hidden` attribute is present. */
+  hidden: boolean;
+  /** WHATWG `HTMLElement.inert`: whether the `inert` attribute is present. */
+  inert: boolean;
+  /** WHATWG `HTMLElement.tabIndex`: the `tabindex` attribute as a `long` (`-1` when absent or non-numeric; setting a non-number stores `"0"`). */
+  tabIndex: number;
+  /** WHATWG `HTMLElement.contentEditable`: the `contentEditable` enum (`"true"` / `"false"` / `"plaintext-only"` / `"inherit"`); an invalid setter throws `SyntaxError`. */
+  contentEditable: string;
+  /** WHATWG `HTMLElement.isContentEditable`: whether this element (or its nearest editable ancestor) is content-editable. */
+  readonly isContentEditable: boolean;
+  /** WHATWG `HTMLElement.dataset` (T39): a live `DOMStringMap` over the element's `data-*` attributes (camelCase keys ↔ kebab-case attribute names). */
+  readonly dataset: DOMStringMap;
+  /** WHATWG `HTMLElement.click` (T39): dispatches a bubbling, cancelable, composed `click` event on the element. */
+  click(): void;
+  /** WHATWG `HTMLElement.focus` (T39): makes this element the document's active element and dispatches `focus`/`focusin` (a no-op when detached, inert or already focused). */
+  focus(): void;
+  /** WHATWG `HTMLElement.blur` (T39): clears the document's active element and dispatches `blur`/`focusout` (a no-op when not the active element). */
+  blur(): void;
+}
+
+/** The WHATWG `DOMStringMap` behind `HTMLElement.dataset` (T39): a live,
+ * proxy-backed view over the element's `data-*` attributes, mapping camelCase
+ * property keys to kebab-case attribute names. */
+export interface DOMStringMap {
+  [name: string]: string;
+}
+
+/** The WHATWG `HTMLElement` constructor value reached through
+ * `window.HTMLElement` (T39). The class is not user-constructible in MAD DOM
+ * (it requires the internal prototype wiring); every `createElement` wrapper
+ * is `instanceof window.HTMLElement`. */
+declare const HTMLElement: {
+  readonly prototype: HTMLElement;
+  new (): HTMLElement;
+};
 
 /** A live map of an element's attributes (T34). Each access re-reads the
  * element's ordered attribute list from Core, so an existing map reflects

@@ -53,6 +53,9 @@ pub struct Document {
     /// the JS-facing document-structure API use it as the anchor whose children
     /// are the doctype (if any) and the `<html>` element.
     document_root_id: Option<NodeId>,
+    /// The document's focused element (`document.activeElement`), tracked by
+    /// the T39 `html_element` module. `None` when nothing is focused.
+    pub(crate) active_element_id: Option<NodeId>,
     /// The T32 optional id/class/tag query index (off by default).
     pub(crate) query_index: QueryIndex,
 }
@@ -64,6 +67,7 @@ impl Document {
             id: NEXT_DOCUMENT_ID.fetch_add(1, Ordering::Relaxed),
             arena: Arena::new(),
             document_root_id: None,
+            active_element_id: None,
             query_index: QueryIndex::default(),
         }
     }

@@ -1,6 +1,6 @@
 # 39 实现 HTMLElement 基类与属性反射
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M7
 - 条目 ID：`T39`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T39 — 实现 HTMLElement 基类与属性反射**
+- [x] **T39 — 实现 HTMLElement 基类与属性反射**
   - 实现：
     - 实现 HTMLElement 原型层级与常用字符串/布尔/数字属性反射。
     - 实现 dataset/DOMStringMap 的 live 映射。

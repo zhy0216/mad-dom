@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createWindow, isNativeAvailable } from "../../index.js";
 import { Node } from "../../js/facade/extensions/node.js";
+import { HTMLElement } from "../../js/facade/extensions/html-element.js";
 import {
   install as installAttributes,
   seam as attributesSeam,
@@ -77,8 +78,8 @@ describe("attribute facade module shape (T25E)", () => {
     expect(Object.isFrozen(textContentSeam)).toBe(true);
   });
 
-  test("Node sits one level under Object.prototype with no enumerable surface", () => {
-    expect(Object.getPrototypeOf(Node.prototype)).toBe(Object.prototype);
+  test("Node sits one level under HTMLElement.prototype (the T39 hierarchy) with no enumerable surface", () => {
+    expect(Object.getPrototypeOf(Node.prototype)).toBe(HTMLElement.prototype);
     expect(Object.keys(Node.prototype)).toEqual([]);
   });
 });

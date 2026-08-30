@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createWindow, Window } from "../../js/facade/window.js";
 import { Document } from "../../js/facade/document.js";
 import { Node, seam as nodeSeam } from "../../js/facade/extensions/node.js";
+import { HTMLElement } from "../../js/facade/extensions/html-element.js";
 import { installExtensions, seam as registrySeam } from "../../js/facade/extensions/index.js";
 import { isNativeAvailable } from "../../index.js";
 
@@ -121,8 +122,8 @@ describe("facade node export shapes (T23B)", () => {
 });
 
 describe("facade node prototype chains (T23B)", () => {
-  test("Node sits one level under Object.prototype", () => {
-    expect(Object.getPrototypeOf(Node.prototype)).toBe(Object.prototype);
+  test("Node sits one level under HTMLElement.prototype (the T39 hierarchy)", () => {
+    expect(Object.getPrototypeOf(Node.prototype)).toBe(HTMLElement.prototype);
   });
 
   test("no own enumerable surface leaks on the Node prototype", () => {
