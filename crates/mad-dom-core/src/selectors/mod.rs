@@ -18,13 +18,17 @@
 //! [`CoreError::Syntax`](crate::error::CoreError::Syntax) values carrying the
 //! source location and a stable description.
 //!
-//! Query traversal (`querySelector`/`querySelectorAll`), live collections and
-//! indexes are out of scope (T31). Matching entry points live in [`matcher`];
-//! the `Element` trait view lives in [`element`].
+//! Query traversal (`querySelector` / `querySelectorAll` / `closest` /
+//! `getElementById`) lives in [`query`] (T31): a single document-order walk of
+//! the arena against the pre-parsed selector list, with no index and no second
+//! tree. Live collections and id/class/tag indexes remain out of scope (T32).
+//! Matching entry points live in [`matcher`]; the `Element` trait view lives in
+//! [`element`].
 
 mod element;
 mod matcher;
 mod parser;
+mod query;
 
 pub use element::DomElement;
 pub use matcher::{match_selector_list, matches};

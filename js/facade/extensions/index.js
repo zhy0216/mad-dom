@@ -29,6 +29,7 @@ import * as childNodeListExtension from "./child-nodelist.js";
 import * as htmlExtension from "./html.js";
 import * as mutationExtension from "./mutation.js";
 import * as nodeExtension from "./node.js";
+import * as queryExtension from "./query.js";
 import * as textContentExtension from "./text-content.js";
 
 export const seam = Object.freeze({
@@ -45,6 +46,7 @@ const EXTENSIONS = [
   textContentExtension,
   childNodeListExtension,
   htmlExtension,
+  queryExtension,
 ];
 
 /**

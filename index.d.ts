@@ -44,6 +44,13 @@ export declare class Document {
   readonly body: Element | null;
   /** Replaces the whole document content with a freshly parsed full HTML document (T29). */
   parseHtml(html: string): void;
+
+  /** WHATWG `Document.querySelector` (T31): the first descendant element of the document matching `selectors`, or `null`. */
+  querySelector<E extends Element = Element>(selectors: string): E | null;
+  /** WHATWG `Document.querySelectorAll` (T31): every descendant element matching `selectors`, in document order, as a static `NodeList` snapshot (later mutations do not change it). */
+  querySelectorAll<E extends Element = Element>(selectors: string): NodeList<E>;
+  /** WHATWG `Document.getElementById` (T31): the first element in the document whose `id` attribute equals `elementId`, or `null`. */
+  getElementById(elementId: string): Element | null;
 }
 
 export declare function createWindow(): Window;
@@ -99,6 +106,15 @@ export interface Element extends Node {
   innerHTML: string;
   /** WHATWG `Element.outerHTML` (T29): the serialized element itself; setting parses in the parent's context and atomically replaces the element (a detached element is a no-op). */
   outerHTML: string;
+
+  /** WHATWG `Element.querySelector` (T31): the first descendant element matching `selectors`, or `null` (the element itself is never a candidate). */
+  querySelector<E extends Element = Element>(selectors: string): E | null;
+  /** WHATWG `Element.querySelectorAll` (T31): every descendant element matching `selectors`, in document order, as a static `NodeList` snapshot (later mutations do not change it). */
+  querySelectorAll<E extends Element = Element>(selectors: string): NodeList<E>;
+  /** WHATWG `Element.matches` (T31): whether this element matches `selectors`. */
+  matches(selectors: string): boolean;
+  /** WHATWG `Element.closest` (T31): the closest ancestor — this element itself included — that matches `selectors`, or `null`. */
+  closest<E extends Element = Element>(selectors: string): E | null;
 }
 
 /** A node minted by `Document.createTextNode` (T23 surface only). */
@@ -110,21 +126,24 @@ export interface DocumentFragment extends Node {
   innerHTML: string;
 }
 
-/** The T25D live `childNodes` collection bound to one parent node. */
-export interface NodeList {
+/** A `NodeList` collection of nodes. The T25D live `childNodes` collection is
+ * bound to one parent node and re-read from Core on every access; the T31
+ * `querySelectorAll` returns a static snapshot collection with the same
+ * read surface (see `query.js`). */
+export interface NodeList<T extends Node = Node> {
   /** Live number of children; re-read from Core on every access. */
   readonly length: number;
   /** Returns the node at `index`, or `null` past the end (WHATWG `NodeList.item`). */
-  item(index: number): Node | null;
-  /** Iterates the live children in Core document order (WHATWG `NodeList.forEach`). */
-  forEach(callback: (node: Node, index: number, list: NodeList) => void, thisArg?: unknown): void;
-  /** Yields `[index, node]` pairs for the live children (WHATWG `NodeList.entries`). */
-  entries(): IterableIterator<[number, Node]>;
-  /** Yields the indices of the live children (WHATWG `NodeList.keys`). */
+  item(index: number): T | null;
+  /** Iterates the children in Core document order (WHATWG `NodeList.forEach`). */
+  forEach(callback: (node: T, index: number, list: NodeList<T>) => void, thisArg?: unknown): void;
+  /** Yields `[index, node]` pairs (WHATWG `NodeList.entries`). */
+  entries(): IterableIterator<[number, T]>;
+  /** Yields the indices (WHATWG `NodeList.keys`). */
   keys(): IterableIterator<number>;
-  /** Yields the live children in Core document order (WHATWG `NodeList.values`). */
-  values(): IterableIterator<Node>;
-  [Symbol.iterator](): IterableIterator<Node>;
+  /** Yields the nodes in Core document order (WHATWG `NodeList.values`). */
+  values(): IterableIterator<T>;
+  [Symbol.iterator](): IterableIterator<T>;
 }
 
 // --- Minimal native binding (T19) -----------------------------------------
@@ -163,6 +182,12 @@ export interface DocumentHandle {
   body(): NodeHandle | null;
   /** T29 native full-document parse and replace. */
   parseHtml(html: string): void;
+  /** T31 native `querySelector`: first descendant element matching the selector, or `null`. */
+  querySelector(selector: string): NodeHandle | null;
+  /** T31 native `querySelectorAll`: every descendant element matching the selector, in document order. */
+  querySelectorAll(selector: string): NodeHandle[];
+  /** T31 native `getElementById`: first element whose `id` attribute equals the argument, or `null`. */
+  getElementById(id: string): NodeHandle | null;
   destroy(): void;
 }
 
@@ -196,4 +221,12 @@ export interface NodeHandle {
   outerHTML(): string;
   /** T29 native `outerHTML` write: parse in the parent's context and atomically replace the node (detached is a no-op). */
   setOuterHTML(html: string): void;
+  /** T31 native `querySelector`: first descendant element matching the selector, or `null`. */
+  querySelector(selector: string): NodeHandle | null;
+  /** T31 native `querySelectorAll`: every descendant element matching the selector, in document order. */
+  querySelectorAll(selector: string): NodeHandle[];
+  /** T31 native `matches`: whether this element matches the selector. */
+  matches(selector: string): boolean;
+  /** T31 native `closest`: the closest ancestor (itself included) matching the selector, or `null`. */
+  closest(selector: string): NodeHandle | null;
 }

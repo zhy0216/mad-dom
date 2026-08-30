@@ -39,6 +39,14 @@
       "addedIn": "T29"
     },
     {
+      "id": "hc-diff-selector-query",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-selector-query",
+      "addedIn": "T31"
+    },
+    {
       "id": "hc-diff-node-create-append-serialize",
       "suite": "diff",
       "status": "known-gap",
@@ -72,7 +80,7 @@
       "status": "known-gap",
       "subsystem": "facade",
       "scenario": "dom-query-selector-identity",
-      "reason": "Since T29, MAD DOM's document.body.innerHTML setter works (the implied skeleton and innerHTML surface landed), so the mad-dom side now builds the list structure exactly like happy-dom; the differences have narrowed to the still-missing selector/query surface (querySelectorAll, getElementById — T31), the events surface (addEventListener and the click propagation order — T37) and the createWindow export shape. First presented by the T10 real-pair runner; updated by T22/T29; collected into the compatibility ledger by T11.",
+      "reason": "Since T31, MAD DOM implements the selector/query surface (querySelector/querySelectorAll/matches/closest/getElementById, crates/mad-dom-bun/src/extensions/query_api.rs and js/facade/extensions/query.js), so the mad-dom side now counts 2 items, re-queries the same element, and finds the list through getElementById exactly like happy-dom. The remaining differences are all outside T31's scope: the events surface (addEventListener and the click propagation order — T37, mad-dom records a TypeError where happy-dom records the bubbling events), the snapshot's NamedNodeMap .attributes and namespaceURI (T34) plus the Element.nodeName casing gap (T23A), and the createWindow export shape. First presented by the T10 real-pair runner; updated by T22/T29/T31; collected into the compatibility ledger by T11.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T10"
     },
@@ -82,15 +90,14 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/enums-and-overloads.ts",
-      "reason": "MAD DOM still does not export CSSRule or EventPhaseEnum, and its Window is not user-constructible (it needs a genuine native handle); Document.createElement is now typed (T23) but returns the minimal Element surface, so tag-name narrowing (tagName) and NodeList iteration cannot be checked yet. Updated by T22/T23.",
+      "reason": "MAD DOM still does not export CSSRule or EventPhaseEnum, and its Window is not user-constructible (it needs a genuine native handle); Document.createElement is typed (T23) but returns the minimal Element surface, so tag-name narrowing (tagName) cannot be checked yet, while querySelectorAll iteration now type-checks (T31). Updated by T22/T23/T31.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2305, "messageIncludes": "no exported member 'CSSRule'" },
         { "code": 2305, "messageIncludes": "no exported member 'EventPhaseEnum'" },
         { "code": 2554, "line": 7 },
-        { "code": 2339, "messageIncludes": "Property 'tagName' does not exist" },
-        { "code": 2339, "messageIncludes": "Property 'querySelectorAll' does not exist" }
+        { "code": 2339, "messageIncludes": "Property 'tagName' does not exist" }
       ]
     },
     {
@@ -147,13 +154,12 @@
       "status": "known-gap",
       "subsystem": "types",
       "fixture": "positive/window-document-basics.ts",
-      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); document.body is now typed (T29), so the fixture's body branch type-checks, but the remaining element/document members — id, querySelectorAll and title — are still rejected on the mad-dom target. Updated by T22/T23/T25/T29.",
+      "reason": "MAD DOM's Window is not user-constructible (it requires a genuine native handle); document.body and querySelectorAll are now typed (T29/T31), so the fixture's body branch and querySelectorAll call type-check, but the remaining element/document members — id and title — are still rejected on the mad-dom target. Updated by T22/T23/T25/T29/T31.",
       "recordedAt": "2026-08-28T00:00:00Z",
       "addedIn": "T09",
       "diagnostics": [
         { "code": 2353, "line": 7 },
         { "code": 2339, "messageIncludes": "Property 'id' does not exist" },
-        { "code": 2339, "messageIncludes": "Property 'querySelectorAll' does not exist" },
         { "code": 2339, "messageIncludes": "Property 'title' does not exist" }
       ]
     }

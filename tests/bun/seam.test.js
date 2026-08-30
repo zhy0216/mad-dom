@@ -21,11 +21,12 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/text-content.js", owner: "T25E" },
   { path: "extensions/child-nodelist.js", owner: "T25D" },
   { path: "extensions/html.js", owner: "T29" },
+  { path: "extensions/query.js", owner: "T31" },
 ];
 
-// The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D and
-// T29 capability extensions are implemented and their seam status is flipped
-// to "implemented"; no capability extension stays a placeholder.
+// The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29
+// and T31 capability extensions are implemented and their seam status is
+// flipped to "implemented"; no capability extension stays a placeholder.
 const IMPLEMENTED_FACADE_FILES = [
   { path: "window.js", owner: "T22B" },
   { path: "document.js", owner: "T22B" },
@@ -36,6 +37,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/text-content.js", owner: "T25E" },
   { path: "extensions/child-nodelist.js", owner: "T25D" },
   { path: "extensions/html.js", owner: "T29" },
+  { path: "extensions/query.js", owner: "T31" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 
@@ -77,8 +79,8 @@ describe("cross-layer extension seam (T20A)", () => {
       const mod = await import(`${FACADE}/${file.path}`);
       expect(mod.seam.status, `${file.path} status`).toBe("placeholder");
     }
-    // With the T25 gate every owned capability extension is implemented, so
-    // the placeholder set is empty — the M4 facade seam is complete.
+    // Every owned capability extension (M4 through M6) is implemented, so the
+    // placeholder set is empty — the facade seam is complete.
     expect(PLACEHOLDER_FACADE_FILES).toEqual([]);
   });
 });

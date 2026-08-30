@@ -1,6 +1,6 @@
 # 31 实现 selector 查询 API
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M6
 - 条目 ID：`T31`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T31 — 实现 selector 查询 API**
+- [x] **T31 — 实现 selector 查询 API**
   - 实现：
     - 在 Core 提供文档顺序查询和匹配 API。
     - 绑定并暴露静态 NodeList、matches 与 closest。

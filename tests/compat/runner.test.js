@@ -359,21 +359,19 @@ describe("real differential (happy-dom vs mad-dom)", () => {
 
     // The gap moved from the setup phase to the surface: with the dev artifact
     // the window is acquired, createElement (T23), tree mutation (T24), the
-    // attribute/textContent surface (T25) and — since T29 — document.body with
-    // the implied skeleton all succeed, and the still-missing selector surface
-    // (document.querySelector) fails in the scenario body; without one, loading
-    // the native binding fails lazily at createWindow().
-    expect(madRecord.errors).toHaveLength(1);
+    // attribute/textContent surface (T25), document.body with the implied
+    // skeleton (T29) and — since T31 — the selector query all succeed, so the
+    // scenario body completes with no recorded error; without one, loading the
+    // native binding fails lazily at createWindow().
     if (nativeAvailable) {
-      expect(madRecord.errors[0].name).toBe("TypeError");
-      expect(madRecord.errors[0].message).toContain("document.querySelector");
-      expect(madRecord.errors[0].phase).toBe("facade");
+      expect(madRecord.errors).toEqual([]);
     } else {
+      expect(madRecord.errors).toHaveLength(1);
       expect(madRecord.errors[0].name).toBe("Error");
       expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
       expect(madRecord.errors[0].phase).toBe("setup");
     }
-    expect(byPath["errors[0]"]).toMatchObject({ kind: "right-only", right: madRecord.errors[0] });
+    expect(byPath["errors[0]"]).toBeUndefined();
 
     expect(madRecord.values["document-ready-state"]).toEqual({ type: "undefined" });
     expect(byPath["values.document-ready-state.value"]).toMatchObject({
@@ -399,7 +397,10 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     });
     expect(madRecord.events).toEqual([]);
 
-    expect(byPath["identity.query-finds-appended-section"]).toMatchObject({ kind: "left-only", left: true });
+    // Since T31 the query that finds the appended section succeeds on both
+    // sides, so the identity relation is no longer a difference.
+    expect(madRecord.identity["query-finds-appended-section"]).toBe(true);
+    expect(byPath["identity.query-finds-appended-section"]).toBeUndefined();
 
     const happyRecord = scenario.sides["happy-dom"].record;
     expect(happyRecord.errors).toEqual([]);
@@ -411,9 +412,20 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(scenario.status).toBe("differences-report");
     const paths = scenario.differences.map((difference) => difference.path);
     expect(paths).toContain("errors[0]");
-    expect(paths).toContain("identity.requery-returns-same-element");
-    expect(paths).toContain("snapshots.list");
-    expect(paths).toContain("values.item-count");
+    expect(paths).toContain("snapshots.list.nodeName");
+    expect(paths).toContain("values.entry-create-window-type.value");
+
+    // Since T31 the query surface matches: item-count is 2 and re-querying
+    // returns the same element on both sides, so those paths are gone. The
+    // remaining differences are the events surface (T37), the snapshot leaf
+    // fields (nodeName casing T23A, namespaceURI/.attributes T34) and the
+    // createWindow export shape.
+    expect(paths).not.toContain("values.item-count");
+    expect(paths).not.toContain("identity.requery-returns-same-element");
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    expect(madRecord.values["item-count"]).toEqual({ type: "number", value: 2 });
+    expect(madRecord.identity["requery-returns-same-element"]).toBe(true);
 
     const happyRecord = scenario.sides["happy-dom"].record;
     expect(happyRecord.values["item-count"]).toEqual({ type: "number", value: 2 });
