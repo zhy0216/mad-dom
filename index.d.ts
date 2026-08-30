@@ -62,6 +62,8 @@ export declare class Window {
   readonly NodeIterator: typeof NodeIterator;
   /** The WHATWG `MutationObserver` constructor (T41): `new window.MutationObserver(callback)`. */
   readonly MutationObserver: typeof MutationObserver;
+  /** The WHATWG `window.customElements` registry (T42): define / get / getName / whenDefined / upgrade. */
+  readonly customElements: CustomElementRegistry;
   /** The WHATWG `HTMLTemplateElement` constructor (T40): the template surface base class. */
   readonly HTMLTemplateElement: typeof HTMLTemplateElement;
   /** The WHATWG `HTMLFormElement` constructor (T40). */
@@ -604,6 +606,41 @@ declare interface MutationRecord {
   readonly attributeNamespace: string | null;
   /** The old value (attributes / characterData records), or `null`. */
   readonly oldValue: string | null;
+}
+
+// --- Custom Element registry (T42) -------------------------------------------
+//
+// The WHATWG `CustomElementRegistry`, reached through `window.customElements`.
+// A custom element class extends `window.HTMLElement` and carries the optional
+// lifecycle callbacks; `define` registers it for a name, `createElement` /
+// the parser / `define`-after-connect upgrade the matching elements by
+// re-parenting their wrapper prototype onto the class (the single-class
+// in-place upgrade). The lifecycle callbacks fire synchronously at the mutation
+// point (happy-dom parity); `observedAttributes` is read once at define and
+// lowercased.
+
+/** A custom element constructor: any `window.HTMLElement` subclass. */
+export type CustomElementConstructor = new (...args: never[]) => HTMLElement;
+
+/** The WHATWG `ElementDefinitionOptions` (T42). */
+export interface IElementDefinitionOptions {
+  /** Customized built-in support is not implemented; the option is accepted and ignored. */
+  extends?: string;
+}
+
+/** The WHATWG `CustomElementRegistry` (T42): one per window. */
+export interface CustomElementRegistry {
+  /** Defines `name` for `elementClass`. Validates the name and constructor; a
+   * failed definition leaves the registry unchanged. */
+  define(name: string, elementClass: CustomElementConstructor, options?: IElementDefinitionOptions): void;
+  /** The class defined for `name`, or `undefined`. */
+  get(name: string): CustomElementConstructor | undefined;
+  /** The name `elementClass` was defined under, or `null`. */
+  getName(elementClass: CustomElementConstructor): string | null;
+  /** A promise resolving once `name` is defined (rejects for invalid names). */
+  whenDefined(name: string): Promise<void>;
+  /** Upgrades every defined-name element in `root`'s subtree. */
+  upgrade(root: Node): void;
 }
 
 // --- Fetch network surface (T46) ----------------------------------------------

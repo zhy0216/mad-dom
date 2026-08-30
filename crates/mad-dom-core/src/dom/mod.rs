@@ -24,6 +24,7 @@ mod attribute_nodes;
 mod attributes;
 mod character_data;
 mod cross_document;
+mod custom_elements;
 mod document;
 mod events;
 mod form;
@@ -36,6 +37,7 @@ mod template;
 mod text_content;
 mod tree;
 
+pub use custom_elements::{CustomElementReaction, CustomElementReactionKind};
 pub use document::Document;
 pub use events::{
     Dispatch, DispatchInvocation, EventRegistration, EventState, EVENT_PHASE_AT_TARGET,

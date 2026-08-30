@@ -25,6 +25,7 @@ use crate::arena::{Arena, NodeId};
 use crate::error::CoreError;
 use crate::selectors::live::QueryIndex;
 
+use super::custom_elements::CustomElementState;
 use super::form::FormState;
 use super::mutation_observer::ObserverEntry;
 use super::node::{Node, NodeData, NodeType, HTML_NAMESPACE};
@@ -82,6 +83,11 @@ pub struct Document {
     /// is the single authoritative form state — the facade never keeps a
     /// second copy.
     pub(crate) form_state: FormState,
+    /// The T42 custom element state: the observed-attribute snapshots of the
+    /// defined names, the set of upgraded (custom) elements and the synchronous
+    /// lifecycle reaction queue. Written only through the `custom_elements`
+    /// module and the mutation/attribute chokepoints.
+    pub(crate) custom_elements: CustomElementState,
 }
 
 impl Document {
@@ -98,6 +104,7 @@ impl Document {
             suppress_observer_records: false,
             template_contents: HashMap::new(),
             form_state: FormState::default(),
+            custom_elements: CustomElementState::default(),
         }
     }
 
@@ -178,6 +185,13 @@ impl Document {
                 .arena
                 .allocate(self.id, Node::new(NodeData::DocumentFragment));
             self.template_contents.insert(node, content);
+        }
+        // T42: an element created with a name that is already defined in this
+        // document is an upgraded custom element from the start (its wrapper's
+        // prototype is set by the facade); no reaction fires for a fresh,
+        // detached element.
+        if self.custom_elements.is_defined(name) {
+            self.custom_elements.mark_custom(node);
         }
         Ok(node)
     }
@@ -390,6 +404,9 @@ impl Document {
     /// never be reused to reach the node again.
     pub(crate) fn remove_node(&mut self, id: NodeId) -> Result<Node, CoreError> {
         self.expect_same_document(id)?;
+        // T42: an adopted-away custom element leaves the custom set so a
+        // recycled arena slot can never be treated as an upgraded element.
+        self.custom_elements.forget(id);
         self.arena.remove(id).map_err(CoreError::from)
     }
 

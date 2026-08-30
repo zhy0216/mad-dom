@@ -321,6 +321,37 @@
       "diagnostics": [
         { "code": 2554, "line": 17 }
       ]
+    },
+    {
+      "id": "hc-diff-custom-elements",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-custom-elements",
+      "addedIn": "T42"
+    },
+    {
+      "id": "hc-diff-custom-elements-upgrade",
+      "suite": "diff",
+      "status": "known-gap",
+      "subsystem": "facade",
+      "scenario": "dom-custom-elements-upgrade",
+      "reason": "The T42 registry (define/get/getName/whenDefined) and the synchronous lifecycle reactions (connected/disconnected/attributeChanged, observedAttributes, define-after-connect upgrade timing, parser upgrade order) match happy-dom, but three deliberate deviations remain. First, happy-dom's CustomElementRegistry.upgrade() is a documented no-op ('Not implemented yet'), while MAD DOM performs a genuine spec-style upgrade of the subtree (setting the wrapper prototypes and firing connectedCallback/attributeChangedCallback), so an upgraded element becomes an instance of the class and its connectedCallback fires where happy-dom reports neither. Second, `new DefinedClass()` in happy-dom mints a real detached element (the registry stashes the window/document symbols on the constructor's prototype), while MAD DOM's empty single-class HTMLElement base yields a bare object with no native handle, so its localName reads undefined. Third, the define-after-connect upgrade is in-place in MAD DOM's single-class model (the pre-created wrapper becomes an instance of the custom class), while happy-dom physically replaces the element object (the pre-created reference stays a plain HTMLElement). These are recorded here so the compatible surface stays a clean pass.",
+      "recordedAt": "2026-08-30T18:00:00Z",
+      "addedIn": "T42"
+    },
+    {
+      "id": "hc-types-custom-elements",
+      "suite": "types",
+      "status": "known-gap",
+      "subsystem": "types",
+      "fixture": "positive/custom-elements.ts",
+      "reason": "The Custom Element surface is fully typed (T42): window.customElements (define/get/getName/whenDefined/upgrade), the window.HTMLElement subclass with the lifecycle callback signatures and observedAttributes, and the instanceof narrowing of a created element. The only remaining diagnostic is the shared Window-constructor gap (MAD DOM's Window is not user-constructible; the happy-dom options-object shape is rejected), which this fixture exercises to reach window.customElements.",
+      "recordedAt": "2026-08-30T18:00:00Z",
+      "addedIn": "T42",
+      "diagnostics": [
+        { "code": 2353, "line": 10 }
+      ]
     }
   ]
 }

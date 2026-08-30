@@ -38,6 +38,7 @@
 // (tests/bun/seam.test.js pins that shape).
 
 import { Node } from "./node.js";
+import { flushCustomElementReactions } from "./custom-elements.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/attributes",
@@ -82,11 +83,17 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(Node.prototype, "setAttribute", function setAttribute(name, value) {
-    facadeNodeHandle(ctx, this, "setAttribute").setAttribute(String(name), String(value));
+    const handle = facadeNodeHandle(ctx, this, "setAttribute");
+    handle.setAttribute(String(name), String(value));
+    // T42: the write queued the `attributeChangedCallback` reaction for a
+    // custom element observing the attribute; flush it synchronously.
+    flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineMethod(Node.prototype, "removeAttribute", function removeAttribute(name) {
-    facadeNodeHandle(ctx, this, "removeAttribute").removeAttribute(String(name));
+    const handle = facadeNodeHandle(ctx, this, "removeAttribute");
+    handle.removeAttribute(String(name));
+    flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineMethod(Node.prototype, "hasAttribute", function hasAttribute(name) {

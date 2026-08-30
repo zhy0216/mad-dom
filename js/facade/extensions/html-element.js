@@ -61,6 +61,7 @@ import { Document } from "../document.js";
 import { Node } from "./node.js";
 import { Window } from "../window.js";
 import { Event } from "./events.js";
+import { flushCustomElementReactions } from "./custom-elements.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/html-element",
@@ -156,6 +157,7 @@ function datasetFor(ctx, element) {
         },
         set(_target, property, value) {
           handle.setAttribute(attributeName(property), String(value));
+          flushCustomElementReactions(ctx, handle);
           return true;
         },
         deleteProperty(_target, property) {
@@ -177,6 +179,7 @@ function datasetFor(ctx, element) {
         defineProperty(_target, property, descriptor) {
           if (descriptor.value === undefined) return false;
           handle.setAttribute(attributeName(property), String(descriptor.value));
+          flushCustomElementReactions(ctx, handle);
           return true;
         },
         getOwnPropertyDescriptor(_target, property) {
@@ -224,32 +227,42 @@ export function install(ctx) {
   ctx.defineAccessor(Node.prototype, "id", function id() {
     return facadeNodeHandle(ctx, this, "id").getAttribute("id") || "";
   }, function id(value) {
-    facadeNodeHandle(ctx, this, "id").setAttribute("id", String(value));
+    const handle = facadeNodeHandle(ctx, this, "id");
+    handle.setAttribute("id", String(value));
+    flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineAccessor(Node.prototype, "className", function className() {
     return facadeNodeHandle(ctx, this, "className").getAttribute("class") || "";
   }, function className(value) {
-    facadeNodeHandle(ctx, this, "className").setAttribute("class", String(value));
+    const handle = facadeNodeHandle(ctx, this, "className");
+    handle.setAttribute("class", String(value));
+    flushCustomElementReactions(ctx, handle);
   });
 
   // HTMLElement-level string reflection.
   ctx.defineAccessor(HTMLElement.prototype, "title", function title() {
     return facadeNodeHandle(ctx, this, "title").getAttribute("title") || "";
   }, function title(value) {
-    facadeNodeHandle(ctx, this, "title").setAttribute("title", String(value));
+    const handle = facadeNodeHandle(ctx, this, "title");
+    handle.setAttribute("title", String(value));
+    flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineAccessor(HTMLElement.prototype, "dir", function dir() {
     return facadeNodeHandle(ctx, this, "dir").getAttribute("dir") || "";
   }, function dir(value) {
-    facadeNodeHandle(ctx, this, "dir").setAttribute("dir", String(value));
+    const handle = facadeNodeHandle(ctx, this, "dir");
+    handle.setAttribute("dir", String(value));
+    flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineAccessor(HTMLElement.prototype, "lang", function lang() {
     return facadeNodeHandle(ctx, this, "lang").getAttribute("lang") || "";
   }, function lang(value) {
-    facadeNodeHandle(ctx, this, "lang").setAttribute("lang", String(value));
+    const handle = facadeNodeHandle(ctx, this, "lang");
+    handle.setAttribute("lang", String(value));
+    flushCustomElementReactions(ctx, handle);
   });
 
   // Boolean reflection: presence of the attribute.
@@ -262,6 +275,7 @@ export function install(ctx) {
     } else {
       handle.setAttribute("hidden", "");
     }
+    flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineAccessor(HTMLElement.prototype, "inert", function inert() {
@@ -273,6 +287,7 @@ export function install(ctx) {
     } else {
       handle.setAttribute("inert", "");
     }
+    flushCustomElementReactions(ctx, handle);
   });
 
   // Number reflection: happy-dom's `long` rules (`Number` on the attribute,
@@ -285,12 +300,14 @@ export function install(ctx) {
     }
     return -1;
   }, function tabIndex(value) {
+    const handle = facadeNodeHandle(ctx, this, "tabIndex");
     const parsed = Number(value);
     if (Number.isNaN(parsed)) {
-      facadeNodeHandle(ctx, this, "tabIndex").setAttribute("tabindex", "0");
+      handle.setAttribute("tabindex", "0");
     } else {
-      facadeNodeHandle(ctx, this, "tabIndex").setAttribute("tabindex", String(parsed));
+      handle.setAttribute("tabindex", String(parsed));
     }
+    flushCustomElementReactions(ctx, handle);
   });
 
   // `contentEditable` enum reflection (happy-dom `SyntaxError` on an invalid
@@ -315,7 +332,9 @@ export function install(ctx) {
       normalized === "plaintext-only" ||
       normalized === "inherit"
     ) {
-      facadeNodeHandle(ctx, this, "contentEditable").setAttribute("contentEditable", normalized);
+      const handle = facadeNodeHandle(ctx, this, "contentEditable");
+      handle.setAttribute("contentEditable", normalized);
+      flushCustomElementReactions(ctx, handle);
       return;
     }
     throw new SyntaxError(

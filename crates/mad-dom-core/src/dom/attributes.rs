@@ -142,6 +142,10 @@ impl Document {
         // here — both for a fresh attribute (old value `None`) and for an
         // in-place update.
         self.queue_attribute_record(id, name, old_value.as_deref());
+        // T42: the `attributeChangedCallback` reaction fires for a custom
+        // element whose observed snapshot contains the attribute (the same
+        // single-write chokepoint rule, enqueued synchronously).
+        self.enqueue_attribute_changed(id, name, old_value.as_deref(), Some(value));
         Ok(())
     }
 
@@ -178,6 +182,9 @@ impl Document {
             // T41: queue the `attributes` record for the removal (only when an
             // attribute was actually removed).
             self.queue_attribute_record(id, name, old_value.as_deref());
+            // T42: the `attributeChangedCallback` reaction for an observed
+            // attribute removal.
+            self.enqueue_attribute_changed(id, name, old_value.as_deref(), None);
         }
         Ok(removed)
     }

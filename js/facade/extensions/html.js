@@ -44,6 +44,10 @@
 
 import { Document } from "../document.js";
 import { Node } from "./node.js";
+import {
+  flushCustomElementReactions,
+  upgradeParsedCandidates,
+} from "./custom-elements.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/html",
@@ -131,7 +135,12 @@ export function install(ctx) {
   );
 
   ctx.defineMethod(Document.prototype, "parseHtml", function parseHtml(html) {
-    facadeDocumentHandle(ctx, this, "parseHtml").parseHtml(String(html));
+    const documentHandle = facadeDocumentHandle(ctx, this, "parseHtml");
+    documentHandle.parseHtml(String(html));
+    // T42: the parsed custom elements were upgraded during the load; set their
+    // wrapper prototypes before the queued reactions are dispatched.
+    upgradeParsedCandidates(ctx, documentHandle.documentElement());
+    flushCustomElementReactions(ctx, documentHandle.documentElement());
   });
 
   // Node innerHTML / outerHTML accessors.
@@ -142,7 +151,13 @@ export function install(ctx) {
       return facadeNodeHandle(ctx, this, "innerHTML").innerHTML();
     },
     function innerHTML(value) {
-      facadeNodeHandle(ctx, this, "innerHTML").setInnerHTML(String(value));
+      const handle = facadeNodeHandle(ctx, this, "innerHTML");
+      handle.setInnerHTML(String(value));
+      // T42: the parse upgraded the custom elements and queued their
+      // reactions; set the wrapper prototypes, then flush the callbacks
+      // synchronously in enqueue order (happy-dom parse order).
+      upgradeParsedCandidates(ctx, handle);
+      flushCustomElementReactions(ctx, handle);
     },
   );
 
@@ -153,7 +168,10 @@ export function install(ctx) {
       return facadeNodeHandle(ctx, this, "outerHTML").outerHTML();
     },
     function outerHTML(value) {
-      facadeNodeHandle(ctx, this, "outerHTML").setOuterHTML(String(value));
+      const handle = facadeNodeHandle(ctx, this, "outerHTML");
+      handle.setOuterHTML(String(value));
+      upgradeParsedCandidates(ctx, handle);
+      flushCustomElementReactions(ctx, handle);
     },
   );
 }

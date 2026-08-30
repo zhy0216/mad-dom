@@ -45,6 +45,10 @@
 
 import { Document } from "../document.js";
 import { Node } from "./node.js";
+import {
+  flushCustomElementReactions,
+  markSubtreeCustomAndUpgrade,
+} from "./custom-elements.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/extended-nodes",
@@ -120,20 +124,29 @@ export function install(ctx) {
   );
 
   ctx.defineMethod(Document.prototype, "importNode", function importNode(node, deep) {
-    return ctx.wrap(
+    const imported = ctx.wrap(
       facadeDocumentHandle(ctx, this, "importNode").importNode(
         facadeNodeHandle(ctx, node, "importNode"),
         Boolean(deep),
       ),
     );
+    // T42: an imported custom element keeps its class (happy-dom parity) —
+    // mark the subtree custom and set the wrapper prototypes (no reactions).
+    markSubtreeCustomAndUpgrade(ctx, ctx.documentContext.handleOf(imported));
+    return imported;
   });
 
   ctx.defineMethod(Document.prototype, "adoptNode", function adoptNode(node) {
-    return ctx.wrap(
-      facadeDocumentHandle(ctx, this, "adoptNode").adoptNode(
-        facadeNodeHandle(ctx, node, "adoptNode"),
-      ),
-    );
+    const targetHandle = facadeDocumentHandle(ctx, this, "adoptNode");
+    const nodeHandle = facadeNodeHandle(ctx, node, "adoptNode");
+    const adopted = ctx.wrap(targetHandle.adoptNode(nodeHandle));
+    // T42: the adopted element is a fresh wrapper in the target document; it
+    // keeps its custom class when the target registry defines the name (no
+    // reactions, happy-dom adopt parity), and the source document's
+    // disconnected reactions (adopt removes the node) are flushed.
+    markSubtreeCustomAndUpgrade(ctx, ctx.documentContext.handleOf(adopted));
+    flushCustomElementReactions(ctx, nodeHandle);
+    return adopted;
   });
 
   ctx.defineAccessor(
@@ -197,7 +210,12 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(Node.prototype, "cloneNode", function cloneNode(deep) {
-    return ctx.wrap(facadeNodeHandle(ctx, this, "cloneNode").cloneNode(Boolean(deep)));
+    const clone = ctx.wrap(facadeNodeHandle(ctx, this, "cloneNode").cloneNode(Boolean(deep)));
+    // T42: a clone of a custom element keeps its class (happy-dom parity) —
+    // mark the clone subtree custom and set the wrapper prototypes (no
+    // reactions; attributes are copied silently).
+    markSubtreeCustomAndUpgrade(ctx, ctx.documentContext.handleOf(clone));
+    return clone;
   });
 
   // Kind-specific read-only accessors (undefined for ineligible kinds).

@@ -218,27 +218,39 @@ impl Document {
         let child_prev = self.get(child)?.previous_sibling();
         let child_next = self.get(child)?.next_sibling();
 
+        // T42: capture the pre-mutation connectivity the custom element
+        // reactions need — `child` is a child of `parent`, so its connectivity
+        // is the parent's, while `node` may live anywhere.
+        let parent_connected =
+            self.custom_elements.has_definitions() && self.is_connected(parent)?;
+        let node_was_connected =
+            self.custom_elements.has_definitions() && self.is_connected(node)?;
+
         // Mutation phase: every precondition was checked above, so from here
         // on the operation cannot fail. `anchor_prev`/`anchor_next` were
         // computed so that they never point at `node` itself even when `node`
         // is one of `child`'s neighbours. The primitives run with observer
         // records suppressed so `replace` can queue them in the baseline
-        // (WHATWG `replace` = insert then remove) order below.
-        self.with_observer_records_suppressed(|doc| {
-            doc.detach(child);
-            if let Some(children) = &fragment_children {
-                if !children.is_empty() {
-                    for &c in children {
-                        doc.detach(c);
+        // (WHATWG `replace` = insert then remove) order below; the T42 custom
+        // element reactions are suppressed the same way and enqueued manually
+        // in the happy-dom order after the records.
+        self.with_custom_element_reactions_suppressed(|doc| {
+            doc.with_observer_records_suppressed(|doc| {
+                doc.detach(child);
+                if let Some(children) = &fragment_children {
+                    if !children.is_empty() {
+                        for &c in children {
+                            doc.detach(c);
+                        }
+                        doc.link_detached_chain_between(parent, children, anchor_prev, anchor_next);
                     }
-                    doc.link_detached_chain_between(parent, children, anchor_prev, anchor_next);
+                    // An empty fragment has nothing to insert; replacing with it just
+                    // removes `child` (WHATWG `replace`).
+                } else {
+                    doc.detach(node);
+                    doc.link_detached_chain_between(parent, &[node], anchor_prev, anchor_next);
                 }
-                // An empty fragment has nothing to insert; replacing with it just
-                // removes `child` (WHATWG `replace`).
-            } else {
-                doc.detach(node);
-                doc.link_detached_chain_between(parent, &[node], anchor_prev, anchor_next);
-            }
+            });
         });
 
         // Observer records, in the baseline order: the insert (removal from the
@@ -295,6 +307,32 @@ impl Document {
             }
         };
         self.queue_child_list_removed(parent, child, removal_prev, removal_next);
+
+        // T42: the happy-dom `replace` reaction order — insert then remove. A
+        // connected replacement is first disconnected from its old parent, then
+        // re-connected here, and finally the old child is disconnected.
+        if self.custom_elements.has_definitions() {
+            match &fragment_children {
+                Some(children) => {
+                    if parent_connected {
+                        for &c in children {
+                            let _ = self.enqueue_connected_subtree(c);
+                        }
+                    }
+                }
+                None => {
+                    if node_was_connected {
+                        let _ = self.enqueue_disconnected_subtree(node);
+                    }
+                    if parent_connected {
+                        let _ = self.enqueue_connected_subtree(node);
+                    }
+                }
+            }
+            if parent_connected {
+                let _ = self.enqueue_disconnected_subtree(child);
+            }
+        }
 
         self.verify_invariants(parent);
         self.verify_detached(child);
@@ -509,6 +547,10 @@ impl Document {
     /// detach and the fragment-children detach of `pre-insert` — funnels
     /// through it and can never bypass the observer records.
     pub(crate) fn detach(&mut self, node: NodeId) {
+        // T42: capture the pre-removal connectivity so the disconnected
+        // reactions fire for a connected subtree (and only for it).
+        let was_connected =
+            self.custom_elements.has_definitions() && self.is_connected(node).unwrap_or(false);
         let _ = self.index_subtree_detached(node);
         let old_parent = self.get(node).expect("detaching a live node").parent();
         let prev = self
@@ -548,6 +590,13 @@ impl Document {
         node_mut.parent = None;
         node_mut.previous_sibling = None;
         node_mut.next_sibling = None;
+
+        // T42: a connected subtree leaving the document fires
+        // `disconnectedCallback` for every custom element in it (the happy-dom
+        // disconnect reaction, enqueued at the single removal chokepoint).
+        if was_connected {
+            let _ = self.enqueue_disconnected_subtree(node);
+        }
     }
 
     /// Splices the already-detached `nodes` (in document order) into `parent`'s
@@ -634,6 +683,18 @@ impl Document {
         // observer records. The baseline emits one record per inserted node.
         for &c in nodes {
             self.queue_child_list_added(parent, c);
+        }
+
+        // T42: the single insertion chokepoint fires `connectedCallback` for
+        // every custom element in an inserted subtree when the receiving
+        // parent is connected (a move within the document therefore fires
+        // `Disconnected` at the preceding `detach` and `Connected` here,
+        // matching the happy-dom remove-then-insert baseline). Suppressed by
+        // `replace_child`, which enqueues the reactions in its own order.
+        if self.custom_elements.has_definitions() && self.is_connected(parent).unwrap_or(false) {
+            for &c in nodes {
+                let _ = self.enqueue_connected_subtree(c);
+            }
         }
     }
 

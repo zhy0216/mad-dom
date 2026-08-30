@@ -373,6 +373,14 @@ fn adopt_parsed(
 /// All current children are detached first, then `new_children` (already
 /// detached, document-owned handles) are linked as the new child list. The
 /// detached old children stay live, so existing wrappers remain valid.
+///
+/// T42: the old children's `disconnectedCallback` reactions fire at the detach,
+/// then the freshly parsed children are upgraded (their `attributeChangedCallback`
+/// reactions for present observed attributes are enqueued) before the splice
+/// enqueues their `connectedCallback` — the happy-dom innerHTML/load_html order
+/// (`old-disconnected`, `attr`, `connected`). A failed upgrade leaves the tree
+/// unchanged because it runs before the first relation field of the splice is
+/// touched.
 fn replace_children(
     doc: &mut Document,
     parent: NodeId,
@@ -386,6 +394,10 @@ fn replace_children(
         doc.detach(child);
     }
     if !new_children.is_empty() {
+        doc.upgrade_custom_elements(new_children[0])?;
+        for &child in &new_children[1..] {
+            doc.upgrade_custom_elements(child)?;
+        }
         doc.link_detached_chain_between(parent, new_children, None, None);
     }
     Ok(())
@@ -396,6 +408,11 @@ fn replace_children(
 /// `new_nodes` are detached, document-owned handles; the old node is detached
 /// (its wrappers stay valid) and the chain is spliced into its position. An
 /// empty `new_nodes` list simply removes the node.
+///
+/// T42: as for [`replace_children`], the old node's `disconnectedCallback` is
+/// enqueued at the detach, the freshly parsed children are upgraded (with their
+/// `attributeChangedCallback` reactions) before the splice enqueues their
+/// `connectedCallback`.
 fn replace_in_parent(
     doc: &mut Document,
     node: NodeId,
@@ -411,6 +428,10 @@ fn replace_in_parent(
     if !new_nodes.is_empty() {
         for &n in new_nodes {
             doc.detach(n);
+        }
+        doc.upgrade_custom_elements(new_nodes[0])?;
+        for &n in &new_nodes[1..] {
+            doc.upgrade_custom_elements(n)?;
         }
         doc.link_detached_chain_between(parent, new_nodes, prev, next);
     }

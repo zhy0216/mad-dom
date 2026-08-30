@@ -122,9 +122,13 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     // the TreeWalkerHandle / NodeIteratorHandle classes; by T41:
     // createMutationObserver / deliverObserverRecords / registerObserverScheduler
     // and the MutationObserverHandle / MutationRecordHandle classes; by T36:
-    // the RangeHandle / SelectionHandle classes) (creating or renaming a module
+    // the RangeHandle / SelectionHandle classes; by T42: defineCustomElement /
+    // upgradeCustomElements / markCustomElementsInSubtree /
+    // listCustomElementCandidates / takeCustomElementReactions / documentRootNode
+    // and the CustomElementReactionHandle class) (creating or renaming a module
     // export breaks this).
     expect(Object.keys(native).sort()).toEqual([
+      "CustomElementReactionHandle",
       "DocumentHandle",
       "EventHandle",
       "MutationObserverHandle",
@@ -141,9 +145,15 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
       "createEvent",
       "createMutationObserver",
       "createWindow",
+      "defineCustomElement",
       "deliverObserverRecords",
+      "documentRootNode",
+      "listCustomElementCandidates",
       "liveDocumentCount",
+      "markCustomElementsInSubtree",
       "registerObserverScheduler",
+      "takeCustomElementReactions",
+      "upgradeCustomElements",
     ]);
   });
 

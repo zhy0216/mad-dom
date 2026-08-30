@@ -110,8 +110,13 @@ describe.skipIf(!nativeAvailable)("native remove/replace mutation contract (T24B
     // T41: createMutationObserver / deliverObserverRecords /
     // registerObserverScheduler and the MutationObserverHandle /
     // MutationRecordHandle classes; by T35/T36: the iterator/range/selection
-    // handle classes) (creating or renaming a module export breaks this).
+    // handle classes; by T42: defineCustomElement / upgradeCustomElements /
+    // markCustomElementsInSubtree / listCustomElementCandidates /
+    // takeCustomElementReactions / documentRootNode and the
+    // CustomElementReactionHandle class) (creating or renaming a module export
+    // breaks this).
     expect(Object.keys(native).sort()).toEqual([
+      "CustomElementReactionHandle",
       "DocumentHandle",
       "EventHandle",
       "MutationObserverHandle",
@@ -128,9 +133,15 @@ describe.skipIf(!nativeAvailable)("native remove/replace mutation contract (T24B
       "createEvent",
       "createMutationObserver",
       "createWindow",
+      "defineCustomElement",
       "deliverObserverRecords",
+      "documentRootNode",
+      "listCustomElementCandidates",
       "liveDocumentCount",
+      "markCustomElementsInSubtree",
       "registerObserverScheduler",
+      "takeCustomElementReactions",
+      "upgradeCustomElements",
     ]);
   });
 

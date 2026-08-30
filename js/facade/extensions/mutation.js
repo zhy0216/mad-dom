@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 
 import { Document } from "../document.js";
 import { Node } from "./node.js";
+import { flushCustomElementReactions } from "./custom-elements.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/mutation",
@@ -103,7 +104,7 @@ function facadeDocumentHandle(ctx, value) {
   return handle;
 }
 
-function nativeMutation(methodName, parentHandle, argumentHandles) {
+function nativeMutation(ctx, methodName, parentHandle, argumentHandles) {
   const documentHandle = loadNative().DocumentHandle;
   const method = documentHandle?.prototype?.[methodName];
   if (typeof method !== "function") {
@@ -115,6 +116,10 @@ function nativeMutation(methodName, parentHandle, argumentHandles) {
   // handle as the first (Core-order) argument. Native code then performs all
   // document-affinity and hierarchy checks before touching the tree.
   method.call(parentHandle, parentHandle, ...argumentHandles);
+  // T42: the mutation queued the connected/disconnected custom element
+  // reactions; flush them synchronously, in enqueue order (happy-dom fires the
+  // lifecycle callbacks at the mutation point).
+  flushCustomElementReactions(ctx, parentHandle);
 }
 
 /**
@@ -133,7 +138,7 @@ export function install(ctx) {
   ctx.defineMethod(Node.prototype, "appendChild", function appendChild(child) {
     const parentHandle = facadeNodeHandle(ctx, this, "appendChild");
     const childHandle = facadeNodeHandle(ctx, child, "appendChild");
-    nativeMutation("appendChild", parentHandle, [childHandle]);
+    nativeMutation(ctx, "appendChild", parentHandle, [childHandle]);
     return ctx.wrap(childHandle);
   });
 
@@ -141,14 +146,14 @@ export function install(ctx) {
     const parentHandle = facadeNodeHandle(ctx, this, "insertBefore");
     const childHandle = facadeNodeHandle(ctx, child, "insertBefore");
     const referenceHandle = facadeNodeHandle(ctx, reference, "insertBefore");
-    nativeMutation("insertBefore", parentHandle, [childHandle, referenceHandle]);
+    nativeMutation(ctx, "insertBefore", parentHandle, [childHandle, referenceHandle]);
     return ctx.wrap(childHandle);
   });
 
   ctx.defineMethod(Node.prototype, "removeChild", function removeChild(child) {
     const parentHandle = facadeNodeHandle(ctx, this, "removeChild");
     const childHandle = facadeNodeHandle(ctx, child, "removeChild");
-    nativeMutation("removeChild", parentHandle, [childHandle]);
+    nativeMutation(ctx, "removeChild", parentHandle, [childHandle]);
     return ctx.wrap(childHandle);
   });
 
@@ -158,7 +163,7 @@ export function install(ctx) {
     const oldChildHandle = facadeNodeHandle(ctx, oldChild, "replaceChild");
     // Native/Core order is (parent, old child, replacement); WHATWG order is
     // (new child, old child).
-    nativeMutation("replaceChild", parentHandle, [oldChildHandle, newChildHandle]);
+    nativeMutation(ctx, "replaceChild", parentHandle, [oldChildHandle, newChildHandle]);
     return ctx.wrap(oldChildHandle);
   });
 }

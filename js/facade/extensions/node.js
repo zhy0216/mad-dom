@@ -35,6 +35,7 @@
 
 import { Document } from "../document.js";
 import { liveChildNodes } from "./child-nodelist.js";
+import { upgradeElementPrototype } from "./custom-elements.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/node",
@@ -98,7 +99,12 @@ export function install(ctx) {
   // node through `ctx.wrap`.
   ctx.defineMethod(Document.prototype, "createElement", function createElement(name) {
     const documentHandle = ctx.documentContext.handleOf(this);
-    return ctx.wrap(documentHandle.createElement(name));
+    const element = ctx.wrap(documentHandle.createElement(name));
+    // T42: an element created with a defined custom name is an upgraded custom
+    // element — Core marked it custom at creation, so the wrapper's prototype
+    // is re-parented onto the user class (the in-place single-class upgrade).
+    upgradeElementPrototype(ctx, element, documentHandle);
+    return element;
   });
 
   ctx.defineMethod(Document.prototype, "createTextNode", function createTextNode(data) {
