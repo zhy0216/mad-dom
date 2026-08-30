@@ -13,9 +13,10 @@ export declare const project: MadDomProject;
 // Public DOM facade surface. Windows are minted through `createWindow()`; the
 // `Window`/`Document` classes only construct around a genuine native handle
 // (throwing TypeError otherwise), so no user-visible path fabricates a
-// document. The remaining DOM surface — mutation, attributes, `textContent`,
-// live `childNodes` — lands with T24-T25; nodes (creation and navigation) are
-// declared below by the T23 gate.
+// document. The remaining DOM surface — attributes, `textContent`, live
+// `childNodes` — lands with T25; nodes (creation and navigation) and tree
+// mutation (append/insert/remove/replace) are declared below by the T23 and
+// T24 gates.
 
 export declare class Window {
   constructor(nativeHandle: WindowHandle);
@@ -33,18 +34,22 @@ export declare class Document {
   createElement(name: string): Element;
   /** Creates a new detached Text node (WHATWG `createTextNode`). */
   createTextNode(data: string): Text;
+  /** Creates a new empty DocumentFragment (WHATWG `createDocumentFragment`). */
+  createDocumentFragment(): DocumentFragment;
 }
 
 export declare function createWindow(): Window;
 
-// --- Node creation and navigation (T23) ------------------------------------
+// --- Node creation, navigation and mutation (T23 / T24) ----------------------
 //
-// Detached Element/Text nodes are minted through `Document.createElement` /
-// `createTextNode` and expose the WHATWG `Node` navigation surface. Every read
+// Nodes are minted through `Document.createElement` / `createTextNode` /
+// `createDocumentFragment` and expose the WHATWG `Node` navigation surface
+// (T23) plus the tree mutation surface (T24). Every read and every write
 // delegates to the Core tree through the native binding — the facade keeps no
-// second DOM state, so Core remains the only tree-state source. Mutation,
-// attributes, `textContent` and the live `childNodes` facade land with
-// T24-T25.
+// second DOM state, so Core remains the only tree-state source. All mutation
+// methods return the same facade wrapper they were called with (stable
+// identity); a failed call throws before any observable tree change.
+// Attributes, `textContent` and the live `childNodes` facade land with T25.
 
 export interface Node {
   /** WHATWG `Node.nodeType` (1 Element, 3 Text, 8 Comment, 9 Document, 11 DocumentFragment). */
@@ -58,6 +63,15 @@ export interface Node {
   readonly nextSibling: Node | null;
   /** Ordered children as a snapshot array; empty for a leaf node (the live `childNodes` facade is T25D's). */
   readonly childNodes: Node[];
+
+  /** Appends `child` as the last child and returns it (WHATWG `Node.appendChild`). */
+  appendChild(child: Node): Node;
+  /** Inserts `child` immediately before `reference` and returns it (WHATWG `Node.insertBefore`). */
+  insertBefore(child: Node, reference: Node): Node;
+  /** Removes `child` from this parent, detaching it, and returns it (WHATWG `Node.removeChild`). */
+  removeChild(child: Node): Node;
+  /** Replaces `oldChild` with `newChild` and returns `oldChild` (WHATWG `Node.replaceChild`). */
+  replaceChild(newChild: Node, oldChild: Node): Node;
 }
 
 /** A node minted by `Document.createElement` (T23 surface only). */
@@ -65,6 +79,9 @@ export interface Element extends Node {}
 
 /** A node minted by `Document.createTextNode` (T23 surface only). */
 export interface Text extends Node {}
+
+/** A node minted by `Document.createDocumentFragment` (T24 surface). */
+export interface DocumentFragment extends Node {}
 
 // --- Minimal native binding (T19) -----------------------------------------
 //

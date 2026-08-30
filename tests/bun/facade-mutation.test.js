@@ -40,7 +40,7 @@ describe("facade mutation export shape (T24C)", () => {
     expect(mutationSeam.id).toBe("facade/extensions/mutation");
     expect(mutationSeam.owner).toBe("T24C");
     expect(mutationSeam.gate).toBe("T24");
-    expect(mutationSeam.status).toBe("placeholder");
+    expect(mutationSeam.status).toBe("implemented");
     expect(Object.isFrozen(mutationSeam)).toBe(true);
   });
 });

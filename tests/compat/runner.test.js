@@ -447,6 +447,101 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(happyRecord.values["text-node-name"]).toEqual({ type: "string", value: "#text" });
   });
 
+  test("tree mutation real scenario passes exactly (append/insert/remove/replace/fragment)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-mutations");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].name).toBe("Error");
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T24 slice matches happy-dom observation for observation, so
+    // the scenario is a genuine pass (ledgered hc-diff-node-mutations).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+
+    expect(madRecord.values["after-append-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 1 },
+        { type: "number", value: 3 },
+        { type: "number", value: 1 },
+      ],
+    });
+    expect(madRecord.values["after-insert-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 1 },
+        { type: "number", value: 3 },
+        { type: "number", value: 1 },
+        { type: "number", value: 1 },
+      ],
+    });
+    expect(madRecord.values["after-move-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 3 },
+        { type: "number", value: 1 },
+        { type: "number", value: 1 },
+        { type: "number", value: 1 },
+      ],
+    });
+    expect(madRecord.values["after-remove-count"]).toEqual({ type: "number", value: 3 });
+    expect(madRecord.values["after-replace-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 3 },
+        { type: "number", value: 1 },
+        { type: "number", value: 1 },
+      ],
+    });
+    expect(madRecord.values["after-fragment-types"]).toEqual({
+      type: "array",
+      items: [
+        { type: "number", value: 3 },
+        { type: "number", value: 1 },
+        { type: "number", value: 3 },
+        { type: "number", value: 1 },
+        { type: "number", value: 1 },
+      ],
+    });
+    expect(madRecord.values["fragment-empty-after-insert"]).toEqual({ type: "number", value: 0 });
+
+    for (const key of [
+      "append-return-first",
+      "append-return-text",
+      "append-return-last",
+      "insert-return-middle",
+      "middle-parent-after-insert",
+      "move-return-first",
+      "moved-first-is-last",
+      "remove-return-middle",
+      "removed-middle-detached",
+      "replace-return-last",
+      "replacement-parent",
+      "replaced-first-detached",
+      "fragment-insert-return",
+      "fragment-text-moved",
+      "fragment-element-moved",
+    ]) {
+      expect(madRecord.identity[key], `${key} identity`).toBe(true);
+    }
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.errors).toEqual([]);
+    expect(happyRecord.identity["append-return-first"]).toBe(true);
+    expect(happyRecord.values["after-insert-types"]).toEqual(madRecord.values["after-insert-types"]);
+  });
+
   test("strict mode fails on the same real scenario (exit 1)", () => {
     const strictRun = runRunner([join(DOM_DIR, "create-append-serialize.js"), "--json"]);
     expect(strictRun.status).toBe(1);
@@ -456,5 +551,26 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(strictReport.scenarios[0].id).toBe("dom-create-append-serialize");
     expect(strictReport.scenarios[0].status).toBe("differences-fatal");
     expect(strictReport.scenarios[0].reportOnly).toBe(false);
+  });
+
+  test("strict mode passes on the tree-mutation scenario exactly when it matches happy-dom", () => {
+    const strictRun = runRunner([join(DOM_DIR, "dom-mutations.js"), "--json"]);
+    const strictReport = JSON.parse(strictRun.stdout);
+    expect(strictReport.mode).toBe("strict");
+    expect(strictReport.scenarios[0].id).toBe("dom-mutations");
+    if (nativeAvailable) {
+      // With the dev artifact the whole T24 slice matches happy-dom, so the
+      // strict run must exit 0 with zero differences.
+      expect(strictRun.status).toBe(0);
+      expect(strictReport.exitCode).toBe(0);
+      expect(strictReport.scenarios[0].status).toBe("pass");
+      expect(strictReport.scenarios[0].differences).toEqual([]);
+    } else {
+      // Without the artifact the mad-dom side stops at setup, which is a real
+      // difference, not an infrastructure error.
+      expect(strictRun.status).toBe(1);
+      expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+      expect(strictReport.totals.infraErrors).toBe(0);
+    }
   });
 });

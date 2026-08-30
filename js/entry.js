@@ -1,15 +1,15 @@
-// Package runtime entry (T22 gate, extended by T23).
+// Package runtime entry (T22 gate, extended by T23/T24).
 //
 // Single source of the public runtime surface: the root index.js re-exports
 // everything from here, so the package entry, the facade wiring and the type
 // declaration can never drift apart. `createWindow`, `Window` and `Document`
 // come from the js/facade layer (T22B); the node creation and navigation
-// surface (T23B) is installed onto the facade classes by the registry, so no
-// new export is needed here — the shared entry keeps exactly one set of
-// exports. The low-level native bindings (T19) stay behind the same lazy
-// native loader; `project` is the frozen package metadata. index.d.ts is the
-// single source for the type surface and must be kept in lockstep with the
-// exports below.
+// surface (T23B) and the tree mutation surface (T24C) are installed onto the
+// facade classes by the registry, so no new export is needed here — the shared
+// entry keeps exactly one set of exports. The low-level native bindings (T19)
+// stay behind the same lazy native loader; `project` is the frozen package
+// metadata. index.d.ts is the single source for the type surface and must be
+// kept in lockstep with the exports below.
 
 import { createRequire } from "node:module";
 import { isAbsolute, resolve } from "node:path";

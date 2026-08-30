@@ -25,10 +25,9 @@ export const seam = Object.freeze({
   id: "facade/extensions/mutation",
   owner: "T24C",
   gate: "T24",
-  // The T24 integration gate owns the final seam status flip. Keeping this
-  // placeholder status here follows the frozen extension ownership contract;
-  // the registry nevertheless picks up `install` immediately.
-  status: "placeholder",
+  // The seam status was flipped from "placeholder" to "implemented" by the T24
+  // gate (tests/bun/seam.test.js pins that shape).
+  status: "implemented",
 });
 
 // Mutation methods are already exported by the audited native binding. Keep

@@ -1,6 +1,6 @@
 # 24 集成 JavaScript 树 mutation API
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P0
 - 里程碑：M4
 - 条目 ID：`T24`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T24 — 实现 JavaScript 树 mutation API**
+- [x] **T24 — 实现 JavaScript 树 mutation API**
   - 实现：
     - 接入两个 native 模块和 facade 模块，更新唯一 registry、入口、类型和差分场景。
     - 校准异常类型、时机、返回值和对象身份。
