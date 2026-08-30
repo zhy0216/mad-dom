@@ -28,12 +28,13 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/attribute-nodes.js", owner: "T34" },
   { path: "extensions/html-element.js", owner: "T39" },
   { path: "extensions/window-platform.js", owner: "T45" },
+  { path: "extensions/tree-traversal.js", owner: "T35" },
 ];
 
 // The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29,
-// T31, T32, T33, T37, T34 and T39 capability extensions are implemented and
-// their seam status is flipped to "implemented"; no capability extension stays
-// a placeholder.
+// T31, T32, T33, T37, T34, T39, T45 and T35 capability extensions are
+// implemented and their seam status is flipped to "implemented"; no capability
+// extension stays a placeholder.
 const IMPLEMENTED_FACADE_FILES = [
   { path: "window.js", owner: "T22B" },
   { path: "document.js", owner: "T22B" },
@@ -51,6 +52,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/attribute-nodes.js", owner: "T34" },
   { path: "extensions/html-element.js", owner: "T39" },
   { path: "extensions/window-platform.js", owner: "T45" },
+  { path: "extensions/tree-traversal.js", owner: "T35" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 

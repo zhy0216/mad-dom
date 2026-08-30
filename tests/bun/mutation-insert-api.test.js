@@ -128,6 +128,8 @@ describe.skipIf(!nativeAvailable)("native append/insert mutation contract (T24A)
       "DocumentHandle",
       "EventHandle",
       "NodeHandle",
+      "NodeIteratorHandle",
+      "TreeWalkerHandle",
       "WindowHandle",
       "abiVersion",
       "bindingIdentity",

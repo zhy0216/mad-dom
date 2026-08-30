@@ -111,6 +111,8 @@ describe.skipIf(!nativeAvailable)("native remove/replace mutation contract (T24B
       "DocumentHandle",
       "EventHandle",
       "NodeHandle",
+      "NodeIteratorHandle",
+      "TreeWalkerHandle",
       "WindowHandle",
       "abiVersion",
       "bindingIdentity",

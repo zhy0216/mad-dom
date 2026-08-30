@@ -644,6 +644,60 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     }
   });
 
+  test("traversal real scenario passes exactly (walk order, filters, mutation)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-traversal");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T35 slice matches happy-dom observation for observation, so
+    // the scenario is a genuine pass (ledgered hc-diff-treewalker-nodeiterator).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+
+    expect(madRecord.values["node-filter-show-all"]).toEqual({ type: "number", value: -1 });
+    expect(madRecord.values["walker-root-is-body"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["walker-what-to-show-raw"]).toEqual({ type: "number", value: 1 });
+    expect(madRecord.values["default-what-to-show-raw"]).toEqual({ type: "number", value: -1 });
+    expect(madRecord.values["object-filter-this"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["show-text-elements-none"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["iterator-root"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["mutation-current-last"]).toEqual({ type: "boolean", value: true });
+
+    const keysOf = (name) =>
+      madRecord.events
+        .filter((event) => event.name === name)
+        .map((event) => event.detail?.entries?.key?.value);
+    expect(keysOf("order")).toEqual(["a", "a1", "b", "b1", "b2"]);
+    expect(keysOf("reject")).toEqual(["b", "b1", "b2"]);
+    expect(keysOf("skip")).toEqual(["a1", "b", "b1", "b2"]);
+    expect(keysOf("object-filter")).toEqual(["a", "a1", "b", "b2"]);
+    expect(keysOf("iterator").slice(0, 6)).toEqual(["body", "a", "a1", "b", "b1", "b2"]);
+    expect(keysOf("iterator-prev")).toEqual(["b1", "b", "a1", "a", "body"]);
+    // Removing span#a1 mid-walk: the walk continues at div#b and never
+    // revisits the removed subtree.
+    expect(keysOf("mutation")).toEqual(["a", "b", "b1", "b2"]);
+    // Reentrancy: the filter removes p#b1 when div#b is reached.
+    expect(keysOf("reentrant")).toEqual(["a", "b", "b2"]);
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.errors).toEqual([]);
+    expect(happyRecord.events.length).toBe(madRecord.events.length);
+    expect(happyRecord.values["walker-what-to-show-raw"]).toEqual(
+      madRecord.values["walker-what-to-show-raw"],
+    );
+  });
+
   test("node navigation real scenario reports exactly the frozen nodeName casing gap", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-node-navigation");
     expect(scenario.status).toBe("differences-report");
@@ -1063,6 +1117,23 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const strictReport = JSON.parse(strictRun.stdout);
     expect(strictReport.mode).toBe("strict");
     expect(strictReport.scenarios[0].id).toBe("dom-attributes-token");
+    if (nativeAvailable) {
+      expect(strictRun.status).toBe(0);
+      expect(strictReport.exitCode).toBe(0);
+      expect(strictReport.scenarios[0].status).toBe("pass");
+      expect(strictReport.scenarios[0].differences).toEqual([]);
+    } else {
+      expect(strictRun.status).toBe(1);
+      expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+      expect(strictReport.totals.infraErrors).toBe(0);
+    }
+  });
+
+  test("strict mode passes on the traversal scenario exactly when it matches happy-dom", () => {
+    const strictRun = runRunner([join(DOM_DIR, "dom-traversal.js"), "--json"]);
+    const strictReport = JSON.parse(strictRun.stdout);
+    expect(strictReport.mode).toBe("strict");
+    expect(strictReport.scenarios[0].id).toBe("dom-traversal");
     if (nativeAvailable) {
       expect(strictRun.status).toBe(0);
       expect(strictReport.exitCode).toBe(0);

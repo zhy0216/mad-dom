@@ -54,6 +54,12 @@ export declare class Window {
   readonly URL: typeof URL;
   /** WHATWG `DOMException` constructor (T45): reused from the Bun/Web host. */
   readonly DOMException: typeof DOMException;
+  /** The WHATWG `NodeFilter` constant object (T35): `SHOW_ELEMENT`, `FILTER_ACCEPT`, ... */
+  readonly NodeFilter: typeof NodeFilter;
+  /** The `TreeWalker` class (T35); instances are minted by `document.createTreeWalker`. */
+  readonly TreeWalker: typeof TreeWalker;
+  /** The `NodeIterator` class (T35); instances are minted by `document.createNodeIterator`. */
+  readonly NodeIterator: typeof NodeIterator;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
@@ -349,6 +355,10 @@ export declare class Document {
   readonly documentURI: string;
   /** WHATWG `Document.cookie` (T45): the per-window cookie jar read as a `key=value; ...` string, written as a `Set-Cookie`-style string. */
   cookie: string;
+  /** WHATWG `Document.createTreeWalker` (T35): a `TreeWalker` over the subtree rooted at `root`. */
+  createTreeWalker(root: Node, whatToShow?: number, filter?: TNodeFilter | null): TreeWalker;
+  /** WHATWG `Document.createNodeIterator` (T35): a `NodeIterator` over the subtree rooted at `root`. */
+  createNodeIterator(root: Node, whatToShow?: number, filter?: TNodeFilter | null): NodeIterator;
 
   /** WHATWG `EventTarget.addEventListener` (T37), registered on the document-root node. */
   addEventListener(type: string, listener: TEventListener | null, options?: boolean | IEventListenerOptions | null): void;
@@ -434,6 +444,61 @@ declare class Storage {
   getItem(name: string): string | null;
   removeItem(name: string): void;
   clear(): void;
+}
+
+// --- TreeWalker / NodeIterator / NodeFilter (T35) ----------------------------
+//
+// The traversal classes are not exported from the package entry in T35 — they
+// are reached through `document.createTreeWalker` / `document.createNodeIterator`
+// and `window.TreeWalker` / `window.NodeIterator` — and `NodeFilter` is the
+// frozen constant object exposed as `window.NodeFilter`. The user filter is a
+// function `(node) => FILTER_*` or an object with `acceptNode`; see the WHATWG
+// `NodeFilter` interface.
+
+declare const NodeFilter: {
+  readonly FILTER_ACCEPT: 1;
+  readonly FILTER_REJECT: 2;
+  readonly FILTER_SKIP: 3;
+  readonly SHOW_ALL: -1;
+  readonly SHOW_ELEMENT: 1;
+  readonly SHOW_ATTRIBUTE: 2;
+  readonly SHOW_TEXT: 4;
+  readonly SHOW_CDATA_SECTION: 8;
+  readonly SHOW_ENTITY_REFERENCE: 16;
+  readonly SHOW_ENTITY: 32;
+  readonly SHOW_PROCESSING_INSTRUCTION: 64;
+  readonly SHOW_COMMENT: 128;
+  readonly SHOW_DOCUMENT: 256;
+  readonly SHOW_DOCUMENT_TYPE: 512;
+  readonly SHOW_DOCUMENT_FRAGMENT: 1024;
+  readonly SHOW_NOTATION: 2048;
+};
+
+/** A user filter: a function returning `FILTER_*`, or an object with `acceptNode`. */
+type TNodeFilter = ((node: Node) => number) | { acceptNode(node: Node): number };
+
+/** A filtered traversal cursor over a document subtree (WHATWG `TreeWalker`, T35). */
+declare class TreeWalker {
+  readonly root: Node;
+  readonly whatToShow: number;
+  readonly filter: TNodeFilter | null;
+  currentNode: Node;
+  parentNode(): Node | null;
+  firstChild(): Node | null;
+  lastChild(): Node | null;
+  nextSibling(): Node | null;
+  previousSibling(): Node | null;
+  nextNode(): Node | null;
+  previousNode(): Node | null;
+}
+
+/** A filtered traversal cursor over a document subtree (WHATWG `NodeIterator`, T35). */
+declare class NodeIterator {
+  readonly root: Node;
+  readonly whatToShow: number;
+  readonly filter: TNodeFilter | null;
+  nextNode(): Node | null;
+  previousNode(): Node | null;
 }
 
 // --- Node creation, navigation, mutation, attributes, text and NodeList (T23/T24/T25) --

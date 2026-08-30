@@ -26,6 +26,7 @@
 | `extensions/attribute-nodes.js` | T34 | T34 | `NamedNodeMap`/`Attr`/`DOMTokenList`、`Element.attributes`/`classList`/`namespaceURI` 与 `createAttribute` facade |
 | `extensions/html-element.js` | T39 | T39 | `HTMLElement` 原型层级、反射属性（`id`/`title`/`className`/`dir`/`lang`/`hidden`/`inert`/`tabIndex`/`contentEditable`）、`dataset` 与 `click`/`focus`/`blur` facade |
 | `extensions/window-platform.js` | T45 | T45 | `URL`/`Location`/`History`/`Navigator`、`localStorage`/`sessionStorage`、`document.cookie` 与 `document.URL` facade |
+| `extensions/tree-traversal.js` | T35 | T35 | `createTreeWalker`/`createNodeIterator`、`TreeWalker`/`NodeIterator` 与 `window.NodeFilter` facade |
 
 每个占位文件是合法 ESM 模块，导出冻结的 `seam` 元数据（`id`、`owner`、
 `gate`、`status`），由 `tests/bun/seam.test.js` 锁定；owner 接管实现后可删除

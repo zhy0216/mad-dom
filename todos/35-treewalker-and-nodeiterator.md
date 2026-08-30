@@ -1,6 +1,6 @@
 # 35 实现 TreeWalker 与 NodeIterator
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M7
 - 条目 ID：`T35`

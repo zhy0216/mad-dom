@@ -74,6 +74,7 @@ mod mutation_remove_api;
 mod node_api;
 mod query_api;
 mod text_api;
+mod traversal_api;
 mod window_document;
 
 /// Metadata for one registered native extension boundary.
