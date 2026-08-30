@@ -229,7 +229,7 @@ git diff --check
 | 33 | P1 | [33-extended-node-types.md](done/33-extended-node-types.md) | M7 | T17, T25, T29 | 已完成 |
 | 34 | P1 | [34-attributes-and-domtokenlist.md](done/34-attributes-and-domtokenlist.md) | M7 | T25, T33 | 已完成 |
 | 35 | P1 | [35-treewalker-and-nodeiterator.md](done/35-treewalker-and-nodeiterator.md) | M7 | T25, T33 | 已完成 |
-| 36 | P1 | [36-range-and-selection.md](36-range-and-selection.md) | M7 | T33, T35 | 待办 |
+| 36 | P1 | [36-range-and-selection.md](done/36-range-and-selection.md) | M7 | T33, T35 | 已完成 |
 | 37 | P1 | [37-event-target-and-propagation.md](done/37-event-target-and-propagation.md) | M7 | T25 | 已完成 |
 | 38 | P1 | [38-event-classes.md](done/38-event-classes.md) | M7 | T37 | 已完成 |
 | 39 | P1 | [39-html-element-base.md](done/39-html-element-base.md) | M7 | T29, T34, T37 | 已完成 |
