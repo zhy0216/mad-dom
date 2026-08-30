@@ -223,7 +223,7 @@ git diff --check
 | 27 | P1 | [27-html-fragment-parser.md](27-html-fragment-parser.md) | M5 | T26 | 待办 |
 | 28 | P1 | [28-html-serializer.md](28-html-serializer.md) | M5 | T26 | 待办 |
 | 29 | P1 | [29-inner-outer-html-api.md](29-inner-outer-html-api.md) | M5 | T27, T28 | 待办 |
-| 30 | P1 | [30-selector-parser-and-matcher.md](30-selector-parser-and-matcher.md) | M6 | T05, T17, T25 | 待办 |
+| 30 | P1 | [30-selector-parser-and-matcher.md](done/30-selector-parser-and-matcher.md) | M6 | T05, T17, T25 | 已完成 |
 | 31 | P1 | [31-query-apis.md](31-query-apis.md) | M6 | T30 | 待办 |
 | 32 | P1 | [32-live-query-collections.md](32-live-query-collections.md) | M6 | T31 | 待办 |
 | 33 | P1 | [33-extended-node-types.md](33-extended-node-types.md) | M7 | T17, T25, T29 | 待办 |
