@@ -698,7 +698,6 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     );
   });
 
-
   test("fetch headers/request real scenario passes exactly (Headers and Request surface)", () => {
     const scenario = report.scenarios.find((item) => item.id === "dom-fetch-headers-request");
     expect(scenario).toBeDefined();
@@ -866,6 +865,56 @@ describe("real differential (happy-dom vs mad-dom)", () => {
         expect(strictReport.totals.infraErrors).toBe(0);
       }
     }
+  });
+
+  test("range-selection real scenario passes exactly (boundaries, content ops, selection)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-range-selection");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // The whole T36 slice matches happy-dom observation for observation, so
+    // the scenario is a genuine pass (ledgered hc-diff-range-selection).
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+
+    // The normalizer wraps array values as `{ type: "array", items: [...] }`.
+    const arr = (items) => ({
+      type: "array",
+      items: items.map((value) => {
+        const type = typeof value === "string" ? "string" : typeof value === "boolean" ? "boolean" : "number";
+        return { type, value };
+      }),
+    });
+
+    expect(madRecord.values["fresh-collapsed"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["text-tostring"]).toEqual({ type: "string", value: "Hel" });
+    expect(madRecord.values["compare-stt"]).toEqual({ type: "number", value: -1 });
+    expect(madRecord.values["compare-ete"]).toEqual({ type: "number", value: 1 });
+    expect(madRecord.values["clone-tree-unchanged"]).toEqual({ type: "string", value: "Hello world foo" });
+    expect(madRecord.values["delete-text"]).toEqual(arr(["aef", true, 1, 3]));
+    expect(madRecord.values["extract-el"]).toEqual(arr([1, "Hello ", "world foo", true, 0, 0, true]));
+    expect(madRecord.values["insert"]).toEqual(arr(["abINSc", false, true, 2, 2, false, "INS"]));
+    expect(madRecord.values["surround"]).toEqual(arr(["<em>world</em>", "<b><em>world</em></b>", true, 0, 1, false, "world"]));
+    expect(madRecord.values["sel-after-add"]).toEqual(arr([1, "Range", false, true, true, 0, 2, "He", true, 0, true, 2]));
+    expect(madRecord.values["sel-get-range-at"]).toEqual({ type: "boolean", value: true });
+    expect(madRecord.values["sel-extend-backwards"]).toEqual(arr([0, 0, "Range", ""]));
+    expect(madRecord.values["sel-base-extent-back"]).toEqual(arr([4, 1, "ell", "Range"]));
+    expect(madRecord.values["selectionchange-count"]).toEqual({ type: "number", value: 2 });
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.errors).toEqual([]);
+    expect(happyRecord.values).toEqual(madRecord.values);
   });
 
   test("node navigation real scenario reports exactly the frozen nodeName casing gap", () => {
@@ -1304,6 +1353,23 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     const strictReport = JSON.parse(strictRun.stdout);
     expect(strictReport.mode).toBe("strict");
     expect(strictReport.scenarios[0].id).toBe("dom-traversal");
+    if (nativeAvailable) {
+      expect(strictRun.status).toBe(0);
+      expect(strictReport.exitCode).toBe(0);
+      expect(strictReport.scenarios[0].status).toBe("pass");
+      expect(strictReport.scenarios[0].differences).toEqual([]);
+    } else {
+      expect(strictRun.status).toBe(1);
+      expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+      expect(strictReport.totals.infraErrors).toBe(0);
+    }
+  });
+
+  test("strict mode passes on the range-selection scenario exactly when it matches happy-dom", () => {
+    const strictRun = runRunner([join(DOM_DIR, "dom-range-selection.js"), "--json"]);
+    const strictReport = JSON.parse(strictRun.stdout);
+    expect(strictReport.mode).toBe("strict");
+    expect(strictReport.scenarios[0].id).toBe("dom-range-selection");
     if (nativeAvailable) {
       expect(strictRun.status).toBe(0);
       expect(strictReport.exitCode).toBe(0);

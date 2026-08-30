@@ -198,6 +198,8 @@ describe("facade registry (T22B)", () => {
       ["registerHandleType", "NodeIteratorHandle", expect.any(Function)],
       ["registerHandleType", "MutationObserverHandle", expect.any(Function)],
       ["registerHandleType", "MutationRecordHandle", expect.any(Function)],
+      ["registerHandleType", "RangeHandle", expect.any(Function)],
+      ["registerHandleType", "SelectionHandle", expect.any(Function)],
     ]);
     expect(calls.some(([kind, target]) => kind === "method" && target === Document.prototype)).toBe(true);
     expect(calls.length).toBeGreaterThan(0);

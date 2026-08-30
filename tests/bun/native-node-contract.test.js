@@ -121,8 +121,9 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     // T19/T20/T22 shape (extended by T37: createEvent / EventHandle; by T35:
     // the TreeWalkerHandle / NodeIteratorHandle classes; by T41:
     // createMutationObserver / deliverObserverRecords / registerObserverScheduler
-    // and the MutationObserverHandle / MutationRecordHandle classes) (creating
-    // or renaming a module export breaks this).
+    // and the MutationObserverHandle / MutationRecordHandle classes; by T36:
+    // the RangeHandle / SelectionHandle classes) (creating or renaming a module
+    // export breaks this).
     expect(Object.keys(native).sort()).toEqual([
       "DocumentHandle",
       "EventHandle",
@@ -130,6 +131,8 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
       "MutationRecordHandle",
       "NodeHandle",
       "NodeIteratorHandle",
+      "RangeHandle",
+      "SelectionHandle",
       "TreeWalkerHandle",
       "WindowHandle",
       "abiVersion",

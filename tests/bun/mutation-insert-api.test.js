@@ -126,7 +126,8 @@ describe.skipIf(!nativeAvailable)("native append/insert mutation contract (T24A)
     // T19/T20/T22/T23 shape (extended by T37: createEvent / EventHandle; by
     // T41: createMutationObserver / deliverObserverRecords /
     // registerObserverScheduler and the MutationObserverHandle /
-    // MutationRecordHandle classes) (creating or renaming a module export breaks this).
+    // MutationRecordHandle classes; by T35/T36: the iterator/range/selection
+    // handle classes) (creating or renaming a module export breaks this).
     expect(Object.keys(native).sort()).toEqual([
       "DocumentHandle",
       "EventHandle",
@@ -134,6 +135,8 @@ describe.skipIf(!nativeAvailable)("native append/insert mutation contract (T24A)
       "MutationRecordHandle",
       "NodeHandle",
       "NodeIteratorHandle",
+      "RangeHandle",
+      "SelectionHandle",
       "TreeWalkerHandle",
       "WindowHandle",
       "abiVersion",

@@ -31,6 +31,7 @@
 | `extensions/template.js` | T40 | T40 | `template.content` 与 `getInnerHTML`/`getHTML` facade |
 | `extensions/forms.js` | T40 | T40 | 首批表单控件（`input`/`button`/`select`/`option`/`textarea`/`form`）value/name/disabled/checked/selected 与 `form.elements`/提交/重置 facade |
 | `extensions/fetch.js` | T46 | T46 | `Headers`/`Request`/`Response`/`AbortController`/`AbortSignal` 与 `window.fetch` facade（兼容包装 Bun 原生能力，`data:` 离线） |
+| `extensions/range-selection.js` | T36 | T36 | `createRange`/`getSelection`、`Range`/`Selection` 与 `window.Range`/`window.Selection`/`window.getSelection` facade |
 
 每个占位文件是合法 ESM 模块，导出冻结的 `seam` 元数据（`id`、`owner`、
 `gate`、`status`），由 `tests/bun/seam.test.js` 锁定；owner 接管实现后可删除

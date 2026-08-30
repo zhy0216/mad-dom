@@ -94,6 +94,12 @@ export declare class Window {
   readonly AbortSignal: typeof AbortSignal;
   /** WHATWG `window.fetch` (T46): offline `data:` support plus Bun-adapted `http(s)` I/O. */
   fetch(url: TRequestInfo, init?: IRequestInit | null): Promise<Response>;
+  /** The `Range` class (T36); instances are minted by `document.createRange` / `range.cloneRange` / the selection mutators. */
+  readonly Range: typeof Range;
+  /** The `Selection` class (T36); instances are minted by `document.getSelection` / `window.getSelection`. */
+  readonly Selection: typeof Selection;
+  /** WHATWG `window.getSelection` (T36): the per-document `Selection` singleton. */
+  getSelection(): Selection;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
@@ -393,6 +399,10 @@ export declare class Document {
   createTreeWalker(root: Node, whatToShow?: number, filter?: TNodeFilter | null): TreeWalker;
   /** WHATWG `Document.createNodeIterator` (T35): a `NodeIterator` over the subtree rooted at `root`. */
   createNodeIterator(root: Node, whatToShow?: number, filter?: TNodeFilter | null): NodeIterator;
+  /** WHATWG `Document.createRange` (T36): a `Range` collapsed at the document root. */
+  createRange(): Range;
+  /** WHATWG `Document.getSelection` (T36): the per-document `Selection` singleton. */
+  getSelection(): Selection;
 
   /** WHATWG `EventTarget.addEventListener` (T37), registered on the document-root node. */
   addEventListener(type: string, listener: TEventListener | null, options?: boolean | IEventListenerOptions | null): void;
@@ -756,6 +766,88 @@ export interface AbortSignal {
   throwIfAborted(): void;
   addEventListener(type: string, listener: ((event: unknown) => void) | { handleEvent(event: unknown): void } | null, options?: unknown): void;
   removeEventListener(type: string, listener: ((event: unknown) => void) | { handleEvent(event: unknown): void } | null, options?: unknown): void;
+}
+
+// --- Range / Selection (T36) -------------------------------------------------
+//
+// The Range and Selection classes are not exported from the package entry —
+// ranges are minted by `document.createRange` / `range.cloneRange` / the
+// selection mutators and selections by `document.getSelection` /
+// `window.getSelection`, and the constructors are reached through
+// `window.Range` / `window.Selection`. Every algorithm delegates to Core; the
+// facade holds no second DOM state.
+
+/** A pair of boundary points (WHATWG `Range`, T36): the start/end containers and their offsets. */
+declare class Range {
+  /** Compare `start` of the two ranges (`RangeHowEnum`). */
+  static readonly START_TO_START: number;
+  /** Compare `this.end` to the source `start`. */
+  static readonly START_TO_END: number;
+  /** Compare `end` of the two ranges. */
+  static readonly END_TO_END: number;
+  /** Compare `this.start` to the source `end`. */
+  static readonly END_TO_START: number;
+  readonly START_TO_START: number;
+  readonly START_TO_END: number;
+  readonly END_TO_END: number;
+  readonly END_TO_START: number;
+  readonly startContainer: Node;
+  readonly startOffset: number;
+  readonly endContainer: Node;
+  readonly endOffset: number;
+  readonly collapsed: boolean;
+  readonly commonAncestorContainer: Node | null;
+  setStart(node: Node, offset?: number): void;
+  setEnd(node: Node, offset?: number): void;
+  setStartBefore(node: Node): void;
+  setStartAfter(node: Node): void;
+  setEndBefore(node: Node): void;
+  setEndAfter(node: Node): void;
+  selectNode(node: Node): void;
+  selectNodeContents(node: Node): void;
+  collapse(toStart?: boolean): void;
+  compareBoundaryPoints(how: number, sourceRange: Range): number;
+  comparePoint(node: Node, offset?: number): number;
+  isPointInRange(node: Node, offset?: number): boolean;
+  intersectsNode(node: Node): boolean;
+  cloneContents(): DocumentFragment;
+  extractContents(): DocumentFragment;
+  deleteContents(): void;
+  insertNode(newNode: Node): void;
+  surroundContents(newParent: Node): void;
+  cloneRange(): Range;
+  detach(): void;
+  toString(): string;
+}
+
+/** The document selection (WHATWG `Selection`, T36): at most one range plus the anchor/focus direction. */
+declare class Selection {
+  readonly rangeCount: number;
+  readonly isCollapsed: boolean;
+  readonly type: "None" | "Caret" | "Range";
+  readonly anchorNode: Node | null;
+  readonly anchorOffset: number;
+  readonly baseNode: Node | null;
+  readonly baseOffset: number;
+  readonly focusNode: Node | null;
+  readonly focusOffset: number;
+  readonly extentNode: Node | null;
+  readonly extentOffset: number;
+  addRange(newRange: Range): void;
+  getRangeAt(index: number): Range;
+  removeRange(range: Range): void;
+  removeAllRanges(): void;
+  empty(): void;
+  collapse(node: Node, offset?: number): void;
+  setPosition(node: Node, offset?: number): void;
+  collapseToStart(): void;
+  collapseToEnd(): void;
+  extend(node: Node, offset?: number): void;
+  setBaseAndExtent(anchorNode: Node, anchorOffset: number, focusNode: Node, focusOffset: number): void;
+  selectAllChildren(node: Node): void;
+  containsNode(node: Node, allowPartialContainment?: boolean): boolean;
+  deleteFromDocument(): void;
+  toString(): string;
 }
 
 // --- Node creation, navigation, mutation, attributes, text and NodeList (T23/T24/T25) --

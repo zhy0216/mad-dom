@@ -33,6 +33,7 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/template.js", owner: "T40" },
   { path: "extensions/forms.js", owner: "T40" },
   { path: "extensions/fetch.js", owner: "T46" },
+  { path: "extensions/range-selection.js", owner: "T36" },
 ];
 
 // The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29,
@@ -61,6 +62,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/template.js", owner: "T40" },
   { path: "extensions/forms.js", owner: "T40" },
   { path: "extensions/fetch.js", owner: "T46" },
+  { path: "extensions/range-selection.js", owner: "T36" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 

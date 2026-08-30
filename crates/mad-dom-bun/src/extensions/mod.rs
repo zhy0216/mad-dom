@@ -77,6 +77,7 @@ pub(crate) mod mutation_observer_api;
 mod mutation_remove_api;
 mod node_api;
 mod query_api;
+mod range_api;
 mod template_api;
 mod text_api;
 mod traversal_api;
