@@ -1,6 +1,6 @@
 # 25D 实现 live childNodes 集合模块
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P0
 - 里程碑：M4
 - 条目 ID：T25D
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T25D — 实现 live childNodes 集合模块**
+- [x] **T25D — 实现 live childNodes 集合模块**
   - 实现：
     - 通过 T23/T24 已冻结的读取和 mutation contract 实现 NodeList 的 live 长度、索引、迭代和 wrapper identity。
     - 明确快照集合与 live 集合的边界；本条目只处理 childNodes，不实现查询索引或 HTMLCollection。

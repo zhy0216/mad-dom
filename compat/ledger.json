@@ -3,6 +3,16 @@
   "note": "Machine-readable compatibility ledger: every compatibility scenario is tracked as pass / known-gap / not-applicable under a permanent hc-<suite>-<capability>-<case> id. Status, reason and recordedAt semantics follow ADR-0002 section 7; the ledger was established by T11 and absorbed the T09 known-gap records (tests/compat/types/expected-divergences.json).",
   "entries": [
     {
+      "id": "hc-diff-child-nodelist",
+      "suite": "diff",
+      "status": "known-gap",
+      "subsystem": "facade",
+      "scenario": "dom-child-nodelist",
+      "reason": "Since T25D, MAD DOM implements the live NodeList module (crates/mad-dom-bun/src/extensions/collection_api.rs and js/facade/extensions/child-nodelist.js) that re-reads the frozen native childNodes read on every access, but Node.prototype.childNodes is still the frozen T23B snapshot array (a plain array captured at read time), so an already-captured childNodes object does not reflect later append/insert/move/remove/replace while happy-dom's NodeList stays live and is identical on re-read. The T25 gate rewires childNodes to the live collection and flips this entry to pass.",
+      "recordedAt": "2026-08-30T00:00:00Z",
+      "addedIn": "T25D"
+    },
+    {
       "id": "hc-diff-node-create-append-serialize",
       "suite": "diff",
       "status": "known-gap",
