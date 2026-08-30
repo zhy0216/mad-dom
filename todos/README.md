@@ -242,7 +242,7 @@ git diff --check
 | 46 | P2 | [46-fetch-and-network-surface.md](done/46-fetch-and-network-surface.md) | M8 | T38, T45 | 已完成 |
 | 47 | P2 | [47-timers-and-script-execution.md](done/47-timers-and-script-execution.md) | M8 | T37, T41, T42, T46 | 已完成 |
 | 48 | P2 | [48-compatibility-closure-and-wpt.md](48-compatibility-closure-and-wpt.md) | M8/M9 | T11, T25, T29, T32, T33, T34, T35, T36, T37, T38, T39, T40, T41, T42, T43, T44, T45, T46, T47 | 部分完成 |
-| 48A | P2 | [48a-element-class-hierarchy.md](48a-element-class-hierarchy.md) | M9 | T48 | 待办 |
+| 48A | P2 | [48a-element-class-hierarchy.md](48a-element-class-hierarchy.md) | M9 | T48 | 部分完成 |
 | 48B | P2 | [48b-error-taxonomy-and-validation-parity.md](48b-error-taxonomy-and-validation-parity.md) | M9 | T48, T48A | 待办 |
 | 48C | P2 | [48c-form-constraint-validation.md](48c-form-constraint-validation.md) | M9 | T48 | 待办 |
 | 48D | P2 | [48d-custom-element-upgrade-parity.md](48d-custom-element-upgrade-parity.md) | M9 | T48, T48A | 待办 |
