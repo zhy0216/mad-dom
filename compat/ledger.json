@@ -13,6 +13,26 @@
       "addedIn": "T25D"
     },
     {
+      "id": "hc-diff-attributes-read-write",
+      "suite": "diff",
+      "status": "known-gap",
+      "subsystem": "facade",
+      "scenario": "dom-attributes",
+      "reason": "Since T25E, MAD DOM implements the attribute read/write surface (crates/mad-dom-bun/src/extensions/attributes_api.rs and js/facade/extensions/attributes.js) and every value round-trip, WebIDL DOMString argument shape and absent-name read matches happy-dom, but four genuine gaps remain. First, the T21A napi4 error degradation: a DOM-spec violation is thrown as a plain Error whose name is \"Error\" and which carries the frozen ERR_MAD_DOM_* code with the WHATWG name embedded in the message, while happy-dom throws a real DOMException, so error name/message differ. Second, Core validates the WHATWG Name production strictly, so a digit-led name (\"1bad\") is rejected with ERR_MAD_DOM_INVALID_CHARACTER while happy-dom accepts it. Third, non-Element access: MAD DOM owns the methods on Node.prototype, so a Text node's getAttribute reaches Core and throws the frozen HierarchyRequestError taxonomy, while happy-dom lacks the method on text nodes (TypeError \"not a function\"). Fourth, prototype layout: MAD DOM owns the methods on Node.prototype (the element's direct prototype), so getOwnPropertyDescriptor reports them present, while happy-dom inherits them from higher up the class chain (present: false).",
+      "recordedAt": "2026-08-30T00:00:00Z",
+      "addedIn": "T25E"
+    },
+    {
+      "id": "hc-diff-text-content-accessor",
+      "suite": "diff",
+      "status": "known-gap",
+      "subsystem": "facade",
+      "scenario": "dom-text-content",
+      "reason": "Since T25E, MAD DOM implements the Node.textContent accessor (crates/mad-dom-bun/src/extensions/text_api.rs and js/facade/extensions/text-content.js) and every read/write, null-to-empty conversion, non-string coercion, deep-tree concatenation and text-node data round-trip matches happy-dom. Two genuine gaps remain. First, a NUL byte in the setter value: Core rejects it with ERR_MAD_DOM_INVALID_CHARACTER (text-data well-formedness, T25C) while happy-dom stores it verbatim. Second, prototype layout: MAD DOM owns the accessor on Node.prototype (the element's direct prototype), so getOwnPropertyDescriptor reports it present with a getter and a setter, while happy-dom inherits it from higher up the class chain (present: false).",
+      "recordedAt": "2026-08-30T00:00:00Z",
+      "addedIn": "T25E"
+    },
+    {
       "id": "hc-diff-node-create-append-serialize",
       "suite": "diff",
       "status": "known-gap",

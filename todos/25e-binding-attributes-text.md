@@ -1,6 +1,6 @@
 # 25E 接入属性与 textContent binding/facade
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P0
 - 里程碑：M4
 - 条目 ID：T25E
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T25E — 接入属性与 textContent binding/facade**
+- [x] **T25E — 接入属性与 textContent binding/facade**
   - 实现：
     - 在独立 binding extension 中实现 get/set/remove/has attribute 和 textContent 的参数、返回值、错误转换。
     - 在独立 facade extension 中安装属性和 textContent 的原型方法/访问器；所有状态来自 native handle。
