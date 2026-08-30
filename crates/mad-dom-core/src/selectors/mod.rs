@@ -21,11 +21,16 @@
 //! Query traversal (`querySelector` / `querySelectorAll` / `closest` /
 //! `getElementById`) lives in [`query`] (T31): a single document-order walk of
 //! the arena against the pre-parsed selector list, with no index and no second
-//! tree. Live collections and id/class/tag indexes remain out of scope (T32).
-//! Matching entry points live in [`matcher`]; the `Element` trait view lives in
-//! [`element`].
+//! tree. The live element collections (`getElementsByTagName` /
+//! `getElementsByClassName`) and the optional id/class/tag query index that
+//! serves them live in [`live`] (T32): the collections re-walk the arena on
+//! every call, and the index — off by default, enabled per document — is
+//! maintained by the mutation/attribute API through the hooks in that module.
+//! Matching entry points live in [`matcher`]; the `Element` trait view lives
+//! in [`element`].
 
 mod element;
+pub(crate) mod live;
 mod matcher;
 mod parser;
 mod query;

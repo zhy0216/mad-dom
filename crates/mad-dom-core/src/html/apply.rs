@@ -57,8 +57,6 @@ use crate::html::fragment::FragmentContext;
 use crate::html::{parse_html_document, parse_html_fragment};
 use crate::serialize::{serialize_children, serialize_node};
 
-use super::sink::attach_last_child;
-
 /// Builds a [`CoreError::Hierarchy`] with `message`.
 fn hierarchy(message: impl Into<String>) -> CoreError {
     CoreError::Hierarchy {
@@ -133,17 +131,22 @@ impl Document {
     /// Idempotent: once a document element exists (parsed or built), this is a
     /// no-op, so a later `outerHTML` replacement of `body`/`head` that leaves
     /// the document element in place does not resurrect the removed parts.
+    ///
+    /// The nodes are linked through
+    /// [`Document::link_detached_chain_between`](crate::dom::Document) — the
+    /// same O(1) primitive the mutation API uses — so the T32 query index (when
+    /// enabled) is maintained for the skeleton exactly like for any other
+    /// attach.
     pub fn ensure_html_skeleton(&mut self) -> Result<(), CoreError> {
         if self.document_element()?.is_some() {
             return Ok(());
         }
         let root = self.document_root();
         let html = self.create_element("html")?;
-        attach_last_child(self, root, html);
         let head = self.create_element("head")?;
-        attach_last_child(self, html, head);
         let body = self.create_element("body")?;
-        attach_last_child(self, html, body);
+        self.link_detached_chain_between(root, &[html], None, None);
+        self.link_detached_chain_between(html, &[head, body], None, None);
         self.verify_apply(root);
         Ok(())
     }

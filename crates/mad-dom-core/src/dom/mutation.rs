@@ -424,7 +424,13 @@ impl Document {
     /// `pub(crate)` because the cross-document adoption path
     /// ([`Document::adopt_node`]) uses it to free a migrated node from its
     /// source tree before moving the node's data out of the source arena.
+    ///
+    /// T32: the detached subtree is removed from the optional query index
+    /// first (a no-op when the index is disabled), so the index stays in lock
+    /// step with the arena no matter which mutation path reaches this
+    /// primitive.
     pub(crate) fn detach(&mut self, node: NodeId) {
+        let _ = self.index_subtree_detached(node);
         let old_parent = self.get(node).expect("detaching a live node").parent();
         let prev = self
             .get(node)
@@ -527,6 +533,14 @@ impl Document {
         }
         if next_.is_none() {
             self.node_mut(parent).expect("live parent").last_child = Some(last);
+        }
+
+        // T32: the freshly attached subtrees are indexed now that they are
+        // linked into the tree (a no-op when the query index is disabled), so
+        // every mutation path — append/insert/replace and the T29 apply path —
+        // funnels index maintenance through this single primitive.
+        if self.query_index.is_enabled() {
+            let _ = self.index_subtree_attached(nodes);
         }
     }
 

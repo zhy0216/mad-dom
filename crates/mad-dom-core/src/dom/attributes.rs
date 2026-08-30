@@ -126,11 +126,17 @@ impl Document {
     /// * [`CoreError::Hierarchy`] when the node for `id` is not an `Element`.
     pub fn set_attribute(&mut self, id: NodeId, name: &str, value: &str) -> Result<(), CoreError> {
         validate_attribute_name(name)?;
-        let attributes = self.element_attributes_mut(id)?;
-        match attributes.iter_mut().find(|(n, _)| n == name) {
-            Some(slot) => slot.1 = value.to_string(),
-            None => attributes.push((name.to_string(), value.to_string())),
+        let old_value = self.get_attribute(id, name)?.map(str::to_owned);
+        {
+            let attributes = self.element_attributes_mut(id)?;
+            match attributes.iter_mut().find(|(n, _)| n == name) {
+                Some(slot) => slot.1 = value.to_string(),
+                None => attributes.push((name.to_string(), value.to_string())),
+            }
         }
+        // T32: re-key the optional query index when an id/class write changes
+        // the tokens an element matches (a no-op when the index is disabled).
+        self.index_attribute_changed(id, name, old_value.as_deref(), Some(value))?;
         Ok(())
     }
 
@@ -149,14 +155,23 @@ impl Document {
     /// * [`CoreError::Arena`] when `id` is a stale or invalid handle.
     /// * [`CoreError::Hierarchy`] when the node for `id` is not an `Element`.
     pub fn remove_attribute(&mut self, id: NodeId, name: &str) -> Result<bool, CoreError> {
-        let attributes = self.element_attributes_mut(id)?;
-        match attributes.iter().position(|(n, _)| n == name) {
-            Some(index) => {
-                attributes.remove(index);
-                Ok(true)
+        let old_value = self.get_attribute(id, name)?.map(str::to_owned);
+        let removed = {
+            let attributes = self.element_attributes_mut(id)?;
+            match attributes.iter().position(|(n, _)| n == name) {
+                Some(index) => {
+                    attributes.remove(index);
+                    true
+                }
+                None => false,
             }
-            None => Ok(false),
+        };
+        if removed {
+            // T32: drop the id/class tokens of the removed attribute from the
+            // optional query index (a no-op when the index is disabled).
+            self.index_attribute_changed(id, name, old_value.as_deref(), None)?;
         }
+        Ok(removed)
     }
 }
 

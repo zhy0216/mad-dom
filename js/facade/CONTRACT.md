@@ -20,6 +20,7 @@
 | `extensions/child-nodelist.js` | T25D | T25 | live childNodes facade |
 | `extensions/html.js` | T29 | T29 | `innerHTML`/`outerHTML` 与 `documentElement`/`head`/`body`/`parseHtml` facade |
 | `extensions/query.js` | T31 | T31 | `querySelector`/`querySelectorAll`/`matches`/`closest`/`getElementById` 与静态 NodeList facade |
+| `extensions/live-collections.js` | T32 | T32 | `getElementsByTagName`/`getElementsByClassName` 与 live HTMLCollection facade |
 
 每个占位文件是合法 ESM 模块，导出冻结的 `seam` 元数据（`id`、`owner`、
 `gate`、`status`），由 `tests/bun/seam.test.js` 锁定；owner 接管实现后可删除

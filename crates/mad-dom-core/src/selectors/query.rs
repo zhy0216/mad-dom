@@ -127,7 +127,10 @@ impl Document {
     ///
     /// The search covers the descendants of the document root; a document that
     /// has not allocated a root yet returns `None`. This is a pure read and
-    /// never materializes the implied HTML skeleton.
+    /// never materializes the implied HTML skeleton. With the T32 query index
+    /// enabled the lookup is served from the id index (O(key size) instead of
+    /// a traversal) and returns the same first document-order match; with it
+    /// disabled, from a document-order walk.
     ///
     /// # Errors
     ///
@@ -135,6 +138,9 @@ impl Document {
     /// was corrupted); the public API never produces this, but the walk
     /// propagates it rather than panicking.
     pub fn get_element_by_id(&self, id: &str) -> Result<Option<NodeId>, CoreError> {
+        if self.query_index.is_enabled() {
+            return Ok(self.query_index.first_for_id(id));
+        }
         let Some(root) = self.cached_document_root() else {
             return Ok(None);
         };

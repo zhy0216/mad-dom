@@ -51,6 +51,10 @@ export declare class Document {
   querySelectorAll<E extends Element = Element>(selectors: string): NodeList<E>;
   /** WHATWG `Document.getElementById` (T31): the first element in the document whose `id` attribute equals `elementId`, or `null`. */
   getElementById(elementId: string): Element | null;
+  /** WHATWG `Document.getElementsByTagName` (T32): every descendant element whose tag matches `tagName` (ASCII case-insensitive, `"*"` matches all), in document order, as a live `HTMLCollection` (later tree/attribute changes are reflected on every access). */
+  getElementsByTagName(tagName: string): HTMLCollection<Element>;
+  /** WHATWG `Document.getElementsByClassName` (T32): every descendant element whose `class` attribute contains every whitespace token of `classNames`, in document order, as a live `HTMLCollection`. */
+  getElementsByClassName(classNames: string): HTMLCollection<Element>;
 }
 
 export declare function createWindow(): Window;
@@ -115,6 +119,10 @@ export interface Element extends Node {
   matches(selectors: string): boolean;
   /** WHATWG `Element.closest` (T31): the closest ancestor — this element itself included — that matches `selectors`, or `null`. */
   closest<E extends Element = Element>(selectors: string): E | null;
+  /** WHATWG `Element.getElementsByTagName` (T32): the descendant elements whose tag matches `tagName` (ASCII case-insensitive, `"*"` matches all), in document order, as a live `HTMLCollection` (the element itself is never a candidate). */
+  getElementsByTagName(tagName: string): HTMLCollection<Element>;
+  /** WHATWG `Element.getElementsByClassName` (T32): the descendant elements whose `class` attribute contains every whitespace token of `classNames`, in document order, as a live `HTMLCollection`. */
+  getElementsByClassName(classNames: string): HTMLCollection<Element>;
 }
 
 /** A node minted by `Document.createTextNode` (T23 surface only). */
@@ -143,6 +151,22 @@ export interface NodeList<T extends Node = Node> {
   keys(): IterableIterator<number>;
   /** Yields the nodes in Core document order (WHATWG `NodeList.values`). */
   values(): IterableIterator<T>;
+  [Symbol.iterator](): IterableIterator<T>;
+}
+
+/** A live `HTMLCollection` of elements (T32). It is bound to one scope and one
+ * query key (`getElementsByTagName` / `getElementsByClassName`) and re-read
+ * from Core on every access, so an existing collection reflects later tree and
+ * attribute changes immediately (see `live-collections.js`). Numeric index
+ * reads and the named getter mirror the WHATWG `HTMLCollection` surface. */
+export interface HTMLCollection<T extends Element = Element> {
+  /** Live number of matched elements; re-read from Core on every access. */
+  readonly length: number;
+  /** Returns the element at `index`, or `null` past the end (WHATWG `HTMLCollection.item`). */
+  item(index: number): T | null;
+  /** Returns the first element whose `id` or `name` attribute equals `name`, or `null` (WHATWG `HTMLCollection.namedItem`). */
+  namedItem(name: string): T | null;
+  [index: number]: T;
   [Symbol.iterator](): IterableIterator<T>;
 }
 
@@ -188,6 +212,10 @@ export interface DocumentHandle {
   querySelectorAll(selector: string): NodeHandle[];
   /** T31 native `getElementById`: first element whose `id` attribute equals the argument, or `null`. */
   getElementById(id: string): NodeHandle | null;
+  /** T32 native `getElementsByTagName`: every descendant element matching the tag (ASCII case-insensitive, `"*"` matches all), in document order. */
+  getElementsByTagName(tagName: string): NodeHandle[];
+  /** T32 native `getElementsByClassName`: every descendant element whose `class` attribute contains every whitespace token of the argument, in document order. */
+  getElementsByClassName(className: string): NodeHandle[];
   destroy(): void;
 }
 
@@ -229,4 +257,8 @@ export interface NodeHandle {
   matches(selector: string): boolean;
   /** T31 native `closest`: the closest ancestor (itself included) matching the selector, or `null`. */
   closest(selector: string): NodeHandle | null;
+  /** T32 native `getElementsByTagName`: the descendant elements matching the tag (ASCII case-insensitive, `"*"` matches all), in document order. */
+  getElementsByTagName(tagName: string): NodeHandle[];
+  /** T32 native `getElementsByClassName`: the descendant elements whose `class` attribute contains every whitespace token of the argument, in document order. */
+  getElementsByClassName(className: string): NodeHandle[];
 }

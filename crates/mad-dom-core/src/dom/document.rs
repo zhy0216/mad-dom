@@ -23,6 +23,7 @@
 
 use crate::arena::{Arena, NodeId};
 use crate::error::CoreError;
+use crate::selectors::live::QueryIndex;
 
 use super::node::{Node, NodeData, NodeType, HTML_NAMESPACE};
 
@@ -39,6 +40,11 @@ static NEXT_DOCUMENT_ID: AtomicU64 = AtomicU64::new(0);
 /// arena and return an opaque [`NodeId`]. Read access validates that the
 /// handle belongs to this document first, so foreign handles fail with
 /// [`CoreError::WrongDocument`] rather than aliasing a node in this document.
+///
+/// The `query_index` field holds the T32 optional id/class/tag query index
+/// (`selectors/live.rs`). It is a pure cache of the arena, off by default,
+/// and is only ever written through the mutation/attribute maintenance hooks
+/// in that module; the arena stays the single authoritative tree state.
 pub struct Document {
     id: u64,
     arena: Arena<Node>,
@@ -47,6 +53,8 @@ pub struct Document {
     /// the JS-facing document-structure API use it as the anchor whose children
     /// are the doctype (if any) and the `<html>` element.
     document_root_id: Option<NodeId>,
+    /// The T32 optional id/class/tag query index (off by default).
+    pub(crate) query_index: QueryIndex,
 }
 
 impl Document {
@@ -56,6 +64,7 @@ impl Document {
             id: NEXT_DOCUMENT_ID.fetch_add(1, Ordering::Relaxed),
             arena: Arena::new(),
             document_root_id: None,
+            query_index: QueryIndex::default(),
         }
     }
 
