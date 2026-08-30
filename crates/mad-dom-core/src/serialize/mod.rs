@@ -195,6 +195,14 @@ fn write_node(
             out.push_str("-->");
             Ok(())
         }
+        NodeData::ProcessingInstruction { target, data } => {
+            out.push_str("<?");
+            out.push_str(target);
+            out.push(' ');
+            out.push_str(data);
+            out.push_str("?>");
+            Ok(())
+        }
         NodeData::Element {
             name,
             namespace,

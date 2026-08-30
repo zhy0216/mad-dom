@@ -21,6 +21,7 @@
 //! `document.rs`.
 
 mod attributes;
+mod character_data;
 mod cross_document;
 mod document;
 mod mutation;

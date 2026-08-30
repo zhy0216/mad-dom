@@ -112,6 +112,9 @@ fn shape(doc: &Document, start: NodeId) -> String {
             }
             NodeData::Text { data } => out.push_str(&format!("Text({data:?})")),
             NodeData::Comment { data } => out.push_str(&format!("Comment({data:?})")),
+            NodeData::ProcessingInstruction { target, data } => {
+                out.push_str(&format!("ProcessingInstruction({target}, {data:?})"))
+            }
         }
         out.push('\n');
         for child in doc.children(id).unwrap() {

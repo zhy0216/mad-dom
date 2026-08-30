@@ -23,11 +23,12 @@ const OWNED_FACADE_FILES = [
   { path: "extensions/html.js", owner: "T29" },
   { path: "extensions/query.js", owner: "T31" },
   { path: "extensions/live-collections.js", owner: "T32" },
+  { path: "extensions/extended-nodes.js", owner: "T33" },
 ];
 
 // The T22B-owned files and the node (T23B), mutation (T24C), T25E/T25D, T29,
-// T31 and T32 capability extensions are implemented and their seam status is
-// flipped to "implemented"; no capability extension stays a placeholder.
+// T31, T32 and T33 capability extensions are implemented and their seam status
+// is flipped to "implemented"; no capability extension stays a placeholder.
 const IMPLEMENTED_FACADE_FILES = [
   { path: "window.js", owner: "T22B" },
   { path: "document.js", owner: "T22B" },
@@ -40,6 +41,7 @@ const IMPLEMENTED_FACADE_FILES = [
   { path: "extensions/html.js", owner: "T29" },
   { path: "extensions/query.js", owner: "T31" },
   { path: "extensions/live-collections.js", owner: "T32" },
+  { path: "extensions/extended-nodes.js", owner: "T33" },
 ];
 const PLACEHOLDER_FACADE_FILES = [];
 

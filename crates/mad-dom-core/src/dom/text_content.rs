@@ -81,6 +81,9 @@ impl Document {
             NodeType::Comment => Ok(Some(
                 node.data().comment_data().unwrap_or_default().to_string(),
             )),
+            NodeType::ProcessingInstruction => Ok(Some(
+                node.data().pi_data().unwrap_or_default().1.to_string(),
+            )),
             NodeType::Element | NodeType::DocumentFragment => {
                 let mut out = String::new();
                 self.collect_descendant_text(id, &mut out)?;
@@ -109,7 +112,9 @@ impl Document {
         let kind = self.get(id)?.data().node_type();
         match kind {
             NodeType::Document | NodeType::DocumentType => Ok(()),
-            NodeType::Text | NodeType::Comment => self.set_character_data(id, value),
+            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction => {
+                self.set_character_data(id, value)
+            }
             NodeType::Element | NodeType::DocumentFragment => {
                 // WHATWG "string replace all": create the single replacement
                 // text node (validating its data) before touching the child

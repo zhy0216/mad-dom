@@ -708,6 +708,73 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     expect(madRecord.values["text-get-after-set"]).toEqual({ type: "string", value: "changed" });
   });
 
+  test("extended-node real scenario passes exactly (CharacterData, splitText, clone family)", () => {
+    const scenario = report.scenarios.find((item) => item.id === "dom-extended-nodes");
+    expect(scenario).toBeDefined();
+    expect(scenario.reportOnly).toBe(true);
+
+    const madRecord = scenario.sides["mad-dom"].record;
+    if (!nativeAvailable) {
+      // Without the dev artifact, loading the native binding fails lazily at
+      // createWindow() and the scenario stops at the setup phase.
+      expect(madRecord.errors).toHaveLength(1);
+      expect(madRecord.errors[0].message).toContain("mad-dom native binding could not be loaded");
+      expect(madRecord.errors[0].phase).toBe("setup");
+      return;
+    }
+
+    // Since T33 the whole extended-node slice matches happy-dom observation for
+    // observation, so the scenario is a genuine pass (ledgered
+    // hc-diff-extended-nodes). It deliberately avoids the frozen divergences
+    // (element/PI nodeName casing, adopt identity, error shape), so a clean
+    // run proves the CharacterData / splitText / clone / import / adopt parity.
+    expect(scenario.status).toBe("pass");
+    expect(scenario.differences).toEqual([]);
+    expect(madRecord.errors).toEqual([]);
+
+    expect(madRecord.values["surface-create-processing-instruction"]).toEqual({
+      type: "string",
+      value: "function",
+    });
+    expect(madRecord.values["surface-import-node"]).toEqual({ type: "string", value: "function" });
+    expect(madRecord.values["surface-adopt-node"]).toEqual({ type: "string", value: "function" });
+    expect(madRecord.values["text-length"]).toEqual({ type: "number", value: 11 });
+    expect(madRecord.values["after-replace"]).toEqual({ type: "string", value: "Xo beautiful world!" });
+    expect(madRecord.values["pi-node-type"]).toEqual({ type: "number", value: 7 });
+    expect(madRecord.values["pi-target"]).toEqual({ type: "string", value: "xml-stylesheet" });
+    expect(madRecord.values["split-parent-child-count"]).toEqual({ type: "number", value: 2 });
+    expect(madRecord.identity["split-tail-is-second-child"]).toBe(true);
+    expect(madRecord.identity["split-head-next-is-tail"]).toBe(true);
+    expect(madRecord.identity["deep-clone-child-distinct"]).toBe(false);
+    expect(madRecord.identity["deep-clone-text-parent"]).toBe(true);
+    expect(madRecord.identity["adopt-same-doc-identity"]).toBe(true);
+    expect(madRecord.values["adopt-source-container-child-count"]).toEqual({ type: "number", value: 0 });
+
+    const happyRecord = scenario.sides["happy-dom"].record;
+    expect(happyRecord.errors).toEqual([]);
+    expect(happyRecord.values["after-replace"]).toEqual({ type: "string", value: "Xo beautiful world!" });
+    expect(happyRecord.values["pi-node-type"]).toEqual({ type: "number", value: 7 });
+    expect(happyRecord.identity["split-tail-is-second-child"]).toBe(true);
+    expect(happyRecord.identity["deep-clone-text-parent"]).toBe(true);
+  });
+
+  test("strict mode passes on the extended-node scenario exactly when it matches happy-dom", () => {
+    const strictRun = runRunner([join(DOM_DIR, "dom-extended-nodes.js"), "--json"]);
+    const strictReport = JSON.parse(strictRun.stdout);
+    expect(strictReport.mode).toBe("strict");
+    expect(strictReport.scenarios[0].id).toBe("dom-extended-nodes");
+    if (nativeAvailable) {
+      expect(strictRun.status).toBe(0);
+      expect(strictReport.exitCode).toBe(0);
+      expect(strictReport.scenarios[0].status).toBe("pass");
+      expect(strictReport.scenarios[0].differences).toEqual([]);
+    } else {
+      expect(strictRun.status).toBe(1);
+      expect(strictReport.scenarios[0].status).toBe("differences-fatal");
+      expect(strictReport.totals.infraErrors).toBe(0);
+    }
+  });
+
   test("strict mode fails on the same real scenario (exit 1)", () => {
     const strictRun = runRunner([join(DOM_DIR, "create-append-serialize.js"), "--json"]);
     expect(strictRun.status).toBe(1);

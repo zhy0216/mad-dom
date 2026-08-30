@@ -260,6 +260,7 @@ pub(crate) fn node_type_value(node_type: NodeType) -> u32 {
         NodeType::Document => 9,
         NodeType::DocumentType => 10,
         NodeType::DocumentFragment => 11,
+        NodeType::ProcessingInstruction => 7,
     }
 }
 

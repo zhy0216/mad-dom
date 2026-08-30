@@ -36,6 +36,8 @@ export declare class Document {
   createTextNode(data: string): Text;
   /** Creates a new empty DocumentFragment (WHATWG `createDocumentFragment`). */
   createDocumentFragment(): DocumentFragment;
+  /** Creates a new detached Comment node (WHATWG `createComment`, T33). */
+  createComment(data: string): Comment;
   /** The document element (`<html>`); `null` when the document has no root element (T29, implied skeleton on first read). */
   readonly documentElement: Element | null;
   /** The `<head>` element, or `null` (T29, implied skeleton on first read). */
@@ -55,6 +57,14 @@ export declare class Document {
   getElementsByTagName(tagName: string): HTMLCollection<Element>;
   /** WHATWG `Document.getElementsByClassName` (T32): every descendant element whose `class` attribute contains every whitespace token of `classNames`, in document order, as a live `HTMLCollection`. */
   getElementsByClassName(classNames: string): HTMLCollection<Element>;
+  /** WHATWG `Document.createProcessingInstruction` (T33): a detached `ProcessingInstruction`; an invalid "Name" target or a `?>` in `data` throws `ERR_MAD_DOM_INVALID_CHARACTER`. */
+  createProcessingInstruction(target: string, data: string): ProcessingInstruction;
+  /** WHATWG `Document.importNode` (T33): a copy of `node` (and its whole subtree when `deep`) in this document, leaving the source untouched. */
+  importNode<T extends Node>(node: T, deep?: boolean): T;
+  /** WHATWG `Document.adoptNode` (T33): `node` moved (with its subtree) into this document; a same-document node is detached from its parent and returned. */
+  adoptNode<T extends Node>(node: T): T;
+  /** WHATWG `Document.doctype` (T33): the document's parsed `DocumentType`, or `null` on a fresh/empty document. */
+  readonly doctype: DocumentType | null;
 }
 
 export declare function createWindow(): Window;
@@ -94,6 +104,28 @@ export interface Node {
   removeChild(child: Node): Node;
   /** Replaces `oldChild` with `newChild` and returns `oldChild` (WHATWG `Node.replaceChild`). */
   replaceChild(newChild: Node, oldChild: Node): Node;
+  /** WHATWG `Node.cloneNode` (T33): a detached copy of this node — the whole subtree when `deep` — sharing no mutable state with the source. */
+  cloneNode(deep?: boolean): Node;
+  /** WHATWG `Node.nodeValue` (T33): the character data of a `Text`/`Comment`/`ProcessingInstruction` node, `null` otherwise (setting is a no-op on other kinds). */
+  nodeValue: string | null;
+}
+
+/** The WHATWG `CharacterData` mutation surface (T33), shared by `Text`, `Comment` and `ProcessingInstruction`. */
+export interface CharacterData {
+  /** WHATWG `CharacterData.data`: the node's character data (`undefined` on non-character-data nodes). */
+  data: string;
+  /** WHATWG `CharacterData.length`: the UTF-16 length of the data. */
+  readonly length: number;
+  /** WHATWG `CharacterData.substringData(offset, count)`: the UTF-16 substring, clamped to the data (an offset past the end returns `""`). */
+  substringData(offset: number, count: number): string;
+  /** WHATWG `CharacterData.appendData(data)`: appends `data`. */
+  appendData(data: string): void;
+  /** WHATWG `CharacterData.insertData(offset, data)`: inserts at the UTF-16 offset (an out-of-range offset throws `ERR_MAD_DOM_INDEX_OUT_OF_BOUNDS`). */
+  insertData(offset: number, data: string): void;
+  /** WHATWG `CharacterData.deleteData(offset, count)`: deletes with a clamped count. */
+  deleteData(offset: number, count: number): void;
+  /** WHATWG `CharacterData.replaceData(offset, count, data)`: replaces with a clamped count. */
+  replaceData(offset: number, count: number, data: string): void;
 }
 
 /** A node minted by `Document.createElement` (T23 surface plus T25 element attributes and T29 inner/outerHTML). */
@@ -125,8 +157,30 @@ export interface Element extends Node {
   getElementsByClassName(classNames: string): HTMLCollection<Element>;
 }
 
-/** A node minted by `Document.createTextNode` (T23 surface only). */
-export interface Text extends Node {}
+/** A node minted by `Document.createTextNode` (T23 surface plus the T33 CharacterData surface). */
+export interface Text extends Node, CharacterData {
+  /** WHATWG `Text.splitText(offset)` (T33): splits this text at the UTF-16 offset and returns the new tail node, inserted right after it. */
+  splitText(offset: number): Text;
+}
+
+/** A node minted by `Document.createComment` (T33 surface). */
+export interface Comment extends Node, CharacterData {}
+
+/** A node minted by `Document.createProcessingInstruction` (T33 surface). */
+export interface ProcessingInstruction extends Node, CharacterData {
+  /** WHATWG `ProcessingInstruction.target`: the instruction target (also the `nodeName`). */
+  readonly target: string;
+}
+
+/** A `DocumentType` node produced by the HTML parser (T33 surface: doctype payload reads). */
+export interface DocumentType extends Node {
+  /** WHATWG `DocumentType.name`: the doctype name (also the `nodeName`). */
+  readonly name: string;
+  /** WHATWG `DocumentType.publicId`: the doctype public identifier. */
+  readonly publicId: string;
+  /** WHATWG `DocumentType.systemId`: the doctype system identifier. */
+  readonly systemId: string;
+}
 
 /** A node minted by `Document.createDocumentFragment` (T24 surface plus T29 innerHTML). */
 export interface DocumentFragment extends Node {
@@ -216,6 +270,14 @@ export interface DocumentHandle {
   getElementsByTagName(tagName: string): NodeHandle[];
   /** T32 native `getElementsByClassName`: every descendant element whose `class` attribute contains every whitespace token of the argument, in document order. */
   getElementsByClassName(className: string): NodeHandle[];
+  /** T33 native `createProcessingInstruction`: a detached ProcessingInstruction node. */
+  createProcessingInstruction(target: string, data: string): NodeHandle;
+  /** T33 native `importNode`: a copy of `node` (subtree when `deep`) in this document; the source is never modified. */
+  importNode(node: NodeHandle, deep: boolean): NodeHandle;
+  /** T33 native `adoptNode`: `node` moved (with its subtree) into this document. */
+  adoptNode(node: NodeHandle): NodeHandle;
+  /** T33 native `doctype`: the document's parsed `DocumentType`, or `null`. */
+  doctype(): NodeHandle | null;
   destroy(): void;
 }
 
@@ -261,4 +323,36 @@ export interface NodeHandle {
   getElementsByTagName(tagName: string): NodeHandle[];
   /** T32 native `getElementsByClassName`: the descendant elements whose `class` attribute contains every whitespace token of the argument, in document order. */
   getElementsByClassName(className: string): NodeHandle[];
+  /** T33 native `data`: the character data of a Text/Comment/ProcessingInstruction node, or `null` for other kinds. */
+  data(): string | null;
+  /** T33 native `data` write. */
+  setData(value: string): void;
+  /** T33 native `length`: the UTF-16 length of the character data, or `null`. */
+  dataLength(): number | null;
+  /** T33 native `nodeValue`: the data for character-data nodes, `null` otherwise. */
+  nodeValue(): string | null;
+  /** T33 native `nodeValue` write. */
+  setNodeValue(value: string): void;
+  /** T33 native `ProcessingInstruction.target`, or `null`. */
+  target(): string | null;
+  /** T33 native `DocumentType.name`, or `null`. */
+  name(): string | null;
+  /** T33 native `DocumentType.publicId`, or `null`. */
+  publicId(): string | null;
+  /** T33 native `DocumentType.systemId`, or `null`. */
+  systemId(): string | null;
+  /** T33 native `substringData(offset, count)`. */
+  substringData(offset: number, count: number): string;
+  /** T33 native `appendData(data)`. */
+  appendData(data: string): void;
+  /** T33 native `insertData(offset, data)`. */
+  insertData(offset: number, data: string): void;
+  /** T33 native `deleteData(offset, count)`. */
+  deleteData(offset: number, count: number): void;
+  /** T33 native `replaceData(offset, count, data)`. */
+  replaceData(offset: number, count: number, data: string): void;
+  /** T33 native `splitText(offset)`: the new tail node. */
+  splitText(offset: number): NodeHandle;
+  /** T33 native `cloneNode(deep)`: a detached copy under a fresh handle. */
+  cloneNode(deep: boolean): NodeHandle;
 }

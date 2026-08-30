@@ -393,6 +393,9 @@ impl Document {
             NodeType::DocumentType => Err(hierarchy("a DocumentType node cannot be a parent")),
             NodeType::Text => Err(hierarchy("a Text node cannot be a parent")),
             NodeType::Comment => Err(hierarchy("a Comment node cannot be a parent")),
+            NodeType::ProcessingInstruction => {
+                Err(hierarchy("a ProcessingInstruction node cannot be a parent"))
+            }
         }
     }
 

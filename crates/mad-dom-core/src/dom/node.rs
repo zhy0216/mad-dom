@@ -41,6 +41,8 @@ pub enum NodeType {
     Text,
     /// A `Comment` node.
     Comment,
+    /// A `ProcessingInstruction` node (T33).
+    ProcessingInstruction,
 }
 
 /// Per-type storage for a [`Node`].
@@ -83,6 +85,13 @@ pub enum NodeData {
     Text { data: String },
     /// A `Comment` node holding its character data.
     Comment { data: String },
+    /// A `ProcessingInstruction` node (T33) holding its target and data.
+    ///
+    /// The WHATWG `nodeName` of a `ProcessingInstruction` is its target. Like
+    /// `Text`/`Comment`, the data payload is a single mutable string; T33's
+    /// `character_data` module lets it participate in the CharacterData-style
+    /// mutation surface (happy-dom parity).
+    ProcessingInstruction { target: String, data: String },
 }
 
 impl NodeData {
@@ -95,6 +104,7 @@ impl NodeData {
             Self::Element { .. } => NodeType::Element,
             Self::Text { .. } => NodeType::Text,
             Self::Comment { .. } => NodeType::Comment,
+            Self::ProcessingInstruction { .. } => NodeType::ProcessingInstruction,
         }
     }
 
@@ -107,6 +117,7 @@ impl NodeData {
             Self::Element { name, .. } => name,
             Self::Text { .. } => "#text",
             Self::Comment { .. } => "#comment",
+            Self::ProcessingInstruction { target, .. } => target,
         }
     }
 
@@ -186,6 +197,15 @@ impl NodeData {
                 public_id,
                 system_id,
             } => Some((name, public_id, system_id)),
+            _ => None,
+        }
+    }
+
+    /// Returns the processing-instruction payload `(target, data)` as borrowed
+    /// strings, or `None` if this is not a `ProcessingInstruction` node.
+    pub fn pi_data(&self) -> Option<(&str, &str)> {
+        match self {
+            Self::ProcessingInstruction { target, data } => Some((target, data)),
             _ => None,
         }
     }

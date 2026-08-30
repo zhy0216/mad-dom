@@ -29,14 +29,16 @@
 //! | `html_api` | `extensions/html_api.rs` | T29 | T29 |
 //! | `query_api` | `extensions/query_api.rs` | T31 | T31 |
 //! | `live_collections` | `extensions/live_collections.rs` | T32 | T32 |
+//! | `character_data_api` | `extensions/character_data_api.rs` | T33 | T33 |
 //!
 //! The first eight rows are the *frozen M4 boundaries* recorded in
-//! [`REGISTRY`]. `html_api` (T29, M5), `query_api` (T31, M6) and
-//! `live_collections` (T32, M6) follow the same seam pattern — their own
-//! file, a `SEAM` constant and `#[napi]` extensions on the existing handle
-//! classes — but are not part of the M4 freeze: each owns both the native
-//! module and the integration wiring (there is no separate M5/M6 gate), so it
-//! is declared here but deliberately absent from [`REGISTRY`] and its
+//! [`REGISTRY`]. `html_api` (T29, M5), `query_api` (T31, M6),
+//! `live_collections` (T32, M6) and `character_data_api` (T33, M7) follow the
+//! same seam pattern — their own file, a `SEAM` constant and `#[napi]`
+//! extensions on the existing handle classes — but are not part of the M4
+//! freeze: each owns both the native module and the integration wiring (there
+//! is no separate M5/M6/M7 gate), so it is declared here but deliberately
+//! absent from [`REGISTRY`] and its
 //! structural tests.
 //!
 //! # Dependency direction
@@ -58,6 +60,7 @@
 //!   subtask.
 
 mod attributes_api;
+mod character_data_api;
 mod collection_api;
 mod html_api;
 mod live_collections;

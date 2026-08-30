@@ -92,6 +92,27 @@ impl Document {
         self.document_root_id
     }
 
+    /// Returns the document's doctype node, if any.
+    ///
+    /// A pure read: the `DocumentType` child (if any) of the cached document
+    /// root. When the document root has not been materialized yet (a fresh
+    /// document that never parsed or accessed a structure accessor), no
+    /// allocation happens and `None` is returned — mirroring the WHATWG
+    /// `document.doctype` on an empty document.
+    pub fn doctype(&self) -> Result<Option<NodeId>, CoreError> {
+        let Some(root) = self.cached_document_root() else {
+            return Ok(None);
+        };
+        let mut cur = self.get(root)?.first_child();
+        while let Some(child) = cur {
+            if self.get(child)?.node_type() == NodeType::DocumentType {
+                return Ok(Some(child));
+            }
+            cur = self.get(child)?.next_sibling();
+        }
+        Ok(None)
+    }
+
     /// Returns this document's unique id.
     pub fn id(&self) -> u64 {
         self.id
@@ -149,6 +170,35 @@ impl Document {
         Ok(self
             .arena
             .allocate(self.id, Node::new(NodeData::DocumentFragment)))
+    }
+
+    /// Creates a `ProcessingInstruction` node with `target` and `data` and
+    /// returns its handle.
+    ///
+    /// Errors with [`CoreError::InvalidCharacter`] when `target` is not a valid
+    /// WHATWG-style "Name", when `data` contains the `?>` closing sequence, or
+    /// when `data` contains a NUL character (the crate text-data
+    /// well-formedness rule, [`validate_text_data`]).
+    pub fn create_processing_instruction(
+        &mut self,
+        target: &str,
+        data: &str,
+    ) -> Result<NodeId, CoreError> {
+        validate_name(target, "processing instruction target")?;
+        if data.contains("?>") {
+            return Err(CoreError::InvalidCharacter {
+                what: "processing instruction data",
+                character: Some('?'),
+            });
+        }
+        validate_text_data(data, "processing instruction data")?;
+        Ok(self.arena.allocate(
+            self.id,
+            Node::new(NodeData::ProcessingInstruction {
+                target: target.to_string(),
+                data: data.to_string(),
+            }),
+        ))
     }
 
     /// Returns a shared reference to the node for `id`.
@@ -339,17 +389,19 @@ impl Document {
         }
     }
 
-    /// Crate-internal: atomically replaces the character data of the text or
-    /// comment node for `id`.
+    /// Crate-internal: atomically replaces the character data of the text,
+    /// comment or `ProcessingInstruction` node for `id`.
     ///
-    /// This is the text-update half of the Core seam (T25A). The M4
-    /// `textContent` API (`text_content` module, owned by T25C) writes
-    /// `Text`/`Comment` data only through this entry, and every other text
-    /// change goes through the unified mutation API (`append_child`,
-    /// `remove_child`, `replace_child`, ...), so no code ever edits a payload
-    /// field behind an entry's back. The write is a single field replacement on
-    /// a validated node, so a failed call leaves the node byte-for-byte
-    /// unchanged and the tree relations are never touched.
+    /// This is the text-update half of the Core seam (T25A, extended to
+    /// `ProcessingInstruction` by T33). The M4 `textContent` API
+    /// (`text_content` module, owned by T25C) and the T33 `character_data`
+    /// module write `Text`/`Comment`/`ProcessingInstruction` data only through
+    /// this entry, and every other text change goes through the unified
+    /// mutation API (`append_child`, `remove_child`, `replace_child`, ...), so
+    /// no code ever edits a payload field behind an entry's back. The write is
+    /// a single field replacement on a validated node, so a failed call leaves
+    /// the node byte-for-byte unchanged and the tree relations are never
+    /// touched.
     ///
     /// # Errors
     ///
@@ -366,15 +418,19 @@ impl Document {
         let node = self.node_mut(id)?;
         if !matches!(
             node.data(),
-            NodeData::Text { .. } | NodeData::Comment { .. }
+            NodeData::Text { .. }
+                | NodeData::Comment { .. }
+                | NodeData::ProcessingInstruction { .. }
         ) {
             return Err(CoreError::Hierarchy {
-                message: "character data operations require a Text or Comment node".to_string(),
+                message: "character data operations require a Text, Comment or ProcessingInstruction node"
+                    .to_string(),
             });
         }
         validate_text_data(data, "text data")?;
         let slot = match node.data_mut() {
             NodeData::Text { data: slot } | NodeData::Comment { data: slot } => slot,
+            NodeData::ProcessingInstruction { data: slot, .. } => slot,
             _ => unreachable!("node kind validated above"),
         };
         *slot = data.to_string();
@@ -435,23 +491,33 @@ fn is_valid_name_char(c: char) -> bool {
 
 /// Validates an element name against the WHATWG "Name" production.
 fn validate_element_name(name: &str) -> Result<(), CoreError> {
+    validate_name(name, "element name")
+}
+
+/// Validates `name` against the WHATWG "Name" production.
+///
+/// A "Name" must not be empty and every character must be a letter, digit,
+/// `-`, `.`, `_`, `:`, or a non-ASCII character, with the first character not
+/// being a digit. Shared by element creation (`validate_element_name`), the
+/// attribute name entry and the T33 processing-instruction target.
+fn validate_name(name: &str, what: &'static str) -> Result<(), CoreError> {
     let mut chars = name.chars();
     match chars.next() {
         None => Err(CoreError::InvalidCharacter {
-            what: "element name",
+            what,
             character: None,
         }),
         Some(first) => {
             if !is_valid_name_start(first) {
                 return Err(CoreError::InvalidCharacter {
-                    what: "element name",
+                    what,
                     character: Some(first),
                 });
             }
             for c in chars {
                 if !is_valid_name_char(c) {
                     return Err(CoreError::InvalidCharacter {
-                        what: "element name",
+                        what,
                         character: Some(c),
                     });
                 }
