@@ -1,6 +1,6 @@
 # 28 实现统一 DOM serializer
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：M5
 - 条目 ID：`T28`
@@ -13,7 +13,7 @@
 
 ## 条目
 
-- [ ] **T28 — 实现统一 DOM serializer**
+- [x] **T28 — 实现统一 DOM serializer**
   - 实现：
     - 实现节点类型分派、void/raw-text 规则、文本和属性转义。
     - 覆盖 namespace、doctype、template 等已支持结构。
