@@ -102,6 +102,7 @@ jobs:
         shell: bash
         run: |
           pkg_dir="build/platform/@mad-dom/platform-${{ matrix.platform }}"
+          mkdir -p build/smoke
           npm pack "$pkg_dir" --pack-destination build/smoke --json
 
       - name: Run install smoke on the native runner

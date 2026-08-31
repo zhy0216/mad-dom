@@ -78,6 +78,7 @@ jobs:
         run: |
           pkg_name="$(bun -e 'import { platformInfo, platformPackageName } from "./js/native-loader.js"; const i = platformInfo(); console.log(platformPackageName(i.platform, i.arch, i.libc));')"
           echo "platform package: ${pkg_name}"
+          mkdir -p build/smoke
           npm pack "build/platform/${pkg_name}" --pack-destination build/smoke --json
 
       - name: Run install smoke (packed package, no Cargo environment)
