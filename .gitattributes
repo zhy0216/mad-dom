@@ -1,0 +1,7 @@
+# Vendored happy-dom test suite (hdunit T01) is a byte-for-byte copy of the
+# upstream tree at the ADR-0002 locked commit; upstream content may contain
+# trailing whitespace and space-before-tab in template literals. Disable
+# whitespace errors for these paths so `git diff --check` stays green without
+# rewriting vendored bytes (T01 acceptance: byte-exact vendor, diff --check OK).
+tests/happy-dom/vendor/** -whitespace
+tests/happy-dom/vendor-src-enums/** -whitespace
