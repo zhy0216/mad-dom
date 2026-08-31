@@ -385,6 +385,79 @@ function runSelfTest(options) {
       expect: (result) => result.exitCode === 1 && /stale/.test(result.output),
     });
 
+    // S7 — hdunit (ADR-0006): a coverage summary entry must record non-negative
+    // integer counts; a negative enabled count is a schema error.
+    scenarios.push({
+      name: "S7: hdunit coverage entry with a negative count fails validation (exit 2)",
+      run: () =>
+        runGate(["--ledger", tamperedLedger((ledger) => {
+          ledger.entries.push({
+            id: "hc-hdunit-selftest-coverage",
+            suite: "hdunit",
+            status: "pass",
+            subsystem: "tooling",
+            vendorPath: "tests/happy-dom/triage/selftest.json",
+            enabled: -1,
+            expectedFail: 0,
+            skip: 0,
+            addedIn: "T05",
+          });
+        })]),
+      expect: (result) => result.exitCode === 2 && /enabled/.test(result.output),
+    });
+
+    // S8 — hdunit entries are bookkeeping records for a declared triage state;
+    // a known-gap hdunit entry misuses the suite and must fail validation.
+    scenarios.push({
+      name: "S8: hdunit entry with a non-pass status fails validation (exit 2)",
+      run: () =>
+        runGate(["--ledger", tamperedLedger((ledger) => {
+          ledger.entries.push({
+            id: "hc-hdunit-selftest-wrong-status",
+            suite: "hdunit",
+            status: "known-gap",
+            subsystem: "tooling",
+            vendorPath: "tests/happy-dom/triage/selftest.json",
+            reason: "self-test tamper entry",
+            recordedAt: "2026-08-30T00:00:00Z",
+            addedIn: "T05",
+          });
+        })]),
+      expect: (result) => result.exitCode === 2 && /must be "pass"/.test(result.output),
+    });
+
+    // S9 — positive hdunit scenario: an upstream-map entry whose localId maps
+    // to a per-file hdunit ledger entry is accepted bidirectionally, and the
+    // whole gate (schema + cross-checks + live differential) still holds.
+    scenarios.push({
+      name: "S9: hdunit per-file entry + upstream-map localId accepted bidirectionally (exit 0)",
+      run: () =>
+        runGate([
+          "--ledger",
+          tamperedLedger((ledger) => {
+            ledger.entries.push({
+              id: "hc-hdunit-selftest-domrect",
+              suite: "hdunit",
+              status: "pass",
+              subsystem: "tooling",
+              vendorPath: "tests/happy-dom/rewritten/dom/DOMRect.test.ts",
+              addedIn: "T05",
+            });
+          }),
+          "--upstream-map",
+          tamperedUpstreamMap((map) => {
+            map.entries.push({
+              localId: "hc-hdunit-selftest-domrect",
+              upstreamPath: "packages/happy-dom/test/dom/DOMRect.test.ts",
+              upstreamCommit: PINNED_HAPPY_DOM_COMMIT,
+              license: UPSTREAM_LICENSE,
+              localPath: "tests/happy-dom/rewritten/dom/DOMRect.test.ts",
+            });
+          }),
+        ]),
+      expect: (result) => result.exitCode === 0 && /result: OK/.test(result.output),
+    });
+
     let allPassed = true;
     console.log(`self-test: ${scenarios.length} tamper scenarios against temporary copies in os.tmpdir()`);
     for (const scenario of scenarios) {
@@ -440,8 +513,9 @@ async function main() {
   }
 
   const ledgerUpIds = ledger.entries.filter((entry) => entry.suite === "up").map((entry) => entry.id);
+  const ledgerHdunitIds = ledger.entries.filter((entry) => entry.suite === "hdunit").map((entry) => entry.id);
   const upstreamProblems = validateUpstreamMap(upstreamMap, {
-    ledgerIds: new Set(ledgerUpIds),
+    ledgerIds: new Set([...ledgerUpIds, ...ledgerHdunitIds]),
     readFile: (localPath) => readFileSync(resolve(REPO_ROOT, localPath), "utf8"),
     exists: (localPath) => existsSync(resolve(REPO_ROOT, localPath)),
   });

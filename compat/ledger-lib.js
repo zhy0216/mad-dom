@@ -24,6 +24,7 @@ export const SUITES = {
   TYPES: "types",
   DIFF: "diff",
   UP: "up",
+  HDUNIT: "hdunit",
 };
 
 // Fixed subsystem enumeration. Semantics:
@@ -47,7 +48,7 @@ export const PINNED_HAPPY_DOM_COMMIT = "64e2c774cadbb8eda5416c1e2bcca5006d1b5df9
 // happy-dom upstream is MIT-licensed; ported cases must keep that provenance.
 export const UPSTREAM_LICENSE = "MIT";
 
-export const LEDGER_ID_PATTERN = /^hc-(api|types|diff|up)-[a-z0-9]+(?:-[a-z0-9]+)+$/;
+export const LEDGER_ID_PATTERN = /^hc-(api|types|diff|up|hdunit)-[a-z0-9]+(?:-[a-z0-9]+)+$/;
 // Identical ISO 8601 UTC rule as compat/validate-baseline.js.
 export const ISO_8601_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 export const HTTPS_URL = /^https:\/\/\S+$/;
@@ -75,14 +76,32 @@ const FORBIDDEN_LOCAL_IMPORTS = [
 const LEDGER_ROOT_FIELDS = ["schemaVersion", "note", "entries"];
 const LEDGER_ENTRY_FIELDS = ["id", "suite", "status", "subsystem", "reason", "recordedAt", "addedIn"];
 // Suite-specific entry fields: diff → scenario; types → fixture + diagnostics;
-// up → upstreamRef. The api suite has no extra fields: the snapshot comparison
-// is a single whole-surface pass, finer per-export granularity is deferred.
+// up → upstreamRef; hdunit → vendorPath + enabled/expectedFail/skip coverage
+// counts. The api suite has no extra fields: the snapshot comparison is a
+// single whole-surface pass, finer per-export granularity is deferred.
+//
+// hdunit (ADR-0006): each subsystem is recorded as ONE `hc-hdunit-<subsystem>-
+// coverage` summary entry carrying the split's enabled/expected-fail/skip
+// counts (the per-file triage state lives in tests/happy-dom/triage/*.json,
+// which is the truth source). `vendorPath` points at the triage split for a
+// coverage entry and at the rewritten file for a per-file entry (created by
+// waves when a file becomes enabled). Count fields are only meaningful on
+// coverage entries; per-file entries omit them.
 const SUITE_ENTRY_FIELDS = {
   [SUITES.API]: [],
   [SUITES.TYPES]: ["fixture", "diagnostics"],
   [SUITES.DIFF]: ["scenario"],
   [SUITES.UP]: ["upstreamRef"],
+  [SUITES.HDUNIT]: ["vendorPath", "enabled", "expectedFail", "skip"],
 };
+
+// hdunit coverage entries follow the fixed `-coverage` id suffix convention
+// (ADR-0006): `hc-hdunit-<subsystem>-coverage`. They are the subsystem-level
+// summary entries; per-file hdunit entries (added by waves for enabled files)
+// never use the suffix, which lets the cross-checks distinguish the two.
+export function isHdunitCoverageEntry(entry) {
+  return entry?.suite === SUITES.HDUNIT && typeof entry.id === "string" && entry.id.endsWith("-coverage");
+}
 
 const UPSTREAM_MAP_ROOT_FIELDS = ["schemaVersion", "note", "upstream", "entries"];
 const UPSTREAM_FIELDS = ["repository", "commit", "license"];
@@ -275,6 +294,29 @@ export function validateLedger(manifest) {
       if (!isNonEmptyString(entry.upstreamRef)) {
         problems.push(`${at}.upstreamRef: must be a non-empty string (the upstream-map localId)`);
       }
+    } else if (suite === SUITES.HDUNIT) {
+      if (!isNonEmptyString(entry.vendorPath)) {
+        problems.push(
+          `${at}.vendorPath: must be a non-empty posix path — the triage split for a "-coverage" entry, ` +
+            "the rewritten file for a per-file entry",
+        );
+      } else if (!isPosixRelativePath(entry.vendorPath)) {
+        problems.push(
+          `${at}.vendorPath: must be a posix relative path without ".." segments, got ${JSON.stringify(entry.vendorPath)}`,
+        );
+      }
+      for (const countField of ["enabled", "expectedFail", "skip"]) {
+        if (entry[countField] !== undefined && !(Number.isInteger(entry[countField]) && entry[countField] >= 0)) {
+          problems.push(`${at}.${countField}: must be a non-negative integer when present, got ${JSON.stringify(entry[countField])}`);
+        }
+      }
+      // hdunit entries summarise a *declared* triage state (ADR-0006); the
+      // per-file pass/fail evidence lives in the triage split and the live
+      // run, so an hdunit ledger entry itself is always a "pass" bookkeeping
+      // record — a gap/not-applicable here would be a misuse of the suite.
+      if (status !== STATUSES.PASS) {
+        problems.push(`${at}.status: hdunit entries must be "pass" (per-file state is recorded in the triage split)`);
+      }
     }
   });
 
@@ -351,7 +393,8 @@ export function validateUpstreamMap(map, { ledgerIds, readFile, exists }) {
       seenLocalIds.add(entry.localId);
       if (!knownLedgerIds.has(entry.localId)) {
         problems.push(
-          `${at}.localId: ${JSON.stringify(entry.localId)} has no matching suite="up" entry in the compatibility ledger`,
+          `${at}.localId: ${JSON.stringify(entry.localId)} has no matching suite="up" or suite="hdunit" entry ` +
+            "in the compatibility ledger",
         );
       }
     }
@@ -468,6 +511,17 @@ export function crossValidateLedger({ ledger, upstreamMap, realPairScenarioIds, 
 
   const localIds = mapEntries.map((entry) => entry.localId).filter((localId) => typeof localId === "string");
   const localIdSet = new Set(localIds);
+  // hdunit entries (ADR-0006): per-file entries are provenance-mappable exactly
+  // like up entries (every enabled rewritten file registers an upstream-map
+  // entry whose localId matches its per-file ledger id). Coverage ("-coverage")
+  // entries are subsystem summaries; they are known ledger ids but are not
+  // mapped to upstream-map entries — a map entry pointing at a coverage id is a
+  // provenance inconsistency that the hdunit triage gate (validate-triage.mjs)
+  // reports with exit 1, while a localId that is not in the ledger at all is a
+  // cross-reference error caught here.
+  const hdunitPerFileEntries = entries.filter((entry) => entry.suite === SUITES.HDUNIT && !isHdunitCoverageEntry(entry));
+  const hdunitPerFileIds = new Set(hdunitPerFileEntries.map((entry) => entry.id));
+  const hdunitKnownIds = new Set(entries.filter((entry) => entry.suite === SUITES.HDUNIT).map((entry) => entry.id));
   for (const entry of upEntries) {
     if (typeof entry.upstreamRef === "string" && !localIdSet.has(entry.upstreamRef)) {
       problems.push(
@@ -477,9 +531,20 @@ export function crossValidateLedger({ ledger, upstreamMap, realPairScenarioIds, 
     }
   }
   for (const localId of [...localIdSet].sort()) {
-    if (!upEntries.some((entry) => entry.upstreamRef === localId)) {
+    const hasUp = upEntries.some((entry) => entry.upstreamRef === localId);
+    const hasHdunit = hdunitKnownIds.has(localId);
+    if (!hasUp && !hasHdunit) {
       problems.push(
-        `cross: upstream-map localId ${JSON.stringify(localId)} has no matching suite="up" ledger entry (bidirectional mapping required)`,
+        `cross: upstream-map localId ${JSON.stringify(localId)} has no matching ledger entry ` +
+          `(suite "up" or suite "hdunit"; bidirectional mapping required)`,
+      );
+    }
+  }
+  for (const localId of [...hdunitPerFileIds].sort()) {
+    if (!localIdSet.has(localId)) {
+      problems.push(
+        `cross: hdunit ledger entry ${JSON.stringify(localId)} has no upstream-map entry ` +
+          "(enabled hdunit files must register provenance)",
       );
     }
   }

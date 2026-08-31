@@ -116,6 +116,51 @@ npm run compat:ledger:report    # 离线汇总报告（--json）
 `Validate compatibility ledger (regression gate)` 步骤（`npm run compat:ledger`）：
 模拟 pass 退化（如把 known-gap 条目改成 pass）会让该步骤以 exit 1 失败。
 
+## hdunit 清单与门禁（ADR-0006）
+
+[ADR-0006](../adr/0006-happy-dom-unit-suite-hdunit.md) 定义 `hdunit` 套件：原样
+vendored 测试文件的文件级门禁（与 `up` 的手写移植相对）。每个 rewritten 测试
+文件的终态（`enabled` / `skip` / `expected-fail`）由 `tests/happy-dom/triage/`
+下的**分片文件**声明（每子系统一个 JSON，明细以分片为真相源）；`compat/ledger.json`
+每个子系统一条 `hc-hdunit-<subsystem>-coverage` 汇总条目记录计数，enabled 文件
+在 `compat/upstream-map.json` 登记 provenance。
+
+### 文件
+
+| 文件 | 职责 |
+| --- | --- |
+| `tests/happy-dom/triage/<subsystem>.json` | 分片 schema：`{schemaVersion, subsystem, entries: [{file, status, reason?, ledgerId?}]}`；`file` 相对 `tests/happy-dom/rewritten/` |
+| `tests/happy-dom/validate-triage.mjs` | hdunit 门禁：schema 校验 + 文件存在性/唯一性 + 与 ledger/upstream-map 交叉核对 + 活体运行比对（含 `--self-test` 篡改演练） |
+| `tests/happy-dom/report.mjs` | 离线汇总：每子系统 enabled/expected-fail/skip 计数与通过率，核对全量文件都有终态 |
+
+### triage 状态机
+
+- `enabled`：必须实跑通过（T03 预载下 `bun test` exit 0），且必须登记 ledger
+  单文件条目与 upstream-map provenance；`skip` 与 `expected-fail` 必须带非空
+  `reason`（按 T02 报告分类：`propertysymbol` / `unmapped-internal-import` /
+  `pending-wave` 等），`expected-fail` 还必须声明期望失败面且波次收尾时收敛为
+  `enabled` / `skip`。门禁不得静默跳过任何文件。
+
+### 退化门禁规则
+
+- `enabled` 文件实跑失败、`skip` 置 `enabled` 后不跑绿、`expected-fail` 意外转绿、
+  triage 与活体运行/ledger/upstream-map 不一致 → `compat:hdunit:validate` exit 1；
+- 分片 schema 非法、引用不存在的文件、未登记的 rewritten 文件 → exit 2；
+- 初始状态全量 `skip`（0 enabled），门禁在空集上自洽可跑；波次（T06–T10）在各自
+  分片内置 `enabled` 并同步 ledger 计数与 upstream-map。
+
+### 运行
+
+```sh
+npm run compat:hdunit:validate           # 门禁：schema + 交叉核对 + 活体运行（含 --self-test 篡改演练）
+npm run compat:hdunit:report             # 离线汇总：各子系统计数与通过率（--json）
+bun tests/happy-dom/validate-triage.mjs --self-test   # 4 个篡改演练（临时副本）
+```
+
+`compat:ledger` 门禁同时扩展：`hdunit` 作为新 suite 纳入 schema 校验，upstream-map
+的 `localId` 可与 hdunit（非 `-coverage`）条目双向一致；`compat:ledger:selftest`
+新增 3 个 hdunit 场景（S7–S9）。
+
 ## 边界
 
 T07 不生成公开 API 快照（`public-api/` 归 [T08](../todos/08-public-api-snapshot.md) 所有），不安装 happy-dom，也不提供快照生成器。
