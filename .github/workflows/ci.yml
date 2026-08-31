@@ -84,3 +84,60 @@ jobs:
         run: |
           version="$(node -p "require('./package.json').version")"
           bun scripts/install-smoke.mjs --platform-tgz "build/smoke/mad-dom-platform-linux-x64-gnu-${version}.tgz"
+
+  safety:
+    name: Safety (unsafe inventory + Miri + ASan)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.1
+          components: rustfmt, clippy
+
+      - name: Install nightly with Miri
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: miri
+
+      - name: Check the unsafe/FFI inventory
+        run: bash scripts/check-core-safety.sh scan
+
+      - name: Run Miri representative subset (mad-dom-core)
+        run: bash scripts/check-core-safety.sh miri
+
+      - name: Run AddressSanitizer smoke (mad-dom-core)
+        run: bash scripts/check-core-safety.sh asan
+
+      - name: Run the Core property and stress suite at native speed
+        run: cargo test -p mad-dom-core
+
+  bench:
+    name: Performance gate (benchmark vs baseline)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.1
+
+      - name: Install pinned Bun version
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Build native binding (dev artifact)
+        run: npm run dev:build
+
+      - name: Run the performance gate against the recorded baseline
+        run: npm run bench:check

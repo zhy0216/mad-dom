@@ -1,10 +1,12 @@
-# MAD DOM release manual (T49)
+# MAD DOM release manual (T49, stable gate T50)
 
 This document is the build / publish / rollback manual for the native
 platform packages (`@mad-dom/platform-*`) and the `mad-dom` main package, per
 [ADR-0005](../adr/0005-native-build-and-release-architecture.md). The support
 matrix and the runtime error contract live in the [README](../README.md#support-matrix)
-("Support matrix" section, which the loader error messages anchor to).
+("Support matrix" section, which the loader error messages anchor to). The
+stable-gate verification evidence (compat rate, safety suite, benchmarks,
+install smoke) is in [docs/stable-gate-report.md](./stable-gate-report.md).
 
 ## Toolchain pins
 
@@ -154,3 +156,16 @@ dry-run by default; execution requires `--no-dry-run` + `MAD_DOM_ALLOW_PUBLISH=1
 - The glibc floor and Bun `libc`-trimming values above are recorded only after
   the first linux CI release build; both are marked TBD until then (see the
   measured verification points section).
+- The stable gate (T50) verifies the happy-dom compatibility suite at 100%
+  pass and the host install smoke on the development machine; non-host
+  platform verification is delegated to the `release.yml` matrix and is the
+  reason T50 is recorded as partial until those CI runs complete. See
+  [docs/stable-gate-report.md](./stable-gate-report.md).
+
+## Compatibility rate (T50)
+
+The locked happy-dom baseline (`20.11.11` @ `64e2c774…`, ADR-0002 §1) is at
+**100% pass** in the compatibility ledger (43/43 entries, zero known-gap /
+not-applicable) and the WPT subset is tracked separately as a measurement
+(39.8%). Full per-suite numbers and upstream attribution:
+[docs/compat-report.md](./compat-report.md).

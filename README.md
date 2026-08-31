@@ -18,6 +18,39 @@ The intended architecture includes:
 
 Do not use this release in production.
 
+## Compatibility (T50)
+
+MAD DOM tracks a **locked** happy-dom baseline (`20.11.11` @ commit
+`64e2c774…`, [ADR-0002](adr/0002-happy-dom-compatibility-baseline-and-differential-protocol.md)).
+The black-box differential suite and type harness are the compatibility
+contract, and the ledger currently reports **100% pass** (43/43 entries, zero
+known-gap / not-applicable) on the stable-gate verification:
+
+```sh
+npm run compat:differential     # live black-box differential over every scenario
+npm run compat:ledger           # schema + cross-check + pass-regression gate
+```
+
+A separate [web-platform-tests](https://github.com/web-platform-tests/wpt)
+subset is vendored as an independent statistics track (currently ~40% pass) —
+it is a measurement, not a gate. Full numbers and upstream attribution live in
+[docs/compat-report.md](docs/compat-report.md).
+
+## Known limitations
+
+- Cross-platform binaries cannot be built on a single machine: the local
+  build covers only the host triple, and the remaining platforms are built and
+  install-smoked by the `release.yml` CI matrix on native runners.
+- The glibc compatibility floor and Bun installer `libc`-trimming behavior are
+  recorded only after the first linux CI release build (`docs/release.md`).
+- Pre-alpha: many happy-dom behaviors beyond the differential suite (notably
+  the broader WPT surface) are not yet implemented; the compatibility contract
+  above is what is claimed and verified.
+
+See `docs/release.md` (build/publish/rollback manual), `docs/stable-gate-report.md`
+(stable-gate verification) and the [safety](./crates/mad-dom-core/SAFETY.md) /
+[benchmark](./bench/README.md) notes for hardening detail.
+
 ## Public entry
 
 The package entry exposes the happy-dom-shaped construction surface: create a
@@ -99,6 +132,25 @@ npm run validate
 ```
 
 It runs, in order: the JavaScript entry check, `cargo fmt --check`, Clippy, `cargo test --workspace`, and the Bun tests.
+
+### Safety and performance gates (T50+)
+
+The stable-gate hardening adds two dedicated suites alongside `npm run validate`:
+
+```sh
+scripts/check-core-safety.sh scan   # unsafe/FFI inventory (Core must stay zero)
+scripts/check-core-safety.sh miri   # Miri representative subset (nightly)
+scripts/check-core-safety.sh asan   # AddressSanitizer smoke (nightly host target)
+
+npm run bench:record                # run benchmarks, write bench/baseline.json
+npm run bench:check                 # performance/memory regression gate (CI)
+```
+
+The Core carries `#![forbid(unsafe_code)]`; all handwritten `unsafe` lives in
+the binding as four documented `cast()` relaxations (see
+[crates/mad-dom-core/SAFETY.md](crates/mad-dom-core/SAFETY.md)). Benchmark
+metrics, thresholds and reproducibility are documented in
+[bench/README.md](bench/README.md).
 
 Individual commands:
 

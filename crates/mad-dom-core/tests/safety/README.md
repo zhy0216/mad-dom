@@ -1,18 +1,25 @@
-# mad-dom-core 安全检查记录（T18）
+# mad-dom-core 安全检查记录（T18，T50 硬化）
 
 本目录记录 Core 的 `unsafe` 清单、适用的 Miri/sanitizer 命令，以及属性/压力测试的可重放与资源上限约定。对应 ADR-0001 测试章节“为后续 Miri/sanitizer 检查隔离并记录全部 `unsafe` 使用点”。
 
-## unsafe 清单（T18 时点）
+## unsafe 清单（T50 时点）
 
-- `crates/mad-dom-core/src/**`：**零 `unsafe` 块**。核验命令（限定 Rust 源文件，避免命中本目录文档自身）：
+- `crates/mad-dom-core/src/**`：**零 `unsafe` 块**，且 T50 起由编译器级
+  `#![forbid(unsafe_code)]` 强制（`crates/mad-dom-core/src/lib.rs`），清单无法
+  静默退化。核验命令：
 
   ```sh
-  rg -n '\bunsafe\b' crates/ --glob '*.rs'     # 无匹配
-  rg -n '^\s*unsafe\b' crates/ --glob '*.rs'    # 无匹配（实际块）
+  scripts/check-core-safety.sh scan
   ```
 
-- `crates/mad-dom-bun/src/**`：零 `unsafe`（尚无 FFI；绑定层 unsafe 归属在 M3 的 T19/T21 审计）。
-- ADR-0001 §7 约定 unsafe 保持最小化；本里程碑只做“记录”，编译器级 `#![forbid(unsafe_code)]` 与 CI 门禁留待 T50 硬化。
+- `crates/mad-dom-bun/src/**`：**固定 4 处** `unsafe { …cast() }`（napi
+  `Unknown`/`Reference` → `Function` 幻影类型擦除放宽），分别位于
+  `events_api.rs`（监听器注册，T37）、`mutation_observer_api.rs`（调度器与
+  观察回调，T41）、`traversal_api.rs`（TreeWalker 过滤器，T35）；每个站点都
+  内联记录“facade 恒传函数包装、运行时擦除的 `Function` 幻影类型因此 sound”
+  的前提。绑定层完整安全模型见 `crates/mad-dom-bun/src/lib.rs` 与
+  `crates/mad-dom-core/SAFETY.md`。核验命令同 `scan`（mad-dom-bun 分支仅输出
+  清单，不作零判定）。
 
 ## Miri smoke
 
@@ -20,17 +27,21 @@ Miri 需要 nightly 工具链 + `miri` 组件：
 
 ```sh
 rustup component add --toolchain nightly miri
-cargo +nightly miri test -p mad-dom-core --lib arena::tests::dangling_handle_can_never_read_new_node
+scripts/check-core-safety.sh miri
 ```
 
-只 smoke 少量代表测试（`dangling_handle_can_never_read_new_node` 覆盖 generation 槽位复用的核心安全属性；`allocate_and_get` 亦可）。带 seed 的属性/压力测试在 Miri 下极慢（数十分钟级），不纳入 smoke，完整套件走常规 `cargo test`。
+T50 起 Miri 门禁运行**代表性子集**（`dangling_handle_can_never_read_new_node`、
+`generation_mismatch_errors`、`retired_slot_is_never_reused`），覆盖 generation
+槽位复用与悬空句柄的核心安全属性。带 seed 的属性/压力测试在 Miri 下极慢
+（数十分钟级），不纳入 Miri，完整套件走常规 `cargo test`。
 
 ## Sanitizer smoke
 
-macOS 稳定工具链没有可用的 ASAN/TSAN Rust 支持；在 Linux 或 nightly 上可做 ASAN smoke：
+macOS 稳定工具链没有可用的 ASAN/TSAN Rust 支持；在 Linux 或 nightly 上可做 ASAN
+smoke（本机 `aarch64-apple-darwin` nightly 可用）：
 
 ```sh
-RUSTFLAGS="-Z sanitizer=address" cargo +nightly test -p mad-dom-core --lib --target x86_64-unknown-linux-gnu
+scripts/check-core-safety.sh asan
 ```
 
 ## 属性测试可重放约定
