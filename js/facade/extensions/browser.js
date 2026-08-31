@@ -166,14 +166,75 @@ export class VirtualConsolePrinter {
   }
 
   readAsString(logLevel = VirtualConsoleLogLevelEnum.log) {
+    const logEntries = this.read();
     let output = "";
-    for (const logEntry of this.read()) {
+    for (const logEntry of logEntries) {
       if (logEntry.level >= logLevel) {
-        output += logEntry.message;
+        output += stringifyLogEntry(logEntry);
       }
     }
     return output;
   }
+}
+
+const LOG_TYPE_ICON = {
+  group: "▼ ",
+  groupCollapsed: "▶ ",
+};
+
+function isLogEntryCollapsed(logEntry) {
+  let group =
+    logEntry.type === "group" || logEntry.type === "groupCollapsed"
+      ? logEntry.group?.parent
+      : logEntry.group;
+  while (group) {
+    if (group.collapsed) return true;
+    group = group.parent;
+  }
+  return false;
+}
+
+function logEntryGroupTabbing(logEntry) {
+  let tabs = "";
+  let group =
+    logEntry.type === "group" || logEntry.type === "groupCollapsed"
+      ? logEntry.group?.parent
+      : logEntry.group;
+  while (group) {
+    tabs += "  ";
+    group = group.parent;
+  }
+  return tabs;
+}
+
+/**
+ * happy-dom `VirtualConsoleLogEntryStringifier.toString` parity: groups are
+ * indented, plain objects / arrays JSON-stringified, `Error`-like parts keep
+ * their stack, collapsed groups are skipped, and `group` / `groupCollapsed`
+ * entries get the icon prefix. String messages (the browser error path) are
+ * passed through verbatim.
+ */
+function stringifyLogEntry(logEntry) {
+  if (typeof logEntry.message === "string") return logEntry.message;
+  if (isLogEntryCollapsed(logEntry)) return "";
+  const tabbing = logEntryGroupTabbing(logEntry);
+  let output = tabbing;
+  for (const part of logEntry.message) {
+    output += output !== "" && output !== tabbing ? " " : "";
+    if (typeof part === "object" && (part === null || part.constructor.name === "Object" || Array.isArray(part))) {
+      try {
+        output += JSON.stringify(part);
+      } catch {
+        output += new Error("Failed to JSON stringify object in log entry.")
+          .stack.replace(/\n    at/gm, "\n    " + tabbing + "at");
+      }
+    } else if (typeof part === "object" && part["message"] && part["stack"]) {
+      output += part["stack"].replace(/\n    at/gm, "\n    " + tabbing + "at");
+    } else {
+      output += (LOG_TYPE_ICON[logEntry.type] ?? "") + String(part);
+    }
+  }
+  return output + "\n";
 }
 
 // --- BrowserExceptionObserver -------------------------------------------------

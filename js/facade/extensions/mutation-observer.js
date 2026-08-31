@@ -55,6 +55,11 @@ const RECORD_HANDLES = new WeakMap();
 // callback's second argument must be the very object the caller constructed).
 const OBSERVER_OWNERS = new WeakMap();
 
+// Every native observer handle minted by the facade. `happyDOM.close()` walks
+// this set to disconnect the window's observers (happy-dom disconnects an
+// observer when its window closes), matching the vendored suite.
+const ALL_OBSERVER_HANDLES = new Set();
+
 // The `ctx` handed to `install`; captured so the wrapped callback and the
 // record accessors can mint facade wrappers.
 let ctx = null;
@@ -209,9 +214,27 @@ export class MutationObserver {
       };
       handle = loadNative().createMutationObserver(wrapped);
       OBSERVER_OWNERS.set(handle, this);
+      ALL_OBSERVER_HANDLES.add(handle);
     }
     OBSERVER_HANDLES.set(this, handle);
   }
+}
+
+/**
+ * Disconnects every observer minted by the facade.
+ *
+ * happy-dom disconnects an observer when its window is closed; the facade's
+ * `happyDOM.close()` (window-platform) calls this to mirror that lifecycle.
+ */
+export function disconnectAllObservers() {
+  for (const handle of ALL_OBSERVER_HANDLES) {
+    try {
+      handle.disconnect();
+    } catch {
+      // The document may already be destroyed; disconnecting is then a no-op.
+    }
+  }
+  ALL_OBSERVER_HANDLES.clear();
 }
 
 /**
@@ -222,6 +245,33 @@ export class MutationObserver {
 export class MutationRecord {
   constructor(handle) {
     RECORD_HANDLES.set(this, handle);
+    // Materialize the record fields as own enumerable data properties so the
+    // structural comparison the vendored happy-dom suite uses (`toEqual` /
+    // `Object.keys`) sees the same shape as the upstream `MutationRecord`
+    // (which stores its fields as own enumerable data properties). The accessor
+    // surface below still works (it shadows nothing: the own properties and the
+    // prototype accessors return the same values).
+    if (ctx !== null) {
+      const fields = {
+        type: handle.recordType(),
+        target: ctx.wrap(handle.target()),
+        addedNodes: handle.addedNodes().map((node) => ctx.wrap(node)),
+        removedNodes: handle.removedNodes().map((node) => ctx.wrap(node)),
+        previousSibling: ctx.wrap(handle.previousSibling()),
+        nextSibling: ctx.wrap(handle.nextSibling()),
+        attributeName: handle.attributeName(),
+        attributeNamespace: handle.attributeNamespace(),
+        oldValue: handle.oldValue(),
+      };
+      for (const [name, value] of Object.entries(fields)) {
+        Object.defineProperty(this, name, {
+          value,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+      }
+    }
   }
 }
 
@@ -232,26 +282,43 @@ export class MutationRecord {
  * registers the delivery scheduler that arms the per-listener microtasks.
  */
 export function install(extensionCtx) {
-  ctx = extensionCtx;
+  // Capture the facade-provided `ctx` once, on the real facade install. The
+  // structural test re-drives `installExtensions` with a plain mock ctx
+  // (facade-window-document.test.js); property definitions during that pass go
+  // to the mock (recorded), but the module-level `ctx` the record wrapper
+  // relies on stays the real facade context, so a later real window keeps
+  // resolving its native document handle.
+  if (ctx === null) ctx = extensionCtx;
+  const installCtx = extensionCtx;
   // The factory resolves a native observer handle back to the facade observer
   // that owns it (the callback's second argument is the caller's own object),
   // falling back to a fresh wrapper only for handles minted outside this
   // module.
-  ctx.registerHandleType("MutationObserverHandle", (handle) => {
+  installCtx.registerHandleType("MutationObserverHandle", (handle) => {
     return OBSERVER_OWNERS.get(handle) ?? new MutationObserver(handle);
   });
-  ctx.registerHandleType("MutationRecordHandle", (handle) => new MutationRecord(handle));
-  ctx.defineAccessor(Window.prototype, "MutationObserver", function getMutationObserver() {
+  installCtx.registerHandleType("MutationRecordHandle", (handle) => new MutationRecord(handle));
+  installCtx.defineAccessor(Window.prototype, "MutationObserver", function getMutationObserver() {
     return MutationObserver;
   }, undefined);
 
-  ctx.defineMethod(MutationObserver.prototype, "observe", function observe(target, options) {
+  installCtx.defineMethod(MutationObserver.prototype, "observe", function observe(target, options) {
     if (target == null) {
       throw new TypeError(
         "Failed to execute 'observe' on 'MutationObserver': The first parameter \"target\" should be of type \"Node\".",
       );
     }
-    const targetHandle = facadeNodeHandle(target, "observe");
+    // A `Document` facade is a WHATWG `Node` (`#document`): resolve it to the
+    // native document-root node handle so Core can observe the document node
+    // itself (happy-dom allows `observer.observe(document, …)`).
+    let targetHandle = ctx.documentContext.handleOf(target);
+    if (!isNodeHandle(targetHandle)) {
+      if (targetHandle !== null && typeof targetHandle.documentRoot === "function") {
+        targetHandle = targetHandle.documentRoot();
+      } else {
+        throw new TypeError(`Node.observe requires a genuine Node facade wrapper`);
+      }
+    }
     const resolved = resolveObserverOptions(options);
     const handle = OBSERVER_HANDLES.get(this);
     handle.observe(
@@ -266,54 +333,54 @@ export function install(extensionCtx) {
     );
   });
 
-  ctx.defineMethod(MutationObserver.prototype, "disconnect", function disconnect() {
+  installCtx.defineMethod(MutationObserver.prototype, "disconnect", function disconnect() {
     OBSERVER_HANDLES.get(this).disconnect();
   });
 
-  ctx.defineMethod(MutationObserver.prototype, "takeRecords", function takeRecords() {
+  installCtx.defineMethod(MutationObserver.prototype, "takeRecords", function takeRecords() {
     return OBSERVER_HANDLES.get(this)
       .takeRecords()
       .map((record) => ctx.wrap(record));
   });
 
   // MutationRecord surface.
-  ctx.defineAccessor(MutationRecord.prototype, "type", function type() {
+  installCtx.defineAccessor(MutationRecord.prototype, "type", function type() {
     return RECORD_HANDLES.get(this).recordType();
   }, undefined);
 
-  ctx.defineAccessor(MutationRecord.prototype, "target", function target() {
+  installCtx.defineAccessor(MutationRecord.prototype, "target", function target() {
     return ctx.wrap(RECORD_HANDLES.get(this).target());
   }, undefined);
 
-  ctx.defineAccessor(MutationRecord.prototype, "addedNodes", function addedNodes() {
+  installCtx.defineAccessor(MutationRecord.prototype, "addedNodes", function addedNodes() {
     return RECORD_HANDLES.get(this)
       .addedNodes()
       .map((node) => ctx.wrap(node));
   }, undefined);
 
-  ctx.defineAccessor(MutationRecord.prototype, "removedNodes", function removedNodes() {
+  installCtx.defineAccessor(MutationRecord.prototype, "removedNodes", function removedNodes() {
     return RECORD_HANDLES.get(this)
       .removedNodes()
       .map((node) => ctx.wrap(node));
   }, undefined);
 
-  ctx.defineAccessor(MutationRecord.prototype, "previousSibling", function previousSibling() {
+  installCtx.defineAccessor(MutationRecord.prototype, "previousSibling", function previousSibling() {
     return ctx.wrap(RECORD_HANDLES.get(this).previousSibling());
   }, undefined);
 
-  ctx.defineAccessor(MutationRecord.prototype, "nextSibling", function nextSibling() {
+  installCtx.defineAccessor(MutationRecord.prototype, "nextSibling", function nextSibling() {
     return ctx.wrap(RECORD_HANDLES.get(this).nextSibling());
   }, undefined);
 
-  ctx.defineAccessor(MutationRecord.prototype, "attributeName", function attributeName() {
+  installCtx.defineAccessor(MutationRecord.prototype, "attributeName", function attributeName() {
     return RECORD_HANDLES.get(this).attributeName();
   }, undefined);
 
-  ctx.defineAccessor(MutationRecord.prototype, "attributeNamespace", function attributeNamespace() {
+  installCtx.defineAccessor(MutationRecord.prototype, "attributeNamespace", function attributeNamespace() {
     return RECORD_HANDLES.get(this).attributeNamespace();
   }, undefined);
 
-  ctx.defineAccessor(MutationRecord.prototype, "oldValue", function oldValue() {
+  installCtx.defineAccessor(MutationRecord.prototype, "oldValue", function oldValue() {
     return RECORD_HANDLES.get(this).oldValue();
   }, undefined);
 }

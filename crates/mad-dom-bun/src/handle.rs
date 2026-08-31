@@ -497,6 +497,21 @@ impl DocumentHandle {
         self.shared.wrap_node(env, id)
     }
 
+    /// Returns the document-root node (`#document`) as a `NodeHandle`.
+    ///
+    /// happy-dom's `MutationObserver.observe(document, …)` and the WHATWG
+    /// traversal / collection surfaces observe the document node itself; the
+    /// facade resolves the `Document` wrapper to this root node handle through
+    /// the sealed `with_document` seam (the only legal way to read a Core
+    /// `NodeId` from a `DocumentHandle`).
+    #[napi(catch_unwind)]
+    pub fn document_root(&self, env: Env) -> napi::Result<Reference<NodeHandle>> {
+        check_affinity(&self.shared, &env)?;
+        let root = with_document(&self.shared, |doc| Ok(doc.document_root()))
+            .map_err(|err| err.into_napi(&env))?;
+        self.shared.wrap_node(env, root)
+    }
+
     #[napi(catch_unwind)]
     pub fn append_child(
         &self,

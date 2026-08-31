@@ -18,6 +18,7 @@
 // a FormData body into a multipart Buffer + `Content-Type`.
 
 import { Window } from "../window.js";
+import { Blob, File } from "./lightweight.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/form-data",
@@ -66,18 +67,22 @@ const ENTRIES = Symbol("mad-dom-form-data-entries");
 const WINDOW = Symbol("mad-dom-window");
 
 export class FormData {
-  constructor() {
+  constructor(form, submitter) {
     this[FORM_DATA_BRAND] = true;
     this[BOUNDARY] = createBoundary();
     this[ENTRIES] = [];
+    if (form) {
+      readFormEntries(this, form, submitter);
+    }
   }
 
   append(name, value, filename) {
-    if (filename !== undefined) {
-      this[ENTRIES].push([String(name), toFormDataValue(this, value, filename)]);
-      return;
+    if (filename !== undefined && !(value instanceof Blob)) {
+      throw new TypeError(
+        'Failed to execute "append" on "FormData": parameter 2 is not of type "Blob".',
+      );
     }
-    this[ENTRIES].push([String(name), value]);
+    this[ENTRIES].push([String(name), toFormDataValue(this, value, filename)]);
   }
 
   delete(name) {
@@ -137,12 +142,84 @@ export class FormData {
 }
 
 function toFormDataValue(formData, value, filename) {
-  // File-like objects (with name/type/size) pass through; anything else is
-  // stored as a string, matching the multipart serialization above.
-  if (value !== null && typeof value === "object" && typeof value.name === "string") {
+  if (value instanceof File) {
+    if (filename) {
+      const file = new File([], filename, {
+        type: value.type,
+        lastModified: value.lastModified,
+      });
+      file._buffer = value._buffer;
+      return file;
+    }
     return value;
   }
+  if (value instanceof Blob) {
+    const file = new File([], "blob", { type: value.type });
+    file._buffer = value._buffer;
+    return file;
+  }
   return String(value);
+}
+
+/**
+ * Reads a form's successful controls into the FormData, mirroring the happy-dom
+ * baseline: disabled controls are skipped, file inputs append each selected
+ * file (an empty file input appends an empty octet-stream File), radio /
+ * checkbox inputs append only when checked, and submit buttons append only when
+ * they are the submitter and carry a value. The facade iterates `form.elements`
+ * and reads each control's `name` / `type` / `value` / `checked` / `files`
+ * through the same accessors the tests exercise, so no second form state is
+ * kept here.
+ */
+function readFormEntries(formData, form, submitter) {
+  const elements = form.elements;
+  for (let index = 0, max = elements.length; index < max; index++) {
+    const item = elements[index];
+    const name = item.getAttribute("name");
+    if (!name) continue;
+    const tag = item.nodeName;
+    if (tag === "INPUT") {
+      if (item.disabled) continue;
+      switch (item.type) {
+        case "file": {
+          const files = item.files;
+          if (files && files.length > 0) {
+            // Iterate by index: the T06 FileList proxy only supports `length`
+            // / `item` / numeric reads (no Symbol.iterator), so a `for...of`
+            // would hit the proxy's symbol access.
+            for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+              formData.append(name, files[fileIndex]);
+            }
+          } else {
+            formData.append(name, new File([], "", { type: "application/octet-stream" }));
+          }
+          break;
+        }
+        case "checkbox":
+        case "radio":
+          if (item.checked) {
+            formData.append(name, item.value);
+          }
+          break;
+        case "submit":
+        case "reset":
+        case "button":
+          if (item === submitter && item.value) {
+            formData.append(name, item.value);
+          }
+          break;
+        default:
+          formData.append(name, item.value);
+          break;
+      }
+    } else if (tag === "BUTTON") {
+      if (item === submitter && item.value) {
+        formData.append(name, item.value);
+      }
+    } else {
+      formData.append(name, item.value);
+    }
+  }
 }
 
 // Per-window subclass minted by the accessor (same pattern as fetch.js).

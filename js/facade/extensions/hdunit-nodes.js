@@ -66,11 +66,14 @@ export const seam = Object.freeze({
 });
 
 // DOMException / File: happy-dom tests construct and assert `instanceof` these
-// classes. The facade reuses the Bun / Web host constructors (the same ones
-// `window.DOMException` exposes), so `toThrow(DOMException)` and
-// `new File([], 'name')` match the host surface.
+// classes. `DOMException` reuses the Bun / Web host constructor (the same one
+// `window.DOMException` exposes), so `toThrow(DOMException)` matches the host
+// surface. `File` is the facade `File` (lightweight wave, T08) — the vendored
+// file tests spy on `Date.now()` for the default `lastModified`, which the host
+// `File` does not honor; re-exporting the single facade `File` keeps the nodes
+// wave (`new File([], 'name')` / `input.files`) and the file wave on one class.
 export const DOMException = globalThis.DOMException;
-export const File = globalThis.File;
+export { File } from "./lightweight.js";
 
 // --- per-tag element classes (T06) ------------------------------------------
 

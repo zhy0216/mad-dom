@@ -74,8 +74,12 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
       expect(win.navigator).toBeInstanceOf(Navigator);
       expect(win.localStorage).toBeDefined();
       expect(win.sessionStorage).toBeDefined();
-      expect(win.URL).toBe(globalThis.URL);
       expect(win.DOMException).toBe(globalThis.DOMException);
+      // The facade URL is a subclass of the host constructor; `createObjectURL`
+      // emits the happy-dom `blob:nodedata:` prefix (hdunit lightweight wave).
+      expect(win.URL).toBeInstanceOf(Function);
+      expect(win.URL.prototype).toBeInstanceOf(globalThis.URL);
+      expect(win.URL.createObjectURL(new globalThis.Blob(["x"]))).toMatch(/^blob:nodedata:/);
       win.destroy();
     } finally {
       win.destroy();

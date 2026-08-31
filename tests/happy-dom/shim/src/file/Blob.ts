@@ -2,13 +2,13 @@
 // HDUNIT SHIM — generated file, do not edit by hand.
 // Generator: scripts/generate-happy-dom-shim.mjs (mad-dom hdunit T04)
 // Upstream:  happy-dom v20.11.11 @ 64e2c774cadbb8eda5416c1e2bcca5006d1b5df9 (MIT), src/file/Blob.js
-// Kind:      gap — no mad-dom facade class yet; recorded gap
+// Kind:      facade — facade internal class
 // Rule:      re-export + constructor adaptation ONLY. No DOM behavior is
 //            implemented in this shim (see tests/happy-dom/shim/README.md).
-// GAP: the mad-dom facade provides no binding named `Blob` yet.
-// This shim exists so rewritten imports resolve; the default export is
-// intentionally `undefined` and using it fails with the standard TypeError.
-// Tracked as a known gap for wave triage (T06+); see shim-manifest.json
-// and tests/happy-dom/shim/README.md.
+// The facade implements this class internally but does not export it from the
+// package entry, so the shim re-exports the facade binding directly
+// (reference-equal to the facade's own class). The leading `import "mad-dom"`
+// forces the facade module-init order so the internal module can be read.
 // ─────────────────────────────────────────────────────────────────────────────
-export default undefined;
+import "mad-dom";
+export { Blob as default } from "../../../../../js/facade/extensions/lightweight.js";

@@ -819,6 +819,105 @@ export function install(ctx) {
     }
   });
 
+  // --- constraint-validation reflected attributes ---------------------------
+  //
+  // `pattern` / `max` / `min` / `step` / `maxLength` / `minLength` are
+  // attribute reflections on `input` / `textarea` (happy-dom exposes the same
+  // surface on both tags); the `ValidityState` evaluation reads them through
+  // `getAttribute`, so the property setters must land on the attribute.
+
+  ctx.defineAccessor(Node.prototype, "pattern", function pattern() {
+    const handle = facadeNodeHandle(ctx, this, "pattern");
+    if (!isOneOf(handle, ["input", "textarea"])) return undefined;
+    return handle.getAttribute("pattern");
+  }, function pattern(v) {
+    const handle = facadeNodeHandle(ctx, this, "pattern");
+    if (!isOneOf(handle, ["input", "textarea"])) return;
+    if (v === null || v === undefined) {
+      handle.removeAttribute("pattern");
+    } else {
+      handle.setAttribute("pattern", String(v));
+    }
+  });
+
+  ctx.defineAccessor(Node.prototype, "max", function max() {
+    const handle = facadeNodeHandle(ctx, this, "max");
+    if (!isOneOf(handle, ["input", "textarea"])) return undefined;
+    return handle.getAttribute("max");
+  }, function max(v) {
+    const handle = facadeNodeHandle(ctx, this, "max");
+    if (!isOneOf(handle, ["input", "textarea"])) return;
+    if (v === null || v === undefined) {
+      handle.removeAttribute("max");
+    } else {
+      handle.setAttribute("max", String(v));
+    }
+  });
+
+  ctx.defineAccessor(Node.prototype, "min", function min() {
+    const handle = facadeNodeHandle(ctx, this, "min");
+    if (!isOneOf(handle, ["input", "textarea"])) return undefined;
+    return handle.getAttribute("min");
+  }, function min(v) {
+    const handle = facadeNodeHandle(ctx, this, "min");
+    if (!isOneOf(handle, ["input", "textarea"])) return;
+    if (v === null || v === undefined) {
+      handle.removeAttribute("min");
+    } else {
+      handle.setAttribute("min", String(v));
+    }
+  });
+
+  ctx.defineAccessor(Node.prototype, "step", function step() {
+    const handle = facadeNodeHandle(ctx, this, "step");
+    if (!isOneOf(handle, ["input", "textarea"])) return undefined;
+    return handle.getAttribute("step");
+  }, function step(v) {
+    const handle = facadeNodeHandle(ctx, this, "step");
+    if (!isOneOf(handle, ["input", "textarea"])) return;
+    if (v === null || v === undefined) {
+      handle.removeAttribute("step");
+    } else {
+      handle.setAttribute("step", String(v));
+    }
+  });
+
+  ctx.defineAccessor(Node.prototype, "maxLength", function maxLength() {
+    const handle = facadeNodeHandle(ctx, this, "maxLength");
+    if (!isOneOf(handle, ["input", "textarea"])) return undefined;
+    const value = handle.getAttribute("maxlength");
+    return value === null ? -1 : parseInt(value, 10);
+  }, function maxLength(v) {
+    const handle = facadeNodeHandle(ctx, this, "maxLength");
+    if (!isOneOf(handle, ["input", "textarea"])) return;
+    const value = typeof v === "number" && !Number.isNaN(v) && v >= 0 ? String(Math.floor(v)) : null;
+    if (value === null) {
+      handle.removeAttribute("maxlength");
+    } else {
+      handle.setAttribute("maxlength", value);
+    }
+  });
+
+  ctx.defineAccessor(Node.prototype, "minLength", function minLength() {
+    const handle = facadeNodeHandle(ctx, this, "minLength");
+    if (!isOneOf(handle, ["input", "textarea"])) return undefined;
+    const value = handle.getAttribute("minlength");
+    return value === null ? -1 : parseInt(value, 10);
+  }, function minLength(v) {
+    const handle = facadeNodeHandle(ctx, this, "minLength");
+    if (!isOneOf(handle, ["input", "textarea"])) return;
+    const value = typeof v === "number" && !Number.isNaN(v) && v >= 0 ? String(Math.floor(v)) : null;
+    if (value === null) {
+      handle.removeAttribute("minlength");
+    } else {
+      handle.setAttribute("minlength", value);
+    }
+  });
+
+  // `input.files` is owned by the T06 hdunit-nodes extension (it also backs the
+  // FormData constructor's file inputs via the same `Node.prototype.files`
+  // accessor).
+
   // --- checked / defaultChecked / defaultValue ------------------------------
 
   ctx.defineAccessor(Node.prototype, "checked", function checked() {

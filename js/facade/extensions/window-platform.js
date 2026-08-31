@@ -73,6 +73,8 @@ import { fileURLToPath } from "node:url";
 
 import { Document } from "../document.js";
 import { Window } from "../window.js";
+import { Clipboard, Permissions, URL as FacadeURL } from "./lightweight.js";
+import { disconnectAllObservers } from "./mutation-observer.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/window-platform",
@@ -118,7 +120,9 @@ const HAPPY_DOM_API = Object.freeze({
   },
   async abort() {},
   async cancelAsync() {},
-  async close() {},
+  async close() {
+    disconnectAllObservers();
+  },
 });
 
 // --- Location / History shared state ----------------------------------------
@@ -580,6 +584,9 @@ class PluginArray {
  * APIs, which are outside T45 and land with a later network-surface task.
  */
 export class Navigator {
+  #permissions = null;
+  #clipboard = null;
+
   get cookieEnabled() {
     return true;
   }
@@ -658,11 +665,13 @@ export class Navigator {
   }
 
   get permissions() {
-    return null;
+    this.#permissions ??= new Permissions();
+    return this.#permissions;
   }
 
   get clipboard() {
-    return null;
+    this.#clipboard ??= new Clipboard(this);
+    return this.#clipboard;
   }
 
   get webdriver() {
@@ -1011,8 +1020,11 @@ export function install(ctx) {
 
   // Reuse the Bun / Web standard constructors (calibrated: happy-dom subclasses
   // the same Node WHATWG URL / DOMException, so observable behavior matches).
+  // `window.URL` is the facade URL (a subclass of the host constructor) so the
+  // happy-dom `blob:nodedata:` object-URL prefix works; `DOMException` stays the
+  // host constructor.
   ctx.defineAccessor(Window.prototype, "URL", function getURL() {
-    return globalThis.URL;
+    return FacadeURL;
   }, undefined);
 
   ctx.defineAccessor(Window.prototype, "DOMException", function getDOMException() {
@@ -1025,7 +1037,9 @@ export function install(ctx) {
   // effects scheduled synchronously and through `queueMicrotask` / `Promise`.
   // The per-window instance adds happy-dom's `setURL` (a simulated initial
   // navigation), which the URL-reflecting element accessors (`cite` / `href` /
-  // `src`) resolve against.
+  // `src`) resolve against; `close()` (on the shared `HAPPY_DOM_API`) disconnects
+  // the window's MutationObservers (happy-dom closes a window's observers when
+  // it is closed), then keeps the window usable.
   const HAPPY_DOM_PER_WINDOW = new WeakMap();
   ctx.defineAccessor(Window.prototype, "happyDOM", function getHappyDOM() {
     const windowFacade = this;

@@ -27,6 +27,7 @@
 import * as attributeNodesExtension from "./attribute-nodes.js";
 import * as attributesExtension from "./attributes.js";
 import * as childNodeListExtension from "./child-nodelist.js";
+import * as lightweightExtension from "./lightweight.js";
 import * as cssomExtension from "./cssom.js";
 import * as customElementsExtension from "./custom-elements.js";
 import * as documentWriteExtension from "./document-write.js";
@@ -84,6 +85,7 @@ const EXTENSIONS = [
   treeTraversalExtension,
   windowPlatformExtension,
   mutationObserverExtension,
+  lightweightExtension,
   templateExtension,
   formsExtension,
   rangeSelectionExtension,
