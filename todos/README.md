@@ -55,6 +55,8 @@ runner 用 **bun test**（不是 vitest）：`vi.fn`/`vi.spyOn`/`vi.clearAllMock
 
 - 同时处于 `starting`、`working`、`done-but-not-integrated`、`reviewing` 或 `rebasing` 的任务总数最多为 **5**。
 - 资源不足或没有足够独立的候选时可以少于 5，不为了凑数启动有依赖或明显冲突的任务。
+
+> 注（协调器第二轮补充）：T09 执行中发现 T01 vendor-scan 将 `PropertySymbol.js` 标为可映射而 T04 边界不生成其 shim，导致大量 propertysymbol 依赖文件运行时无法解析，T09 未达「≥8 enabled」阈值。经用户确认，新增 **T12（PropertySymbol 兼容 shim 与启用补扫）**，在 T06–T10 之后、T11 之前执行；T11 依赖相应扩为 `T06–T10, T12`，使收尾的 COVERAGE/报告反映最终 triage 状态。T09 已按「当前基建下的诚实 triage」集成（fetch 2 enabled + AbortSignal facade 修复），其未达阈值部分由 T12 补扫承接。
 - 一个任务完成合并并清理后，立即从队列中选择下一个依赖已满足的候选补位，不等待整批任务结束。
 
 候选波次参考（调度器必须随状态变化重新计算）：
@@ -64,7 +66,8 @@ runner 用 **bun test**（不是 vitest）：`vi.fn`/`vi.spyOn`/`vi.clearAllMock
 | T01             | T02、T03、T04    | 三者通过 T01 冻结的 `vendor-scan.json` 字段契约对接；T02 写 `scripts/` 与 `tests/happy-dom/rewritten/`、T03 写 `tests/happy-dom/adapter/`、T04 写 `tests/happy-dom/shim/`，文件不重叠，可并发 |
 | T02、T03、T04   | T05              | 集成闸门：harness 三件套齐备后才统一定义 triage schema 与门禁；独占 `compat/` ledger/upstream-map schema 扩展 |
 | T05             | T06–T10          | 每波独占自己的子系统目录与 triage 分片文件，互不重叠，可并发（正好填满 5 窗口） |
-| T06–T10         | T11              | 收尾独占 CI、报告、README/docs 与发布面                                    |
+| T06–T10         | T12              | PropertySymbol 契约补口：补 shim + 构造适配，重新 triage propertysymbol 文件（依赖 T06–T10 已定稿的 triage 基线，避免分片冲突） |
+| T06–T10、T12    | T11              | 收尾独占 CI、报告、README/docs 与发布面                                    |
 
 ### Worktree 与 agent
 
@@ -177,7 +180,8 @@ git diff --check
 | 08 | P1 | [08-hdunit-lightweight-wave.md](08-hdunit-lightweight-wave.md) | 波次 | T05 | 待办 |
 | 09 | P1 | [09-hdunit-css-fetch-wave.md](09-hdunit-css-fetch-wave.md) | 波次 | T05 | 待办 |
 | 10 | P1 | [10-hdunit-internal-coupled-triage.md](10-hdunit-internal-coupled-triage.md) | 波次 | T05 | 待办 |
-| 11 | P2 | [11-hdunit-closeout.md](11-hdunit-closeout.md) | 收尾 | T06, T07, T08, T09, T10 | 待办 |
+| 12 | P1 | [12-hdunit-propertysymbol-shim.md](12-hdunit-propertysymbol-shim.md) | 波次 | T06, T07, T08, T09, T10 | 待办 |
+| 11 | P2 | [11-hdunit-closeout.md](11-hdunit-closeout.md) | 收尾 | T06, T07, T08, T09, T10, T12 | 待办 |
 
 ## 优先级含义
 
