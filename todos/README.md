@@ -179,7 +179,7 @@ git diff --check
 | 07 | P1 | [07-hdunit-event-dom-window-browser-wave.md](done/07-hdunit-event-dom-window-browser-wave.md) | 波次 | T05 | 已完成 |
 | 08 | P1 | [08-hdunit-lightweight-wave.md](08-hdunit-lightweight-wave.md) | 波次 | T05 | 待办 |
 | 09 | P1 | [09-hdunit-css-fetch-wave.md](09-hdunit-css-fetch-wave.md) | 波次 | T05 | 待办 |
-| 10 | P1 | [10-hdunit-internal-coupled-triage.md](10-hdunit-internal-coupled-triage.md) | 波次 | T05 | 待办 |
+| 10 | P1 | [10-hdunit-internal-coupled-triage.md](done/10-hdunit-internal-coupled-triage.md) | 波次 | T05 | 已完成 |
 | 12 | P1 | [12-hdunit-propertysymbol-shim.md](12-hdunit-propertysymbol-shim.md) | 波次 | T06, T07, T08, T09, T10 | 待办 |
 | 11 | P2 | [11-hdunit-closeout.md](11-hdunit-closeout.md) | 收尾 | T06, T07, T08, T09, T10, T12 | 待办 |
 
