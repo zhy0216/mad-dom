@@ -129,6 +129,10 @@ const BUTTON_TYPES = ["submit", "reset", "button", "menu"];
 const FORM_ELEMENTS = new WeakMap();
 const SELECT_OPTIONS = new WeakMap();
 const SELECTED_OPTIONS = new WeakMap();
+// Reverse map: `select.options` collection → the owning `select` wrapper, so
+// the `selectedIndex` accessor on the collection can delegate to the select's
+// native selection surface (happy-dom HTMLOptionsCollection.selectedIndex).
+const OPTIONS_OWNER_SELECT = new WeakMap();
 
 // Per-collection live read (a fresh array of node wrappers each access),
 // keyed by the live collection proxy (its prototype methods receive the proxy
@@ -252,6 +256,7 @@ function selectOptionsOf(ctx, select) {
     handle.getElementsByTagName("option").map((item) => ctx.wrap(item)),
   );
   SELECT_OPTIONS.set(select, collection);
+  OPTIONS_OWNER_SELECT.set(collection, select);
   return collection;
 }
 
@@ -616,6 +621,59 @@ export function install(ctx) {
   // The shared live-collection prototype surface for the form collections.
   installCollectionPrototype(ctx, HTMLFormControlsCollection);
   installCollectionPrototype(ctx, HTMLOptionsCollection);
+
+  // `select.options.selectedIndex` (happy-dom HTMLOptionsCollection): delegates
+  // to the owning select's native selection surface.
+  ctx.defineAccessor(HTMLOptionsCollection.prototype, "selectedIndex", function selectedIndex() {
+    const select = OPTIONS_OWNER_SELECT.get(this);
+    if (select === undefined) return -1;
+    return select.selectedIndex;
+  }, function selectedIndex(v) {
+    const select = OPTIONS_OWNER_SELECT.get(this);
+    if (select === undefined) return;
+    select.selectedIndex = v;
+  });
+
+  // `select.options.add(option, before?)` — append or insert an option;
+  // `before` may be an index or an element. A `before` element that is not in
+  // the collection throws a NotFoundError DOMException (happy-dom parity).
+  ctx.defineMethod(HTMLOptionsCollection.prototype, "add", function add(option, before) {
+    const select = OPTIONS_OWNER_SELECT.get(this);
+    if (select === undefined) return;
+    const items = readItems(this);
+    let beforeNode;
+    if (typeof before === "number") {
+      beforeNode = items[Number(before)];
+    } else if (before !== undefined && before !== null) {
+      beforeNode = before;
+      if (!items.includes(beforeNode)) {
+        throw new DOMException(
+          "Failed to execute 'add' on 'HTMLOptionsCollection': The node before which the new node is to be inserted is not a child of this node.",
+          "NotFoundError",
+        );
+      }
+    }
+    if (beforeNode === undefined) {
+      select.appendChild(option);
+    } else {
+      select.insertBefore(option, beforeNode);
+    }
+  });
+
+  // `select.options.remove(index)` — remove the option at `index`. When the
+  // removed option was the selected one, the select re-selects the first
+  // remaining option (happy-dom parity).
+  ctx.defineMethod(HTMLOptionsCollection.prototype, "remove", function remove(index) {
+    const select = OPTIONS_OWNER_SELECT.get(this);
+    if (select === undefined) return;
+    const items = readItems(this);
+    const item = items[Number(index)];
+    if (item === undefined) return;
+    item.remove();
+    if (select.selectedIndex === -1 && readItems(this).length > 0) {
+      select.selectedIndex = 0;
+    }
+  });
 
   // `Node.isConnected` — the native T39 read behind the checkbox/radio
   // input/change rule and general DOM usage.

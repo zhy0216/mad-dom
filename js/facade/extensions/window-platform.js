@@ -1023,8 +1023,24 @@ export function install(ctx) {
   // exposes for test-driving a window. `waitUntilComplete()` resolves after the
   // current microtask checkpoint, so a caller awaiting it observes the DOM
   // effects scheduled synchronously and through `queueMicrotask` / `Promise`.
+  // The per-window instance adds happy-dom's `setURL` (a simulated initial
+  // navigation), which the URL-reflecting element accessors (`cite` / `href` /
+  // `src`) resolve against.
+  const HAPPY_DOM_PER_WINDOW = new WeakMap();
   ctx.defineAccessor(Window.prototype, "happyDOM", function getHappyDOM() {
-    return HAPPY_DOM_API;
+    const windowFacade = this;
+    let api = HAPPY_DOM_PER_WINDOW.get(windowFacade);
+    if (api === undefined) {
+      api = {
+        ...HAPPY_DOM_API,
+        setURL(url) {
+          windowFacade.location.href = String(url);
+        },
+      };
+      Object.freeze(api);
+      HAPPY_DOM_PER_WINDOW.set(windowFacade, api);
+    }
+    return api;
   }, undefined);
 
   // Document surface.

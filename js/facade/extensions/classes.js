@@ -60,6 +60,15 @@ export class Node {
     }
     NODE_HANDLES.set(this, nativeHandle);
   }
+
+  // happy-dom Node returns `[object <ConstructorName>]` from
+  // `Object.prototype.toString` (upstream: `get [Symbol.toStringTag]() { return
+  // this.constructor.name; }`). Element / Text / Comment / DocumentFragment all
+  // inherit this through their own direct classes, so the string tag always
+  // names the concrete WHATWG class.
+  get [Symbol.toStringTag]() {
+    return this.constructor.name;
+  }
 }
 
 // The mint slot the T42 registry stashes on a defined custom-element class
@@ -134,6 +143,34 @@ export class Element extends Node {
  */
 export class DocumentFragment extends Node {}
 
+/**
+ * `CharacterData` facade base class (hdunit nodes wave).
+ *
+ * The WHATWG base for `Text` / `Comment` / `ProcessingInstruction`. Text and
+ * Comment are genuine classes below `Node` (matching happy-dom), so the
+ * per-node `data` surface and `nodeName` are defined once here and the wrapper
+ * factory below selects them per native node type.
+ */
+export class CharacterData extends Node {}
+
+/**
+ * `Text` facade class (hdunit nodes wave).
+ *
+ * Created natively by `createText` and the HTML parser; `new window.Text(data)`
+ * mints a detached text node through the window's document (per-window
+ * subclass installed by the hdunit-nodes extension).
+ */
+export class Text extends CharacterData {}
+
+/**
+ * `Comment` facade class (hdunit nodes wave).
+ *
+ * Created natively by `createComment` and the HTML parser; `new
+ * window.Comment(data)` mints a detached comment node through the window's
+ * document (per-window subclass installed by the hdunit-nodes extension).
+ */
+export class Comment extends CharacterData {}
+
 /** The native handle behind a wrapper (the reverse of `ctx.wrap`). */
 export function nodeHandleOf(wrapper) {
   return NODE_HANDLES.get(wrapper);
@@ -156,7 +193,8 @@ export function elementClassFor(handle) {
 /**
  * The `NodeHandle` wrapper factory: selects the direct prototype per node kind
  * — per-tag classes for elements (T48A), the `DocumentFragment` class for
- * fragments and the base `Node` for Text / Comment / ProcessingInstruction.
+ * fragments, `Text` / `Comment` / `CharacterData` for character-data nodes and
+ * the base `Node` for everything else.
  */
 export function createNodeWrapper(handle) {
   const nodeType = handle.nodeType();
@@ -165,6 +203,15 @@ export function createNodeWrapper(handle) {
   }
   if (nodeType === 11) {
     return new DocumentFragment(handle);
+  }
+  if (nodeType === 3) {
+    return new Text(handle);
+  }
+  if (nodeType === 8) {
+    return new Comment(handle);
+  }
+  if (nodeType === 4) {
+    return new CharacterData(handle);
   }
   return new Node(handle);
 }

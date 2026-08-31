@@ -55,7 +55,7 @@
 //! affinity guard before touching any Core state, matching the crate safety
 //! model (no `unsafe` is written here; FFI stays inside the `napi` crates).
 
-use napi::bindgen_prelude::{JavaScriptClassExt, Reference};
+use napi::bindgen_prelude::Reference;
 use napi::Env;
 use napi_derive::napi;
 
@@ -127,6 +127,9 @@ impl WindowHandle {
 #[allow(dead_code)]
 pub fn create_window(env: Env) -> napi::Result<WindowHandle> {
     let document = DocumentHandle::new();
-    let document = document.into_reference(env)?;
+    // Mint the document wrapper through the per-document cache so
+    // `window.document()` and every `NodeHandle.owner_document()` share the
+    // same JS document object (stable identity).
+    let document = document.shared().wrap_document(env)?;
     Ok(WindowHandle { document })
 }

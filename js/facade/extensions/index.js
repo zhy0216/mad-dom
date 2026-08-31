@@ -54,6 +54,7 @@ import * as xhrExtension from "./xhr.js";
 import * as browserExtension from "./browser.js";
 import * as domGeometryExtension from "./dom-geometry.js";
 import * as dndExtension from "./dnd.js";
+import * as hdunitNodesExtension from "./hdunit-nodes.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/index",
@@ -93,6 +94,7 @@ const EXTENSIONS = [
   browserExtension,
   domGeometryExtension,
   dndExtension,
+  hdunitNodesExtension,
 ];
 
 /**

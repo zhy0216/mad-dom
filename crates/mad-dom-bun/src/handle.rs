@@ -140,6 +140,12 @@ impl Drop for LiveDocument {
 pub(crate) struct SharedDocument {
     document: Mutex<Option<LiveDocument>>,
     wrappers: Mutex<HashMap<NodeId, WeakReference<NodeHandle>>>,
+    /// The single JS `DocumentHandle` wrapper minted for this document, held
+    /// weakly. `window.document()` and `NodeHandle.owner_document()` both
+    /// resolve through [`SharedDocument::wrap_document`], so every route hands
+    /// back the same JS document object (stable `document ===
+    /// node.ownerDocument` identity) while the wrapper stays alive.
+    document_wrapper: Mutex<Option<WeakReference<DocumentHandle>>>,
     /// The immutable T21B affinity token minted exactly once when this
     /// document was created. Every native entry checks the current call
     /// against it ([`check_affinity`]) before delegating to Core, so a call
@@ -199,6 +205,36 @@ impl SharedDocument {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .insert(id, reference.downgrade());
+        Ok(reference)
+    }
+
+    /// Returns the single JS `DocumentHandle` wrapper for this document,
+    /// minting and caching it weakly on a miss.
+    ///
+    /// Every route that hands the document to JavaScript — the window
+    /// (`WindowHandle.document`) and any node (`NodeHandle.owner_document`) —
+    /// goes through this point, so the same native handle object is returned
+    /// on every read while it stays alive. Like `wrap_node`, the cache is
+    /// weak: once the wrapper's finalizer runs, the next miss mints a fresh
+    /// wrapper.
+    pub(crate) fn wrap_document(
+        self: &Arc<Self>,
+        env: Env,
+    ) -> napi::Result<Reference<DocumentHandle>> {
+        let mut guard = self
+            .document_wrapper
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(weak) = guard.as_ref() {
+            if let Some(reference) = weak.upgrade(env)? {
+                return Ok(reference);
+            }
+        }
+        let reference = DocumentHandle {
+            shared: Arc::clone(self),
+        }
+        .into_reference(env)?;
+        *guard = Some(reference.downgrade());
         Ok(reference)
     }
 }
@@ -294,6 +330,7 @@ impl DocumentHandle {
                     document: Document::new(),
                 })),
                 wrappers: Mutex::new(HashMap::new()),
+                document_wrapper: Mutex::new(None),
                 affinity: AffinityToken::create(),
             }),
         }
@@ -769,6 +806,18 @@ impl NodeHandle {
         ids.iter()
             .map(|id| self.shared.wrap_node(env, *id))
             .collect()
+    }
+
+    /// Returns the owning document of this node.
+    ///
+    /// Resolves through [`SharedDocument::wrap_document`], so every node of a
+    /// document hands back the same JS `DocumentHandle` the window exposes
+    /// (`node.ownerDocument() === window.document()` identity, matching
+    /// happy-dom). Works for detached nodes too.
+    #[napi(catch_unwind)]
+    pub fn owner_document(&self, env: Env) -> napi::Result<Reference<DocumentHandle>> {
+        check_affinity(&self.shared, &env)?;
+        self.shared.wrap_document(env)
     }
 }
 

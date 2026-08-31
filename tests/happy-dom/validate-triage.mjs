@@ -224,7 +224,14 @@ export function summarizeSplits(documents) {
     if (!Array.isArray(doc.entries)) continue;
     const counts = { enabled: 0, expectedFail: 0, skip: 0 };
     for (const entry of doc.entries) {
-      if (Object.hasOwn(counts, entry.status)) counts[entry.status] += 1;
+      // Triage status values use the kebab form `expected-fail` (see
+      // TRIAGE_STATUSES) while the count key is the ledger field
+      // `expectedFail`; map the two so the split counts stay in sync.
+      if (entry.status === TRIAGE_STATUSES.EXPECTED_FAIL) {
+        counts.expectedFail += 1;
+      } else if (Object.hasOwn(counts, entry.status)) {
+        counts[entry.status] += 1;
+      }
     }
     counts.total = doc.entries.length;
     bySubsystem[subsystem] = counts;

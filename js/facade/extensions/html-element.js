@@ -504,10 +504,12 @@ export function install(ctx) {
 
   // Base interaction: click dispatches a bubbling click Event; focus / blur
   // sequence the active element through the native contract and dispatch the
-  // focusin/focus/focusout/blur events in the happy-dom order.
+  // focusin/focus/focusout/blur events in the happy-dom order. The `click`
+  // property is configurable so the hdunit nodes wave can layer the
+  // HTMLDetailsElement summary-toggle default action on top (T06).
   ctx.defineMethod(HTMLElement.prototype, "click", function click() {
     this.dispatchEvent(new Event("click", { bubbles: true, cancelable: true, composed: true }));
-  });
+  }, { configurable: true });
 
   ctx.defineMethod(HTMLElement.prototype, "focus", function focus() {
     const handle = facadeNodeHandle(ctx, this, "focus");
