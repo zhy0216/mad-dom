@@ -170,7 +170,7 @@ git diff --check
 | 01 | P0 | [01-happy-dom-unit-vendor.md](done/01-happy-dom-unit-vendor.md) | 基建 | 无 | 已完成 |
 | 02 | P0 | [02-happy-dom-unit-rewrite.md](02-happy-dom-unit-rewrite.md) | 基建 | T01 | 待办 |
 | 03 | P0 | [03-happy-dom-unit-bun-adapter.md](03-happy-dom-unit-bun-adapter.md) | 基建 | T01 | 待办 |
-| 04 | P0 | [04-happy-dom-unit-shim.md](04-happy-dom-unit-shim.md) | 基建 | T01 | 待办 |
+| 04 | P0 | [04-happy-dom-unit-shim.md](done/04-happy-dom-unit-shim.md) | 基建 | T01 | 已完成 |
 | 05 | P0 | [05-hdunit-triage-ledger-gate.md](05-hdunit-triage-ledger-gate.md) | 基建 | T02, T03, T04 | 待办 |
 | 06 | P1 | [06-hdunit-nodes-wave.md](06-hdunit-nodes-wave.md) | 波次 | T05 | 待办 |
 | 07 | P1 | [07-hdunit-event-dom-window-browser-wave.md](07-hdunit-event-dom-window-browser-wave.md) | 波次 | T05 | 待办 |
