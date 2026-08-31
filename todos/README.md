@@ -240,13 +240,13 @@ git diff --check
 | 46  | P2  | [46-fetch-and-network-surface.md](done/46-fetch-and-network-surface.md)                         | M8    | T38, T45                                                                                      | 已完成  |
 | 47  | P2  | [47-timers-and-script-execution.md](done/47-timers-and-script-execution.md)                     | M8    | T37, T41, T42, T46                                                                            | 已完成  |
 | 48  | P2  | [48-compatibility-closure-and-wpt.md](done/48-compatibility-closure-and-wpt.md)                 | M8/M9 | T11, T25, T29, T32, T33, T34, T35, T36, T37, T38, T39, T40, T41, T42, T43, T44, T45, T46, T47 | 已完成  |
-| 48A | P2  | [48a-element-class-hierarchy.md](48a-element-class-hierarchy.md)                                | M9    | T48                                                                                           | 部分完成 |
+| 48A | P2 | [48a-element-class-hierarchy.md](done/48a-element-class-hierarchy.md)                 | M9    | T48                                                                                           | 已完成  |
 | 48B | P2  | [48b-error-taxonomy-and-validation-parity.md](done/48b-error-taxonomy-and-validation-parity.md) | M9    | T48, T48A                                                                                     | 已完成  |
 | 48C | P2  | [48c-form-constraint-validation.md](done/48c-form-constraint-validation.md)                     | M9    | T48                                                                                           | 已完成  |
 | 48D | P2  | [48d-custom-element-upgrade-parity.md](done/48d-custom-element-upgrade-parity.md)               | M9    | T48, T48A                                                                                     | 已完成  |
 | 48E | P2  | [48e-entry-shape-alignment.md](done/48e-entry-shape-alignment.md)                               | M9    | T48                                                                                           | 已完成  |
-| 49  | P2  | [49-native-packaging-and-artifacts.md](49-native-packaging-and-artifacts.md)                    | M9    | T06, T21, T48                                                                                 | 部分完成 |
-| 50  | P2  | [50-hardening-and-stable-release.md](50-hardening-and-stable-release.md)                        | M9    | T18, T20, T21, T48, T49                                                                       | 已完成  |
+| 49  | P2 | [49-native-packaging-and-artifacts.md](done/49-native-packaging-and-artifacts.md)              | M9    | T06, T21, T48                                                                                 | 已完成  |
+| 50  | P2 | [50-hardening-and-stable-release.md](done/50-hardening-and-stable-release.md)                  | M9    | T18, T20, T21, T48, T49                                                                       | 已完成  |
 
 
 ## 优先级含义

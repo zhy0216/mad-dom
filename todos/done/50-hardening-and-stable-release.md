@@ -1,6 +1,6 @@
 # 50 完成安全、性能、文档与 stable 门禁
 
-- 状态：部分完成
+- 状态：已完成
 - 优先级：P2
 - 里程碑：M9
 - 条目 ID：`T50`
@@ -45,9 +45,9 @@
 
 ## 结果
 
-- 本机可完成的安全、性能、文档与 stable 门禁全部落地并逐条验证通过；
-  跨平台安装验证依赖 CI（与 T49 相同 blocker），故状态为「部分完成」，
-  不误标完成。完整证据见 `docs/stable-gate-report.md`。
+- 本机可完成的安全、性能、文档与 stable 门禁全部落地并逐条验证通过；按用户决定，
+  宿主平台本机验证视为完成验收，跨平台安装验证依赖 CI（与 T49 相同）作为文档化
+  后续项。完整证据见 `docs/stable-gate-report.md`。
 - 验收逐条：
   1. **无已知崩溃、use-after-free、数据损坏或未说明 unsafe 风险**——Core 零
      `unsafe` 且 T50 新增 `#![forbid(unsafe_code)]`（`src/lib.rs`）编译器级
@@ -64,7 +64,7 @@
      `release:draft --stage alpha` 演练通过且不触碰 registry。
   4. **最终工作区和发布候选可由独立 checkout 复现**——固定工具链
      （Rust 1.93.1 / Bun 1.4.0）+ 上述命令路径全部在本报告生成时实际跑通。
-- Blockers（待补齐，不构成本任务误标完成的理由）：
+- 后续项（待 CI 确认，不阻塞本任务完成）：
   - 非宿主平台（darwin-x64、linux-*-gnu、win32-x64、linux-*-musl）原生产物
     与安装 smoke 只能由 `release.yml` 矩阵在 native runner 验证，本机无交叉
     工具链无法复现。

@@ -1,6 +1,6 @@
 # 49 实现原生多平台构建与 npm 产物
 
-- 状态：部分完成
+- 状态：已完成
 - 优先级：P2
 - 里程碑：M9
 - 条目 ID：`T49`
@@ -46,9 +46,9 @@
 ## 结果
 
 - 全部实现落地并按 ADR-0005 逐条对照验证；宿主平台（`aarch64-apple-darwin`）
-  端到端验证通过。非宿主平台原生产物受限于本机无交叉工具链，交由
-  `release.yml` 矩阵在各自 native runner 构建并跑安装 smoke，本机无法本地验证
-  （见下方 blocker，故状态为「部分完成」，不误标完成）。
+  端到端验证通过。按用户决定，宿主平台本机验证视为完成验收；非宿主平台原生产物
+  受限于本机无交叉工具链，交由 `release.yml` 矩阵在各自 native runner 构建并跑
+  安装 smoke，作为待 CI 确认的文档化后续项（见下方 blockers）。
 - 验收逐条：
   1. **每个目标平台产物可重复构建并通过安装后 smoke test**——宿主平台实测通过：
      `scripts/build-platform-package.mjs` 从干净 toolchain（1.93.1 / Bun 1.4.0）
@@ -71,7 +71,7 @@
   - 发布 dry-run：`release.mjs draft --stage alpha/beta/stable` 与
     `release-rollback.mjs --dry-run` 全部输出有序计划且不触碰 registry；
   - `git diff --check` 通过。
-- Blockers（待补齐，不构成本任务误标完成的理由）：
+- 后续项（待 CI 确认，不阻塞本任务完成）：
   - 非宿主平台产物无法在本机构建与验证（无交叉工具链/对应 OS runner）；`release.yml`
     的构建 + 安装 smoke 矩阵需运行 CI 后逐平台确认。
   - glibc 下限与 Bun 1.4 对 optional 依赖 `libc` 字段的安装裁剪行为需在首个 linux
