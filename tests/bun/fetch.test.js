@@ -387,6 +387,38 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
     }
   });
 
+  test("AbortSignal addEventListener honours the signal option (T09)", () => {
+    const win = new Window();
+    try {
+      const controller = new win.AbortController();
+      const callbackController = new win.AbortController();
+      const signal = controller.signal;
+      let calls = 0;
+      const listener = () => {
+        calls += 1;
+      };
+      // The listener is registered against a live signal...
+      signal.addEventListener("abort", listener, { signal: callbackController.signal });
+      // ...and removed as soon as that signal aborts, so the abort below never
+      // reaches it (happy-dom baseline, exercised by fetch/AbortController.test.ts).
+      callbackController.abort();
+      controller.abort();
+      expect(signal.aborted).toBe(true);
+      expect(calls).toBe(0);
+
+      // An already-aborted signal removes the listener immediately.
+      const preAborted = win.AbortSignal.abort("pre");
+      let preCalls = 0;
+      signal.addEventListener("abort", () => {
+        preCalls += 1;
+      }, { signal: preAborted });
+      controller.abort("again");
+      expect(preCalls).toBe(0);
+    } finally {
+      win.destroy();
+    }
+  });
+
   test("window.fetch succeeds offline on data: URLs (status, headers, text)", async () => {
     const win = new Window();
     try {

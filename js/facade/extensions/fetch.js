@@ -829,7 +829,23 @@ class AbortEventTarget {
       this[LISTENERS].set(type, listeners);
     }
     if (!listeners.includes(listener)) {
-      listeners.push({ listener, once: Boolean(options?.once) });
+      const entry = { listener, once: Boolean(options?.once) };
+      listeners.push(entry);
+      // The `signal` option (happy-dom baseline): when the given signal aborts,
+      // the listener is removed before it can fire — an already-aborted signal
+      // removes it immediately (mirrors the Node/Document EventTarget facade).
+      const signal = options?.signal;
+      if (signal && typeof signal.addEventListener === "function") {
+        if (signal.aborted) {
+          this.removeEventListener(type, listener);
+        } else {
+          const onAbort = () => {
+            signal.removeEventListener("abort", onAbort);
+            this.removeEventListener(type, listener);
+          };
+          signal.addEventListener("abort", onAbort);
+        }
+      }
     }
   }
 
