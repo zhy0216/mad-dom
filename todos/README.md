@@ -171,7 +171,7 @@ git diff --check
 | 02 | P0 | [02-happy-dom-unit-rewrite.md](done/02-happy-dom-unit-rewrite.md) | 基建 | T01 | 已完成 |
 | 03 | P0 | [03-happy-dom-unit-bun-adapter.md](done/03-happy-dom-unit-bun-adapter.md) | 基建 | T01 | 已完成 |
 | 04 | P0 | [04-happy-dom-unit-shim.md](done/04-happy-dom-unit-shim.md) | 基建 | T01 | 已完成 |
-| 05 | P0 | [05-hdunit-triage-ledger-gate.md](05-hdunit-triage-ledger-gate.md) | 基建 | T02, T03, T04 | 待办 |
+| 05 | P0 | [05-hdunit-triage-ledger-gate.md](done/05-hdunit-triage-ledger-gate.md) | 基建 | T02, T03, T04 | 已完成 |
 | 06 | P1 | [06-hdunit-nodes-wave.md](06-hdunit-nodes-wave.md) | 波次 | T05 | 待办 |
 | 07 | P1 | [07-hdunit-event-dom-window-browser-wave.md](07-hdunit-event-dom-window-browser-wave.md) | 波次 | T05 | 待办 |
 | 08 | P1 | [08-hdunit-lightweight-wave.md](08-hdunit-lightweight-wave.md) | 波次 | T05 | 待办 |
