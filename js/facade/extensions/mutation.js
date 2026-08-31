@@ -14,13 +14,10 @@
 // forwarded to the audited T24A/T24B `DocumentHandle` methods, and return
 // values are canonicalized through the same `ctx.wrap` conversion entry.
 
-import { createRequire } from "node:module";
-import { isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { Document } from "../document.js";
 import { Node } from "./node.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
+import { loadNative } from "../../native-loader.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/mutation",
@@ -33,37 +30,8 @@ export const seam = Object.freeze({
 
 // Mutation methods are already exported by the audited native binding. Keep
 // their lookup lazy so importing the facade (and running structural tests) does
-// not require a locally built `.node` artifact.
-let native = null;
-let nativeLoadError = null;
-
-function resolveNativePath() {
-  const explicit = process.env.MAD_DOM_NATIVE_PATH;
-  if (explicit) return isAbsolute(explicit) ? explicit : resolve(process.cwd(), explicit);
-  return fileURLToPath(new URL("../../../build/mad-dom.node", import.meta.url));
-}
-
-function loadNative() {
-  if (native !== null) return native;
-  if (nativeLoadError !== null) throw nativeLoadError;
-
-  const path = resolveNativePath();
-  const require = createRequire(import.meta.url);
-  try {
-    native = require(path);
-    return native;
-  } catch (error) {
-    nativeLoadError = new Error(
-      `mad-dom native binding could not be loaded from ${path}. ` +
-        "Build it with `npm run dev:build` in a source checkout, or point " +
-        "MAD_DOM_NATIVE_PATH at a built artifact. " +
-        `Original error: ${error?.message ?? error}`,
-      { cause: error },
-    );
-    nativeLoadError.code = "MAD_DOM_NATIVE_NOT_FOUND";
-    throw nativeLoadError;
-  }
-}
+// not require a locally built `.node` artifact; the resolution chain is owned
+// by js/native-loader.js (ADR-0005 §3/§6/§8/§9).
 
 function isNativeNodeHandle(handle) {
   return (

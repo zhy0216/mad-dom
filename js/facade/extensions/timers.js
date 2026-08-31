@@ -148,7 +148,7 @@ export class ErrorEvent {
  * dispatch is a silent no-op, so a throwing async callback is contained and
  * never becomes an uncaught host error — exactly like the baseline.
  */
-function dispatchWindowError(windowFacade, error) {
+export function dispatchWindowError(windowFacade, error) {
   const docHandle = ctx.documentContext.handleOf(windowFacade.document);
   const state = WINDOW_ASYNC.get(docHandle);
   if (state === undefined) return;
@@ -259,8 +259,68 @@ function scheduleAnimationFrame(windowFacade, callback) {
  * errors propagate synchronously to the caller. `node:vm` creates no separate
  * event loop — it is plain script evaluation, within the T47 boundary.
  */
+// The window self-reference names happy-dom resolves to the window global
+// object itself (so `this === window` / `this === globalThis` hold in scripts).
+const WINDOW_SELF_NAMES = ["window", "self", "globalThis", "top", "parent"];
+
+// Collects every member of the window surface: own + inherited enumerable
+// string properties of the facade (Window.prototype chain + the instance).
+function windowSurfaceDescriptors(windowFacade) {
+  const descriptors = new Map();
+  let target = windowFacade;
+  const seen = new Set();
+  while (target !== null && target !== Object.prototype) {
+    for (const name of Object.getOwnPropertyNames(target)) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const descriptor = Object.getOwnPropertyDescriptor(target, name);
+      if (descriptor !== undefined) descriptors.set(name, descriptor);
+    }
+    target = Object.getPrototypeOf(target);
+  }
+  return descriptors;
+}
+
+// A window surface member as a context-global descriptor that always evaluates
+// against the real window facade (`this`-insensitive): functions are bound, so
+// a bare global call (`addEventListener(…)`) still runs with the facade as
+// `this`; accessors are re-wrapped to invoke the original getter/setter with
+// the facade, so identity-keyed lookups (WIN_HANDLES / DOC_TO_WINDOW) resolve.
+function contextGlobalDescriptor(windowFacade, name, descriptor) {
+  if ("value" in descriptor) {
+    const value =
+      typeof descriptor.value === "function" ? descriptor.value.bind(windowFacade) : descriptor.value;
+    return { value, writable: true, enumerable: true, configurable: true };
+  }
+  return {
+    get: descriptor.get === undefined ? undefined : () => descriptor.get.call(windowFacade),
+    set: descriptor.set === undefined ? undefined : (value) => descriptor.set.call(windowFacade, value),
+    enumerable: true,
+    configurable: true,
+  };
+}
+
 function createWindowEval(windowFacade) {
-  const context = createContext(windowFacade);
+  // Build an explicit global object for the script context instead of handing
+  // the facade directly to `vm.createContext`: Bun's VM gives *undefined* as
+  // `this` for a bare global call (`addEventListener(…)`), while `this`
+  // itself *is* the contextified sandbox object. Binding the window surface
+  // to the facade keeps every method `this`-insensitive; the self-references
+  // point at the sandbox so `this === window` / `this === globalThis` hold.
+  const globalObject = {};
+  const context = createContext(globalObject);
+  for (const name of WINDOW_SELF_NAMES) {
+    Object.defineProperty(globalObject, name, {
+      value: globalObject,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  for (const [name, descriptor] of windowSurfaceDescriptors(windowFacade)) {
+    if (WINDOW_SELF_NAMES.includes(name)) continue;
+    Object.defineProperty(globalObject, name, contextGlobalDescriptor(windowFacade, name, descriptor));
+  }
   return (code) => runInContext(String(code), context);
 }
 

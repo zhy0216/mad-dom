@@ -51,6 +51,7 @@ import { Buffer } from "node:buffer";
 
 import { Window } from "../window.js";
 import { fetchCookieJar } from "./window-platform.js";
+import { isFormData, serializeFormData } from "./form-data.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/fetch",
@@ -182,6 +183,15 @@ function getBodyStream(body) {
   }
   if (body instanceof ReadableStream) {
     return { buffer: null, stream: { readableStream: body }, contentType: null, contentLength: null };
+  }
+  if (isFormData(body)) {
+    const { buffer, contentType } = serializeFormData(body);
+    return {
+      buffer,
+      stream: bufferStream(buffer),
+      contentType,
+      contentLength: buffer.length,
+    };
   }
   const buffer = Buffer.from(String(body));
   return {

@@ -29,9 +29,11 @@ import * as attributesExtension from "./attributes.js";
 import * as childNodeListExtension from "./child-nodelist.js";
 import * as cssomExtension from "./cssom.js";
 import * as customElementsExtension from "./custom-elements.js";
+import * as documentWriteExtension from "./document-write.js";
 import * as eventsExtension from "./events.js";
 import * as extendedNodesExtension from "./extended-nodes.js";
 import * as fetchExtension from "./fetch.js";
+import * as formDataExtension from "./form-data.js";
 import * as formsExtension from "./forms.js";
 import * as htmlElementExtension from "./html-element.js";
 import * as htmlExtension from "./html.js";
@@ -46,7 +48,9 @@ import * as templateExtension from "./template.js";
 import * as textContentExtension from "./text-content.js";
 import * as timersExtension from "./timers.js";
 import * as treeTraversalExtension from "./tree-traversal.js";
+import * as webSocketExtension from "./web-socket.js";
 import * as windowPlatformExtension from "./window-platform.js";
+import * as xhrExtension from "./xhr.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/index",
@@ -63,11 +67,13 @@ const EXTENSIONS = [
   childNodeListExtension,
   cssomExtension,
   customElementsExtension,
+  documentWriteExtension,
   htmlExtension,
   queryExtension,
   liveCollectionsExtension,
   extendedNodesExtension,
   fetchExtension,
+  formDataExtension,
   eventsExtension,
   attributeNodesExtension,
   htmlElementExtension,
@@ -79,6 +85,8 @@ const EXTENSIONS = [
   rangeSelectionExtension,
   shadowDomExtension,
   timersExtension,
+  webSocketExtension,
+  xhrExtension,
 ];
 
 /**

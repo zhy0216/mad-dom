@@ -84,7 +84,6 @@ function tarballName(pkgName, version) {
 }
 
 function packPackage(pkgDir, version, outDir, pkgName) {
-  rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
   run("npm", ["pack", pkgDir, "--pack-destination", outDir, "--json"], { silent: true });
   return join(outDir, tarballName(pkgName, version));

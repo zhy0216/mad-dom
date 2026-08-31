@@ -157,6 +157,7 @@ const ctx = Object.freeze({
   documentContext,
   registerHandleType,
   registerWrap,
+  windowFacadeOfDocument,
 });
 
 // --- `Window` facade -------------------------------------------------------
@@ -173,6 +174,25 @@ function isWindowHandle(handle) {
 // Native handle behind each Window facade (the document's ownership lives in
 // the native window handle itself).
 const WIN_HANDLES = new WeakMap();
+
+// Document facade → owning Window facade, held as a WeakRef value. A document
+// has no native back-pointer to its window, so the `document` accessor keeps
+// this reverse mapping for the document-side surface (document.write, script
+// evaluation) to reach `eval` / the window error dispatch. The value is a
+// WeakRef so the map never forms the strong cycle
+// window → native handle → document → window (which Bun's GC would fail to
+// reclaim in the lifecycle test); a collected window simply derefs to
+// undefined.
+const DOC_TO_WINDOW = new WeakMap();
+
+// Reverse lookup for the document-side surface (document.write, script
+// evaluation). The value is a WeakRef so the map never forms the strong cycle
+// window → native handle → document → window (which Bun's GC would fail to
+// reclaim in the lifecycle test); a collected window simply derefs to
+// undefined.
+function windowFacadeOfDocument(documentFacade) {
+  return DOC_TO_WINDOW.get(documentFacade)?.deref();
+}
 
 /**
  * Facade wrapper for a native `WindowHandle`.
@@ -221,7 +241,9 @@ export class Window {
 // the result goes through the unique conversion entry, so repeated reads hand
 // back one and the same Document facade (native identity + facade cache).
 defineAccessor(Window.prototype, "document", function getDocument() {
-  return wrap(WIN_HANDLES.get(this).document());
+  const documentFacade = wrap(WIN_HANDLES.get(this).document());
+  DOC_TO_WINDOW.set(documentFacade, new WeakRef(this));
+  return documentFacade;
 }, undefined);
 
 defineMethod(Window.prototype, "destroy", function destroy() {
