@@ -1,0 +1,48 @@
+{
+  "$schema": "hdunit-adapter-gaps-v1",
+  "title": "hdunit (T03) adapter-gap ledger: vi.mock call sites in the vendored happy-dom suite",
+  "basis": {
+    "source": "tests/happy-dom/vendor (T01 baseline v20.11.11 @ 64e2c774, MIT)",
+    "note": "T02 rewrite-report.json was not merged at T03 build time; this ledger is grounded in the vendored setup.ts and the vi.mock call sites found across tests/happy-dom/vendor/** instead. The task text mentions 'the 4 uses in upstream setup'; the vendored suite actually contains 4 vi.mock call sites total — 3 in test/setup.ts plus 1 in web-socket/WebSocket.test.ts — all enumerated below for T05 triage."
+  },
+  "callSites": [
+    {
+      "file": "tests/happy-dom/vendor/setup.ts",
+      "line": 39,
+      "specifier": "child_process",
+      "kind": "setup",
+      "handledBy": "tests/happy-dom/adapter/setup.ts (mock.module, preload)",
+      "gap": false
+    },
+    {
+      "file": "tests/happy-dom/vendor/setup.ts",
+      "line": 51,
+      "specifier": "http",
+      "kind": "setup",
+      "handledBy": "tests/happy-dom/adapter/setup.ts (mock.module, preload)",
+      "gap": false
+    },
+    {
+      "file": "tests/happy-dom/vendor/setup.ts",
+      "line": 62,
+      "specifier": "https",
+      "kind": "setup",
+      "handledBy": "tests/happy-dom/adapter/setup.ts (mock.module, preload)",
+      "gap": false
+    },
+    {
+      "file": "tests/happy-dom/vendor/web-socket/WebSocket.test.ts",
+      "line": 9,
+      "specifier": "ws",
+      "kind": "test-file",
+      "handledBy": null,
+      "gap": true,
+      "reason": "Dynamic vi.mock('ws') inside the test file registers a WebSocketMock class factory. Out of T03 scope by design: the adapter only covers the setup.ts vi.mock call sites (fidelity first, no invented API). The 'ws' module is not a node builtin and its mock is test-specific; T05/WebSocket-wave must decide whether to port the mock manually (e.g. a mock.module in the wave's own setup) or register the file as a known-gap."
+    }
+  ],
+  "summary": {
+    "totalCallSites": 4,
+    "coveredByAdapter": 3,
+    "gaps": 1
+  }
+}
