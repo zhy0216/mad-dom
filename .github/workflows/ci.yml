@@ -116,6 +116,36 @@ jobs:
       - name: Run the Core property and stress suite at native speed
         run: cargo test -p mad-dom-core
 
+  integration:
+    name: Integration test (benchmark mad-dom suite)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.1
+
+      - name: Install pinned Bun version
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Build native binding (dev artifact)
+        run: npm run dev:build
+
+      - name: Install mad-dom integration-test dependencies
+        run: bun install --frozen-lockfile
+        working-directory: benchmark/mad-dom-integration-test
+
+      - name: Run the benchmark mad-dom integration suite
+        run: npm run test:integration
+
   bench:
     name: Performance gate (benchmark vs baseline)
     runs-on: ubuntu-latest
