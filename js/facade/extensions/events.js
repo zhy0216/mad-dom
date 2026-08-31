@@ -331,6 +331,59 @@ export class InputEvent extends UIEvent {
 }
 
 /**
+ * `ClipboardEvent` facade (T07): extends `Event` with the `clipboardData`
+ * payload, matching the baseline instance shape.
+ */
+export class ClipboardEvent extends Event {
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    this.clipboardData = init.clipboardData ?? null;
+  }
+}
+
+/**
+ * `Touch` facade (T07): the touch-point value object with the immutable
+ * identifier/target and coordinate/radius/force payload, matching the
+ * baseline defaults.
+ */
+export class Touch {
+  constructor(touchInit) {
+    const init = touchInit == null ? {} : touchInit;
+    this.identifier = init.identifier;
+    this.target = init.target ?? null;
+    this.clientX = init.clientX ?? 0;
+    this.clientY = init.clientY ?? 0;
+    this.screenX = init.screenX ?? 0;
+    this.screenY = init.screenY ?? 0;
+    this.pageX = init.pageX ?? 0;
+    this.pageY = init.pageY ?? 0;
+    this.radiusX = init.radiusX ?? 0;
+    this.radiusY = init.radiusY ?? 0;
+    this.rotationAngle = init.rotationAngle ?? 0;
+    this.force = init.force ?? 0;
+  }
+}
+
+/**
+ * `TouchEvent` facade (T07): extends `UIEvent` with the touch-list and
+ * modifier-key payload, matching the baseline defaults.
+ */
+export class TouchEvent extends UIEvent {
+  constructor(type, eventInit = null) {
+    super(type, eventInit);
+    const init = eventInit == null ? {} : eventInit;
+    this.altKey = init.altKey ?? false;
+    this.changedTouches = init.changedTouches ?? [];
+    this.ctrlKey = init.ctrlKey ?? false;
+    this.metaKey = init.metaKey ?? false;
+    this.shiftKey = init.shiftKey ?? false;
+    this.targetTouches = init.targetTouches ?? [];
+    this.touches = init.touches ?? [];
+  }
+}
+
+/**
  * Resolves a native event handle to the facade `Event` the caller dispatched
  * (falling back to the `ctx.wrap` cache for handles minted outside this
  * module), preserving identity across the dispatch.
@@ -490,6 +543,18 @@ export function install(ctx) {
 
   ctx.defineAccessor(Window.prototype, "InputEvent", function getInputEvent() {
     return InputEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "ClipboardEvent", function getClipboardEvent() {
+    return ClipboardEvent;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "Touch", function getTouch() {
+    return Touch;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "TouchEvent", function getTouchEvent() {
+    return TouchEvent;
   }, undefined);
 
   // Event surface.

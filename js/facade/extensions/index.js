@@ -52,6 +52,8 @@ import * as webSocketExtension from "./web-socket.js";
 import * as windowPlatformExtension from "./window-platform.js";
 import * as xhrExtension from "./xhr.js";
 import * as browserExtension from "./browser.js";
+import * as domGeometryExtension from "./dom-geometry.js";
+import * as dndExtension from "./dnd.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/index",
@@ -89,6 +91,8 @@ const EXTENSIONS = [
   webSocketExtension,
   xhrExtension,
   browserExtension,
+  domGeometryExtension,
+  dndExtension,
 ];
 
 /**

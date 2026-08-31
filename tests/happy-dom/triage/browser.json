@@ -5,12 +5,12 @@
     {
       "file": "browser/Browser.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-other): browser/DefaultBrowserSettings.js"
+      "reason": "unmapped-internal-import (internal-other): browser/DefaultBrowserSettings.js (T02-unmapped src path; the browser settings surface is facade-internal)"
     },
     {
       "file": "browser/BrowserContext.test.ts",
       "status": "skip",
-      "reason": "pending-wave: all runtime imports mapped, enable in the browser wave"
+      "reason": "depends-on-unenabled-surface: 7/9 tests pass, but 'Closes the context' needs page.console + cookieContainer/document.cookie and 'Waits for all pages to complete' needs timer-tracking waitUntilComplete — console/cookie machinery belongs to the lightweight/css-fetch waves (T08/T09) and is not implemented"
     },
     {
       "file": "browser/BrowserFrame.test.ts",
@@ -25,12 +25,12 @@
     {
       "file": "browser/detached-browser/DetachedBrowser.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-other): browser/DefaultBrowserSettings.js"
+      "reason": "unmapped-internal-import (internal-other): browser/DefaultBrowserSettings.js (T02-unmapped src path; the browser settings surface is facade-internal)"
     },
     {
       "file": "browser/detached-browser/DetachedBrowserContext.test.ts",
       "status": "skip",
-      "reason": "pending-wave: all runtime imports mapped, enable in the browser wave"
+      "reason": "facade-gap: imports DetachedBrowser/DetachedBrowserPage whose shims are gaps (default export undefined) — the detached-browser facade depends on Browser internals and is not implemented"
     },
     {
       "file": "browser/detached-browser/DetachedBrowserFrame.test.ts",
@@ -40,7 +40,7 @@
     {
       "file": "browser/detached-browser/DetachedBrowserPage.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-type, internal-utility): browser/types/IGoToOptions.js, browser/utilities/BrowserFrameFactory.js"
+      "reason": "unmapped-internal-import (internal-type, internal-utility): browser/types/IGoToOptions.js, browser/utilities/BrowserFrameFactory.js (T02-unmapped src paths)"
     },
     {
       "file": "browser/utilities/BrowserFrameURL.test.ts",
