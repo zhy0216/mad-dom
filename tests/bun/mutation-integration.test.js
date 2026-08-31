@@ -32,6 +32,11 @@ describe("root entry mutation surface (T24)", () => {
   test("the package entry keeps exactly one set of exports", async () => {
     const mod = await import("../../index.js");
     expect(Object.keys(mod).sort()).toEqual([
+      "Browser",
+      "BrowserContext",
+      "BrowserErrorCaptureEnum",
+      "BrowserFrame",
+      "BrowserPage",
       "CSSConditionRule",
       "CSSContainerRule",
       "CSSFontFaceRule",
@@ -58,6 +63,8 @@ describe("root entry mutation surface (T24)", () => {
       "MediaQueryListEvent",
       "MouseEvent",
       "UIEvent",
+      "VirtualConsoleLogLevelEnum",
+      "VirtualConsolePrinter",
       "WheelEvent",
       "Window",
       "createDocument",

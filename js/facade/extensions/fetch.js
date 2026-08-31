@@ -1192,9 +1192,12 @@ async function fetchImpl(ctx, windowFacade, url, init) {
  * and `new window.Request(…)` resolves against the owning window.
  */
 export function install(ctx) {
+  // `writable: true` matches happy-dom's class-method descriptor: instance
+  // assignment (`window.fetch = customFn`) shadows the prototype method, which
+  // the Browser page surface (and the vendored integration tests) rely on.
   ctx.defineMethod(Window.prototype, "fetch", function fetch(url, init) {
     return fetchImpl(ctx, this, url, init);
-  });
+  }, { writable: true });
 
   ctx.defineAccessor(Window.prototype, "Headers", function getHeaders() {
     return fetchSurface(ctx, this).Headers;

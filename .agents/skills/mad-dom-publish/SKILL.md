@@ -91,14 +91,15 @@ bun test test        # 或 bun test test/<file>
 | Fetch.test.js | ✅ 2/2 | `window.FormData`（multipart 序列化与 happy-dom 逐字节一致）+ fetch |
 | XMLHttpRequest.test.js | ✅ 3/3 | `window.XMLHttpRequest`（异步走 fetch；同步走 spawnSync 子进程） |
 | WebSocket.test.js | ✅ 1/1 | `window.WebSocket` = Bun 原生 WebSocket |
-| Browser.test.js | ❌ | `Browser`/`BrowserErrorCaptureEnum` 未实现（browser/page 模型） |
-| BrowserExceptionObserver.test.js | ❌ | 同上 + `ErrorEvent`/page/virtualConsolePrinter |
+| Browser.test.js | ⚠️ | ✅ 已实现 `Browser`/`BrowserErrorCaptureEnum`（browser/page 模型，`js/facade/extensions/browser.js`）；测试本身依赖真实 github/npmjs SSR 内容与外网可达性，网络正常时通过 |
+| BrowserExceptionObserver.test.js | ✅ | process-level 错误捕获：未捕获脚本错误/拒绝路由到 window `error` 事件 + `virtualConsolePrinter` |
 
 实现位置（均按 facade 扩展约定注册进 `js/facade/extensions/index.js`）：
 - `form-data.js`：`window.FormData` + `serializeFormData()`，fetch.js `getBodyStream` 接入
 - `web-socket.js`：`window.WebSocket` → Bun 原生 WebSocket
 - `xhr.js`：`window.XMLHttpRequest`（`async=false` 用 `spawnSync` 跑子进程 fetch）
 - `document-write.js`：`Document.prototype.write`，脚本经 `window.eval` 求值，抛错经 `dispatchWindowError` 派发到 window
+- `browser.js`：`Browser`/`BrowserErrorCaptureEnum`/page/frame 模型（入口导出；goto 为服务端导航，不评估页面脚本；process-level 错误捕获走 `process.on('uncaughtException'/'unhandledRejection')` 按 vm 上下文 `Error` intrinsic 匹配窗口；锚点默认导航靠 frame 注册 body/documentElement/head 原生 handle 反查）
 
 坑：
 - `Fetch`/`XMLHttpRequest` 都监听 3000/3001 端口，`bun test` 默认并行跑多个文件会端口冲突报 `Failed to start server. Is port 3001 in use?`。单文件逐个跑可避免误判。

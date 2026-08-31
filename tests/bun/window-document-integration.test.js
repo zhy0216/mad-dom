@@ -33,6 +33,11 @@ describe("root entry surface (T22)", () => {
   test("the package entry exports exactly the public surface", async () => {
     const mod = await import("../../index.js");
     expect(Object.keys(mod).sort()).toEqual([
+      "Browser",
+      "BrowserContext",
+      "BrowserErrorCaptureEnum",
+      "BrowserFrame",
+      "BrowserPage",
       "CSSConditionRule",
       "CSSContainerRule",
       "CSSFontFaceRule",
@@ -59,6 +64,8 @@ describe("root entry surface (T22)", () => {
       "MediaQueryListEvent",
       "MouseEvent",
       "UIEvent",
+      "VirtualConsoleLogLevelEnum",
+      "VirtualConsolePrinter",
       "WheelEvent",
       "Window",
       "createDocument",

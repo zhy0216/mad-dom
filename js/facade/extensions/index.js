@@ -51,6 +51,7 @@ import * as treeTraversalExtension from "./tree-traversal.js";
 import * as webSocketExtension from "./web-socket.js";
 import * as windowPlatformExtension from "./window-platform.js";
 import * as xhrExtension from "./xhr.js";
+import * as browserExtension from "./browser.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/index",
@@ -87,6 +88,7 @@ const EXTENSIONS = [
   timersExtension,
   webSocketExtension,
   xhrExtension,
+  browserExtension,
 ];
 
 /**

@@ -76,10 +76,24 @@ let ctx = null;
 // native handle is opaque; only the facade uses it as a key.
 const WINDOW_ASYNC = new WeakMap();
 
-// Native DocumentHandle → the window's `eval` evaluator. Kept separate from the
-// async state so a pending timer closure never drags the eval global-scope
-// binding (which references the window facade) with it.
+// Native DocumentHandle → the window's `eval` entry: the evaluator, the
+// `node:vm` context it runs in, and that context's own `Error` intrinsic
+// (errors thrown by window scripts are instances of the *context* `Error`,
+// never the host `Error` — the Browser error observer identifies the owning
+// window through exactly that check). Kept separate from the async state so a
+// pending timer closure never drags the eval global-scope binding (which
+// references the window facade) with it.
 const WINDOW_EVAL = new WeakMap();
+
+/**
+ * The per-window `node:vm` context `Error` intrinsic (T47 export, used by the
+ * Browser facade's process-level error observer). Returns `undefined` for a
+ * window that never evaluated a script.
+ */
+export function evalContextOf(windowFacade) {
+  const docHandle = ctx.documentContext.handleOf(windowFacade.document);
+  return WINDOW_EVAL.get(docHandle);
+}
 
 function ensureAsyncState(windowFacade) {
   const docHandle = ctx.documentContext.handleOf(windowFacade.document);
@@ -321,7 +335,10 @@ function createWindowEval(windowFacade) {
     if (WINDOW_SELF_NAMES.includes(name)) continue;
     Object.defineProperty(globalObject, name, contextGlobalDescriptor(windowFacade, name, descriptor));
   }
-  return (code) => runInContext(String(code), context);
+  return {
+    evaluate: (code) => runInContext(String(code), context),
+    context,
+  };
 }
 
 // --- install -----------------------------------------------------------------
@@ -391,12 +408,13 @@ export function install(extensionCtx) {
   // Script evaluation with the owning window's surface as globals.
   const evalMethod = { ["eval"](code) {
     const docHandle = ctx.documentContext.handleOf(this.document);
-    let evaluator = WINDOW_EVAL.get(docHandle);
-    if (evaluator === undefined) {
-      evaluator = createWindowEval(this);
-      WINDOW_EVAL.set(docHandle, evaluator);
+    let entry = WINDOW_EVAL.get(docHandle);
+    if (entry === undefined) {
+      const built = createWindowEval(this);
+      entry = { evaluate: built.evaluate, context: built.context, contextError: runInContext("Error", built.context) };
+      WINDOW_EVAL.set(docHandle, entry);
     }
-    return evaluator(code);
+    return entry.evaluate(code);
   } }.eval;
   installCtx.defineMethod(Window.prototype, "eval", evalMethod);
 

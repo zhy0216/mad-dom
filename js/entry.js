@@ -55,6 +55,15 @@ import {
   MediaList,
   MediaQueryListEvent,
 } from "./facade/extensions/cssom.js";
+import {
+  Browser,
+  BrowserContext,
+  BrowserErrorCaptureEnum,
+  BrowserFrame,
+  BrowserPage,
+  VirtualConsoleLogLevelEnum,
+  VirtualConsolePrinter,
+} from "./facade/extensions/browser.js";
 
 export const project = Object.freeze({
   name: "mad-dom",
@@ -81,4 +90,4 @@ export function liveDocumentCount() {
   return loadNative().liveDocumentCount();
 }
 
-export { Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum, CSSStyleDeclaration, CSSRule, CSSStyleSheet, CSSStyleRule, CSSMediaRule, CSSKeyframesRule, CSSKeyframeRule, CSSFontFaceRule, CSSSupportsRule, CSSGroupingRule, CSSConditionRule, CSSContainerRule, CSSScopeRule, CSSStyleValue, CSSKeywordValue, MediaList, MediaQueryListEvent };
+export { Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum, CSSStyleDeclaration, CSSRule, CSSStyleSheet, CSSStyleRule, CSSMediaRule, CSSKeyframesRule, CSSKeyframeRule, CSSFontFaceRule, CSSSupportsRule, CSSGroupingRule, CSSConditionRule, CSSContainerRule, CSSScopeRule, CSSStyleValue, CSSKeywordValue, MediaList, MediaQueryListEvent, Browser, BrowserContext, BrowserErrorCaptureEnum, BrowserFrame, BrowserPage, VirtualConsoleLogLevelEnum, VirtualConsolePrinter };

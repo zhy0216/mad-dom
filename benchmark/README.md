@@ -44,7 +44,16 @@ The report shows two timings (median over 3 runs by default):
 
 ## Current gaps on mad-dom
 
-The mad-dom copy reports `Browser` as a failing test file: `index.js` does not
-export `Browser` yet, so `Browser.test.js` and the exception-observer test fail
-to import. The other files (Fetch, WindowGlobals, XMLHttpRequest, WebSocket,
-CommonJS) run.
+The mad-dom copy now runs the full suite: `Browser` / `BrowserErrorCaptureEnum`
+and the page/frame model are implemented (`js/facade/extensions/browser.js`,
+exported from the package entry). Navigation is server-side and script-free:
+`goto()` fetches the top-level HTML, parses it into the document and sets the
+title and frame URL; page JavaScript is not evaluated. The
+`browser-exception-observer` test passes fully (process-level error capture
+routes uncaught window-script errors to the window `error` event and the
+`virtualConsolePrinter`).
+
+`Browser.test.js` still hits real github.com / npmjs.com content: the
+assertions depend on the live SSR markup (and the network path to those
+hosts), so it passes when the endpoints are reachable and their markup matches
+— treat its failures as environment noise, exactly like the happy-dom copy.

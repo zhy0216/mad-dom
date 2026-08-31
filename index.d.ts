@@ -34,6 +34,9 @@ export interface IWindowOptions {
   innerWidth?: number;
   /** Inner height (deprecated happy-dom alias); accepted for parity. */
   innerHeight?: number;
+  /** Browser-style settings (happy-dom parity): accepted and stored; only
+   * `enableJavaScriptEvaluation` governs `document.write` script evaluation. */
+  settings?: IBrowserSettings;
 }
 
 /** The `window.happyDOM` detached-window API (T48 closure): the happy-dom
@@ -2529,4 +2532,142 @@ export declare class CSSUnitValue {
 export interface Document {
   readonly styleSheets: CSSStyleSheet[];
   adoptedStyleSheets: CSSStyleSheet[];
+}
+
+// --- Browser / page / frame model (integration surface) ----------------------
+//
+// The happy-dom browser/page model the vendored integration suite drives:
+// `new Browser({ settings })` → `newPage()` → `goto()` server-side navigation
+// + `waitUntilComplete()` / `waitForNavigation()` + the `virtualConsolePrinter`
+// error surface. Navigation is script-free (no page JavaScript evaluation);
+// `errorCapture: "processLevel"` observes the Node process for uncaught
+// window-script errors while pages are open.
+
+/** Error capture policy (happy-dom parity). */
+export declare enum BrowserErrorCaptureEnum {
+  /** Errors and Promise rejections are thrown to the caller (try/catch). */
+  tryAndCatch = "tryAndCatch",
+  /** Process-level listeners capture every error and Promise rejection. */
+  processLevel = "processLevel",
+  /** Error capturing is disabled. */
+  disabled = "disabled"
+}
+
+/** Browser settings (happy-dom shape; accepted and stored). */
+export interface IBrowserSettings {
+  disableJavaScriptEvaluation?: boolean;
+  enableJavaScriptEvaluation?: boolean;
+  disableJavaScriptFileLoading?: boolean;
+  disableCSSFileLoading?: boolean;
+  enableImageFileLoading?: boolean;
+  disableComputedStyleRendering?: boolean;
+  handleDisabledFileLoadingAsSuccess?: boolean;
+  suppressCodeGenerationFromStringsWarning?: boolean;
+  suppressInsecureJavaScriptEnvironmentWarning?: boolean;
+  timer?: {
+    maxTimeout?: number;
+    maxIntervalTime?: number;
+    maxIntervalIterations?: number;
+    preventTimerLoops?: boolean;
+  };
+  fetch?: {
+    disableSameOriginPolicy?: boolean;
+    disableStrictSSL?: boolean;
+  };
+  disableErrorCapturing?: boolean;
+  errorCapture?: BrowserErrorCaptureEnum;
+  navigation?: {
+    disableMainFrameNavigation?: boolean;
+    disableChildFrameNavigation?: boolean;
+    disableChildPageNavigation?: boolean;
+    disableFallbackToSetURL?: boolean;
+    crossOriginPolicy?: string;
+  };
+  viewport?: { width?: number; height?: number };
+}
+
+/** A virtual console log level (happy-dom parity). */
+export declare enum VirtualConsoleLogLevelEnum {
+  log = 0,
+  info = 1,
+  warn = 2,
+  error = 3
+}
+
+/** The page's virtual console printer: a buffer of log entries with the
+ * `print` / `clear` event surface and `read` / `readAsString` consumers. */
+export declare class VirtualConsolePrinter {
+  readonly closed: boolean;
+  print(logEntry: { level: number; message: string }): void;
+  clear(): void;
+  close(): void;
+  addEventListener(eventType: "print" | "clear", listener: (event: Event) => void): void;
+  removeEventListener(eventType: "print" | "clear", listener: (event: Event) => void): void;
+  dispatchEvent(event: { type: "print" | "clear" }): void;
+  read(): Array<{ level: number; message: string }>;
+  readAsString(logLevel?: VirtualConsoleLogLevelEnum): string;
+}
+
+/** The top-level frame of a browser page: owns the Window facade and performs
+ * server-side navigation (`goto`). */
+export declare class BrowserFrame {
+  readonly page: BrowserPage;
+  readonly window: Window;
+  readonly document: Document;
+  readonly childFrames: BrowserFrame[];
+  readonly parentFrame: BrowserFrame | null;
+  readonly closed: boolean;
+  url: string;
+  content: string;
+  goto(url: string): Promise<Response | null>;
+  waitUntilComplete(): Promise<void>;
+  waitForNavigation(): Promise<void>;
+  abort(): Promise<void>;
+  close(): Promise<void>;
+  evaluate(script: string): any;
+}
+
+/** A browser page (tab) with exactly one main frame. */
+export declare class BrowserPage {
+  readonly virtualConsolePrinter: VirtualConsolePrinter;
+  readonly mainFrame: BrowserFrame;
+  readonly frames: BrowserFrame[];
+  readonly context: BrowserContext;
+  readonly viewport: { width: number; height: number };
+  readonly closed: boolean;
+  url: string;
+  content: string;
+  goto(url: string): Promise<Response | null>;
+  waitUntilComplete(): Promise<void>;
+  waitForNavigation(): Promise<void>;
+  abort(): Promise<void>;
+  close(): Promise<void>;
+  evaluate(script: string): any;
+  setViewport(viewport: { width?: number; height?: number }): void;
+}
+
+/** A browser context: the page list and lifecycle of one context. */
+export declare class BrowserContext {
+  readonly pages: BrowserPage[];
+  readonly browser: Browser;
+  readonly closed: boolean;
+  newPage(): BrowserPage;
+  close(): Promise<void>;
+  waitUntilComplete(): Promise<void>;
+  abort(): Promise<void>;
+}
+
+/** The happy-dom `Browser` surface: settings, contexts, pages and lifecycle. */
+export declare class Browser {
+  constructor(options?: { settings?: IBrowserSettings; console?: any });
+  readonly contexts: BrowserContext[];
+  readonly defaultContext: BrowserContext;
+  readonly settings: IBrowserSettings;
+  readonly console: any;
+  readonly closed: boolean;
+  newPage(): BrowserPage;
+  newIncognitoContext(): BrowserContext;
+  close(): Promise<void>;
+  waitUntilComplete(): Promise<void>;
+  abort(): Promise<void>;
 }

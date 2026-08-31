@@ -39,6 +39,11 @@ describe("M4 vertical slice entry surface (T25)", () => {
   test("the package entry exposes exactly one set of exports", async () => {
     const mod = await import("../../index.js");
     expect(Object.keys(mod).sort()).toEqual([
+      "Browser",
+      "BrowserContext",
+      "BrowserErrorCaptureEnum",
+      "BrowserFrame",
+      "BrowserPage",
       "CSSConditionRule",
       "CSSContainerRule",
       "CSSFontFaceRule",
@@ -65,6 +70,8 @@ describe("M4 vertical slice entry surface (T25)", () => {
       "MediaQueryListEvent",
       "MouseEvent",
       "UIEvent",
+      "VirtualConsoleLogLevelEnum",
+      "VirtualConsolePrinter",
       "WheelEvent",
       "Window",
       "createDocument",

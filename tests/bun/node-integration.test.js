@@ -31,6 +31,11 @@ describe("root entry node surface (T23)", () => {
   test("the package entry keeps exactly one set of exports", async () => {
     const mod = await import("../../index.js");
     expect(Object.keys(mod).sort()).toEqual([
+      "Browser",
+      "BrowserContext",
+      "BrowserErrorCaptureEnum",
+      "BrowserFrame",
+      "BrowserPage",
       "CSSConditionRule",
       "CSSContainerRule",
       "CSSFontFaceRule",
@@ -57,6 +62,8 @@ describe("root entry node surface (T23)", () => {
       "MediaQueryListEvent",
       "MouseEvent",
       "UIEvent",
+      "VirtualConsoleLogLevelEnum",
+      "VirtualConsolePrinter",
       "WheelEvent",
       "Window",
       "createDocument",
