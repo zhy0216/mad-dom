@@ -1,0 +1,247 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// REWRITTEN TEST — mechanical rewrite of the happy-dom (MIT) test suite
+// Upstream repository: https://github.com/capricorn86/happy-dom
+// Upstream commit:    64e2c774cadbb8eda5416c1e2bcca5006d1b5df9
+// Upstream tag:       v20.11.11
+// Upstream path:      packages/happy-dom/test/cookie-store/CookieStore.test.ts
+// Source:             scripts/rewrite-happy-dom-tests.mjs (hdunit T02)
+//
+// This file is a generated, fidelity-preserving rewrite: only import
+// statements and the vitest → bun:test / vi → adapter API surface changed;
+// assertions, behavior and structure are untouched. Do not edit by hand;
+// regenerate with `bun run compat:hdunit:rewrite`.
+// License: MIT — https://github.com/capricorn86/happy-dom/blob/64e2c774cadbb8eda5416c1e2bcca5006d1b5df9/LICENSE
+// ─────────────────────────────────────────────────────────────────────────────
+import { beforeEach, afterEach, describe, it, expect } from 'bun:test';
+import Window from '../../shim/src/window/Window.js';
+import type BrowserWindow from '../../shim/src/window/BrowserWindow.js';
+import CookieStore from '../../shim/src/cookie-store/CookieStore.js';
+import CookieChangeEvent from '../../shim/src/event/events/CookieChangeEvent.js';
+import DOMException from '../../shim/src/exception/DOMException.js';
+import DOMExceptionNameEnum from '../../src/exception/DOMExceptionNameEnum.js';
+
+describe('CookieStore', () => {
+	let window: Window;
+
+	beforeEach(() => {
+		window = new Window({ url: 'https://example.com/' });
+	});
+
+	describe('constructor', () => {
+		it('Throws "Illegal constructor" error when constructed.', () => {
+			expect(() => new CookieStore(Symbol('test'), <BrowserWindow>(<unknown>null))).toThrow(
+				new TypeError('Illegal constructor')
+			);
+		});
+
+		it('Is exposed on window.', () => {
+			expect(window.cookieStore).toBeInstanceOf(CookieStore);
+			expect(window.CookieStore).toBe(CookieStore);
+		});
+	});
+
+	describe('set()', () => {
+		it('Sets a cookie with name and value.', async () => {
+			await window.cookieStore.set('testCookie', 'testValue');
+			const cookie = await window.cookieStore.get('testCookie');
+			expect(cookie?.name).toBe('testCookie');
+			expect(cookie?.value).toBe('testValue');
+		});
+
+		it('Sets a cookie with options object including expires, path, and sameSite.', async () => {
+			const expires = Date.now() + 86400000;
+			await window.cookieStore.set({
+				name: 'optionsCookie',
+				value: 'optionsValue',
+				path: '/',
+				expires,
+				sameSite: 'strict'
+			});
+			const cookie = await window.cookieStore.get('optionsCookie');
+			expect(cookie?.name).toBe('optionsCookie');
+			expect(cookie?.value).toBe('optionsValue');
+			expect(cookie?.path).toBe('/');
+			expect(cookie?.expires).toBe(expires);
+			expect(cookie?.sameSite).toBe('strict');
+			expect(cookie?.partitioned).toBe(false);
+		});
+
+		it('Defaults value to empty string when not provided in options object.', async () => {
+			await window.cookieStore.set({ name: 'emptyValue' });
+			const cookie = await window.cookieStore.get('emptyValue');
+			expect(cookie?.name).toBe('emptyValue');
+			expect(cookie?.value).toBe('');
+		});
+
+		it('Defaults sameSite to strict.', async () => {
+			await window.cookieStore.set('defaultSameSite', 'val');
+			const cookie = await window.cookieStore.get('defaultSameSite');
+			expect(cookie?.sameSite).toBe('strict');
+		});
+
+		it('Sets secure to true even with sameSite none.', async () => {
+			await window.cookieStore.set({
+				name: 'noneCookie',
+				value: 'val',
+				sameSite: 'none'
+			});
+			const cookie = await window.cookieStore.get('noneCookie');
+			expect(cookie?.sameSite).toBe('none');
+			expect(cookie?.secure).toBe(true);
+		});
+
+		it('Sets a cookie with domain option.', async () => {
+			await window.cookieStore.set({
+				name: 'domainCookie',
+				value: 'val',
+				domain: 'example.com'
+			});
+			const cookie = await window.cookieStore.get('domainCookie');
+			expect(cookie?.name).toBe('domainCookie');
+			expect(cookie?.domain).toBe('example.com');
+		});
+
+		it('Accepts expires as a Date object.', async () => {
+			const expiresDate = new Date(Date.now() + 86400000);
+			await window.cookieStore.set({
+				name: 'dateExpires',
+				value: 'val',
+				expires: expiresDate
+			});
+			const cookie = await window.cookieStore.get('dateExpires');
+			expect(cookie?.expires).toBe(expiresDate.getTime());
+		});
+
+		it('Does not return a cookie with a past expires date.', async () => {
+			await window.cookieStore.set({
+				name: 'expiredCookie',
+				value: 'val',
+				expires: new Date(0)
+			});
+			const cookie = await window.cookieStore.get('expiredCookie');
+			expect(cookie).toBeNull();
+		});
+
+		it('Overwrites an existing cookie with the same name.', async () => {
+			await window.cookieStore.set('overwrite', 'first');
+			await window.cookieStore.set('overwrite', 'second');
+			const cookie = await window.cookieStore.get('overwrite');
+			expect(cookie?.value).toBe('second');
+			const all = await window.cookieStore.getAll('overwrite');
+			expect(all.length).toBe(1);
+		});
+
+		it('Throws TypeError for invalid arguments.', async () => {
+			await expect(window.cookieStore.set({ name: '', value: 'test' })).rejects.toThrow(
+				new TypeError(
+					`Failed to execute 'set' on 'CookieStore': Required member name is undefined.`
+				)
+			);
+			await expect(window.cookieStore.set('testCookie')).rejects.toThrow(
+				new TypeError(
+					`Failed to execute 'set' on 'CookieStore': Value is required when name is provided as a string.`
+				)
+			);
+		});
+
+		it('Cookies are shared between cookieStore and document.cookie.', async () => {
+			await window.cookieStore.set('storeCookie', 'storeValue');
+			expect(window.document.cookie).toContain('storeCookie=storeValue');
+
+			window.document.cookie = 'docCookie=docValue';
+			const cookie = await window.cookieStore.get('docCookie');
+			expect(cookie?.name).toBe('docCookie');
+			expect(cookie?.value).toBe('docValue');
+		});
+	});
+
+	describe('get()', () => {
+		it('Returns null when cookie does not exist.', async () => {
+			expect(await window.cookieStore.get('nonexistent')).toBeNull();
+		});
+
+		it('Gets a cookie by name string or options object.', async () => {
+			await window.cookieStore.set('getCookie', 'getValue');
+			expect((await window.cookieStore.get('getCookie'))?.value).toBe('getValue');
+			expect((await window.cookieStore.get({ name: 'getCookie' }))?.value).toBe('getValue');
+		});
+	});
+
+	describe('getAll()', () => {
+		it('Returns empty array when no cookies exist.', async () => {
+			expect(await window.cookieStore.getAll()).toEqual([]);
+		});
+
+		it('Returns all cookies and filters by name.', async () => {
+			await window.cookieStore.set('cookie1', 'value1');
+			await window.cookieStore.set('cookie2', 'value2');
+			expect((await window.cookieStore.getAll()).length).toBe(2);
+			expect((await window.cookieStore.getAll('cookie1')).length).toBe(1);
+			expect((await window.cookieStore.getAll({ name: 'cookie2' }))[0].name).toBe('cookie2');
+		});
+
+		it('Returns cookies matching a same-origin url option.', async () => {
+			await window.cookieStore.set('urlCookie', 'urlValue');
+			const cookies = await window.cookieStore.getAll({ url: 'https://example.com/path' });
+			expect(cookies.length).toBeGreaterThanOrEqual(1);
+			expect(cookies.some((c) => c.name === 'urlCookie')).toBe(true);
+		});
+
+		it('Throws on cross-origin url option.', async () => {
+			await expect(window.cookieStore.getAll({ url: 'https://other.com/' })).rejects.toThrow(
+				new window.DOMException(
+					`Failed to execute 'getAll' on 'CookieStore': URL must match the document origin`,
+					DOMExceptionNameEnum.securityError
+				)
+			);
+		});
+	});
+
+	describe('delete()', () => {
+		it('Deletes a cookie by name string or options object.', async () => {
+			await window.cookieStore.set('deleteName', 'val');
+			await window.cookieStore.delete('deleteName');
+			expect(await window.cookieStore.get('deleteName')).toBeNull();
+
+			await window.cookieStore.set({ name: 'deletePath', value: 'val', path: '/' });
+			await window.cookieStore.delete({ name: 'deletePath', path: '/' });
+			expect(await window.cookieStore.get('deletePath')).toBeNull();
+		});
+
+		it('Does not throw when deleting non-existent cookie.', async () => {
+			await expect(window.cookieStore.delete('nonexistent')).resolves.toBeUndefined();
+		});
+	});
+
+	describe('addEventListener()', () => {
+		it('Fires a change event with changed array when a cookie is set.', async () => {
+			let event: CookieChangeEvent | null = null;
+			window.cookieStore.addEventListener('change', (e) => {
+				event = <CookieChangeEvent>e;
+			});
+			await window.cookieStore.set('newCookie', 'newValue');
+			expect(event).toBeInstanceOf(CookieChangeEvent);
+			expect(event!.changed.length).toBe(1);
+			expect(event!.changed[0].name).toBe('newCookie');
+			expect(event!.changed[0].value).toBe('newValue');
+			expect(event!.deleted.length).toBe(0);
+		});
+
+		it('Fires a change event with deleted array when a cookie is deleted.', async () => {
+			await window.cookieStore.set('toDelete', 'val');
+			let event: CookieChangeEvent | null = null;
+			window.cookieStore.addEventListener('change', (e) => {
+				event = <CookieChangeEvent>e;
+			});
+			await window.cookieStore.delete('toDelete');
+			expect(event).toBeInstanceOf(CookieChangeEvent);
+			expect(event!.deleted.length).toBe(1);
+			expect(event!.deleted[0].name).toBe('toDelete');
+			expect(event!.changed.length).toBe(0);
+		});
+
+		it('Is exposed on window as CookieChangeEvent.', () => {
+			expect(window.CookieChangeEvent).toBe(CookieChangeEvent);
+		});
+	});
+});
