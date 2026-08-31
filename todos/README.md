@@ -11,7 +11,6 @@ README 和各 TODO 文件是本地调度真相源。Issue（如果将来建立�
 - 必须在 Herdr 管理的 pane 中运行：`test "${HERDR_ENV:-}" = 1`。失败时停止，不从 Herdr 外部控制会话。
 - 原 checkout 必须处于有名字的分支、非 detached HEAD 且 `git status --porcelain` 为空。发现用户改动时停止，不自行 stash、提交、覆盖或丢弃。
 - 启动任务前完整读取本 README、适用的 `AGENTS.md`/`CLAUDE.md`、仓库 README、构建配置和相关计划；确认至少有一条能发现编译或类型错误的命令，并确定测试命令。只做只读能力检查，并记录本轮已有资源；不要用裸 `herdr` 做发现：
-
   ```sh
   test "${HERDR_ENV:-}" = 1
   herdr --help
@@ -24,7 +23,6 @@ README 和各 TODO 文件是本地调度真相源。Issue（如果将来建立�
   herdr agent list
   herdr worktree list --cwd <repo-root>
   ```
-
 - OpenCode 必须显式使用 `deepseek/deepseek-v4-flash`；不可静默改用其他模型。只清理本轮创建、且已成功合并的 workspace、worktree 和分支。
 - 解析仓库根目录，记录原分支名和起始 HEAD；后续每次集成都重新记录 base HEAD。前置条件不满足时停止并报告，不猜测或替代缺失的校验命令。
 
@@ -48,28 +46,30 @@ README 和各 TODO 文件是本地调度真相源。Issue（如果将来建立�
 - 一个任务完成合并并清理后，立即从队列中选择下一个依赖已满足的候选补位，不等待整批任务结束。
 - 截至当前队列快照，T20 已完成，先串行完成结构 seam **T20A**；随后 **T21A 与 T21B** 可并发。T21、T22、T23、T24、T25 是集成闸门，不得与各自子任务并发。T25 归档后，T26、T30、T37 是下一组候选，但仍须在启动前检查实际文件/模块冲突。下面的候选波次是参考，不是固定批次，调度器必须随状态变化重新计算。
 
-| 依赖满足后 | 可考虑并发的候选 | 额外约束 |
-| --- | --- | --- |
-| T20 | T20A | 结构 seam 独占共享注册文件，必须先串行完成。 |
-| T20A | T21A、T21B | error taxonomy 与 affinity guard 文件完全分离，可并发；T21 负责 FFI 接线。 |
-| T21A、T21B | T21 | 集成闸门独占 handle/api/lib 与安全集成 fixture。 |
-| T21 | T22A | native Window/Document contract 先冻结。 |
-| T22A | T22B | facade 依赖 native 签名，不与 T22A 并发。 |
-| T22A、T22B | T22 | 集成闸门独占根入口、类型和 registry。 |
-| T22 | T23A | native node contract 先冻结；T23B 随后实现 facade。 |
-| T23A | T23B | 避免 native/facade 方法名和返回值漂移。 |
-| T23A、T23B | T23 | 集成闸门独占共享入口和兼容 ledger。 |
-| T23 | T24A、T24B | append/insert 与 remove/replace 拥有不同 native 文件，可并发。 |
-| T24A、T24B | T24C | facade mutation 等两个 native contract 都完成后再执行。 |
-| T24A、T24B、T24C | T24 | 集成闸门独占共享 registry、入口和类型。 |
-| T24 | T25A、T25D | Core payload seam 与 live childNodes 分域，可并发。 |
-| T25A | T25B、T25C | 属性与 textContent Core 模块分文件，可并发。 |
-| T25B、T25C、T25D | T25E | 跨层属性/text 接入等待 Core contract 和 collection contract。 |
-| T25A、T25B、T25C、T25D、T25E | T25 | 集成闸门完成 M4，之后才释放 M5/M6/M7 候选。 |
-| T25 | T26、T30、T37 | HTML、selector、event 逻辑分域；若共享入口或测试文件则拆分/串行。 |
-| T26 | T27、T28 | fragment parser 与 serializer 逻辑分域；共享 `mod`、fixture 或构建文件时串行。 |
-| T30 | T31 | 依赖独立；与同时修改 facade/type 的任务交叉时以实际路径为准。 |
-| T33 | T34、T35 | 两个 TODO 都声明 `Core/绑定/facade/type`，默认串行；只有能证明 diff 不重叠时才并发。 |
+
+| 依赖满足后                    | 可考虑并发的候选    | 额外约束                                                         |
+| ------------------------ | ----------- | ------------------------------------------------------------ |
+| T20                      | T20A        | 结构 seam 独占共享注册文件，必须先串行完成。                                    |
+| T20A                     | T21A、T21B   | error taxonomy 与 affinity guard 文件完全分离，可并发；T21 负责 FFI 接线。    |
+| T21A、T21B                | T21         | 集成闸门独占 handle/api/lib 与安全集成 fixture。                         |
+| T21                      | T22A        | native Window/Document contract 先冻结。                         |
+| T22A                     | T22B        | facade 依赖 native 签名，不与 T22A 并发。                              |
+| T22A、T22B                | T22         | 集成闸门独占根入口、类型和 registry。                                      |
+| T22                      | T23A        | native node contract 先冻结；T23B 随后实现 facade。                   |
+| T23A                     | T23B        | 避免 native/facade 方法名和返回值漂移。                                  |
+| T23A、T23B                | T23         | 集成闸门独占共享入口和兼容 ledger。                                        |
+| T23                      | T24A、T24B   | append/insert 与 remove/replace 拥有不同 native 文件，可并发。           |
+| T24A、T24B                | T24C        | facade mutation 等两个 native contract 都完成后再执行。                 |
+| T24A、T24B、T24C           | T24         | 集成闸门独占共享 registry、入口和类型。                                     |
+| T24                      | T25A、T25D   | Core payload seam 与 live childNodes 分域，可并发。                  |
+| T25A                     | T25B、T25C   | 属性与 textContent Core 模块分文件，可并发。                              |
+| T25B、T25C、T25D           | T25E        | 跨层属性/text 接入等待 Core contract 和 collection contract。          |
+| T25A、T25B、T25C、T25D、T25E | T25         | 集成闸门完成 M4，之后才释放 M5/M6/M7 候选。                                 |
+| T25                      | T26、T30、T37 | HTML、selector、event 逻辑分域；若共享入口或测试文件则拆分/串行。                   |
+| T26                      | T27、T28     | fragment parser 与 serializer 逻辑分域；共享 `mod`、fixture 或构建文件时串行。 |
+| T30                      | T31         | 依赖独立；与同时修改 facade/type 的任务交叉时以实际路径为准。                        |
+| T33                      | T34、T35     | 两个 TODO 都声明 `Core/绑定/facade/type`，默认串行；只有能证明 diff 不重叠时才并发。   |
+
 
 T20A 的占位文件采用“先登记、后交接”：T20A 负责一次性创建 module declaration/最小占位，归档后才由表中指定的子任务接管实现文件。这样不会把同一文件同时分配给两个 worktree。T21A/T21B、T24A/T24B 和 T25B/T25C 的实现文件彼此独占；T22A→T22B、T23A→T23B、T24A/T24B→T24C、T25A→T25B/T25C→T25E 是契约冻结后的串行边。若实际 diff 触及未声明的共享路径，立即停止并重新拆分，不以“最终能 rebase”为并发依据。
 
@@ -130,21 +130,18 @@ rebase → 校验 → merge 持有单一集成锁，一次只处理一个任务�
 
 1. 再次确认原 checkout 干净并记录当前 base HEAD。
 2. 通知同一 agent 将任务分支 rebase 到 base 最新提交，亲自解决全部冲突并重新运行相关校验；不得在此阶段 merge、push、切换原 checkout 或清理 worktree。提示至少包含：
-
-   ```text
+  ```text
    进入集成阶段。将当前任务分支 rebase 到原分支 <base-branch> 的最新提交。
    必须亲自解决全部冲突，保留原分支已合入任务的正确行为，同时保留本 todo 的验收结果。
    完成 rebase 后重新运行相关校验；若需要修复，只 amend 当前任务 commit。
    不要 merge、push、切换原 checkout 或清理 worktree。返回新 HEAD、冲突处理摘要、git status 和校验结果。
-   ```
+  ```
 3. 等 agent settle 后，确认 rebase 已结束、worktree 干净、原分支是任务分支祖先、任务仍只有一个 commit，并重新审查完整 diff。
 4. 协调器在任务 worktree 中亲自运行仓库级校验；agent 自报结果不能替代本步骤。
 5. 回到原 checkout，使用快进合并：
-
-   ```sh
+  ```sh
    git merge --ff-only <task-branch>
-   ```
-
+  ```
 6. 验证原分支 HEAD 等于任务分支 HEAD、TODO 状态正确且 `git status --short` 为空。
 
 若 `--ff-only` 失败，视为 base 在集成锁期间变化或 rebase 不完整；不得强行 merge，重新获取 base、rebase、解决冲突并复验。
@@ -177,81 +174,84 @@ git diff --check
 
 ## 有序队列
 
-| 顺序 | 优先级 | TODO 文件 | 里程碑 | 依赖 | 状态 |
-| --- | --- | --- | --- | --- | --- |
-| 01 | P0 | [01-repository-workspace.md](done/01-repository-workspace.md) | M0 | 无 | 已完成 |
-| 02 | P0 | [02-validation-and-ci.md](done/02-validation-and-ci.md) | M0 | T01 | 已完成 |
-| 03 | P0 | [03-compatibility-baseline-adr.md](done/03-compatibility-baseline-adr.md) | M0/M1 | T01 | 已完成 |
-| 04 | P0 | [04-native-binding-spike.md](done/04-native-binding-spike.md) | M0 | T01 | 已完成 |
-| 05 | P0 | [05-parser-selector-string-adr.md](done/05-parser-selector-string-adr.md) | M0 | T01 | 已完成 |
-| 06 | P0 | [06-native-build-adr.md](done/06-native-build-adr.md) | M0/M9 | T04 | 已完成 |
-| 07 | P0 | [07-happy-dom-baseline-manifest.md](done/07-happy-dom-baseline-manifest.md) | M1 | T03 | 已完成 |
-| 08 | P0 | [08-public-api-snapshot.md](done/08-public-api-snapshot.md) | M1 | T07 | 已完成 |
-| 09 | P0 | [09-type-compatibility-harness.md](done/09-type-compatibility-harness.md) | M1 | T07 | 已完成 |
-| 10 | P0 | [10-differential-runner.md](done/10-differential-runner.md) | M1 | T07 | 已完成 |
-| 11 | P0 | [11-compatibility-ledger-and-provenance.md](done/11-compatibility-ledger-and-provenance.md) | M1 | T08, T09, T10 | 已完成 |
-| 12 | P0 | [12-generational-arena.md](done/12-generational-arena.md) | M2 | T01 | 已完成 |
-| 13 | P0 | [13-core-errors-and-node-model.md](done/13-core-errors-and-node-model.md) | M2 | T12 | 已完成 |
-| 14 | P0 | [14-tree-relations.md](done/14-tree-relations.md) | M2 | T13 | 已完成 |
-| 15 | P0 | [15-append-and-insert-mutations.md](done/15-append-and-insert-mutations.md) | M2 | T14 | 已完成 |
-| 16 | P0 | [16-remove-and-replace-mutations.md](done/16-remove-and-replace-mutations.md) | M2 | T15 | 已完成 |
-| 17 | P0 | [17-cross-document-operations.md](done/17-cross-document-operations.md) | M2 | T16 | 已完成 |
-| 18 | P0 | [18-core-property-and-stress-tests.md](done/18-core-property-and-stress-tests.md) | M2 | T17 | 已完成 |
-| 19 | P0 | [19-minimal-native-binding.md](done/19-minimal-native-binding.md) | M3 | T04, T17 | 已完成 |
-| 20 | P0 | [20-wrapper-identity-and-gc.md](done/20-wrapper-identity-and-gc.md) | M3 | T19 | 已完成 |
-| 20A | P0 | [20a-binding-extension-seam.md](done/20a-binding-extension-seam.md) | M3/M4 | T20 | 已完成 |
-| 21A | P0 | [21a-error-taxonomy.md](done/21a-error-taxonomy.md) | M3 | T20A | 已完成 |
-| 21B | P0 | [21b-affinity-guard.md](done/21b-affinity-guard.md) | M3 | T20A | 已完成 |
-| 21 | P0 | [21-native-error-and-safety-boundary.md](done/21-native-error-and-safety-boundary.md) | M3 | T21A, T21B | 已完成 |
-| 22A | P0 | [22a-native-window-document.md](done/22a-native-window-document.md) | M4 | T21 | 已完成 |
-| 22B | P0 | [22b-window-document-facade.md](done/22b-window-document-facade.md) | M4 | T22A | 已完成 |
-| 22 | P0 | [22-window-document-facade.md](done/22-window-document-facade.md) | M4 | T22A, T22B | 已完成 |
-| 23A | P0 | [23a-core-node-contract.md](done/23a-core-node-contract.md) | M4 | T22 | 已完成 |
-| 23B | P0 | [23b-facade-node-api.md](done/23b-facade-node-api.md) | M4 | T23A | 已完成 |
-| 23 | P0 | [23-basic-node-creation-and-navigation.md](done/23-basic-node-creation-and-navigation.md) | M4 | T23A, T23B | 已完成 |
-| 24A | P0 | [24a-native-append-insert.md](done/24a-native-append-insert.md) | M4 | T23 | 已完成 |
-| 24B | P0 | [24b-native-remove-replace.md](done/24b-native-remove-replace.md) | M4 | T23 | 已完成 |
-| 24C | P0 | [24c-facade-mutation.md](done/24c-facade-mutation.md) | M4 | T24A, T24B | 已完成 |
-| 24 | P0 | [24-javascript-tree-mutations.md](done/24-javascript-tree-mutations.md) | M4 | T24A, T24B, T24C | 已完成 |
-| 25A | P0 | [25a-core-payload-seam.md](done/25a-core-payload-seam.md) | M4 | T24, T20A | 已完成 |
-| 25B | P0 | [25b-core-attributes.md](done/25b-core-attributes.md) | M4 | T25A | 已完成 |
-| 25C | P0 | [25c-core-text-content.md](done/25c-core-text-content.md) | M4 | T25A | 已完成 |
-| 25D | P0 | [25d-live-child-nodelist.md](done/25d-live-child-nodelist.md) | M4 | T24, T23 | 已完成 |
-| 25E | P0 | [25e-binding-attributes-text.md](done/25e-binding-attributes-text.md) | M4 | T23, T24, T25A, T25B, T25C, T25D | 已完成 |
-| 25 | P0 | [25-attributes-text-and-nodelist.md](done/25-attributes-text-and-nodelist.md) | M4 | T25A, T25B, T25C, T25D, T25E | 已完成 |
-| 26 | P1 | [26-html-document-parser.md](done/26-html-document-parser.md) | M5 | T05, T17, T25 | 已完成 |
-| 27 | P1 | [27-html-fragment-parser.md](done/27-html-fragment-parser.md) | M5 | T26 | 已完成 |
-| 28 | P1 | [28-html-serializer.md](done/28-html-serializer.md) | M5 | T26 | 已完成 |
-| 29 | P1 | [29-inner-outer-html-api.md](done/29-inner-outer-html-api.md) | M5 | T27, T28 | 已完成 |
-| 30 | P1 | [30-selector-parser-and-matcher.md](done/30-selector-parser-and-matcher.md) | M6 | T05, T17, T25 | 已完成 |
-| 31 | P1 | [31-query-apis.md](done/31-query-apis.md) | M6 | T30 | 已完成 |
-| 32 | P1 | [32-live-query-collections.md](done/32-live-query-collections.md) | M6 | T31 | 已完成 |
-| 33 | P1 | [33-extended-node-types.md](done/33-extended-node-types.md) | M7 | T17, T25, T29 | 已完成 |
-| 34 | P1 | [34-attributes-and-domtokenlist.md](done/34-attributes-and-domtokenlist.md) | M7 | T25, T33 | 已完成 |
-| 35 | P1 | [35-treewalker-and-nodeiterator.md](done/35-treewalker-and-nodeiterator.md) | M7 | T25, T33 | 已完成 |
-| 36 | P1 | [36-range-and-selection.md](done/36-range-and-selection.md) | M7 | T33, T35 | 已完成 |
-| 37 | P1 | [37-event-target-and-propagation.md](done/37-event-target-and-propagation.md) | M7 | T25 | 已完成 |
-| 38 | P1 | [38-event-classes.md](done/38-event-classes.md) | M7 | T37 | 已完成 |
-| 39 | P1 | [39-html-element-base.md](done/39-html-element-base.md) | M7 | T29, T34, T37 | 已完成 |
-| 40 | P1 | [40-template-and-forms.md](done/40-template-and-forms.md) | M7 | T27, T34, T39 | 已完成 |
-| 41 | P2 | [41-mutation-observer.md](done/41-mutation-observer.md) | M7 | T24, T34, T37 | 已完成 |
-| 42 | P2 | [42-custom-elements.md](done/42-custom-elements.md) | M8 | T37, T39, T40, T41 | 已完成 |
-| 43 | P2 | [43-shadow-dom.md](done/43-shadow-dom.md) | M8 | T31, T37, T42 | 已完成 |
-| 44 | P2 | [44-cssom.md](done/44-cssom.md) | M8 | T34, T39, T43 | 已完成 |
-| 45 | P2 | [45-window-platform-and-storage.md](done/45-window-platform-and-storage.md) | M8 | T22, T37 | 已完成 |
-| 46 | P2 | [46-fetch-and-network-surface.md](done/46-fetch-and-network-surface.md) | M8 | T38, T45 | 已完成 |
-| 47 | P2 | [47-timers-and-script-execution.md](done/47-timers-and-script-execution.md) | M8 | T37, T41, T42, T46 | 已完成 |
-| 48 | P2 | [48-compatibility-closure-and-wpt.md](done/48-compatibility-closure-and-wpt.md) | M8/M9 | T11, T25, T29, T32, T33, T34, T35, T36, T37, T38, T39, T40, T41, T42, T43, T44, T45, T46, T47 | 已完成 |
-| 48A | P2 | [48a-element-class-hierarchy.md](48a-element-class-hierarchy.md) | M9 | T48 | 部分完成 |
-| 48B | P2 | [48b-error-taxonomy-and-validation-parity.md](done/48b-error-taxonomy-and-validation-parity.md) | M9 | T48, T48A | 已完成 |
-| 48C | P2 | [48c-form-constraint-validation.md](done/48c-form-constraint-validation.md) | M9 | T48 | 已完成 |
-| 48D | P2 | [48d-custom-element-upgrade-parity.md](done/48d-custom-element-upgrade-parity.md) | M9 | T48, T48A | 已完成 |
-| 48E | P2 | [48e-entry-shape-alignment.md](done/48e-entry-shape-alignment.md) | M9 | T48 | 已完成 |
-| 49 | P2 | [49-native-packaging-and-artifacts.md](49-native-packaging-and-artifacts.md) | M9 | T06, T21, T48 | 部分完成 |
-| 50 | P2 | [50-hardening-and-stable-release.md](50-hardening-and-stable-release.md) | M9 | T18, T20, T21, T48, T49 | 待办 |
+
+| 顺序  | 优先级 | TODO 文件                                                                                         | 里程碑   | 依赖                                                                                            | 状态   |
+| --- | --- | ----------------------------------------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------- | ---- |
+| 01  | P0  | [01-repository-workspace.md](done/01-repository-workspace.md)                                   | M0    | 无                                                                                             | 已完成  |
+| 02  | P0  | [02-validation-and-ci.md](done/02-validation-and-ci.md)                                         | M0    | T01                                                                                           | 已完成  |
+| 03  | P0  | [03-compatibility-baseline-adr.md](done/03-compatibility-baseline-adr.md)                       | M0/M1 | T01                                                                                           | 已完成  |
+| 04  | P0  | [04-native-binding-spike.md](done/04-native-binding-spike.md)                                   | M0    | T01                                                                                           | 已完成  |
+| 05  | P0  | [05-parser-selector-string-adr.md](done/05-parser-selector-string-adr.md)                       | M0    | T01                                                                                           | 已完成  |
+| 06  | P0  | [06-native-build-adr.md](done/06-native-build-adr.md)                                           | M0/M9 | T04                                                                                           | 已完成  |
+| 07  | P0  | [07-happy-dom-baseline-manifest.md](done/07-happy-dom-baseline-manifest.md)                     | M1    | T03                                                                                           | 已完成  |
+| 08  | P0  | [08-public-api-snapshot.md](done/08-public-api-snapshot.md)                                     | M1    | T07                                                                                           | 已完成  |
+| 09  | P0  | [09-type-compatibility-harness.md](done/09-type-compatibility-harness.md)                       | M1    | T07                                                                                           | 已完成  |
+| 10  | P0  | [10-differential-runner.md](done/10-differential-runner.md)                                     | M1    | T07                                                                                           | 已完成  |
+| 11  | P0  | [11-compatibility-ledger-and-provenance.md](done/11-compatibility-ledger-and-provenance.md)     | M1    | T08, T09, T10                                                                                 | 已完成  |
+| 12  | P0  | [12-generational-arena.md](done/12-generational-arena.md)                                       | M2    | T01                                                                                           | 已完成  |
+| 13  | P0  | [13-core-errors-and-node-model.md](done/13-core-errors-and-node-model.md)                       | M2    | T12                                                                                           | 已完成  |
+| 14  | P0  | [14-tree-relations.md](done/14-tree-relations.md)                                               | M2    | T13                                                                                           | 已完成  |
+| 15  | P0  | [15-append-and-insert-mutations.md](done/15-append-and-insert-mutations.md)                     | M2    | T14                                                                                           | 已完成  |
+| 16  | P0  | [16-remove-and-replace-mutations.md](done/16-remove-and-replace-mutations.md)                   | M2    | T15                                                                                           | 已完成  |
+| 17  | P0  | [17-cross-document-operations.md](done/17-cross-document-operations.md)                         | M2    | T16                                                                                           | 已完成  |
+| 18  | P0  | [18-core-property-and-stress-tests.md](done/18-core-property-and-stress-tests.md)               | M2    | T17                                                                                           | 已完成  |
+| 19  | P0  | [19-minimal-native-binding.md](done/19-minimal-native-binding.md)                               | M3    | T04, T17                                                                                      | 已完成  |
+| 20  | P0  | [20-wrapper-identity-and-gc.md](done/20-wrapper-identity-and-gc.md)                             | M3    | T19                                                                                           | 已完成  |
+| 20A | P0  | [20a-binding-extension-seam.md](done/20a-binding-extension-seam.md)                             | M3/M4 | T20                                                                                           | 已完成  |
+| 21A | P0  | [21a-error-taxonomy.md](done/21a-error-taxonomy.md)                                             | M3    | T20A                                                                                          | 已完成  |
+| 21B | P0  | [21b-affinity-guard.md](done/21b-affinity-guard.md)                                             | M3    | T20A                                                                                          | 已完成  |
+| 21  | P0  | [21-native-error-and-safety-boundary.md](done/21-native-error-and-safety-boundary.md)           | M3    | T21A, T21B                                                                                    | 已完成  |
+| 22A | P0  | [22a-native-window-document.md](done/22a-native-window-document.md)                             | M4    | T21                                                                                           | 已完成  |
+| 22B | P0  | [22b-window-document-facade.md](done/22b-window-document-facade.md)                             | M4    | T22A                                                                                          | 已完成  |
+| 22  | P0  | [22-window-document-facade.md](done/22-window-document-facade.md)                               | M4    | T22A, T22B                                                                                    | 已完成  |
+| 23A | P0  | [23a-core-node-contract.md](done/23a-core-node-contract.md)                                     | M4    | T22                                                                                           | 已完成  |
+| 23B | P0  | [23b-facade-node-api.md](done/23b-facade-node-api.md)                                           | M4    | T23A                                                                                          | 已完成  |
+| 23  | P0  | [23-basic-node-creation-and-navigation.md](done/23-basic-node-creation-and-navigation.md)       | M4    | T23A, T23B                                                                                    | 已完成  |
+| 24A | P0  | [24a-native-append-insert.md](done/24a-native-append-insert.md)                                 | M4    | T23                                                                                           | 已完成  |
+| 24B | P0  | [24b-native-remove-replace.md](done/24b-native-remove-replace.md)                               | M4    | T23                                                                                           | 已完成  |
+| 24C | P0  | [24c-facade-mutation.md](done/24c-facade-mutation.md)                                           | M4    | T24A, T24B                                                                                    | 已完成  |
+| 24  | P0  | [24-javascript-tree-mutations.md](done/24-javascript-tree-mutations.md)                         | M4    | T24A, T24B, T24C                                                                              | 已完成  |
+| 25A | P0  | [25a-core-payload-seam.md](done/25a-core-payload-seam.md)                                       | M4    | T24, T20A                                                                                     | 已完成  |
+| 25B | P0  | [25b-core-attributes.md](done/25b-core-attributes.md)                                           | M4    | T25A                                                                                          | 已完成  |
+| 25C | P0  | [25c-core-text-content.md](done/25c-core-text-content.md)                                       | M4    | T25A                                                                                          | 已完成  |
+| 25D | P0  | [25d-live-child-nodelist.md](done/25d-live-child-nodelist.md)                                   | M4    | T24, T23                                                                                      | 已完成  |
+| 25E | P0  | [25e-binding-attributes-text.md](done/25e-binding-attributes-text.md)                           | M4    | T23, T24, T25A, T25B, T25C, T25D                                                              | 已完成  |
+| 25  | P0  | [25-attributes-text-and-nodelist.md](done/25-attributes-text-and-nodelist.md)                   | M4    | T25A, T25B, T25C, T25D, T25E                                                                  | 已完成  |
+| 26  | P1  | [26-html-document-parser.md](done/26-html-document-parser.md)                                   | M5    | T05, T17, T25                                                                                 | 已完成  |
+| 27  | P1  | [27-html-fragment-parser.md](done/27-html-fragment-parser.md)                                   | M5    | T26                                                                                           | 已完成  |
+| 28  | P1  | [28-html-serializer.md](done/28-html-serializer.md)                                             | M5    | T26                                                                                           | 已完成  |
+| 29  | P1  | [29-inner-outer-html-api.md](done/29-inner-outer-html-api.md)                                   | M5    | T27, T28                                                                                      | 已完成  |
+| 30  | P1  | [30-selector-parser-and-matcher.md](done/30-selector-parser-and-matcher.md)                     | M6    | T05, T17, T25                                                                                 | 已完成  |
+| 31  | P1  | [31-query-apis.md](done/31-query-apis.md)                                                       | M6    | T30                                                                                           | 已完成  |
+| 32  | P1  | [32-live-query-collections.md](done/32-live-query-collections.md)                               | M6    | T31                                                                                           | 已完成  |
+| 33  | P1  | [33-extended-node-types.md](done/33-extended-node-types.md)                                     | M7    | T17, T25, T29                                                                                 | 已完成  |
+| 34  | P1  | [34-attributes-and-domtokenlist.md](done/34-attributes-and-domtokenlist.md)                     | M7    | T25, T33                                                                                      | 已完成  |
+| 35  | P1  | [35-treewalker-and-nodeiterator.md](done/35-treewalker-and-nodeiterator.md)                     | M7    | T25, T33                                                                                      | 已完成  |
+| 36  | P1  | [36-range-and-selection.md](done/36-range-and-selection.md)                                     | M7    | T33, T35                                                                                      | 已完成  |
+| 37  | P1  | [37-event-target-and-propagation.md](done/37-event-target-and-propagation.md)                   | M7    | T25                                                                                           | 已完成  |
+| 38  | P1  | [38-event-classes.md](done/38-event-classes.md)                                                 | M7    | T37                                                                                           | 已完成  |
+| 39  | P1  | [39-html-element-base.md](done/39-html-element-base.md)                                         | M7    | T29, T34, T37                                                                                 | 已完成  |
+| 40  | P1  | [40-template-and-forms.md](done/40-template-and-forms.md)                                       | M7    | T27, T34, T39                                                                                 | 已完成  |
+| 41  | P2  | [41-mutation-observer.md](done/41-mutation-observer.md)                                         | M7    | T24, T34, T37                                                                                 | 已完成  |
+| 42  | P2  | [42-custom-elements.md](done/42-custom-elements.md)                                             | M8    | T37, T39, T40, T41                                                                            | 已完成  |
+| 43  | P2  | [43-shadow-dom.md](done/43-shadow-dom.md)                                                       | M8    | T31, T37, T42                                                                                 | 已完成  |
+| 44  | P2  | [44-cssom.md](done/44-cssom.md)                                                                 | M8    | T34, T39, T43                                                                                 | 已完成  |
+| 45  | P2  | [45-window-platform-and-storage.md](done/45-window-platform-and-storage.md)                     | M8    | T22, T37                                                                                      | 已完成  |
+| 46  | P2  | [46-fetch-and-network-surface.md](done/46-fetch-and-network-surface.md)                         | M8    | T38, T45                                                                                      | 已完成  |
+| 47  | P2  | [47-timers-and-script-execution.md](done/47-timers-and-script-execution.md)                     | M8    | T37, T41, T42, T46                                                                            | 已完成  |
+| 48  | P2  | [48-compatibility-closure-and-wpt.md](done/48-compatibility-closure-and-wpt.md)                 | M8/M9 | T11, T25, T29, T32, T33, T34, T35, T36, T37, T38, T39, T40, T41, T42, T43, T44, T45, T46, T47 | 已完成  |
+| 48A | P2  | [48a-element-class-hierarchy.md](48a-element-class-hierarchy.md)                                | M9    | T48                                                                                           | 部分完成 |
+| 48B | P2  | [48b-error-taxonomy-and-validation-parity.md](done/48b-error-taxonomy-and-validation-parity.md) | M9    | T48, T48A                                                                                     | 已完成  |
+| 48C | P2  | [48c-form-constraint-validation.md](done/48c-form-constraint-validation.md)                     | M9    | T48                                                                                           | 已完成  |
+| 48D | P2  | [48d-custom-element-upgrade-parity.md](done/48d-custom-element-upgrade-parity.md)               | M9    | T48, T48A                                                                                     | 已完成  |
+| 48E | P2  | [48e-entry-shape-alignment.md](done/48e-entry-shape-alignment.md)                               | M9    | T48                                                                                           | 已完成  |
+| 49  | P2  | [49-native-packaging-and-artifacts.md](49-native-packaging-and-artifacts.md)                    | M9    | T06, T21, T48                                                                                 | 部分完成 |
+| 50  | P2  | [50-hardening-and-stable-release.md](50-hardening-and-stable-release.md)                        | M9    | T18, T20, T21, T48, T49                                                                       | 已完成  |
+
 
 ## 优先级含义
 
 - `P0`：落实三层架构、兼容测试骨架和首个基础 DOM 垂直切片。
 - `P1`：完成解析、序列化、选择器和 alpha 阶段基础 DOM 扩展。
 - `P2`：完成 happy-dom 高阶能力、兼容收口、原生发布与 stable 门禁。
+
