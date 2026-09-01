@@ -14,6 +14,7 @@ use selectors::context::{
 };
 use selectors::matching::matches_selector_list;
 use selectors::parser::SelectorList;
+use selectors::Element as SelectorElement;
 
 use crate::arena::NodeId;
 use crate::dom::Document;
@@ -46,6 +47,21 @@ pub fn match_selector_list(
     doc: &Document,
     id: NodeId,
 ) -> Result<bool, CoreError> {
+    match_selector_list_with_scope(list, doc, id, Some(id))
+}
+
+/// Matches `list` against the element `id` with an explicit `:scope` element.
+///
+/// `scope` is the element `:scope` resolves to (the query scope for
+/// `querySelectorAll` on a descendant candidate, or the receiver itself for
+/// `matches`/`closest`). `None` keeps the baseline fallback where `:scope`
+/// matches the root element.
+pub fn match_selector_list_with_scope(
+    list: &SelectorList<DomSelectorImpl>,
+    doc: &Document,
+    id: NodeId,
+    scope: Option<NodeId>,
+) -> Result<bool, CoreError> {
     let element = DomElement::new(doc, id)?;
     let mut caches = SelectorCaches::default();
     let mut context = MatchingContext::new(
@@ -56,5 +72,10 @@ pub fn match_selector_list(
         NeedsSelectorFlags::No,
         MatchingForInvalidation::No,
     );
+    if let Some(scope_id) = scope {
+        if let Ok(scope_element) = DomElement::new(doc, scope_id) {
+            context.scope_element = Some(scope_element.opaque());
+        }
+    }
     Ok(matches_selector_list(list, &element, &mut context))
 }

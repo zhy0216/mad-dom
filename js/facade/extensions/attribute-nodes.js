@@ -67,6 +67,7 @@
 
 import { Document } from "../document.js";
 import { Node } from "./node.js";
+import { HTMLAnchorElement, HTMLLinkElement } from "./html-element.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/attribute-nodes",
@@ -224,7 +225,7 @@ export class Attr {
  * attribute string verbatim.
  */
 export class DOMTokenList {
-  constructor(elementHandle, name) {
+  constructor(elementHandle, name, supportedTokens = null) {
     if (!isNodeHandle(elementHandle)) {
       throw new TypeError("DOMTokenList can only be constructed from a genuine native node handle");
     }
@@ -264,8 +265,9 @@ export class DOMTokenList {
         return Object.keys(tokenItems(target));
       },
     });
-    TOKEN_LIST_STATE.set(proxy, { elementHandle, name });
-    TOKEN_LIST_STATE.set(this, { elementHandle, name });
+    const state = { elementHandle, name, supportedTokens: supportedTokens ?? [] };
+    TOKEN_LIST_STATE.set(proxy, state);
+    TOKEN_LIST_STATE.set(this, state);
     return proxy;
   }
 }
@@ -344,13 +346,23 @@ function namedNodeMapOf(elementHandle) {
 
 /**
  * Mints (or returns the cached) live `DOMTokenList` for
- * `(elementHandle, name)`.
+ * `(elementHandle, name)`. `supportedTokens` is the optional fixed token
+ * allow-list the `supports()` method checks against (the `rel` token list of
+ * `HTMLLinkElement`, which happy-dom hardcodes to
+ * `['stylesheet', 'modulepreload', 'preload']`); a token list without one
+ * reports `false` for every token, matching the baseline.
  */
-function tokenListOf(elementHandle, name) {
-  let list = ELEMENT_TOKEN_LISTS.get(elementHandle);
+function tokenListOf(elementHandle, name, supportedTokens = null) {
+  const cacheKey = supportedTokens === null ? name : `${name}\u0000tokens`;
+  let byElement = ELEMENT_TOKEN_LISTS.get(elementHandle);
+  if (!byElement) {
+    byElement = new Map();
+    ELEMENT_TOKEN_LISTS.set(elementHandle, byElement);
+  }
+  let list = byElement.get(cacheKey);
   if (!list) {
-    list = new DOMTokenList(elementHandle, name);
-    ELEMENT_TOKEN_LISTS.set(elementHandle, list);
+    list = new DOMTokenList(elementHandle, name, supportedTokens);
+    byElement.set(cacheKey, list);
   }
   return list;
 }
@@ -494,7 +506,8 @@ export function install(ctx) {
 
   ctx.defineMethod(DOMTokenList.prototype, "item", function item(index) {
     const items = tokenItems(this);
-    return items[index] ?? null;
+    const normalized = Number.isNaN(Number(index)) ? 0 : Number(index);
+    return items[normalized] ?? null;
   });
 
   ctx.defineMethod(DOMTokenList.prototype, "contains", function contains(token) {
@@ -523,6 +536,13 @@ export function install(ctx) {
     return elementHandle.tokenListReplace(name, String(oldToken), String(newToken));
   });
 
+  // `supports` checks the token against the list's fixed allow-list (empty for
+  // a plain `classList`), matching happy-dom: it never throws and reports
+  // `false` for lists without a declared token set.
+  ctx.defineMethod(DOMTokenList.prototype, "supports", function supports(token) {
+    return TOKEN_LIST_STATE.get(this).supportedTokens.includes(String(token));
+  });
+
   // Iteration surface: the token list is re-read from Core on every call, so
   // the iterators are live like the rest of the surface. `Symbol.toStringTag`
   // is deliberately absent, matching happy-dom (`Object.prototype.toString`
@@ -547,15 +567,36 @@ export function install(ctx) {
     if (typeof callback !== "function") {
       throw new TypeError("DOMTokenList.forEach requires a callback function");
     }
+    // happy-dom defaults `thisArg` to the owning element's Window instance.
+    let thisArgValue = thisArg;
+    if (thisArgValue === undefined) {
+      const { elementHandle } = TOKEN_LIST_STATE.get(this);
+      thisArgValue = ctx.windowFacadeOfDocument(ctx.wrap(elementHandle.ownerDocument()));
+    }
     const items = tokenItems(this);
     for (let index = 0; index < items.length; index += 1) {
-      callback.call(thisArg, items[index], index, this);
+      callback.call(thisArgValue, items[index], index, this);
     }
   });
 
   ctx.defineMethod(DOMTokenList.prototype, "toString", function toString() {
     return this.value || "";
   });
+
+  // `relList` on `<link>` / `<a>`: a live `DOMTokenList` over the `rel`
+  // attribute. `HTMLLinkElement` carries the hardcoded supported-token
+  // allow-list the baseline uses (`stylesheet` / `modulepreload` / `preload`);
+  // `HTMLAnchorElement` has no declared token set, so its `supports()` always
+  // reports `false`.
+  ctx.defineAccessor(HTMLLinkElement.prototype, "relList", function relList() {
+    const handle = facadeNodeHandle(ctx, this, "relList");
+    return tokenListOf(handle, "rel", ["stylesheet", "modulepreload", "preload"]);
+  }, undefined);
+
+  ctx.defineAccessor(HTMLAnchorElement.prototype, "relList", function relList() {
+    const handle = facadeNodeHandle(ctx, this, "relList");
+    return tokenListOf(handle, "rel");
+  }, undefined);
 }
 
 /**

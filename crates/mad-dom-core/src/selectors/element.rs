@@ -83,9 +83,11 @@ impl<'a> DomElement<'a> {
     }
 
     /// Builds an element view from the first element reached when walking the
-    /// sibling chain starting at `start`, skipping non-element nodes.
-    fn sibling(&self, mut start: Option<NodeId>) -> Option<Self> {
-        while let Some(candidate) = start {
+    /// sibling chain starting at `start` in the given direction, skipping
+    /// non-element nodes.
+    fn sibling(&self, start: Option<NodeId>, backward: bool) -> Option<Self> {
+        let mut cursor = start;
+        while let Some(candidate) = cursor {
             if matches!(
                 self.doc.get(candidate).expect("live sibling").data(),
                 NodeData::Element { .. }
@@ -95,10 +97,15 @@ impl<'a> DomElement<'a> {
                     id: candidate,
                 });
             }
-            start = self
-                .doc
-                .next_sibling(candidate)
-                .expect("live sibling has live next sibling");
+            cursor = if backward {
+                self.doc
+                    .previous_sibling(candidate)
+                    .expect("live sibling has live previous sibling")
+            } else {
+                self.doc
+                    .next_sibling(candidate)
+                    .expect("live sibling has live next sibling")
+            };
         }
         None
     }
@@ -153,7 +160,7 @@ impl<'a> Element for DomElement<'a> {
             .doc
             .previous_sibling(self.id)
             .expect("live previous sibling read");
-        self.sibling(prev)
+        self.sibling(prev, true)
     }
 
     fn next_sibling_element(&self) -> Option<Self> {
@@ -161,7 +168,7 @@ impl<'a> Element for DomElement<'a> {
             .doc
             .next_sibling(self.id)
             .expect("live next sibling read");
-        self.sibling(next)
+        self.sibling(next, false)
     }
 
     fn first_element_child(&self) -> Option<Self> {
@@ -169,7 +176,7 @@ impl<'a> Element for DomElement<'a> {
             .doc
             .first_child(self.id)
             .expect("live first child read");
-        self.sibling(first)
+        self.sibling(first, false)
     }
 
     fn is_html_element_in_html_document(&self) -> bool {

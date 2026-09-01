@@ -39,7 +39,7 @@ use crate::arena::NodeId;
 use crate::dom::{Document, NodeType};
 use crate::error::CoreError;
 
-use super::matcher::match_selector_list;
+use super::matcher::{match_selector_list, match_selector_list_with_scope};
 use super::parser::{parse_selector_list, DomSelectorImpl};
 
 /// Whether a node kind may act as a `ParentNode` query scope.
@@ -186,7 +186,10 @@ impl Document {
             if doc.node_type(candidate)? != NodeType::Element {
                 return Ok(true);
             }
-            if match_selector_list(list, doc, candidate)? {
+            // `:scope` resolves to the query scope element (the context object
+            // itself is never a candidate, but it is the scoping element the
+            // selector's `:scope` component matches).
+            if match_selector_list_with_scope(list, doc, candidate, Some(scope))? {
                 out.push(candidate);
             }
             Ok(true)

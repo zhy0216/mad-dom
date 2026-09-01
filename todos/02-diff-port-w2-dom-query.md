@@ -1,6 +1,6 @@
 # 02 差分移植波次 W2：dom / query-selector / range / selection / utilities
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：W2
 - 条目 ID：`D02`

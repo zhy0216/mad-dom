@@ -54,6 +54,7 @@ import * as windowPlatformExtension from "./window-platform.js";
 import * as xhrExtension from "./xhr.js";
 import * as browserExtension from "./browser.js";
 import * as domGeometryExtension from "./dom-geometry.js";
+import * as domMatrixExtension from "./dom-matrix.js";
 import * as dndExtension from "./dnd.js";
 import * as hdunitNodesExtension from "./hdunit-nodes.js";
 
@@ -95,6 +96,7 @@ const EXTENSIONS = [
   xhrExtension,
   browserExtension,
   domGeometryExtension,
+  domMatrixExtension,
   dndExtension,
   hdunitNodesExtension,
 ];

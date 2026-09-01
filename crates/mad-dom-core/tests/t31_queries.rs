@@ -504,3 +504,73 @@ fn hand_built_tree_queries_in_document_order() {
     );
     assert_eq!(doc.query_selector(body, "a").unwrap(), Some(a));
 }
+
+// ---- :scope resolution and comment-interleaved sibling walking --------------
+
+/// `:scope` must resolve to the query scope element (the context object) for
+/// `querySelectorAll` on an element scope, and to the receiver itself for
+/// `matches` — the sibling/ancestor chains used by structural pseudo-classes
+/// walk the element link chain and must skip comment/text nodes in both
+/// directions.
+#[test]
+fn scope_resolves_to_query_scope_and_receiver() {
+    let (doc, _element) = load(CORPUS);
+    let body = doc.document_body().unwrap().unwrap();
+
+    // `querySelectorAll(":scope")` on the body scope excludes the body itself
+    // (descendants only) but `:scope > *` must match the body's element
+    // children — the scope element is the matching anchor even though it is
+    // not a candidate.
+    let body_children = doc.query_selector_all(body, ":scope > *").unwrap();
+    assert_eq!(id_of(&doc, &body_children), ["root"]);
+
+    // `matches(":scope")` resolves `:scope` to the receiver itself.
+    assert!(doc.matches(body, ":scope").unwrap());
+
+    // A non-scope element still matches its own `:scope`.
+    let root = doc.query_selector(body, "#root").unwrap().unwrap();
+    assert!(doc.matches(root, ":scope").unwrap());
+    assert_eq!(
+        id_of(&doc, &doc.query_selector_all(root, ":scope > p").unwrap()),
+        ["p1", "p2"],
+        ":scope > p matches the paragraphs under the root scope"
+    );
+}
+
+/// `:first-of-type` / `:last-of-type` iterate the element sibling chain to
+/// find the same-type element before/after the subject; comment and text
+/// nodes interleaved with the element siblings must be skipped in *both*
+/// directions (a regression where the backward walk stepped forward and
+/// looped forever when a comment preceded the subject).
+#[test]
+fn of_type_pseudos_skip_interleaved_comment_nodes() {
+    let (mut doc, _element) = load(CORPUS);
+    let root = doc.document_root();
+
+    // The corpus interleaves a comment between `<p id="p1">` and
+    // `<p id="p2">` inside `#root`.
+    assert_eq!(
+        id_of(
+            &doc,
+            &doc.query_selector_all(root, "p:first-of-type").unwrap()
+        ),
+        ["p1"],
+        "p1 is the first of its type despite the comment before p2"
+    );
+    assert_eq!(
+        id_of(
+            &doc,
+            &doc.query_selector_all(root, "p:last-of-type").unwrap()
+        ),
+        ["p2"],
+        "p2 is the last of its type"
+    );
+    assert_eq!(
+        id_of(
+            &doc,
+            &doc.query_selector_all(root, "#root p:first-of-type")
+                .unwrap()
+        ),
+        ["p1"]
+    );
+}

@@ -479,3 +479,63 @@ describe.skipIf(!nativeAvailable)("DOMTokenList mutators and class sync (T34)", 
     }
   });
 });
+
+describe.skipIf(!nativeAvailable)("DOMTokenList supports / relList / item coercion (W2)", () => {
+  test("supports() checks the declared token allow-list and never throws", () => {
+    const win = new Window();
+    try {
+      const div = win.document.createElement("div");
+      expect(div.classList.supports("foo")).toBe(false);
+      expect(div.classList.supports("")).toBe(false);
+
+      const link = win.document.createElement("link");
+      link.rel = "stylesheet";
+      expect(link.relList).toBeInstanceOf(DOMTokenList);
+      expect(link.relList.supports("stylesheet")).toBe(true);
+      expect(link.relList.supports("modulepreload")).toBe(true);
+      expect(link.relList.supports("preload")).toBe(true);
+      expect(link.relList.supports("unsupported")).toBe(false);
+
+      const anchor = win.document.createElement("a");
+      anchor.rel = "stylesheet";
+      expect(anchor.relList.supports("stylesheet")).toBe(false);
+    } finally {
+      win.destroy();
+    }
+  });
+
+  test("item() coerces a non-numeric index to 0 (happy-dom parity)", () => {
+    const win = new Window();
+    try {
+      const div = win.document.createElement("div");
+      div.className = "x y";
+      expect(div.classList.item("0")).toBe("x");
+      expect(div.classList.item("a")).toBe("x");
+      expect(div.classList.item(5)).toBeNull();
+    } finally {
+      win.destroy();
+    }
+  });
+
+  test("forEach defaults thisArg to the owning window (happy-dom parity)", () => {
+    const win = new Window();
+    try {
+      const div = win.document.createElement("div");
+      div.className = "x y";
+      const thisArgs = [];
+      div.classList.forEach(function () {
+        thisArgs.push(this);
+      });
+      expect(thisArgs[0]).toBe(win);
+      expect(thisArgs[1]).toBe(win);
+
+      const thisArg = {};
+      div.classList.forEach(function () {
+        this.__win = this === win;
+      }, thisArg);
+      expect(thisArg.__win).toBe(false);
+    } finally {
+      win.destroy();
+    }
+  });
+});
