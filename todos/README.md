@@ -152,7 +152,7 @@ git diff --check
 | 顺序 | 优先级 | TODO 文件 | 里程碑 | 依赖 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | 01 | P0 | [01-diff-port-css-pilot.md](done/01-diff-port-css-pilot.md) | W1 pilot（css，17） | 无 | 已完成 |
-| 02 | P1 | [02-diff-port-w2-dom-query.md](02-diff-port-w2-dom-query.md) | W2（dom/query-selector/range/selection/utilities，9） | D01 | 待办 |
+| 02 | P1 | [02-diff-port-w2-dom-query.md](done/02-diff-port-w2-dom-query.md) | W2（dom/query-selector/range/selection/utilities，9） | D01 | 已完成 |
 | 03 | P1 | [03-diff-port-w3-fetch-xhr-ws.md](03-diff-port-w3-fetch-xhr-ws.md) | W3（fetch/xml-http-request/web-socket，10） | D02 | 待办 |
 | 04 | P1 | [04-diff-port-w4-browser-window.md](04-diff-port-w4-browser-window.md) | W4（browser/window/location/history，13） | D03 | 待办 |
 | 05 | P1 | [05-diff-port-w5-nodes-core.md](05-diff-port-w5-nodes-core.md) | W5（nodes 核心内部类，13） | D04 | 待办 |
