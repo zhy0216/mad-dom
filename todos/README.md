@@ -175,9 +175,9 @@ git diff --check
 | 03 | P0 | [03-happy-dom-unit-bun-adapter.md](done/03-happy-dom-unit-bun-adapter.md) | 基建 | T01 | 已完成 |
 | 04 | P0 | [04-happy-dom-unit-shim.md](done/04-happy-dom-unit-shim.md) | 基建 | T01 | 已完成 |
 | 05 | P0 | [05-hdunit-triage-ledger-gate.md](done/05-hdunit-triage-ledger-gate.md) | 基建 | T02, T03, T04 | 已完成 |
-| 06 | P1 | [06-hdunit-nodes-wave.md](06-hdunit-nodes-wave.md) | 波次 | T05 | 待办 |
+| 06 | P1 | [06-hdunit-nodes-wave.md](done/06-hdunit-nodes-wave.md) | 波次 | T05 | 已完成 |
 | 07 | P1 | [07-hdunit-event-dom-window-browser-wave.md](done/07-hdunit-event-dom-window-browser-wave.md) | 波次 | T05 | 已完成 |
-| 08 | P1 | [08-hdunit-lightweight-wave.md](08-hdunit-lightweight-wave.md) | 波次 | T05 | 待办 |
+| 08 | P1 | [08-hdunit-lightweight-wave.md](done/08-hdunit-lightweight-wave.md) | 波次 | T05 | 已完成 |
 | 09 | P1 | [09-hdunit-css-fetch-wave.md](09-hdunit-css-fetch-wave.md) | 波次 | T05 | 待办 |
 | 10 | P1 | [10-hdunit-internal-coupled-triage.md](done/10-hdunit-internal-coupled-triage.md) | 波次 | T05 | 已完成 |
 | 12 | P1 | [12-hdunit-propertysymbol-shim.md](12-hdunit-propertysymbol-shim.md) | 波次 | T06, T07, T08, T09, T10 | 待办 |
