@@ -155,7 +155,7 @@ git diff --check
 | 02 | P1 | [02-diff-port-w2-dom-query.md](done/02-diff-port-w2-dom-query.md) | W2（dom/query-selector/range/selection/utilities，9） | D01 | 已完成 |
 | 03 | P1 | [03-diff-port-w3-fetch-xhr-ws.md](done/03-diff-port-w3-fetch-xhr-ws.md) | W3（fetch/xml-http-request/web-socket，10） | D02 | 已完成 |
 | 04 | P1 | [04-diff-port-w4-browser-window.md](done/04-diff-port-w4-browser-window.md) | W4（browser/window/location/history，13） | D03 | 已完成 |
-| 05 | P1 | [05-diff-port-w5-nodes-core.md](05-diff-port-w5-nodes-core.md) | W5（nodes 核心内部类，13） | D04 | 待办 |
+| 05 | P1 | [05-diff-port-w5-nodes-core.md](done/05-diff-port-w5-nodes-core.md) | W5（nodes 核心内部类，13） | D04 | 已完成 |
 | 06 | P1 | [06-diff-port-w6-nodes-html.md](06-diff-port-w6-nodes-html.md) | W6（nodes html 元素，22） | D05 | 待办 |
 | 07 | P1 | [07-diff-port-w7-nodes-svg-a.md](07-diff-port-w7-nodes-svg-a.md) | W7（nodes svg 元素 A–FE，36） | D06 | 待办 |
 | 08 | P1 | [08-diff-port-w8-nodes-svg-b.md](08-diff-port-w8-nodes-svg-b.md) | W8（nodes svg 元素 FI–V，33） | D07 | 待办 |
