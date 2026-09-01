@@ -158,7 +158,7 @@ git diff --check
 | 05 | P1 | [05-diff-port-w5-nodes-core.md](done/05-diff-port-w5-nodes-core.md) | W5（nodes 核心内部类，13） | D04 | 已完成 |
 | 06 | P1 | [06-diff-port-w6-nodes-html.md](done/06-diff-port-w6-nodes-html.md) | W6（nodes html 元素，22） | D05 | 已完成 |
 | 07 | P1 | [07-diff-port-w7-nodes-svg-a.md](done/07-diff-port-w7-nodes-svg-a.md) | W7（nodes svg 元素 A–FE，36） | D06 | 已完成 |
-| 08 | P1 | [08-diff-port-w8-nodes-svg-b.md](08-diff-port-w8-nodes-svg-b.md) | W8（nodes svg 元素 FI–V，33） | D07 | 待办 |
+| 08 | P1 | [08-diff-port-w8-nodes-svg-b.md](done/08-diff-port-w8-nodes-svg-b.md) | W8（nodes svg 元素 FI–V，33） | D07 | 已完成 |
 | 09 | P1 | [09-diff-port-w9-svg.md](09-diff-port-w9-svg.md) | W9（svg，26） | D08 | 待办 |
 | 10 | P1 | [10-diff-port-w10-tail.md](10-diff-port-w10-tail.md) | W10（尾部杂项，17） | D09 | 待办 |
 | 11 | P2 | [11-diff-port-closeout.md](11-diff-port-closeout.md) | 收尾（口径、文档、性能验收） | D10 | 待办 |
