@@ -5,7 +5,7 @@
     {
       "file": "browser/Browser.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-other): browser/DefaultBrowserSettings.js (T02-unmapped src path; the browser settings surface is facade-internal)"
+      "reason": "internal-only-no-public-surface (三问可差分: waitUntilComplete()/abort() 断言 page.evaluate 调度真实定时器后 mainFrame.window 的终态, 依赖宿主异步任务追踪; mad-dom Browser 不追踪定时任务(waitUntilComplete 仅等导航、abort 为空操作), settings 形状(timer.maxTimeout/navigator.userAgent)亦与 happy-dom 默认值不同)"
     },
     {
       "file": "browser/BrowserContext.test.ts",
@@ -15,17 +15,17 @@
     {
       "file": "browser/BrowserFrame.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class): fetch/Fetch.js; unmapped-internal-import (internal-enum): exception/DOMExceptionNameEnum.js; unmapped-internal-import (internal-utility): browser/utilities/BrowserFrameFactory.js"
+      "reason": "internal-only-no-public-surface (一问可构造: 断言经内部 BrowserFrameFactory.createChildFrame 构造子 frame、vi.spyOn(Fetch.prototype.send) 桩导航与 PropertySymbol 槽位; 公开面无子 frame 构造入口, goto/导航断言依赖内部 fetch 桩)"
     },
     {
       "file": "browser/BrowserPage.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-utility): browser/utilities/BrowserFrameFactory.js"
+      "reason": "internal-only-no-public-surface (一问可构造: waitForNavigation/evaluate/goto/goBack/goForward/goSteps/reload 断言全部经 mainFrame 方法 mock 桩, frames/close 断言经内部 BrowserFrameFactory 子 frame; 公开面无法构造被测初始状态)"
     },
     {
       "file": "browser/detached-browser/DetachedBrowser.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-other): browser/DefaultBrowserSettings.js (T02-unmapped src path; the browser settings surface is facade-internal)"
+      "reason": "internal-only-no-public-surface (一问可构造: DetachedBrowser/DetachedBrowserContext/DetachedBrowserPage 无 mad-dom 公开导出, 无法经公开 API 构造被测起始状态; waitUntilComplete/abort 亦依赖宿主异步任务追踪)"
     },
     {
       "file": "browser/detached-browser/DetachedBrowserContext.test.ts",
@@ -35,17 +35,17 @@
     {
       "file": "browser/detached-browser/DetachedBrowserFrame.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class): fetch/Fetch.js; unmapped-internal-import (internal-enum): exception/DOMExceptionNameEnum.js; unmapped-internal-import (internal-utility): browser/utilities/BrowserFrameFactory.js"
+      "reason": "internal-only-no-public-surface (一问可构造: DetachedBrowser 无公开导出, 子 frame 经内部 BrowserFrameFactory 构造, goto/导航断言经 Fetch.prototype 桩与 PropertySymbol 槽位)"
     },
     {
       "file": "browser/detached-browser/DetachedBrowserPage.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-type, internal-utility): browser/types/IGoToOptions.js, browser/utilities/BrowserFrameFactory.js (T02-unmapped src paths)"
+      "reason": "internal-only-no-public-surface (一问可构造: DetachedBrowser 无公开导出, mainFrame 方法断言全部走 mock 桩, frames/close 经内部 BrowserFrameFactory 子 frame)"
     },
     {
       "file": "browser/utilities/BrowserFrameURL.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class): browser/utilities/BrowserFrameURL.js"
+      "reason": "internal-only-no-public-surface (一问可构造: BrowserFrameURL 为内部静态工具类, 两端均无公开导出, 无法经公开 API 构造被测对象)"
     }
   ]
 }

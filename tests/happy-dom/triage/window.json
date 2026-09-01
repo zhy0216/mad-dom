@@ -5,12 +5,12 @@
     {
       "file": "window/BrowserWindow.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class, internal-config, internal-enum, internal-other, internal-utility): browser/utilities/BrowserFrameFactory.js, config/HTMLElementConfig.js, config/SVGElementConfig.js, event/events/MessageEvent.js, exception/DOMExceptionNameEnum.js, fetch/Fetch.js, fetch/ResourceFetch.js, navigator/Navigator.js, version.js, window/CrossOriginBrowserWindow.js"
+      "reason": "internal-only-no-public-surface (一问可构造: BrowserWindow 无 mad-dom 公开导出; 断言经内部 BrowserFrameFactory/ResourceFetch/Fetch 桩、VM 上下文内建对象与 PropertySymbol, 公开面无法构造被测起始状态)"
     },
     {
       "file": "window/DetachedWindowAPI.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-other): browser/DefaultBrowserSettings.js"
+      "reason": "internal-only-no-public-surface (二问可观测: happyDOM.settings/virtualConsolePrinter/setViewport/setWindowSize/setInnerWidth/setInnerHeight 在 mad-dom 公开 happyDOM 面缺失, 断言终态不可读出; waitUntilComplete/abort 亦依赖宿主 fetch/异步 mock)"
     },
     {
       "file": "window/GlobalWindow.test.ts",
@@ -20,7 +20,7 @@
     {
       "file": "window/Window.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class): fetch/Fetch.js; unmapped-internal-import (internal-other): version.js"
+      "reason": "ported-to-diff (hc-diff-window-window)"
     }
   ]
 }

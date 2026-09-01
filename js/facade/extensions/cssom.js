@@ -3638,15 +3638,6 @@ export function install(ctx) {
     return computedStyleFor(ctx, this, element);
   });
 
-  // Window default viewport (happy-dom default; no layout engine).
-  ctx.defineAccessor(Window.prototype, "innerWidth", function innerWidth() {
-    return 1024;
-  }, undefined);
-
-  ctx.defineAccessor(Window.prototype, "innerHeight", function innerHeight() {
-    return 768;
-  }, undefined);
-
   // `Element.style` — the live declaration over the style attribute. Accessors
   // are on `Node.prototype` (the element class in the single-class model); a
   // text node reaches it and returns undefined (happy-dom parity).

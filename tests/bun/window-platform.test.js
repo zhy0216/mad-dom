@@ -328,4 +328,92 @@ describe.skipIf(!nativeAvailable)("window platform surface (T45)", () => {
       winB.destroy();
     }
   });
+
+  test("the Window viewport surface reads the constructor options (happy-dom parity)", () => {
+    // Defaults: 1024 x 768 at devicePixelRatio 1, outer == viewport size.
+    const plain = new Window();
+    try {
+      expect(plain.innerWidth).toBe(1024);
+      expect(plain.innerHeight).toBe(768);
+      expect(plain.outerWidth).toBe(1024);
+      expect(plain.outerHeight).toBe(768);
+      expect(plain.devicePixelRatio).toBe(1);
+    } finally {
+      plain.destroy();
+    }
+
+    // Explicit width / height options drive the viewport.
+    const sized = new Window({ width: 1920, height: 1080 });
+    try {
+      expect([sized.innerWidth, sized.innerHeight]).toEqual([1920, 1080]);
+      expect([sized.outerWidth, sized.outerHeight]).toEqual([1920, 1080]);
+      expect(sized.devicePixelRatio).toBe(1);
+    } finally {
+      sized.destroy();
+    }
+
+    // Partial dimensions fall back to the defaults.
+    const wide = new Window({ width: 1920 });
+    try {
+      expect([wide.innerWidth, wide.innerHeight]).toEqual([1920, 768]);
+    } finally {
+      wide.destroy();
+    }
+
+    // Deprecated innerWidth / innerHeight aliases; explicit width/height win.
+    const deprecated = new Window({ innerWidth: 1920, innerHeight: 1080 });
+    try {
+      expect([deprecated.innerWidth, deprecated.innerHeight]).toEqual([1920, 1080]);
+    } finally {
+      deprecated.destroy();
+    }
+    const both = new Window({ innerWidth: 1920, innerHeight: 1080, width: 800, height: 600 });
+    try {
+      expect([both.innerWidth, both.innerHeight]).toEqual([800, 600]);
+    } finally {
+      both.destroy();
+    }
+
+    // The settings.viewport browser setting; width/height options override it.
+    const viewportSetting = new Window({ settings: { viewport: { width: 1920, height: 1080 } } });
+    try {
+      expect([viewportSetting.innerWidth, viewportSetting.innerHeight]).toEqual([1920, 1080]);
+    } finally {
+      viewportSetting.destroy();
+    }
+    const overridden = new Window({
+      width: 800,
+      height: 600,
+      settings: { viewport: { width: 1920, height: 1080 } },
+    });
+    try {
+      expect([overridden.innerWidth, overridden.innerHeight]).toEqual([800, 600]);
+    } finally {
+      overridden.destroy();
+    }
+    const mixed = new Window({ width: 800, settings: { viewport: { width: 1920, height: 1080 } } });
+    try {
+      expect([mixed.innerWidth, mixed.innerHeight]).toEqual([800, 1080]);
+    } finally {
+      mixed.destroy();
+    }
+
+    // devicePixelRatio comes from the viewport setting.
+    const dpr = new Window({ settings: { viewport: { devicePixelRatio: 2 } } });
+    try {
+      expect(dpr.devicePixelRatio).toBe(2);
+      expect(dpr.innerWidth).toBe(1024);
+    } finally {
+      dpr.destroy();
+    }
+
+    // The url option does not affect the viewport, and viewports are per-window.
+    const withUrl = new Window({ url: "http://localhost:8080" });
+    try {
+      expect(withUrl.location.href).toBe("http://localhost:8080/");
+      expect([withUrl.innerWidth, withUrl.innerHeight]).toEqual([1024, 768]);
+    } finally {
+      withUrl.destroy();
+    }
+  });
 });

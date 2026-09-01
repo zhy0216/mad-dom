@@ -1,6 +1,6 @@
 # 04 差分移植波次 W4：browser / window / location / history
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：W4
 - 条目 ID：`D04`
@@ -31,7 +31,7 @@
 
 ## 条目
 
-- [ ] **D04 — W4 四子系统差分移植**
+- [x] **D04 — W4 四子系统差分移植**
   - 实现：
     - 逐文件核实运行时导入；enum/type-only 排除（triage 不动，commit body 列明）；其余三问 A/B 判定，B 档 reason `internal-only-no-public-surface (哪一问: 简述)`——Browser/Frame/Page 编排、DetachedBrowser 宿主桥接归「不可构造/不可观测」。
     - A 档按 README 共用协议写场景（`tests/compat/scenarios/dom/<subsystem>/<name>.js`）、逐场景对拍至双端一致、登记四件套。A 档场景只走 `entry.Window` + 公开成员（如 window 公开 API、location 公开属性方法、history 公开状态机）。

@@ -175,6 +175,23 @@ function isWindowHandle(handle) {
 // the native window handle itself).
 const WIN_HANDLES = new WeakMap();
 
+// Per-window viewport state (happy-dom Window constructor parity: `width` /
+// `height` options (and the deprecated `innerWidth` / `innerHeight` aliases)
+// take precedence over the `settings.viewport` browser setting, which itself
+// falls back to the happy-dom default 1024×768 at devicePixelRatio 1). Keyed
+// by the Window facade so the `innerWidth` / `outerWidth` / `devicePixelRatio`
+// accessors and the media-query evaluation all read one consistent value.
+const WINDOW_VIEWPORTS = new WeakMap();
+
+function computeViewport(options) {
+  const viewportSetting = options?.settings?.viewport ?? {};
+  return {
+    width: options?.width ?? options?.innerWidth ?? viewportSetting.width ?? 1024,
+    height: options?.height ?? options?.innerHeight ?? viewportSetting.height ?? 768,
+    devicePixelRatio: viewportSetting.devicePixelRatio ?? 1,
+  };
+}
+
 // Document facade → owning Window facade, held as a WeakRef value. A document
 // has no native back-pointer to its window, so the `document` accessor keeps
 // this reverse mapping for the document-side surface (document.write, script
@@ -228,6 +245,7 @@ export class Window {
       );
     }
     WIN_HANDLES.set(this, nativeHandle);
+    WINDOW_VIEWPORTS.set(this, computeViewport(options));
     // happy-dom constructor options: honor `url` by simulating the initial
     // navigation (the T45 simulated location), so `new Window({ url })`
     // matches `new Window()` plus a synchronous navigation to that URL.
@@ -244,6 +262,35 @@ defineAccessor(Window.prototype, "document", function getDocument() {
   const documentFacade = wrap(WIN_HANDLES.get(this).document());
   DOC_TO_WINDOW.set(documentFacade, new WeakRef(this));
   return documentFacade;
+}, undefined);
+
+// Window viewport surface (happy-dom parity): the four viewport dimensions and
+// the device scale factor read the per-window viewport state set from the
+// constructor options (T22B viewport). `outerWidth` / `outerHeight` mirror the
+// happy-dom window surface where the outer size equals the viewport size.
+function windowViewport(windowFacade) {
+  const viewport = WINDOW_VIEWPORTS.get(windowFacade);
+  return viewport ?? { width: 1024, height: 768, devicePixelRatio: 1 };
+}
+
+defineAccessor(Window.prototype, "innerWidth", function innerWidth() {
+  return windowViewport(this).width;
+}, undefined);
+
+defineAccessor(Window.prototype, "innerHeight", function innerHeight() {
+  return windowViewport(this).height;
+}, undefined);
+
+defineAccessor(Window.prototype, "outerWidth", function outerWidth() {
+  return windowViewport(this).width;
+}, undefined);
+
+defineAccessor(Window.prototype, "outerHeight", function outerHeight() {
+  return windowViewport(this).height;
+}, undefined);
+
+defineAccessor(Window.prototype, "devicePixelRatio", function devicePixelRatio() {
+  return windowViewport(this).devicePixelRatio;
 }, undefined);
 
 defineMethod(Window.prototype, "destroy", function destroy() {
