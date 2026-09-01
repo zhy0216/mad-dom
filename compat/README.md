@@ -152,10 +152,32 @@ vendored 测试文件的文件级门禁（与 `up` 的手写移植相对）。�
 ### 运行
 
 ```sh
-npm run compat:hdunit:validate           # 门禁：schema + 交叉核对 + 活体运行（含 --self-test 篡改演练）
-npm run compat:hdunit:report             # 离线汇总：各子系统计数与通过率（--json）
+npm run compat:hdunit:validate           # 门禁：schema + 交叉核对 + 活体运行（exit 0/1/2）
+npm run compat:hdunit:report             # 离线汇总：各子系统计数、通过率、与基线 delta
+npm run compat:hdunit:report -- --json   # 同上，机器可读（totals/bySubsystem 含 passRate + baseline/delta）
+npm run compat:hdunit:report:baseline    # 把当前汇总写为基线（report-baseline.json），波次收尾/有意变更后运行
 bun tests/happy-dom/validate-triage.mjs --self-test   # 4 个篡改演练（临时副本）
 ```
+
+报告口径（T11）：`report.mjs --json` 输出每子系统的 `enabled` / `expectedFail` / `skip` /
+`total` / `passRate`（`enabled/total` 四舍五入取整），并在存在 `report-baseline.json` 时给出
+与上次基线的每子系统 delta。基线由 `compat:hdunit:report:baseline` 写入，与
+`tests/happy-dom/COVERAGE.md` 的收尾总结共用同一口径（诚实，不美化）。
+
+### CI（T11）
+
+`.github/workflows/ci.yml` 的 `validate` job 在 "Validate compatibility ledger"
+之后、包打包检查之前运行 hdunit 步骤（顺序执行，不与其他步骤并行占用同一 tmp）：
+
+1. `git clone --branch v20.11.11` 锁定的上游 checkout 到 `/tmp/happy-dom-upstream`；
+2. `HAPPY_DOM_UPSTREAM_DIR=… bun scripts/vendor-happy-dom-tests.mjs --verify`（幂等 + 逐字节）；
+3. `bun scripts/rewrite-happy-dom-tests.mjs --verify`（幂等 + 逐字节）；
+4. `npm run compat:hdunit:validate`（triage 门禁）。
+
+任一步失败即 CI 失败（含把 enabled 改 skip、把 known-gap 置 enabled 等篡改都会以
+exit 1/2 拦截）。`npm run validate` 链同样追加了 `compat:hdunit:validate`，本地验证路径
+与 CI 等价（本地 vendor/rewrite `--verify` 需要上游 checkout，见
+[tests/happy-dom/README.md](../tests/happy-dom/README.md#vendor-需要上游-checkout)）。
 
 `compat:ledger` 门禁同时扩展：`hdunit` 作为新 suite 纳入 schema 校验，upstream-map
 的 `localId` 可与 hdunit（非 `-coverage`）条目双向一致；`compat:ledger:selftest`

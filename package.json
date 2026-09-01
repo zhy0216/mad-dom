@@ -33,7 +33,7 @@
   "scripts": {
     "check": "bun --check index.js",
     "test": "bun test tests/bun",
-    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run compat:types && npm run test && npm run compat:ledger && npm run wpt:test",
+    "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run compat:types && npm run test && npm run compat:ledger && npm run compat:hdunit:validate && npm run wpt:test",
     "dev:build": "bash crates/mad-dom-bun/build.sh",
     "test:native": "bun test tests/bun/native.test.js",
     "platform:build": "bun scripts/build-platform-package.mjs",
@@ -68,6 +68,7 @@
     "compat:hdunit:rewrite": "bun scripts/rewrite-happy-dom-tests.mjs",
     "compat:hdunit:validate": "bun tests/happy-dom/validate-triage.mjs",
     "compat:hdunit:report": "bun tests/happy-dom/report.mjs",
+    "compat:hdunit:report:baseline": "bun tests/happy-dom/report.mjs --record-baseline",
     "compat:hdunit:test": "bun tests/happy-dom/adapter/run-compat-hdunit-test.mjs"
   },
   "keywords": [

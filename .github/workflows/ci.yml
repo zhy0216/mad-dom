@@ -48,6 +48,13 @@ jobs:
       - name: Validate compatibility ledger (regression gate)
         run: npm run compat:ledger
 
+      - name: Validate hdunit suite (vendor/rewrite idempotency + triage gate)
+        run: |
+          git clone --quiet --depth 1 --branch v20.11.11 https://github.com/capricorn86/happy-dom /tmp/happy-dom-upstream
+          HAPPY_DOM_UPSTREAM_DIR=/tmp/happy-dom-upstream bun scripts/vendor-happy-dom-tests.mjs --verify
+          bun scripts/rewrite-happy-dom-tests.mjs --verify
+          npm run compat:hdunit:validate
+
       - name: Smoke test package packing
         run: npm pack --dry-run
 

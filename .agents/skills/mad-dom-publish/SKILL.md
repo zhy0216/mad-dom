@@ -40,6 +40,19 @@ bun scripts/release.mjs draft --stage alpha --version <新版本> [--no-build]
 - 本机只装了 `aarch64-apple-darwin` 的 rust target，所以只构建/打包 darwin-arm64，其余平台会被 skip（留给 CI 在原生 runner 上构建）。
 - 产物在 `build/release/tgz/`：`mad-dom-<v>.tgz` + `mad-dom-platform-darwin-arm64-<v>.tgz`。
 
+**发布面确认（hdunit 资产不得进包）**：`mad-dom` 的 `package.json` `files` 只含
+`index.js` / `index.d.ts` / `js` / `README.md` / `LICENSE`，`tests/happy-dom/` 整个 hdunit
+套件（vendored 上游测试树，含 MIT 上游代码）必须在发布面之外。发布前跑一次 dry-run 检查：
+
+```bash
+npm pack --dry-run
+# 期望：输出清单里没有任何 tests/、compat/、benchmark/、scripts/ 或 Cargo 资产
+# 出现 "tests/happy-dom/..." 即发布面回归，先修 package.json files 再打包
+```
+
+`tests/happy-dom/` 里的 vendored/rewritten/triage 资产仅供仓库内门禁
+（`compat:hdunit:validate` / `compat:hdunit:report`）使用，不进 npm 包。
+
 历史坑（已修，2026-08-31）：`scripts/release.mjs` 的 `packPackage` 曾对共享 tgz 目录 `rmSync`，会把前面已打好的平台包 tarball 清掉。现在只 `mkdirSync`。若将来行为异常，先查这里。
 
 ## 4. 发布（真实、不可逆，需用户明确授权）

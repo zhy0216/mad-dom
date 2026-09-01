@@ -42,6 +42,24 @@ The report shows two timings (median over 3 runs by default):
 
 `npm run test:integration` runs the mad-dom copy (`bun test`).
 
+## 与 hdunit 的关系
+
+本目录的 integration benchmark 与 hdunit（`tests/happy-dom/`，[ADR-0006](../adr/0006-happy-dom-unit-suite-hdunit.md)）
+是**互补的两条验证线**，不互相替代：
+
+| 维度 | integration benchmark（本目录） | hdunit（tests/happy-dom/） |
+| --- | --- | --- |
+| 套件来源 | happy-dom 的 `integration-test/` 子套件（少量、端到端：Fetch、XMLHttpRequest、WebSocket、Browser、窗口脚本求值） | happy-dom 的 `test/` 全量单测（298 个 `*.test.ts`，约 9.9 万行） |
+| 运行方式 | 同一套测试跑两遍（mad-dom vs happy-dom），比对 wall-clock | 只跑 mad-dom 侧，逐文件 triage 终态 |
+| 关注点 | **性能**（local 组：确定性 DOM 负载的中位耗时对比） | **正确性门禁**（每个 vendored 文件声明 enabled/skip/expected-fail 且不可退化） |
+| 测试代码改动 | 拷来改 import（`happy-dom` → `mad-dom`）+ 少量运行适配 | 机械重写（vitest → bun:test + shim 路径），禁止手改断言 |
+| 门禁 | CI `integration` job（`npm run test:integration`）+ `bench` job（`npm run bench:check` 对基线） | `compat:hdunit:validate`（validate job + `npm run validate` 链） |
+
+简单说：integration benchmark 回答「mad-dom 在这个工作负载上快不快」，hdunit 回答
+「mad-dom 跑不跑得对上游单测」。两者的基底版本一致（都锁定 happy-dom v20.11.11 @
+`64e2c774…`），但覆盖范围与判定语义不同。hdunit 的覆盖总结与 known-gap 见
+[tests/happy-dom/COVERAGE.md](../tests/happy-dom/COVERAGE.md)。
+
 ## Current gaps on mad-dom
 
 The mad-dom copy now runs the full suite: `Browser` / `BrowserErrorCaptureEnum`

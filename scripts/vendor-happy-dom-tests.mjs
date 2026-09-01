@@ -920,10 +920,10 @@ function runVerify(built, upstreamDir) {
 		const freshSummary = makeSummary(built.scanResult, generatedAt, upstreamDir);
 		const committedSummary = readFileSync(SUMMARY_PATH, "utf8");
 		if (
-			normalizeLineBlock(committedSummary, ["Generated at:"]) !==
-			normalizeLineBlock(freshSummary, ["Generated at:"])
+			normalizeLineBlock(committedSummary, ["Generated at:", "Upstream checkout used:"]) !==
+			normalizeLineBlock(freshSummary, ["Generated at:", "Upstream checkout used:"])
 		) {
-			problems.push("vendor-scan.summary.md differs from fresh generation (excluding timestamp)");
+			problems.push("vendor-scan.summary.md differs from fresh generation (excluding timestamp and checkout path)");
 		}
 	}
 
