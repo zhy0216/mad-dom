@@ -516,6 +516,7 @@ async function main() {
   const ledgerHdunitIds = ledger.entries.filter((entry) => entry.suite === "hdunit").map((entry) => entry.id);
   const upstreamProblems = validateUpstreamMap(upstreamMap, {
     ledgerIds: new Set([...ledgerUpIds, ...ledgerHdunitIds]),
+    suiteByLocalId: new Map(ledger.entries.map((entry) => [entry.id, entry.suite])),
     readFile: (localPath) => readFileSync(resolve(REPO_ROOT, localPath), "utf8"),
     exists: (localPath) => existsSync(resolve(REPO_ROOT, localPath)),
   });

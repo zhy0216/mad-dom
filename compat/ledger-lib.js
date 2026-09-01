@@ -63,7 +63,11 @@ export const GIT_COMMIT_SHA = /^[0-9a-f]{40}$/;
 // cannot slip through. Entries exist with and without a trailing slash
 // ("happy-dom/lib" also covers "happy-dom/lib/…"); "propertysymbol" is the
 // lowercase form that catches both bare references and
-// "happy-dom/PropertySymbol".
+// "happy-dom/PropertySymbol". Since T12 the hdunit vendored tests legitimately
+// reference the LOCAL PropertySymbol shim (`tests/happy-dom/shim/src/
+// PropertySymbol.js`), so validateUpstreamMap exempts the bare marker for
+// hdunit entries (the local shim is a provided compat module, not a happy-dom
+// private import); ported cases (suite "up") keep the full check.
 const FORBIDDEN_LOCAL_IMPORTS = [
   "happy-dom/lib",
   "happy-dom/lib/",
@@ -328,7 +332,7 @@ export function validateLedger(manifest) {
 // `ledgerIds` is the set of ledger entry ids with suite "up"; `readFile` and
 // `exists` are injected so this function stays filesystem-free (the CLI passes
 // real implementations, tests pass fakes).
-export function validateUpstreamMap(map, { ledgerIds, readFile, exists }) {
+export function validateUpstreamMap(map, { ledgerIds, readFile, exists, suiteByLocalId }) {
   const problems = [];
 
   if (!isObject(map)) {
@@ -441,8 +445,15 @@ export function validateUpstreamMap(map, { ledgerIds, readFile, exists }) {
         // Scan the normalized copy: runs of backslashes fold into a single
         // posix slash (so escaped "happy-dom\\lib" forms cannot evade the
         // scan) and everything is lowercased (case variants cannot either).
+        // hdunit vendored tests (T12) legitimately reference the local
+        // PropertySymbol shim (`shim/src/PropertySymbol.js`), so the bare
+        // "propertysymbol" marker is exempt for them; every other forbidden
+        // marker (happy-dom/lib, …) still applies. Ported cases (suite "up")
+        // keep the full check.
         const normalizedContent = content.replace(/\\+/g, "/").toLowerCase();
+        const isHdunit = suiteByLocalId?.get(entry.localId) === "hdunit";
         for (const forbidden of FORBIDDEN_LOCAL_IMPORTS) {
+          if (isHdunit && forbidden === "propertysymbol") continue;
           if (normalizedContent.includes(forbidden)) {
             problems.push(
               `${at}.localPath: must not reference happy-dom private internals (found ${JSON.stringify(forbidden)}); ` +

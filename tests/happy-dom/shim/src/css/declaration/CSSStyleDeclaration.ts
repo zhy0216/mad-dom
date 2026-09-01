@@ -5,7 +5,10 @@
 // Kind:      package — facade public export
 // Rule:      re-export + constructor adaptation ONLY. No DOM behavior is
 //            implemented in this shim (see tests/happy-dom/shim/README.md).
-// Re-exports the facade public export `CSSStyleDeclaration`;
-// the shim default is reference-equal to `(await import('mad-dom')).<Name>`.
+// T12 constructor-signature adaptation: the shim default is the hand-written
+// wrapper (a facade subclass) that interprets the upstream
+// `PropertySymbol.illegalConstructor` marker and forwards to the facade's
+// genuine internal construction path — name/signature alignment only, no
+// DOM behavior (see adapters/property-symbol-classes.ts).
 // ─────────────────────────────────────────────────────────────────────────────
-export { CSSStyleDeclaration as default } from "mad-dom";
+export { CSSStyleDeclaration as default } from "../../../adapters/property-symbol-classes.ts";

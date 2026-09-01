@@ -14,13 +14,13 @@
     },
     {
       "file": "event/Event.test.ts",
-      "status": "skip",
-      "reason": "propertysymbol: imports PropertySymbol via shim/src/PropertySymbol.js (T04 boundary: private-symbol mechanism not portable; enabled files must pass the provenance scan which forbids propertysymbol references)"
+      "status": "expected-fail",
+      "reason": "PropertySymbol resolves (T12 shim); internal-slot reads fail (event[PropertySymbol.immediatePropagationStopped], private propagation state) and composedPath() shadow-root composition differs (facade EventTarget/shadow-root gaps)"
     },
     {
       "file": "event/EventTarget.test.ts",
-      "status": "skip",
-      "reason": "propertysymbol: imports PropertySymbol via shim/src/PropertySymbol.js (T04 boundary: private-symbol mechanism not portable; enabled files must pass the provenance scan which forbids propertysymbol references)"
+      "status": "expected-fail",
+      "reason": "PropertySymbol resolves (T12 shim); the EventTarget facade is a recorded gap (shim default undefined) and tests read [PropertySymbol.dispatching] / call [PropertySymbol.destroy] internal slots"
     },
     {
       "file": "event/events/ClipboardEvent.test.ts",

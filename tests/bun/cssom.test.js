@@ -35,6 +35,7 @@ import {
   CSSStyleSheet,
   isNativeAvailable,
 } from "../../index.js";
+import { StylePropertyMap, StylePropertyMapReadOnly } from "../../js/facade/extensions/cssom.js";
 
 const nativeAvailable = isNativeAvailable();
 
@@ -169,6 +170,107 @@ describe("Element.style / CSSStyleDeclaration (T44)", () => {
     const win = freshWindow();
     const document = win.document;
     expect(document.createTextNode("x").style).toBeUndefined();
+  });
+
+  test("shorthand border-image getter reassembles sub-properties (T12)", () => {
+    const win = freshWindow();
+    const document = win.document;
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    el.setAttribute("style", "border-image: inherit");
+    expect(el.style.borderImage).toBe("inherit");
+    expect(el.style.borderImageSource).toBe("inherit");
+    expect(el.style.length).toBe(5);
+
+    el.setAttribute("style", "border-image: var(--test-variable)");
+    expect(el.style.borderImage).toBe("var(--test-variable)");
+
+    el.setAttribute("style", "border-image: linear-gradient(#f6b73c, #4d9f0c) 30");
+    expect(el.style.borderImage).toBe("linear-gradient(#f6b73c, #4d9f0c) 30 / 1 / 0 stretch");
+  });
+
+  test("border shorthand serializes border-image as one group (T12)", () => {
+    const win = freshWindow();
+    const document = win.document;
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    el.setAttribute("style", "border: 2px solid green");
+    el.style.borderRight = "1px dotted red";
+    expect(el.getAttribute("style")).toBe(
+      "border-width: 2px 1px 2px 2px; border-style: solid dotted solid solid; border-color: green red green green; border-image: initial;",
+    );
+  });
+
+  test("background-position parses two-part keyword+length positions (T12)", () => {
+    const win = freshWindow();
+    const document = win.document;
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    el.setAttribute("style", "background-position: bottom 10px right 20px");
+    expect(el.style.backgroundPosition).toBe("right 20px bottom 10px");
+    expect(el.style.backgroundPositionX).toBe("right 20px");
+    expect(el.style.backgroundPositionY).toBe("bottom 10px");
+
+    el.setAttribute("style", "background-position: 10px 20px, 30px 40px");
+    expect(el.style.backgroundPosition).toBe("10px 20px, 30px 40px");
+  });
+
+  test("aspect-ratio camelCase accessor round-trips values (T12)", () => {
+    const win = freshWindow();
+    const document = win.document;
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    for (const value of ["var(--test-variable)", "inherit", "auto", "1 / 1", "16 / 9", "4 / 3"]) {
+      el.setAttribute("style", `aspect-ratio: ${value}`);
+      expect(el.style.aspectRatio).toBe(value);
+    }
+    el.setAttribute("style", "aspect-ratio: 2");
+    expect(el.style.aspectRatio).toBe("2 / 1");
+    el.setAttribute("style", "aspect-ratio: 16/9 auto");
+    expect(el.style.aspectRatio).toBe("auto 16 / 9");
+  });
+
+  test("StylePropertyMap set/get/append/delete over a declaration (T12)", () => {
+    const win = freshWindow();
+    const document = win.document;
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const style = el.style;
+
+    const map = new StylePropertyMap(style);
+    map.append("color", "red");
+    map.append("width", "100px");
+    map.set("z-index", "2");
+    expect(map.get("color").toString()).toBe("red");
+    expect(map.get("width") + "").toBe("100px");
+    expect(map.size).toBe(3);
+    expect(map.has("color")).toBe(true);
+    map.delete("color");
+    expect(map.has("color")).toBe(false);
+    expect([...map.keys()]).toEqual(["width", "z-index"]);
+  });
+
+  test("StylePropertyMapReadOnly iterates live declaration state (T12)", () => {
+    const win = freshWindow();
+    const document = win.document;
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const style = el.style;
+    style.color = "red";
+    style.zIndex = "2";
+    style.width = "100px";
+
+    const map = new StylePropertyMapReadOnly(style);
+    expect(map.size).toBe(3);
+    expect([...map.keys()]).toEqual(["color", "z-index", "width"]);
+    expect(map.get("color").toString()).toBe("red");
+    expect(map.getAll("width").map((value) => value.toString())).toEqual(["100px"]);
+    expect(map.has("z-index")).toBe(true);
+    expect(map.has("nonexistent")).toBe(false);
   });
 });
 

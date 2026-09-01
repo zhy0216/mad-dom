@@ -87,7 +87,10 @@ const BODY_USED = Symbol("mad-dom-body-used");
 // AbortSignal.
 const ABORTED = Symbol("mad-dom-abort-aborted");
 const REASON = Symbol("mad-dom-abort-reason");
-const ABORT_IMPL = Symbol("mad-dom-abort-implement");
+// Exported so the hdunit PropertySymbol shim can alias the upstream
+// `PropertySymbol.abort` key to the facade's genuine abort implementation
+// (T12: name/signature alignment, no fabricated behavior).
+export const ABORT_IMPL = Symbol("mad-dom-abort-implement");
 
 // AbortEventTarget.
 const LISTENERS = Symbol("mad-dom-event-listeners");

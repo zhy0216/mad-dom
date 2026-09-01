@@ -7,7 +7,9 @@ paths to mad-dom facade bindings.
 - Generated shims: `tests/happy-dom/shim/src/**` (regenerate with
   `bun scripts/generate-happy-dom-shim.mjs`, or `npm run compat:hdunit:shim`).
 - Hand-written layer: `tests/happy-dom/shim/adapters/window-settings.ts`
-  (the `Window` settings constructor-signature adapter) and
+  (the `Window` settings constructor-signature adapter),
+  `tests/happy-dom/shim/adapters/property-symbol.ts` (the T12
+  `PropertySymbol` constructor-adaptation helper) and
   `tests/happy-dom/shim/shim.test.ts` (the T04 self-test).
 - Coverage / gap summary: `tests/happy-dom/shim/shim-manifest.json`.
 
@@ -60,19 +62,46 @@ Rationale for each:
   it is never silently fabricated.
 - **`index`** shim (`shim/src/index.ts`) backs the upstream `src/index.js`
   named-import surface; every name points at a facade public export.
+- **`property-symbol`** shim (`shim/src/PropertySymbol.ts`, T12) reproduces the
+  upstream private-symbol key set **verbatim**: every key exports a unique
+  `Symbol("<key>")`, copied from the locked upstream baseline. The key set is
+  the behavior contract the vendored tests import (`import * as PropertySymbol
+  from '…/src/PropertySymbol.js'`). No DOM behavior is attached to any key —
+  symbol-keyed state access on a facade instance is a per-file triage decision
+  (expected-fail + reason when the facade cannot honestly express it), never
+  implemented in the shim.
+
+## Constructor-signature adaptation for `PropertySymbol` constructions (T12)
+
+The vendored suite constructs many facade classes in the upstream internal form
+`new X(PropertySymbol.illegalConstructor, window, …)`. These are adapted in the
+shim layer only (the facade body is untouched) via a small hand-written wrapper
+that reads `tests/happy-dom/shim/src/adapters/property-symbol.ts`. The wrapper:
+
+- recognizes `PropertySymbol.illegalConstructor` and forwards the remaining
+  arguments to the facade class's genuine internal construction path (e.g. a
+  `CSSStyleDeclaration` bound to the given `element`);
+- throws `TypeError("Illegal constructor")` when a class that upstream only
+  allows internally is constructed without the marker;
+- returns the facade instance from the wrapper constructor, so every facade
+  method/accessor works on the result while `instanceof <facade>` still holds.
+
+Constructor adaptation is name/signature alignment, not DOM behavior: the keys
+are symbol values, and the wrapper only maps the marker to the facade's real
+internal constructor shape.
 
 ## Exclusions (never generated)
 
-`PropertySymbol.js` is `mappable: true` in the scan but is a documented T04
-exclusion: the private-symbol mechanism is semantically not portable to the
-mad-dom facade. Its dependent test files are triaged `not-applicable` in T10.
-The exclusion list lives in the generator (`EXCLUDED_MAPPABLE`) and in
-`shim-manifest.json`; the coverage gate counts every mappable path **minus**
-these documented exclusions and fails (exit 1) if any required shim is missing.
+None. `PropertySymbol.js` was a documented T04 exclusion (private-symbol
+mechanism "not portable"); T12 reverses that carve-out and provides the
+honest-value symbol shim, so the exclusion table is empty. The exclusion list
+lives in the generator (`EXCLUDED_MAPPABLE`) and in `shim-manifest.json`; the
+coverage gate counts every mappable path **minus** these documented exclusions
+and fails (exit 1) if any required shim is missing.
 
 Not-shimmed on purpose: `*Utility` / internal parsers (`CSSParser`,
 `HTMLParser`, fetch internals, …) are marked not-mappable in the scan and are
-out of scope here (T10 triage).
+out of scope here (T10/T12 triage).
 
 ## Window settings constructor-signature adaptation
 

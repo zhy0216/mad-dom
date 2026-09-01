@@ -14,13 +14,13 @@
     },
     {
       "file": "window/GlobalWindow.test.ts",
-      "status": "skip",
-      "reason": "propertysymbol: imports PropertySymbol via shim/src/PropertySymbol.js (T04 boundary: private-symbol mechanism not portable)"
+      "status": "expected-fail",
+      "reason": "PropertySymbol resolves (T12 shim); the GlobalWindow facade is a gap (shim default undefined) and window[PropertySymbol.evaluateScript] internal-slot calls fail"
     },
     {
       "file": "window/Window.test.ts",
       "status": "skip",
-      "reason": "propertysymbol: imports PropertySymbol via shim/src/PropertySymbol.js (T04 boundary: private-symbol mechanism not portable)"
+      "reason": "unmapped-internal-import (internal-class): fetch/Fetch.js; unmapped-internal-import (internal-other): version.js"
     }
   ]
 }

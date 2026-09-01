@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ─────────────────────────────────────────────────────────────────────────────
-// happy-dom src-path shim generator (mad-dom hdunit T04)
+// happy-dom src-path shim generator (mad-dom hdunit T04/T12)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Generates the re-export shim layer at tests/happy-dom/shim/src/ that lets
@@ -27,11 +27,16 @@
 //      facade does not provide the class yet (recorded, never fabricated);
 //   5. `tests/happy-dom/shim/src/index.ts` re-exports the facade public
 //      surface (`export * from "mad-dom"`) for the upstream `src/index.js`
-//      named-import surface.
+//      named-import surface;
+//   6. `tests/happy-dom/shim/src/PropertySymbol.ts` (T12) reproduces the
+//      upstream private-symbol key set verbatim — each key is a unique
+//      `Symbol("<key>")`, names/signatures only, no DOM behavior.
 //
 // Explicitly out of scope (never generated, recorded as exclusions):
-//   - PropertySymbol.js — private-symbol mechanism, semantically not portable;
-//     its dependent test files are triaged not-applicable in T10.
+//   - none. PropertySymbol.js was excluded under T04; T12 reverses that
+//     carve-out and provides the honest-value symbol shim (the upstream key
+//     set reproduced verbatim as unique Symbols — names/signatures only, no
+//     DOM behavior).
 //
 // The script is idempotent (fixed headers, no timestamps) and gates on 100%
 // coverage of every mappable scan path minus the documented exclusions —
@@ -56,16 +61,123 @@ const UPSTREAM_COMMIT = "64e2c774cadbb8eda5416c1e2bcca5006d1b5df9";
 const UPSTREAM_TAG = "v20.11.11";
 
 // ----------------------------------------------------------------------------
+// PropertySymbol (T12) — honest-value symbol shim.
+//
+// The upstream src/PropertySymbol.js (v20.11.11 @ 64e2c774) is a module of pure
+// symbol constants: every key maps to a unique `Symbol("<key>")`. The key SET
+// is the behavior contract the vendored tests import (`import * as
+// PropertySymbol from '.../src/PropertySymbol.js'`), so this shim reproduces
+// the exact upstream key set verbatim — each key exports a unique Symbol and no
+// DOM behavior is attached to any key. The key list below is copied from the
+// locked upstream baseline (T01). Do not add or remove keys without updating
+// the upstream contract.
+const PROPERTY_SYMBOL_KEYS = [
+  "abort", "activeElement", "asyncTaskManager", "bodyBuffer", "buffer", "cachedResponse",
+  "callbacks", "checked", "childNodes", "children", "classList", "connectedToNode",
+  "disconnectedFromNode", "connectedToDocument", "disconnectedFromDocument", "contentLength", "contentType", "cssText",
+  "currentScript", "currentTarget", "data", "defaultView", "destroy", "dirtyness",
+  "end", "entries", "evaluateCSS", "evaluateScript", "exceptionObserver", "formNode",
+  "internalId", "height", "immediatePropagationStopped", "indeterminate", "isFirstWrite", "isFirstWriteAfterOpen",
+  "isInPassiveEventListener", "isValue", "listenerOptions", "listeners", "itemsByName", "nextActiveElement",
+  "observeMutations", "mutationListeners", "ownerDocument", "ownerElement", "propagationStopped", "readyStateManager",
+  "referrer", "registry", "relList", "resetSelection", "rootNode", "selectNode",
+  "selectedness", "selection", "setupVMContext", "shadowRoot", "start", "style",
+  "target", "textAreaNode", "unobserveMutations", "reportMutation", "updateSelectedness", "url",
+  "value", "width", "window", "windowResizeListener", "mutationObservers", "openerFrame",
+  "openerWindow", "pointerCaptures", "popup", "isConnected", "parentNode", "nodeType",
+  "tagName", "prefix", "scrollHeight", "scrollWidth", "scrollTop", "scrollLeft",
+  "attributes", "attributesProxy", "namespaceURI", "accessKey", "accessKeyLabel", "offsetHeight",
+  "offsetWidth", "offsetLeft", "offsetTop", "clientHeight", "clientWidth", "clientLeft",
+  "clientTop", "name", "specified", "adoptedStyleSheets", "implementation", "readyState",
+  "publicId", "systemId", "validationMessage", "validity", "returnValue", "elements",
+  "length", "complete", "naturalHeight", "naturalWidth", "loading", "x",
+  "y", "defaultChecked", "files", "sheet", "volume", "paused",
+  "currentTime", "playbackRate", "defaultPlaybackRate", "muted", "defaultMuted", "preservesPitch",
+  "buffered", "duration", "error", "ended", "networkState", "textTracks",
+  "seeking", "seekable", "played", "options", "content", "mode",
+  "host", "setURL", "localName", "classRegistry", "nodeStream", "location",
+  "history", "navigator", "screen", "sessionStorage", "localStorage", "sandbox",
+  "cloneNode", "appendChild", "removeChild", "insertBefore", "replaceChild", "tracks",
+  "constraints", "capabilities", "settings", "clone", "removeNamedItem", "items",
+  "selectedOptions", "styleNode", "updateSheet", "clearCache", "onSetAttribute", "onRemoveAttribute",
+  "nodeArray", "elementArray", "cache", "affectsCache", "forms", "links",
+  "affectsComputedStyleCache", "query", "computedStyle", "getFormControlItems", "getFormControlNamedItem", "dataset",
+  "getNamespaceItemKey", "getNamedItemKey", "itemsByNamespaceURI", "proxy", "setNamedItem", "getTokenList",
+  "attributeName", "selectedIndex", "self", "parent", "top", "areas",
+  "defaultValue", "elementIdMap", "clonable", "delegatesFocus", "serializable", "slotAssignment",
+  "assignedNodes", "assignedToSlot", "cells", "rows", "headers", "tBodies",
+  "track", "controlsList", "mediaKeys", "remote", "sinkId", "srcObject",
+  "cues", "activeCues", "kind", "label", "language", "id",
+  "illegalConstructor", "state", "canvas", "popoverTargetElement", "composed", "bubbles",
+  "cancelable", "defaultPrevented", "eventPhase", "timeStamp", "type", "detail",
+  "globalObject", "destroyed", "aborted", "browserFrames", "windowInternalId", "getItemList",
+  "requiredExtensions", "systemLanguage", "transform", "baseVal", "animVal", "pathLength",
+  "unitType", "viewBox", "markerUnits", "markerWidth", "markerHeight", "values",
+  "orientType", "orientAngle", "refX", "refY", "readOnly", "preserveAspectRatio",
+  "animatedPoints", "points", "rx", "ry", "cx", "cy",
+  "r", "clipPathUnits", "maskUnits", "maskContentUnits", "filterUnits", "primitiveUnits",
+  "href", "x1", "y1", "x2", "y2", "gradientUnits",
+  "gradientTransform", "spreadMethod", "patternUnits", "patternContentUnits", "patternTransform", "fx",
+  "fy", "offset", "disabled", "textLength", "lengthAdjust", "getAttribute",
+  "setAttribute", "z", "w", "toArray", "fromString", "fromArray",
+  "angle", "m11", "m12", "m13", "m14", "m21",
+  "m22", "m23", "m24", "m31", "m32", "m33",
+  "m34", "m41", "m42", "m43", "m44", "setMatrixValue",
+  "translateSelf", "rotateSelf", "rotateAxisAngleSelf", "scaleSelf", "scale3dSelf", "scaleNonUniformSelf",
+  "skewXSelf", "skewYSelf", "multiplySelf", "matrix", "domMatrix", "getDOMMatrix",
+  "setDOMMatrix", "attributeValue", "startOffset", "method", "spacing", "in1",
+  "in2", "result", "bias", "divisor", "edgeMode", "kernelMatrix",
+  "kernelUnitLengthX", "kernelUnitLengthY", "orderX", "orderY", "preserveAlpha", "targetX",
+  "targetY", "diffuseConstant", "surfaceScale", "scale", "xChannelSelector", "yChannelSelector",
+  "azimuth", "elevation", "dx", "dy", "stdDeviationX", "stdDeviationY",
+  "tableValues", "slope", "intercept", "amplitude", "exponent", "crossOrigin",
+  "operator", "radiusX", "radiusY", "specularConstant", "specularExponent", "pointsAtX",
+  "pointsAtY", "pointsAtZ", "limitingConeAngle", "baseFrequencyX", "baseFrequencyY", "numOctaves",
+  "seed", "stitchTiles", "rotateFromVectorSelf", "flipXSelf", "flipYSelf", "invertSelf",
+  "getLength", "currentScale", "rotate", "bindMethods", "xmlProcessingInstruction", "root",
+  "filterNode", "customElementReactionStack", "dispatching", "modules", "preloads", "body",
+  "redirect", "referrerPolicy", "signal", "bodyUsed", "credentials", "blocking",
+  "moduleImportMap", "dispatchError", "supports", "reason", "propertyEventListeners", "cssRules",
+  "parentRule", "parentStyleSheet", "conditionText", "keyText", "media", "styleMap",
+  "selectorText", "cssParser", "cssRule", "rulePrefix", "virtualServerFile", "frames",
+  "disableEvaluation", "validateJavaScriptExecutionEnvironment", "currentNode", "openWebSockets", "webSocket", "moduleCache",
+  "cookieStore", "context", "querySelectorCache",
+];
+
+// PropertySymbol keys that the facade owns a genuine symbol for. The vendored
+// tests reach facade internals through these keys (e.g.
+// `signal[PropertySymbol.abort](reason)` calls the facade's real abort), so the
+// shim re-exports the facade symbol to keep identity — name/signature alignment
+// only, never fabricated behavior. Keyed by PropertySymbol key.
+const PROPERTY_SYMBOL_REEXPORT = {
+  abort: { source: "js/facade/extensions/fetch.js", export: "ABORT_IMPL" },
+  buffer: { source: "js/facade/extensions/lightweight.js", export: "BLOB_BUFFER" },
+};
+
 // Documented exclusions from the mappable coverage requirement.
 //
 // `mappable: true` in vendor-scan.json only means the module is re-exported by
 // the upstream public entry; it does not mean T04 must emit a shim. Entries
 // here are explicitly carved out by the T04 boundary and therefore excluded
 // from the coverage gate. Everything else mappable MUST get a shim.
-const EXCLUDED_MAPPABLE = {
-  "PropertySymbol.js":
-    "T04 boundary: no PropertySymbol shim (private-symbol mechanism, semantics not portable). " +
-    "Dependent test files are triaged not-applicable in T10.",
+//
+// PropertySymbol.js was excluded under T04; T12 reverses that carve-out and
+// provides the honest-value symbol shim, so the exclusion table is now empty.
+const EXCLUDED_MAPPABLE = {};
+
+// ----------------------------------------------------------------------------
+// PropertySymbol constructor-adaptation wrappers (T12).
+//
+// The vendored suite constructs these facade classes in the upstream internal
+// form `new X(PropertySymbol.illegalConstructor, owner, options)`. Their shims
+// are re-exports of the hand-written wrapper classes in
+// tests/happy-dom/shim/adapters/property-symbol-classes.ts (which subclass the
+// facade class and interpret the marker — name/signature alignment only, no DOM
+// behavior). Keyed by upstream srcPath.
+const PROPERTY_SYMBOL_WRAPPED = {
+  "css/declaration/CSSStyleDeclaration.js": { export: "CSSStyleDeclaration" },
+  "css/style-property-map/StylePropertyMap.js": { export: "StylePropertyMap" },
+  "css/style-property-map/StylePropertyMapReadOnly.js": { export: "StylePropertyMapReadOnly" },
 };
 
 // ----------------------------------------------------------------------------
@@ -151,6 +263,9 @@ const enumModules = vendoredEnums();
 function classify(srcPath, entry) {
   const rel = srcPath.replace(/\.js$/, "");
   const basename = srcPath.split("/").pop().replace(/\.js$/, "");
+  if (srcPath === "PropertySymbol.js") {
+    return { kind: "property-symbol", source: null, note: "honest-value symbol key set (T12, upstream verbatim)" };
+  }
   if (srcPath === "index.js") return { kind: "index", source: PACKAGE_SPECIFIER, note: "named-import surface" };
   if (packageExports.has(basename)) {
     return { kind: "package", source: PACKAGE_SPECIFIER, note: "facade public export" };
@@ -243,16 +358,73 @@ for (const item of mappable) {
   const outDir = path.dirname(outAbs);
 
   let content;
-  if (item.kind === "index") {
+  if (item.kind === "property-symbol") {
+    // Keys the facade owns a genuine symbol for (identity, not fabrication) are
+    // re-exported from the facade module; everything else is a fresh
+    // `Symbol("<key>")` matching the upstream key set verbatim.
+    const reexportsBySource = {};
+    for (const key of PROPERTY_SYMBOL_KEYS) {
+      const cfg = PROPERTY_SYMBOL_REEXPORT[key];
+      if (!cfg) continue;
+      (reexportsBySource[cfg.source] ??= []).push({ key, exportName: cfg.export });
+    }
+    const importLines = [];
+    const exportLines = [];
+    for (const [source, entries] of Object.entries(reexportsBySource)) {
+      const rel = relPathTo(SHIM_SRC, path.join(ROOT, source));
+      const names = entries.map((e) => e.exportName).join(", ");
+      importLines.push(`import { ${names} } from "${rel}";`);
+      for (const e of entries) exportLines.push(`export { ${e.exportName} as ${e.key} };`);
+    }
+    const freshKeys = PROPERTY_SYMBOL_KEYS.filter((key) => !PROPERTY_SYMBOL_REEXPORT[key]);
+    content =
+      header(srcPath, item, [
+        "// The upstream module is pure symbol constants; the key SET is the behavior",
+        "// contract the vendored tests import (`import * as PropertySymbol from",
+        "// '.../src/PropertySymbol.js'`). Each key exports a unique Symbol(\"<key>\"),",
+        "// copied verbatim from the locked upstream baseline. No DOM behavior is",
+        "// attached to any key — symbol-keyed state access is a per-file triage",
+        "// decision, never implemented here.",
+        "//",
+        "// Keys the mad-dom facade owns a genuine symbol for (abort, buffer) are",
+        "// re-exported from the facade module so the vendored tests reach the real",
+        "// implementation — name/signature alignment only.",
+      ]) +
+      [
+        ...importLines,
+        ...exportLines,
+        ...freshKeys.map((key) => `export const ${key} = Symbol("${key}");`),
+      ].join("\n") +
+      "\n";
+  } else if (item.kind === "index") {
     content =
       header(srcPath, item, [
         "// Corresponds to the upstream src/index.js named-import surface. Every",
-        "// name points at a facade public export. PropertySymbol (excluded by the",
-        "// T04 boundary) is intentionally absent; its importers are triaged in T10.",
+        "// name points at a facade public export. PropertySymbol is provided by",
+        "// its own honest-value shim (T12), never re-exported through index.",
       ]) +
       'export * from "' + PACKAGE_SPECIFIER + '";\n';
   } else if (item.kind === "package") {
-    if (srcPath === "window/Window.js") {
+    if (srcPath in PROPERTY_SYMBOL_WRAPPED) {
+      // T12 constructor adaptation: the shim default is the hand-written
+      // wrapper (a facade subclass that interprets the upstream
+      // `PropertySymbol.illegalConstructor` marker). See
+      // adapters/property-symbol-classes.ts.
+      const { export: exportName } = PROPERTY_SYMBOL_WRAPPED[srcPath];
+      const adapterRel = relPathTo(
+        outDir,
+        path.join(ROOT, "tests", "happy-dom", "shim", "adapters", "property-symbol-classes.ts"),
+      );
+      content =
+        header(srcPath, item, [
+          "// T12 constructor-signature adaptation: the shim default is the hand-written",
+          "// wrapper (a facade subclass) that interprets the upstream",
+          "// `PropertySymbol.illegalConstructor` marker and forwards to the facade's",
+          "// genuine internal construction path — name/signature alignment only, no",
+          "// DOM behavior (see adapters/property-symbol-classes.ts).",
+        ]) +
+        `export { ${exportName} as default } from "${adapterRel}";\n`;
+    } else if (srcPath === "window/Window.js") {
       // Constructor-signature adaptation for the happy-dom `new Window({ settings })`
       // shape. The shim class IS the facade `Window` (reference-equal per the T04
       // acceptance), so the adaptation is a companion export: `adaptWindowSettings`
@@ -280,16 +452,36 @@ for (const item of mappable) {
         `export { ${srcPath.split("/").pop().replace(/\.js$/, "")} as default } from "${PACKAGE_SPECIFIER}";\n`;
     }
   } else if (item.kind === "facade") {
-    const rel = relPathTo(outDir, path.join(ROOT, item.source));
-    content =
-      header(srcPath, item, [
-        `// The facade implements this class internally but does not export it from the`,
-        `// package entry, so the shim re-exports the facade binding directly`,
-        `// (reference-equal to the facade's own class). The leading \`import "mad-dom"\``,
-        "// forces the facade module-init order so the internal module can be read.",
-      ]) +
-      `import "${PACKAGE_SPECIFIER}";\n` +
-      `export { ${srcPath.split("/").pop().replace(/\.js$/, "")} as default } from "${rel}";\n`;
+    if (srcPath in PROPERTY_SYMBOL_WRAPPED) {
+      // T12 constructor adaptation for a facade-internal class (not a package
+      // export): the shim default is the hand-written wrapper, same as the
+      // package-kind wrappers above.
+      const { export: exportName } = PROPERTY_SYMBOL_WRAPPED[srcPath];
+      const adapterRel = relPathTo(
+        outDir,
+        path.join(ROOT, "tests", "happy-dom", "shim", "adapters", "property-symbol-classes.ts"),
+      );
+      content =
+        header(srcPath, item, [
+          "// T12 constructor-signature adaptation: the shim default is the hand-written",
+          "// wrapper (a facade subclass) that interprets the upstream",
+          "// `PropertySymbol.illegalConstructor` marker and forwards to the facade's",
+          "// genuine internal construction path — name/signature alignment only, no",
+          "// DOM behavior (see adapters/property-symbol-classes.ts).",
+        ]) +
+        `export { ${exportName} as default } from "${adapterRel}";\n`;
+    } else {
+      const rel = relPathTo(outDir, path.join(ROOT, item.source));
+      content =
+        header(srcPath, item, [
+          `// The facade implements this class internally but does not export it from the`,
+          `// package entry, so the shim re-exports the facade binding directly`,
+          `// (reference-equal to the facade's own class). The leading \`import "mad-dom"\``,
+          "// forces the facade module-init order so the internal module can be read.",
+        ]) +
+        `import "${PACKAGE_SPECIFIER}";\n` +
+        `export { ${srcPath.split("/").pop().replace(/\.js$/, "")} as default } from "${rel}";\n`;
+    }
   } else if (item.kind === "vendor-enum") {
     const rel = relPathTo(outDir, item.source);
     content =
@@ -375,7 +567,7 @@ for (const item of mappable) {
 }
 const manifest = {
   generatedBy: "scripts/generate-happy-dom-shim.mjs",
-  task: "T04",
+  task: "T04/T12",
   shimBasePath: "tests/happy-dom/shim/src",
   upstream: {
     repository: "https://github.com/capricorn86/happy-dom",
@@ -388,6 +580,7 @@ const manifest = {
     shimmedMappable: mappable.filter((i) => !i.excluded).length,
     excluded: mappable.filter((i) => i.excluded).map((i) => i.srcPath),
     honestValueEnums: extraEnums.length,
+    propertySymbolKeys: PROPERTY_SYMBOL_KEYS.length,
     byKind,
   },
   gaps: mappable

@@ -6,7 +6,7 @@
 // Rule:      re-export + constructor adaptation ONLY. No DOM behavior is
 //            implemented in this shim (see tests/happy-dom/shim/README.md).
 // Corresponds to the upstream src/index.js named-import surface. Every
-// name points at a facade public export. PropertySymbol (excluded by the
-// T04 boundary) is intentionally absent; its importers are triaged in T10.
+// name points at a facade public export. PropertySymbol is provided by
+// its own honest-value shim (T12), never re-exported through index.
 // ─────────────────────────────────────────────────────────────────────────────
 export * from "mad-dom";

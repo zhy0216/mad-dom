@@ -1,13 +1,16 @@
-// HDUNIT shim layer self-test (mad-dom hdunit T04).
+// HDUNIT shim layer self-test (mad-dom hdunit T04, extended T12).
 //
-// Verifies the T04 acceptance criteria against the generated shim tree
+// Verifies the T04/T12 acceptance criteria against the generated shim tree
 // (tests/happy-dom/shim/src):
 //   1. every mappable vendor-scan path has a shim that bun can import
-//      (PropertySymbol.js is a documented T04 exclusion, never generated);
+//      (PropertySymbol.js included since T12, when the T04 carve-out was
+//      reversed and the honest-value symbol shim was provided);
 //   2. facade-backed shims are reference-equal to the mad-dom facade export;
 //   3. honest-value enum shims deliver the vendored upstream literals;
 //   4. gap / type-only shims default to `undefined` and are recorded;
-//   5. the `Window` settings constructor-signature adaptation works and records
+//   5. the PropertySymbol shim reproduces the upstream key set (every key a
+//      unique Symbol) and aliases the facade-owned `abort`/`buffer` symbols;
+//   6. the `Window` settings constructor-signature adaptation works and records
 //      unmappable toggles as warnings (never silently dropped).
 
 import { test, expect, describe } from "bun:test";
@@ -23,7 +26,7 @@ const SCAN = JSON.parse(
   fs.readFileSync(path.join(ROOT, "tests", "happy-dom", "vendor-scan.json"), "utf8"),
 );
 
-const EXCLUDED = ["PropertySymbol.js"];
+const EXCLUDED = [];
 
 function packageExportNames() {
   const src = fs.readFileSync(path.join(ROOT, "js", "entry.js"), "utf8");
@@ -116,20 +119,20 @@ const shimSpec = (shimPath) => `./src/${shimPath.replace(/\.js$/, ".ts")}`;
 // ---------------------------------------------------------------------------
 
 describe("coverage", () => {
-  test("every mappable scan path has a shim file (PropertySymbol excluded)", () => {
+  test("every mappable scan path has a shim file (PropertySymbol included since T12)", () => {
     const missing = mappable
       .filter((i) => !i.excluded && !fs.existsSync(shimTs(i.srcPath)))
       .map((i) => i.srcPath);
     expect(missing).toEqual([]);
   });
 
-  test("excluded paths are only the documented T04 boundary exclusions", () => {
+  test("there are no documented exclusions (T12 reversed the PropertySymbol carve-out)", () => {
     const excluded = mappable.filter((i) => i.excluded).map((i) => i.srcPath);
-    expect(excluded.sort()).toEqual(["PropertySymbol.js"]);
+    expect(excluded).toEqual([]);
   });
 
-  test("no PropertySymbol shim is generated", () => {
-    expect(fs.existsSync(shimTs("PropertySymbol.js"))).toBe(false);
+  test("the PropertySymbol shim is generated", () => {
+    expect(fs.existsSync(shimTs("PropertySymbol.js"))).toBe(true);
   });
 
   test("every not-mappable vendored enum with a scan entry gets an honest-value shim", () => {
@@ -162,6 +165,15 @@ describe("coverage", () => {
 // ---------------------------------------------------------------------------
 
 describe("reference equality", () => {
+  // T12 constructor-adaptation wrappers are deliberate subclasses of the facade
+  // class (they interpret the PropertySymbol.illegalConstructor marker), so they
+  // are not reference-equal to the facade binding; assert the subclass relation
+  // instead.
+  const WRAPPED = {
+    "css/declaration/CSSStyleDeclaration.js": true,
+    "css/style-property-map/StylePropertyMap.js": true,
+    "css/style-property-map/StylePropertyMapReadOnly.js": true,
+  };
   for (const item of mappable) {
     if (item.excluded) continue;
     if (item.kind !== "package" && item.kind !== "facade") continue;
@@ -170,7 +182,12 @@ describe("reference equality", () => {
     test(`shim ${item.srcPath} === facade ${basename}`, async () => {
       const shim = (await import(shimSpec(item.srcPath))).default;
       const facade = (await import(source))[basename];
-      expect(shim).toBe(facade);
+      if (item.srcPath in WRAPPED) {
+        expect(shim.prototype).toBeInstanceOf(facade);
+        expect(shim).not.toBe(facade);
+      } else {
+        expect(shim).toBe(facade);
+      }
     });
   }
 
@@ -209,7 +226,75 @@ describe("gap and type-only shims", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Window settings constructor-signature adaptation.
+// 5. PropertySymbol shim (T12): upstream key set, unique symbols, facade aliases.
+// ---------------------------------------------------------------------------
+
+describe("PropertySymbol shim (T12)", () => {
+  test("every PropertySymbol key exports a unique Symbol value", async () => {
+    const mod = await import("./src/PropertySymbol.js");
+    const keys = Object.keys(mod).filter((k) => k !== "default");
+    expect(keys.length).toBeGreaterThan(0);
+    const values = new Set(keys.map((k) => mod[k]));
+    expect(values.size).toBe(keys.length);
+    for (const key of keys) {
+      expect(typeof mod[key]).toBe("symbol");
+    }
+  });
+
+  test("the shim key set matches the upstream PropertySymbol module (mechanical)", async () => {
+    // The manifest records the generated key count and the generator keeps the
+    // list in lockstep with the locked upstream baseline; assert the count and
+    // that a spread of keys including every T12 facade alias is present.
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(ROOT, "tests", "happy-dom", "shim", "shim-manifest.json"), "utf8"),
+    );
+    const mod = await import("./src/PropertySymbol.js");
+    const keys = Object.keys(mod).filter((k) => k !== "default");
+    expect(keys.length).toBe(manifest.counts.propertySymbolKeys);
+    for (const key of [
+      "illegalConstructor",
+      "abort",
+      "buffer",
+      "conditionText",
+      "selectorText",
+      "virtualServerFile",
+    ]) {
+      expect(mod[key]).toBeTypeOf("symbol");
+    }
+  });
+
+  test.skipIf(!isNativeAvailable())(
+    "abort key aliases the facade AbortSignal abort implementation",
+    async () => {
+      const { default: Window } = await import("./src/window/Window.js");
+      const PropertySymbol = await import("./src/PropertySymbol.js");
+      const window = new Window();
+      const signal = new window.AbortSignal();
+      const reason = new Error("abort reason");
+      let fired = false;
+      signal.addEventListener("abort", () => (fired = true));
+      signal[PropertySymbol.abort](reason);
+      expect(signal.aborted).toBe(true);
+      expect(signal.reason).toBe(reason);
+      expect(fired).toBe(true);
+      window.destroy();
+    },
+  );
+
+  test.skipIf(!isNativeAvailable())(
+    "buffer key aliases the facade Blob storage",
+    async () => {
+      const PropertySymbol = await import("./src/PropertySymbol.js");
+      const { Blob } = await import("../../../js/facade/extensions/lightweight.js");
+      const blob = new Blob(["TEST"]);
+      expect(blob[PropertySymbol.buffer].toString()).toBe("TEST");
+      expect(blob.slice(1, 2)[PropertySymbol.buffer].toString()).toBe("E");
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 6. Window settings constructor-signature adaptation.
 // ---------------------------------------------------------------------------
 
 describe("Window settings adaptation", () => {

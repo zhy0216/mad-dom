@@ -1171,6 +1171,48 @@ const SetParser = {
           x += parts[0] === "top" || parts[0] === "bottom" ? parts[1] : parts[0];
           y += parts[0] === "top" || parts[0] === "bottom" ? parts[0] : parts[1];
           break;
+        case 3:
+          if (
+            parts[0] === "top" ||
+            parts[0] === "bottom" ||
+            parts[1] === "left" ||
+            parts[1] === "right" ||
+            parts[2] === "left" ||
+            parts[2] === "right"
+          ) {
+            if (ValueParser.getMeasurement(parts[1])) {
+              x += parts[2];
+              y += `${parts[0]} ${parts[1]}`;
+            } else {
+              x += `${parts[1]} ${parts[2]}`;
+              y += parts[0];
+            }
+          } else {
+            if (ValueParser.getMeasurement(parts[1])) {
+              x += `${parts[0]} ${parts[1]}`;
+              y += parts[2];
+            } else {
+              x += parts[0];
+              y += `${parts[1]} ${parts[2]}`;
+            }
+          }
+          break;
+        case 4:
+          x +=
+            parts[0] === "top" ||
+            parts[0] === "bottom" ||
+            parts[1] === "top" ||
+            parts[1] === "bottom"
+              ? `${parts[2]} ${parts[3]}`
+              : `${parts[0]} ${parts[1]}`;
+          y +=
+            parts[0] === "top" ||
+            parts[0] === "bottom" ||
+            parts[1] === "top" ||
+            parts[1] === "bottom"
+              ? `${parts[0]} ${parts[1]}`
+              : `${parts[2]} ${parts[3]}`;
+          break;
         default:
           return null;
       }
@@ -1457,6 +1499,44 @@ const GetParser = {
     if (!ValueParser.getInitial(properties["border-top-color"].value)) values.push(properties["border-top-color"].value);
     return { important, value: values.join(" ") };
   },
+  getBorderImage(properties) {
+    if (
+      !properties["border-image-source"]?.value ||
+      !properties["border-image-slice"]?.value ||
+      !properties["border-image-width"]?.value ||
+      !properties["border-image-outset"]?.value ||
+      !properties["border-image-repeat"]?.value
+    ) {
+      return null;
+    }
+    const important =
+      properties["border-image-source"].important &&
+      properties["border-image-slice"].important &&
+      properties["border-image-width"].important &&
+      properties["border-image-outset"].important &&
+      properties["border-image-repeat"].important;
+    if (
+      ValueParser.getGlobal(properties["border-image-source"].value) ||
+      ValueParser.getGlobal(properties["border-image-slice"].value) ||
+      ValueParser.getGlobal(properties["border-image-width"].value) ||
+      ValueParser.getGlobal(properties["border-image-outset"].value) ||
+      ValueParser.getGlobal(properties["border-image-repeat"].value)
+    ) {
+      if (
+        properties["border-image-source"].value !== properties["border-image-slice"].value ||
+        properties["border-image-source"].value !== properties["border-image-width"].value ||
+        properties["border-image-source"].value !== properties["border-image-outset"].value ||
+        properties["border-image-source"].value !== properties["border-image-repeat"].value
+      ) {
+        return null;
+      }
+      return { important, value: properties["border-image-source"].value };
+    }
+    return {
+      important,
+      value: `${properties["border-image-source"].value} ${properties["border-image-slice"].value} / ${properties["border-image-width"].value} / ${properties["border-image-outset"].value} ${properties["border-image-repeat"].value}`,
+    };
+  },
   getBorderTop(properties) {
     return this.getBorderTopRightBottomLeft("top", properties);
   },
@@ -1560,7 +1640,7 @@ const GetParser = {
 const TO_STRING_SHORTHAND_PROPERTIES = [
   ["margin"],
   ["padding"],
-  ["border", ["border-width", "border-style", "border-color"]],
+  ["border", ["border-width", "border-style", "border-color", "border-image"]],
   ["border-radius"],
   ["background", "background-position"],
   ["font"],
@@ -1605,6 +1685,7 @@ class PropertyManager {
       case "margin": return GetParser.getMargin(this.properties);
       case "padding": return GetParser.getPadding(this.properties);
       case "border": return GetParser.getBorder(this.properties);
+      case "border-image": return GetParser.getBorderImage(this.properties);
       case "border-top": return GetParser.getBorderTop(this.properties);
       case "border-right": return GetParser.getBorderRight(this.properties);
       case "border-bottom": return GetParser.getBorderBottom(this.properties);
@@ -1939,8 +2020,98 @@ for (const unit of ["Hz", "Q", "ch", "cm", "deg", "dpcm", "dpi", "dppx", "em", "
 }
 
 export class CSSStyleValue {
+  constructor(style = null, property = "") {
+    this._style = style;
+    this._property = property;
+  }
+
   toString() {
+    if (this._style) return this._style.getPropertyValue(this._property);
     return this.value?.toString() ?? "";
+  }
+}
+
+// ─── StylePropertyMap family (T12) ──────────────────────────────────────────
+//
+// happy-dom's `StylePropertyMapReadOnly` / `StylePropertyMap` (CSS typed-OM
+// map view over a CSSStyleDeclaration). The facade classes take the internal
+// constructor shape `(style)`; the upstream "Illegal constructor" marker check
+// lives in the shim wrapper (tests/happy-dom/shim/adapters/property-symbol-classes.ts),
+// which is where the `PropertySymbol.illegalConstructor` marker is interpreted.
+
+export class StylePropertyMapReadOnly {
+  constructor(style = null) {
+    this._style = style;
+  }
+
+  get size() {
+    return this._style ? this._style.length : 0;
+  }
+
+  [Symbol.iterator]() {
+    return this.entries();
+  }
+
+  entries() {
+    const style = this._style;
+    const length = style ? style.length : 0;
+    const array = new Array(length);
+    for (let i = 0; i < length; i++) {
+      const property = style.item(i);
+      array[i] = [property, [new CSSKeywordValue(style.getPropertyValue(property))]];
+    }
+    return array.values();
+  }
+
+  values() {
+    const style = this._style;
+    const length = style ? style.length : 0;
+    const array = new Array(length);
+    for (let i = 0; i < length; i++) {
+      const property = style.item(i);
+      array[i] = [new CSSKeywordValue(style.getPropertyValue(property))];
+    }
+    return array.values();
+  }
+
+  keys() {
+    const style = this._style;
+    const length = style ? style.length : 0;
+    const array = new Array(length);
+    for (let i = 0; i < length; i++) {
+      array[i] = style.item(i);
+    }
+    return array.values();
+  }
+
+  get(property) {
+    return new CSSStyleValue(this._style, property);
+  }
+
+  getAll(property) {
+    return [new CSSStyleValue(this._style, property)];
+  }
+
+  has(property) {
+    return !!(this._style && this._style.getPropertyValue(property));
+  }
+}
+
+export class StylePropertyMap extends StylePropertyMapReadOnly {
+  append(property, value) {
+    this._style.setProperty(property, value);
+  }
+
+  clear() {
+    this._style.cssText = "";
+  }
+
+  delete(property) {
+    this._style.removeProperty(property);
+  }
+
+  set(property, value) {
+    this._style.setProperty(property, value);
   }
 }
 
@@ -3177,6 +3348,7 @@ const CSS_PROPERTY_ACCESSORS = {
   "animationFillMode": "animation-fill-mode", "animationIterationCount": "animation-iteration-count",
   "animationName": "animation-name", "animationPlayState": "animation-play-state",
   "animationTimingFunction": "animation-timing-function", "appearance": "appearance",
+  "aspectRatio": "aspect-ratio",
   "backdropFilter": "backdrop-filter", "backfaceVisibility": "backface-visibility",
   "background": "background", "backgroundAttachment": "background-attachment",
   "backgroundBlendMode": "background-blend-mode", "backgroundClip": "background-clip",

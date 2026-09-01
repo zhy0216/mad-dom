@@ -3,12 +3,52 @@
   "note": "Machine-readable compatibility ledger: every compatibility scenario is tracked as pass / known-gap / not-applicable under a permanent hc-<suite>-<capability>-<case> id. Status, reason and recordedAt semantics follow ADR-0002 section 7; the ledger was established by T11 and absorbed the T09 known-gap records (tests/compat/types/expected-divergences.json). The hdunit suite (ADR-0006) adds one hc-hdunit-<subsystem>-coverage summary entry per hdunit subsystem; the per-file triage state lives in tests/happy-dom/triage/*.json (the truth source), and these entries only record the split counts.",
   "entries": [
     {
+      "id": "hc-diff-attributes-read-write",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-attributes",
+      "addedIn": "T25E"
+    },
+    {
+      "id": "hc-diff-attributes-token",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-attributes-token",
+      "addedIn": "T34"
+    },
+    {
       "id": "hc-diff-child-nodelist",
       "suite": "diff",
       "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-child-nodelist",
       "addedIn": "T25D"
+    },
+    {
+      "id": "hc-diff-cssom-surface",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-cssom",
+      "addedIn": "T44"
+    },
+    {
+      "id": "hc-diff-custom-elements",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-custom-elements",
+      "addedIn": "T42"
+    },
+    {
+      "id": "hc-diff-custom-elements-upgrade",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-custom-elements-upgrade",
+      "addedIn": "T42"
     },
     {
       "id": "hc-diff-event-classes",
@@ -27,100 +67,12 @@
       "addedIn": "T37"
     },
     {
-      "id": "hc-diff-window-platform",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-platform-location-history",
-      "addedIn": "T45"
-    },
-    {
-      "id": "hc-diff-storage-cookie",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-storage-cookie",
-      "addedIn": "T45"
-    },
-    {
-      "id": "hc-diff-mutation-observer",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-mutation-observer",
-      "addedIn": "T41"
-    },
-    {
-      "id": "hc-diff-attributes-read-write",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-attributes",
-      "addedIn": "T25E"
-    },
-    {
-      "id": "hc-diff-text-content-accessor",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-text-content",
-      "addedIn": "T25E"
-    },
-    {
-      "id": "hc-diff-html-element",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-html-element",
-      "addedIn": "T39"
-    },
-    {
-      "id": "hc-diff-inner-outer-html",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-inner-outer-html",
-      "addedIn": "T29"
-    },
-    {
-      "id": "hc-diff-selector-query",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-selector-query",
-      "addedIn": "T31"
-    },
-    {
-      "id": "hc-diff-live-collections",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-live-collections",
-      "addedIn": "T32"
-    },
-    {
-      "id": "hc-diff-attributes-token",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-attributes-token",
-      "addedIn": "T34"
-    },
-    {
       "id": "hc-diff-extended-nodes",
       "suite": "diff",
       "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-extended-nodes",
       "addedIn": "T33"
-    },
-    {
-      "id": "hc-diff-treewalker-nodeiterator",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-traversal",
-      "addedIn": "T35"
     },
     {
       "id": "hc-diff-fetch-headers-request",
@@ -139,115 +91,11 @@
       "addedIn": "T46"
     },
     {
-      "id": "hc-diff-range-selection",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-range-selection",
-      "addedIn": "T36"
-    },
-    {
-      "id": "hc-diff-node-create-append-serialize",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-create-append-serialize",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-diff-node-navigation",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-node-navigation",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-diff-node-mutations",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-mutations",
-      "addedIn": "T24C"
-    },
-    {
-      "id": "hc-diff-selector-query-identity",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-query-selector-identity",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-types-element-enums-and-overloads",
-      "suite": "types",
-      "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/enums-and-overloads.ts",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-types-event-callbacks",
-      "suite": "types",
-      "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/event-callbacks.ts",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-types-event-constructor-options",
-      "suite": "types",
-      "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/constructor-options.ts",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-types-html-element",
-      "suite": "types",
-      "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/html-element.ts",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-types-window-document-basics",
-      "suite": "types",
-      "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/window-document-basics.ts",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-types-window-platform",
-      "suite": "types",
-      "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/window-platform.ts",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-types-mutation-observer",
-      "suite": "types",
-      "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/mutation-observer.ts",
-      "addedIn": "T48"
-    },
-    {
       "id": "hc-diff-form-controls",
       "suite": "diff",
       "status": "pass",
       "subsystem": "facade",
       "scenario": "dom-form-controls",
-      "addedIn": "T40"
-    },
-    {
-      "id": "hc-diff-template-content",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-template",
       "addedIn": "T40"
     },
     {
@@ -267,35 +115,91 @@
       "addedIn": "T48C"
     },
     {
-      "id": "hc-types-template-forms",
-      "suite": "types",
+      "id": "hc-diff-html-element",
+      "suite": "diff",
       "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/template-forms.ts",
+      "subsystem": "facade",
+      "scenario": "dom-html-element",
+      "addedIn": "T39"
+    },
+    {
+      "id": "hc-diff-inner-outer-html",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-inner-outer-html",
+      "addedIn": "T29"
+    },
+    {
+      "id": "hc-diff-live-collections",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-live-collections",
+      "addedIn": "T32"
+    },
+    {
+      "id": "hc-diff-mutation-observer",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-mutation-observer",
+      "addedIn": "T41"
+    },
+    {
+      "id": "hc-diff-node-create-append-serialize",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-create-append-serialize",
       "addedIn": "T48"
     },
     {
-      "id": "hc-diff-custom-elements",
+      "id": "hc-diff-node-mutations",
       "suite": "diff",
       "status": "pass",
       "subsystem": "facade",
-      "scenario": "dom-custom-elements",
-      "addedIn": "T42"
+      "scenario": "dom-mutations",
+      "addedIn": "T24C"
     },
     {
-      "id": "hc-diff-custom-elements-upgrade",
+      "id": "hc-diff-node-navigation",
       "suite": "diff",
       "status": "pass",
       "subsystem": "facade",
-      "scenario": "dom-custom-elements-upgrade",
-      "addedIn": "T42"
+      "scenario": "dom-node-navigation",
+      "addedIn": "T48"
     },
     {
-      "id": "hc-types-custom-elements",
-      "suite": "types",
+      "id": "hc-diff-range-selection",
+      "suite": "diff",
       "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/custom-elements.ts",
+      "subsystem": "facade",
+      "scenario": "dom-range-selection",
+      "addedIn": "T36"
+    },
+    {
+      "id": "hc-diff-script-eval",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-script-eval",
+      "addedIn": "T47"
+    },
+    {
+      "id": "hc-diff-selector-query",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-selector-query",
+      "addedIn": "T31"
+    },
+    {
+      "id": "hc-diff-selector-query-identity",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-query-selector-identity",
       "addedIn": "T48"
     },
     {
@@ -307,12 +211,12 @@
       "addedIn": "T43"
     },
     {
-      "id": "hc-diff-window-timers",
+      "id": "hc-diff-storage-cookie",
       "suite": "diff",
       "status": "pass",
       "subsystem": "facade",
-      "scenario": "dom-timers",
-      "addedIn": "T47"
+      "scenario": "dom-storage-cookie",
+      "addedIn": "T45"
     },
     {
       "id": "hc-diff-task-ordering",
@@ -323,28 +227,44 @@
       "addedIn": "T47"
     },
     {
-      "id": "hc-diff-script-eval",
+      "id": "hc-diff-template-content",
       "suite": "diff",
       "status": "pass",
       "subsystem": "facade",
-      "scenario": "dom-script-eval",
+      "scenario": "dom-template",
+      "addedIn": "T40"
+    },
+    {
+      "id": "hc-diff-text-content-accessor",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-text-content",
+      "addedIn": "T25E"
+    },
+    {
+      "id": "hc-diff-treewalker-nodeiterator",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-traversal",
+      "addedIn": "T35"
+    },
+    {
+      "id": "hc-diff-window-platform",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-platform-location-history",
+      "addedIn": "T45"
+    },
+    {
+      "id": "hc-diff-window-timers",
+      "suite": "diff",
+      "status": "pass",
+      "subsystem": "facade",
+      "scenario": "dom-timers",
       "addedIn": "T47"
-    },
-    {
-      "id": "hc-types-window-timers",
-      "suite": "types",
-      "status": "pass",
-      "subsystem": "types",
-      "fixture": "positive/timers.ts",
-      "addedIn": "T48"
-    },
-    {
-      "id": "hc-diff-cssom-surface",
-      "suite": "diff",
-      "status": "pass",
-      "subsystem": "facade",
-      "scenario": "dom-cssom",
-      "addedIn": "T44"
     },
     {
       "id": "hc-hdunit-browser-coverage",
@@ -377,6 +297,14 @@
       "addedIn": "T08"
     },
     {
+      "id": "hc-hdunit-clipboard-clipboard",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/rewritten/clipboard/Clipboard.test.ts",
+      "addedIn": "T08"
+    },
+    {
       "id": "hc-hdunit-clipboard-coverage",
       "suite": "hdunit",
       "status": "pass",
@@ -386,14 +314,6 @@
       "expectedFail": 0,
       "skip": 0,
       "addedIn": "T05"
-    },
-    {
-      "id": "hc-hdunit-clipboard-clipboard",
-      "suite": "hdunit",
-      "status": "pass",
-      "subsystem": "tooling",
-      "vendorPath": "tests/happy-dom/rewritten/clipboard/Clipboard.test.ts",
-      "addedIn": "T08"
     },
     {
       "id": "hc-hdunit-console-coverage",
@@ -423,17 +343,6 @@
       "addedIn": "T08"
     },
     {
-      "id": "hc-hdunit-cookie-store-coverage",
-      "suite": "hdunit",
-      "status": "pass",
-      "subsystem": "tooling",
-      "vendorPath": "tests/happy-dom/triage/cookie-store.json",
-      "enabled": 0,
-      "expectedFail": 0,
-      "skip": 1,
-      "addedIn": "T05"
-    },
-    {
       "id": "hc-hdunit-cookie-coverage",
       "suite": "hdunit",
       "status": "pass",
@@ -445,15 +354,50 @@
       "addedIn": "T05"
     },
     {
+      "id": "hc-hdunit-cookie-store-coverage",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/triage/cookie-store.json",
+      "enabled": 0,
+      "expectedFail": 0,
+      "skip": 1,
+      "addedIn": "T05"
+    },
+    {
       "id": "hc-hdunit-css-coverage",
       "suite": "hdunit",
       "status": "pass",
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/triage/css.json",
-      "enabled": 0,
+      "enabled": 3,
       "expectedFail": 0,
-      "skip": 20,
+      "skip": 17,
       "addedIn": "T05"
+    },
+    {
+      "id": "hc-hdunit-css-cssstyledeclaration",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/rewritten/css/declaration/CSSStyleDeclaration.test.ts",
+      "addedIn": "T12"
+    },
+    {
+      "id": "hc-hdunit-css-stylepropertymap",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/rewritten/css/style-property-map/StylePropertyMap.test.ts",
+      "addedIn": "T12"
+    },
+    {
+      "id": "hc-hdunit-css-stylepropertymapreadonly",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/rewritten/css/style-property-map/StylePropertyMapReadOnly.test.ts",
+      "addedIn": "T12"
     },
     {
       "id": "hc-hdunit-custom-element-coverage",
@@ -461,28 +405,6 @@
       "status": "pass",
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/triage/custom-element.json",
-      "enabled": 0,
-      "expectedFail": 0,
-      "skip": 1,
-      "addedIn": "T05"
-    },
-    {
-      "id": "hc-hdunit-dom-implementation-coverage",
-      "suite": "hdunit",
-      "status": "pass",
-      "subsystem": "tooling",
-      "vendorPath": "tests/happy-dom/triage/dom-implementation.json",
-      "enabled": 0,
-      "expectedFail": 0,
-      "skip": 1,
-      "addedIn": "T05"
-    },
-    {
-      "id": "hc-hdunit-dom-parser-coverage",
-      "suite": "hdunit",
-      "status": "pass",
-      "subsystem": "tooling",
-      "vendorPath": "tests/happy-dom/triage/dom-parser.json",
       "enabled": 0,
       "expectedFail": 0,
       "skip": 1,
@@ -524,14 +446,25 @@
       "addedIn": "T07"
     },
     {
-      "id": "hc-hdunit-event-coverage",
+      "id": "hc-hdunit-dom-implementation-coverage",
       "suite": "hdunit",
       "status": "pass",
       "subsystem": "tooling",
-      "vendorPath": "tests/happy-dom/triage/event.json",
-      "enabled": 5,
+      "vendorPath": "tests/happy-dom/triage/dom-implementation.json",
+      "enabled": 0,
       "expectedFail": 0,
-      "skip": 4,
+      "skip": 1,
+      "addedIn": "T05"
+    },
+    {
+      "id": "hc-hdunit-dom-parser-coverage",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/triage/dom-parser.json",
+      "enabled": 0,
+      "expectedFail": 0,
+      "skip": 1,
       "addedIn": "T05"
     },
     {
@@ -541,6 +474,17 @@
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/rewritten/event/events/ClipboardEvent.test.ts",
       "addedIn": "T07"
+    },
+    {
+      "id": "hc-hdunit-event-coverage",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/triage/event.json",
+      "enabled": 5,
+      "expectedFail": 2,
+      "skip": 2,
+      "addedIn": "T05"
     },
     {
       "id": "hc-hdunit-event-customevent",
@@ -583,14 +527,22 @@
       "addedIn": "T09"
     },
     {
+      "id": "hc-hdunit-fetch-abortsignal",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/rewritten/fetch/AbortSignal.test.ts",
+      "addedIn": "T12"
+    },
+    {
       "id": "hc-hdunit-fetch-coverage",
       "suite": "hdunit",
       "status": "pass",
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/triage/fetch.json",
-      "enabled": 2,
+      "enabled": 3,
       "expectedFail": 0,
-      "skip": 9,
+      "skip": 8,
       "addedIn": "T05"
     },
     {
@@ -602,14 +554,22 @@
       "addedIn": "T09"
     },
     {
+      "id": "hc-hdunit-file-blob",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/rewritten/file/Blob.test.ts",
+      "addedIn": "T12"
+    },
+    {
       "id": "hc-hdunit-file-coverage",
       "suite": "hdunit",
       "status": "pass",
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/triage/file.json",
-      "enabled": 2,
+      "enabled": 3,
       "expectedFail": 0,
-      "skip": 1,
+      "skip": 0,
       "addedIn": "T05"
     },
     {
@@ -785,22 +745,30 @@
       "addedIn": "T05"
     },
     {
+      "id": "hc-hdunit-nodes-comment",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/rewritten/nodes/comment/Comment.test.ts",
+      "addedIn": "T06"
+    },
+    {
       "id": "hc-hdunit-nodes-coverage",
       "suite": "hdunit",
       "status": "pass",
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/triage/nodes.json",
       "enabled": 42,
-      "expectedFail": 14,
-      "skip": 109,
+      "expectedFail": 19,
+      "skip": 104,
       "addedIn": "T05"
     },
     {
-      "id": "hc-hdunit-nodes-comment",
+      "id": "hc-hdunit-nodes-filelist",
       "suite": "hdunit",
       "status": "pass",
       "subsystem": "tooling",
-      "vendorPath": "tests/happy-dom/rewritten/nodes/comment/Comment.test.ts",
+      "vendorPath": "tests/happy-dom/rewritten/nodes/html-input-element/FileList.test.ts",
       "addedIn": "T06"
     },
     {
@@ -825,14 +793,6 @@
       "status": "pass",
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/rewritten/nodes/html-br-element/HTMLBRElement.test.ts",
-      "addedIn": "T06"
-    },
-    {
-      "id": "hc-hdunit-nodes-htmldlistelement",
-      "suite": "hdunit",
-      "status": "pass",
-      "subsystem": "tooling",
-      "vendorPath": "tests/happy-dom/rewritten/nodes/html-d-list-element/HTMLDListElement.test.ts",
       "addedIn": "T06"
     },
     {
@@ -876,6 +836,14 @@
       "addedIn": "T06"
     },
     {
+      "id": "hc-hdunit-nodes-htmldlistelement",
+      "suite": "hdunit",
+      "status": "pass",
+      "subsystem": "tooling",
+      "vendorPath": "tests/happy-dom/rewritten/nodes/html-d-list-element/HTMLDListElement.test.ts",
+      "addedIn": "T06"
+    },
+    {
       "id": "hc-hdunit-nodes-htmlembedelement",
       "suite": "hdunit",
       "status": "pass",
@@ -913,14 +881,6 @@
       "status": "pass",
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/rewritten/nodes/html-html-element/HTMLHtmlElement.test.ts",
-      "addedIn": "T06"
-    },
-    {
-      "id": "hc-hdunit-nodes-filelist",
-      "suite": "hdunit",
-      "status": "pass",
-      "subsystem": "tooling",
-      "vendorPath": "tests/happy-dom/rewritten/nodes/html-input-element/FileList.test.ts",
       "addedIn": "T06"
     },
     {
@@ -1286,8 +1246,8 @@
       "subsystem": "tooling",
       "vendorPath": "tests/happy-dom/triage/window.json",
       "enabled": 0,
-      "expectedFail": 0,
-      "skip": 4,
+      "expectedFail": 1,
+      "skip": 3,
       "addedIn": "T05"
     },
     {
@@ -1322,6 +1282,86 @@
       "expectedFail": 0,
       "skip": 1,
       "addedIn": "T05"
+    },
+    {
+      "id": "hc-types-custom-elements",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/custom-elements.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-element-enums-and-overloads",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/enums-and-overloads.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-event-callbacks",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/event-callbacks.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-event-constructor-options",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/constructor-options.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-html-element",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/html-element.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-mutation-observer",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/mutation-observer.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-template-forms",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/template-forms.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-window-document-basics",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/window-document-basics.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-window-platform",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/window-platform.ts",
+      "addedIn": "T48"
+    },
+    {
+      "id": "hc-types-window-timers",
+      "suite": "types",
+      "status": "pass",
+      "subsystem": "types",
+      "fixture": "positive/timers.ts",
+      "addedIn": "T48"
     }
   ]
 }

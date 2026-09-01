@@ -75,9 +75,14 @@ export class IntersectionObserver {
 
 // --- Blob / File -------------------------------------------------------------
 
+// The buffer behind a Blob, stored under an exported symbol so the hdunit
+// PropertySymbol shim can alias the upstream `PropertySymbol.buffer` key to the
+// facade's genuine storage (T12: name/signature alignment, no fabrication).
+export const BLOB_BUFFER = Symbol("mad-dom-blob-buffer");
+
 function blobBufferOf(bit) {
   if (bit instanceof ArrayBuffer) return Buffer.from(new Uint8Array(bit));
-  if (bit instanceof Blob) return bit._buffer;
+  if (bit instanceof Blob) return bit[BLOB_BUFFER];
   if (Buffer.isBuffer(bit)) return bit;
   if (ArrayBuffer.isView(bit)) return Buffer.from(new Uint8Array(bit.buffer, bit.byteOffset, bit.byteLength));
   return Buffer.from(typeof bit === "string" ? bit : String(bit));
@@ -89,14 +94,14 @@ export class Blob {
     if (bits) {
       for (const bit of bits) buffers.push(blobBufferOf(bit));
     }
-    this._buffer = Buffer.concat(buffers);
+    this[BLOB_BUFFER] = Buffer.concat(buffers);
     this.type = "";
     if (options && options.type && /^[\u0020-\u007E]*$/.test(options.type)) {
       this.type = String(options.type).toLowerCase();
     }
   }
   get size() {
-    return this._buffer.length;
+    return this[BLOB_BUFFER].length;
   }
   slice(start = 0, end = null, contentType = "") {
     const size = this.size;
@@ -110,17 +115,17 @@ export class Blob {
     else relativeEnd = Math.min(end, size);
     const span = Math.max(relativeEnd - relativeStart, 0);
     const blob = new Blob([], { type: contentType });
-    blob._buffer = this._buffer.slice(relativeStart, relativeStart + span);
+    blob[BLOB_BUFFER] = this[BLOB_BUFFER].slice(relativeStart, relativeStart + span);
     return blob;
   }
   async arrayBuffer() {
-    return new Uint8Array(this._buffer).buffer;
+    return new Uint8Array(this[BLOB_BUFFER]).buffer;
   }
   async text() {
-    return this._buffer.toString();
+    return this[BLOB_BUFFER].toString();
   }
   stream() {
-    const buffer = this._buffer;
+    const buffer = this[BLOB_BUFFER];
     return new ReadableStream({
       start(controller) {
         controller.enqueue(buffer);
@@ -193,13 +198,13 @@ export class FileReader {
     this._dispatch("loadstart");
     let result;
     if (format === "arrayBuffer") {
-      result = new Uint8Array(blob._buffer).buffer;
+      result = new Uint8Array(blob[BLOB_BUFFER]).buffer;
     } else if (format === "binaryString") {
-      result = blob._buffer.toString("latin1");
+      result = blob[BLOB_BUFFER].toString("latin1");
     } else if (format === "dataURL") {
-      result = `data:${blob.type || ""};base64,${blob._buffer.toString("base64")}`;
+      result = `data:${blob.type || ""};base64,${blob[BLOB_BUFFER].toString("base64")}`;
     } else {
-      result = blob._buffer.toString("utf8");
+      result = blob[BLOB_BUFFER].toString("utf8");
     }
     this.result = result;
     this.readyState = FILE_READER_DONE;
