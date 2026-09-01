@@ -41,6 +41,9 @@ import { datasetFor } from "./html-element.js";
 import { eventHandlerGetter, eventHandlerSetter } from "./hdunit-nodes.js";
 import { Event } from "./events.js";
 import { rethrowDomError, webidlMessage } from "./dom-error.js";
+import { DOMMatrix } from "./dom-matrix.js";
+import { DOMRect } from "./dom-geometry.js";
+import { NodeList } from "./child-nodelist.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/svg",
@@ -142,12 +145,12 @@ function animatedBoolean(element, attr) {
   return state[attr];
 }
 
-function animatedEnumeration(element, attr, values, defaultValue) {
+function animatedEnumeration(element, attr, values, defaultValue, attributeName = attr) {
   const state = animatedState(element);
   if (state[attr] === undefined) {
     state[attr] = new SVGAnimatedEnumeration(MINT, {
-      getAttribute: () => element.getAttribute(attr),
-      setAttribute: (value) => element.setAttribute(attr, value),
+      getAttribute: () => element.getAttribute(attributeName),
+      setAttribute: (value) => element.setAttribute(attributeName, value),
       values,
       defaultValue,
     });
@@ -172,6 +175,62 @@ function animatedPreserveAspectRatio(element, attr) {
     state[attr] = new SVGAnimatedPreserveAspectRatio(MINT, {
       getAttribute: () => element.getAttribute(attr),
       setAttribute: (value) => element.setAttribute(attr, value),
+    });
+  }
+  return state[attr];
+}
+
+function animatedTransformList(element, attr) {
+  const state = animatedState(element);
+  if (state[attr] === undefined) {
+    state[attr] = new SVGAnimatedTransformList(MINT, {
+      getAttribute: () => element.getAttribute(attr),
+      setAttribute: (value) => element.setAttribute(attr, value),
+    });
+  }
+  return state[attr];
+}
+
+function animatedRect(element, attr) {
+  const state = animatedState(element);
+  if (state[attr] === undefined) {
+    state[attr] = new SVGAnimatedRect(MINT, {
+      getAttribute: () => element.getAttribute(attr),
+      setAttribute: (value) => element.setAttribute(attr, value),
+    });
+  }
+  return state[attr];
+}
+
+function animatedAngle(element, attr, attributeName = attr) {
+  const state = animatedState(element);
+  if (state[attr] === undefined) {
+    state[attr] = new SVGAnimatedAngle(MINT, {
+      getAttribute: () => element.getAttribute(attributeName),
+      setAttribute: (value) => element.setAttribute(attributeName, value),
+    });
+  }
+  return state[attr];
+}
+
+function animatedLengthList(element, attr) {
+  const state = animatedState(element);
+  if (state[attr] === undefined) {
+    state[attr] = new SVGAnimatedLengthList(MINT, {
+      getAttribute: () => element.getAttribute(attr),
+      setAttribute: (value) => element.setAttribute(attr, value),
+    });
+  }
+  return state[attr];
+}
+
+function pointList(element, attr, attributeName = attr, readOnly = false) {
+  const state = animatedState(element);
+  if (state[attr] === undefined) {
+    state[attr] = new SVGPointList(MINT, {
+      readOnly,
+      getAttribute: () => element.getAttribute(attributeName),
+      setAttribute: (value) => element.setAttribute(attributeName, value),
     });
   }
   return state[attr];
@@ -858,6 +917,15 @@ class SVGNumberList {
       for (const part of parts) {
         const item = new SVGNumber(MINT, { readOnly: this.readOnly });
         item.attributeValue = String(parseFloat(part));
+        // Wire each parsed item's write-back to the whole list (happy-dom
+        // `rotate.baseVal[0].value = 100` re-serializes the attribute).
+        item.setAttribute = () => {
+          const serialized = this.getItemList()
+            .map((entry) => entry.attributeValue || "0")
+            .join(" ");
+          this.cache.attributeValue = serialized;
+          this.setAttribute(serialized);
+        };
         items.push(item);
       }
     }
@@ -1164,13 +1232,920 @@ class SVGAnimatedPreserveAspectRatio {
   }
 }
 
+// ── SVGMatrix ───────────────────────────────────────────────────────────────
+
+// The SVG matrix value class (identity defaults, a…f reflectors). happy-dom
+// exposes it as the plain `window.SVGMatrix` global; `SVGTransform.matrix` and
+// `createSVGMatrix()` return instances of it.
+class SVGMatrix {
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    this.a = options?.a ?? 1;
+    this.b = options?.b ?? 0;
+    this.c = options?.c ?? 0;
+    this.d = options?.d ?? 1;
+    this.e = options?.e ?? 0;
+    this.f = options?.f ?? 0;
+  }
+}
+
+// ── SVGPoint / SVGPointList ─────────────────────────────────────────────────
+
+// The SVG point value class. A list item carries the owning list and its own
+// index; reads parse the whole list attribute and writes re-serialize it. A
+// standalone point (from `createSVGPoint()`) keeps plain `_x` / `_y` state.
+class SVGPoint {
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    if (options) {
+      this.readOnly = !!options.readOnly;
+      this.getAttribute = options.getAttribute || null;
+      this.setAttribute = options.setAttribute || null;
+    } else {
+      this.readOnly = false;
+      this.getAttribute = null;
+      this.setAttribute = null;
+    }
+    this._list = null;
+    this._index = 0;
+    this._x = 0;
+    this._y = 0;
+  }
+
+  get x() {
+    if (this.getAttribute) {
+      const numbers = parsePointListNumbers(this.getAttribute());
+      return numbers[this._index * 2] ?? 0;
+    }
+    return this._x;
+  }
+
+  set x(value) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to set the 'x' property on 'SVGPoint': The object is read-only.");
+    }
+    if (this.setAttribute) {
+      const numbers = parsePointListNumbers(this.getAttribute());
+      numbers[this._index * 2] = Number(value);
+      this.setAttribute(serializePointListNumbers(numbers));
+    } else {
+      this._x = Number(value);
+    }
+  }
+
+  get y() {
+    if (this.getAttribute) {
+      const numbers = parsePointListNumbers(this.getAttribute());
+      return numbers[this._index * 2 + 1] ?? 0;
+    }
+    return this._y;
+  }
+
+  set y(value) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to set the 'y' property on 'SVGPoint': The object is read-only.");
+    }
+    if (this.setAttribute) {
+      const numbers = parsePointListNumbers(this.getAttribute());
+      numbers[this._index * 2 + 1] = Number(value);
+      this.setAttribute(serializePointListNumbers(numbers));
+    } else {
+      this._y = Number(value);
+    }
+  }
+}
+
+const POINT_LIST_SEPARATOR_REGEXP = /[\t\f\n\r, ]+/;
+
+function parsePointListNumbers(attributeValue) {
+  const trimmed = (attributeValue ?? "").trim();
+  if (!trimmed) return [];
+  return trimmed.split(POINT_LIST_SEPARATOR_REGEXP).map(Number);
+}
+
+function serializePointListNumbers(numbers) {
+  return numbers.join(" ");
+}
+
+class SVGPointList {
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    this.readOnly = !!options.readOnly;
+    this.getAttribute = options.getAttribute;
+    this.setAttribute = options.setAttribute;
+    this.cache = { items: [], attributeValue: "" };
+    return makeListProxy(this, () => this.getItemList());
+  }
+
+  get length() {
+    return this.getItemList().length;
+  }
+
+  get numberOfItems() {
+    return this.getItemList().length;
+  }
+
+  [Symbol.iterator]() {
+    return this.getItemList().values();
+  }
+
+  clear() {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'clear' on 'SVGPointList': The object is read-only.");
+    }
+    this.cache.items = [];
+    this.cache.attributeValue = "";
+    this.setAttribute("");
+  }
+
+  getItem(index) {
+    const items = this.getItemList();
+    index = Number(index);
+    index = Number.isNaN(index) ? 0 : index;
+    return items[index] ? items[index] : null;
+  }
+
+  appendItem(newItem) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'appendItem' on 'SVGPointList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGPoint)) {
+      throw new TypeError("Failed to execute 'appendItem' on 'SVGPointList': parameter 1 is not of type 'SVGPoint'.");
+    }
+    const numbers = parsePointListNumbers(this.getAttribute());
+    numbers.push(Number(newItem.x), Number(newItem.y));
+    this.cache.attributeValue = "";
+    this.setAttribute(serializePointListNumbers(numbers));
+    return newItem;
+  }
+
+  removeItem(index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList': The object is read-only.");
+    }
+    index = Number(index);
+    if (Number.isNaN(index)) {
+      index = 0;
+    }
+    const numbers = parsePointListNumbers(this.getAttribute());
+    const itemIndex = index * 2;
+    if (itemIndex >= numbers.length) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList':  The index provided is greater than the maximum bound.");
+    }
+    if (index < 0) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList':  The index provided is negative.");
+    }
+    const removed = numbers.splice(itemIndex, 2);
+    this.cache.attributeValue = "";
+    this.setAttribute(serializePointListNumbers(numbers));
+    const item = new SVGPoint(MINT, {});
+    item._x = removed[0] ?? 0;
+    item._y = removed[1] ?? 0;
+    return item;
+  }
+
+  getItemList() {
+    const attributeValue = this.getAttribute() ?? "";
+    const cache = this.cache;
+    if (cache.attributeValue === attributeValue) {
+      return cache.items;
+    }
+    const numbers = parsePointListNumbers(attributeValue);
+    const items = [];
+    for (let index = 0; index * 2 < numbers.length; index += 1) {
+      const item = new SVGPoint(MINT, {
+        readOnly: this.readOnly,
+        getAttribute: this.getAttribute,
+        setAttribute: this.setAttribute,
+      });
+      item._list = this;
+      item._index = index;
+      items.push(item);
+    }
+    cache.attributeValue = attributeValue;
+    cache.items = items;
+    return items;
+  }
+}
+
+// ── SVGTransform / SVGTransformList / SVGAnimatedTransformList ──────────────
+
+// happy-dom SVGTransformTypeEnum values (vendor-src literal source).
+const TRANSFORM_TYPE_UNKNOWN = 0;
+const TRANSFORM_TYPE_MATRIX = 1;
+const TRANSFORM_TYPE_TRANSLATE = 2;
+const TRANSFORM_TYPE_SCALE = 3;
+
+function parseTransformSegment(segment) {
+  const match = segment.match(/^([a-zA-Z]+)\(([^)]*)\)$/);
+  if (!match) return null;
+  const name = match[1];
+  const args = match[2]
+    .trim()
+    .split(/[\t\f\n\r, ]+/)
+    .filter((part) => part !== "")
+    .map(Number);
+  switch (name) {
+    case "matrix":
+      return {
+        type: TRANSFORM_TYPE_MATRIX,
+        a: args[0] ?? 0,
+        b: args[1] ?? 0,
+        c: args[2] ?? 0,
+        d: args[3] ?? 0,
+        e: args[4] ?? 0,
+        f: args[5] ?? 0,
+      };
+    case "translate":
+      return { type: TRANSFORM_TYPE_TRANSLATE, a: 1, b: 0, c: 0, d: 1, e: args[0] ?? 0, f: args[1] ?? 0 };
+    case "scale": {
+      const sx = args[0] ?? 1;
+      return { type: TRANSFORM_TYPE_SCALE, a: sx, b: 0, c: 0, d: args[1] ?? sx, e: 0, f: 0 };
+    }
+    default:
+      return null;
+  }
+}
+
+function splitTransformList(text) {
+  const segments = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of String(text ?? "")) {
+    if (ch === "(") depth += 1;
+    if (ch === ")") depth -= 1;
+    if (/\s/.test(ch) && depth === 0) {
+      if (current.trim() !== "") segments.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim() !== "") segments.push(current.trim());
+  return segments;
+}
+
+class SVGTransform {
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    if (options) {
+      this.readOnly = !!options.readOnly;
+      this.getAttribute = options.getAttribute || null;
+      this.setAttribute = options.setAttribute || null;
+    } else {
+      this.readOnly = false;
+      this.getAttribute = null;
+      this.setAttribute = null;
+    }
+    this._list = null;
+    this._index = 0;
+    this._type = TRANSFORM_TYPE_UNKNOWN;
+    this._matrix = null;
+  }
+
+  get type() {
+    if (this._list) {
+      const parsed = parseTransformSegment(this._list.getSegment(this._index));
+      return parsed ? parsed.type : TRANSFORM_TYPE_UNKNOWN;
+    }
+    return this._type;
+  }
+
+  get matrix() {
+    if (this._matrix) return this._matrix;
+    if (this._list) {
+      const parsed = parseTransformSegment(this._list.getSegment(this._index));
+      if (parsed) return new SVGMatrix(MINT, parsed);
+      return new SVGMatrix(MINT, {});
+    }
+    return new SVGMatrix(MINT, {});
+  }
+
+  setScale(x, y) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'setScale' on 'SVGTransform': The object is read-only.");
+    }
+    const sx = Number(x);
+    const sy = y === undefined ? sx : Number(y);
+    this._type = TRANSFORM_TYPE_SCALE;
+    this._matrix = new SVGMatrix(MINT, { a: sx, b: 0, c: 0, d: sy, e: 0, f: 0 });
+    if (this._list) {
+      this._list._updateFromTransform(this._index, serializeTransform(this));
+    }
+    return this;
+  }
+
+  serialize() {
+    if (this._matrix) return serializeTransform(this);
+    if (this._list) {
+      const parsed = parseTransformSegment(this._list.getSegment(this._index));
+      if (parsed) {
+        return `${["unknown", "matrix", "translate", "scale"][parsed.type]}(${parsed.a} ${parsed.b} ${parsed.c} ${parsed.d} ${parsed.e} ${parsed.f})`;
+      }
+      return "";
+    }
+    return "";
+  }
+}
+
+function serializeTransform(transform) {
+  const matrix = transform._matrix;
+  if (matrix === null) return "";
+  switch (transform._type) {
+    case TRANSFORM_TYPE_SCALE:
+      return `scale(${matrix.a} ${matrix.d})`;
+    case TRANSFORM_TYPE_TRANSLATE:
+      return `translate(${matrix.e} ${matrix.f})`;
+    case TRANSFORM_TYPE_MATRIX:
+      return `matrix(${matrix.a} ${matrix.b} ${matrix.c} ${matrix.d} ${matrix.e} ${matrix.f})`;
+    default:
+      return "";
+  }
+}
+
+class SVGTransformList {
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    this.readOnly = !!options.readOnly;
+    this.getAttribute = options.getAttribute;
+    this.setAttribute = options.setAttribute;
+    this.cache = { items: [], attributeValue: "" };
+    return makeListProxy(this, () => this.getItemList());
+  }
+
+  get length() {
+    return this.getItemList().length;
+  }
+
+  get numberOfItems() {
+    return this.getItemList().length;
+  }
+
+  [Symbol.iterator]() {
+    return this.getItemList().values();
+  }
+
+  getItem(index) {
+    const items = this.getItemList();
+    index = Number(index);
+    index = Number.isNaN(index) ? 0 : index;
+    return items[index] ? items[index] : null;
+  }
+
+  initialize(newItem) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'initialize' on 'SVGTransformList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGTransform)) {
+      throw new TypeError("Failed to execute 'initialize' on 'SVGTransformList': parameter 1 is not of type 'SVGTransform'.");
+    }
+    const serialized = serializeTransform(newItem);
+    this.cache.items = [newItem];
+    this.cache.attributeValue = serialized;
+    this.setAttribute(serialized);
+    return newItem;
+  }
+
+  getSegment(index) {
+    const segments = splitTransformList(this.getAttribute() ?? "");
+    return segments[index] ?? "";
+  }
+
+  _updateFromTransform(index, serialized) {
+    const segments = splitTransformList(this.getAttribute() ?? "");
+    segments[index] = serialized;
+    this.cache.attributeValue = "";
+    this.setAttribute(segments.join(" "));
+  }
+
+  getItemList() {
+    const attributeValue = this.getAttribute() ?? "";
+    const cache = this.cache;
+    if (cache.attributeValue === attributeValue) {
+      return cache.items;
+    }
+    const items = [];
+    const segments = splitTransformList(attributeValue);
+    for (let index = 0; index < segments.length; index += 1) {
+      const item = new SVGTransform(MINT, {
+        readOnly: this.readOnly,
+        getAttribute: this.getAttribute,
+        setAttribute: this.setAttribute,
+      });
+      item._list = this;
+      item._index = index;
+      items.push(item);
+    }
+    cache.attributeValue = attributeValue;
+    cache.items = items;
+    return items;
+  }
+}
+
+class SVGAnimatedTransformList {
+  #baseVal = null;
+  #animVal = null;
+
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    this.getAttribute = options.getAttribute;
+    this.setAttribute = options.setAttribute;
+  }
+
+  get animVal() {
+    if (this.#animVal === null) {
+      this.#animVal = new SVGTransformList(MINT, {
+        readOnly: true,
+        getAttribute: this.getAttribute,
+        setAttribute: () => {},
+      });
+    }
+    return this.#animVal;
+  }
+
+  set animVal(_value) {
+    // Do nothing
+  }
+
+  get baseVal() {
+    if (this.#baseVal === null) {
+      this.#baseVal = new SVGTransformList(MINT, {
+        getAttribute: this.getAttribute,
+        setAttribute: this.setAttribute,
+      });
+    }
+    return this.#baseVal;
+  }
+
+  set baseVal(_value) {
+    // Do nothing
+  }
+}
+
+// ── SVGRect / SVGAnimatedRect ───────────────────────────────────────────────
+
+const RECT_ATTRIBUTE_REGEXP = /^([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s*$/;
+const RECT_PROPERTY_NAMES = ["x", "y", "width", "height"];
+
+function parseRectNumbers(attributeValue) {
+  const match = String(attributeValue ?? "").match(RECT_ATTRIBUTE_REGEXP);
+  if (!match) return [];
+  return [Number(match[1]), Number(match[2]), Number(match[3]), Number(match[4])];
+}
+
+class SVGRect {
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    if (options) {
+      this.readOnly = !!options.readOnly;
+      this.getAttribute = options.getAttribute || null;
+      this.setAttribute = options.setAttribute || null;
+    } else {
+      this.readOnly = false;
+      this.getAttribute = null;
+      this.setAttribute = null;
+    }
+    this._x = 0;
+    this._y = 0;
+    this._width = 0;
+    this._height = 0;
+  }
+
+  get x() {
+    if (this.getAttribute) {
+      const numbers = parseRectNumbers(this.getAttribute());
+      return numbers[0] ?? 0;
+    }
+    return this._x;
+  }
+
+  set x(value) {
+    this._setRect(0, value);
+  }
+
+  get y() {
+    if (this.getAttribute) {
+      const numbers = parseRectNumbers(this.getAttribute());
+      return numbers[1] ?? 0;
+    }
+    return this._y;
+  }
+
+  set y(value) {
+    this._setRect(1, value);
+  }
+
+  get width() {
+    if (this.getAttribute) {
+      const numbers = parseRectNumbers(this.getAttribute());
+      return numbers[2] ?? 0;
+    }
+    return this._width;
+  }
+
+  set width(value) {
+    this._setRect(2, value);
+  }
+
+  get height() {
+    if (this.getAttribute) {
+      const numbers = parseRectNumbers(this.getAttribute());
+      return numbers[3] ?? 0;
+    }
+    return this._height;
+  }
+
+  set height(value) {
+    this._setRect(3, value);
+  }
+
+  _setRect(index, value) {
+    const propertyName = RECT_PROPERTY_NAMES[index];
+    if (this.readOnly) {
+      throw new TypeError(`Failed to set the '${propertyName}' property on 'SVGRect': The object is read-only.`);
+    }
+    if (this.setAttribute) {
+      const numbers = parseRectNumbers(this.getAttribute());
+      numbers[index] = Number(value);
+      this.setAttribute(numbers.map(String).join(" "));
+    } else {
+      this[`_${propertyName}`] = Number(value);
+    }
+  }
+}
+
+class SVGAnimatedRect {
+  #baseVal = null;
+  #animVal = null;
+
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    this.getAttribute = options.getAttribute;
+    this.setAttribute = options.setAttribute;
+  }
+
+  get animVal() {
+    if (this.#animVal === null) {
+      this.#animVal = new SVGRect(MINT, {
+        readOnly: true,
+        getAttribute: this.getAttribute,
+      });
+    }
+    return this.#animVal;
+  }
+
+  set animVal(_value) {
+    // Do nothing
+  }
+
+  get baseVal() {
+    if (this.#baseVal === null) {
+      this.#baseVal = new SVGRect(MINT, {
+        getAttribute: this.getAttribute,
+        setAttribute: this.setAttribute,
+      });
+    }
+    return this.#baseVal;
+  }
+
+  set baseVal(_value) {
+    // Do nothing
+  }
+}
+
+// ── SVGAngle / SVGAnimatedAngle ─────────────────────────────────────────────
+
+// happy-dom SVGAngleTypeEnum values (vendor-src literal source).
+const ANGLE_TYPE_UNKNOWN = 0;
+const ANGLE_TYPE_UNSPECIFIED = 1;
+const ANGLE_TYPE_DEG = 2;
+const ANGLE_TYPE_RAD = 3;
+const ANGLE_TYPE_GRAD = 4;
+
+const ANGLE_ATTRIBUTE_REGEXP = /^([-+]?\d*\.?\d+)(deg|rad|grad|turn)?$/;
+
+class SVGAngle {
+  static SVG_ANGLETYPE_UNKNOWN = ANGLE_TYPE_UNKNOWN;
+  static SVG_ANGLETYPE_UNSPECIFIED = ANGLE_TYPE_UNSPECIFIED;
+  static SVG_ANGLETYPE_DEG = ANGLE_TYPE_DEG;
+  static SVG_ANGLETYPE_RAD = ANGLE_TYPE_RAD;
+  static SVG_ANGLETYPE_GRAD = ANGLE_TYPE_GRAD;
+
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    if (options) {
+      this.readOnly = !!options.readOnly;
+      this.getAttribute = options.getAttribute || null;
+      this.setAttribute = options.setAttribute || null;
+    } else {
+      this.readOnly = false;
+      this.getAttribute = null;
+      this.setAttribute = null;
+    }
+  }
+
+  get value() {
+    const attributeValue = this.getAttribute ? this.getAttribute() || "" : "";
+    const match = attributeValue.match(ANGLE_ATTRIBUTE_REGEXP);
+    if (!match) {
+      return 0;
+    }
+    return parseFloat(match[1]);
+  }
+
+  set value(value) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to set the 'value' property on 'SVGAngle': The object is read-only.");
+    }
+    value = typeof value !== "number" ? parseFloat(String(value)) : value;
+    if (Number.isNaN(value)) {
+      throw new TypeError("Failed to set the 'value' property on 'SVGAngle': The provided float value is non-finite.");
+    }
+    let unit = "";
+    switch (this.unitType) {
+      case ANGLE_TYPE_DEG:
+        unit = "deg";
+        break;
+      case ANGLE_TYPE_RAD:
+        unit = "rad";
+        break;
+      case ANGLE_TYPE_GRAD:
+        unit = "grad";
+        break;
+      default:
+        unit = "";
+        break;
+    }
+    if (this.setAttribute) {
+      this.setAttribute(String(value) + unit);
+    }
+  }
+
+  get unitType() {
+    const attributeValue = this.getAttribute ? this.getAttribute() || "" : "";
+    const match = attributeValue.match(ANGLE_ATTRIBUTE_REGEXP);
+    if (!match) {
+      return ANGLE_TYPE_UNKNOWN;
+    }
+    switch (match[2]) {
+      case "deg":
+        return ANGLE_TYPE_DEG;
+      case "rad":
+        return ANGLE_TYPE_RAD;
+      case "grad":
+        return ANGLE_TYPE_GRAD;
+      default:
+        return ANGLE_TYPE_UNSPECIFIED;
+    }
+  }
+
+  get valueAsString() {
+    return this.getAttribute ? this.getAttribute() || "0" : "0";
+  }
+
+  newValueSpecifiedUnits(unitType, value) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'newValueSpecifiedUnits' on 'SVGAngle': The object is read-only.");
+    }
+    if (typeof unitType !== "number") {
+      throw new TypeError("Failed to execute 'newValueSpecifiedUnits' on 'SVGAngle': parameter 1 ('unitType') is not of type 'number'.");
+    }
+    value = typeof value !== "number" ? parseFloat(String(value)) : value;
+    if (Number.isNaN(value)) {
+      throw new TypeError("Failed to execute 'newValueSpecifiedUnits' on 'SVGAngle': The provided float value is non-finite.");
+    }
+    let unit = "";
+    switch (unitType) {
+      case ANGLE_TYPE_DEG:
+        unit = "deg";
+        break;
+      case ANGLE_TYPE_RAD:
+        unit = "rad";
+        break;
+      case ANGLE_TYPE_GRAD:
+        unit = "grad";
+        break;
+      default:
+        unit = "";
+        break;
+    }
+    if (this.setAttribute) {
+      this.setAttribute(String(value) + unit);
+    }
+  }
+}
+
+class SVGAnimatedAngle {
+  #baseVal = null;
+  #animVal = null;
+
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    this.getAttribute = options.getAttribute;
+    this.setAttribute = options.setAttribute;
+  }
+
+  get animVal() {
+    if (this.#animVal === null) {
+      this.#animVal = new SVGAngle(MINT, {
+        readOnly: true,
+        getAttribute: this.getAttribute,
+      });
+    }
+    return this.#animVal;
+  }
+
+  set animVal(_value) {
+    // Do nothing
+  }
+
+  get baseVal() {
+    if (this.#baseVal === null) {
+      this.#baseVal = new SVGAngle(MINT, {
+        getAttribute: this.getAttribute,
+        setAttribute: this.setAttribute,
+      });
+    }
+    return this.#baseVal;
+  }
+
+  set baseVal(_value) {
+    // Do nothing
+  }
+}
+
+// ── SVGLengthList / SVGAnimatedLengthList ───────────────────────────────────
+
+class SVGLengthList {
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    this.readOnly = !!options.readOnly;
+    this.getAttribute = options.getAttribute;
+    this.setAttribute = options.setAttribute;
+    this.cache = { items: [], attributeValue: "" };
+    return makeListProxy(this, () => this.getItemList());
+  }
+
+  get length() {
+    return this.getItemList().length;
+  }
+
+  get numberOfItems() {
+    return this.getItemList().length;
+  }
+
+  [Symbol.iterator]() {
+    return this.getItemList().values();
+  }
+
+  getItem(index) {
+    const items = this.getItemList();
+    index = Number(index);
+    index = Number.isNaN(index) ? 0 : index;
+    return items[index] ? items[index] : null;
+  }
+
+  getItemList() {
+    const attributeValue = this.getAttribute() ?? "";
+    const cache = this.cache;
+    if (cache.attributeValue === attributeValue) {
+      return cache.items;
+    }
+    const items = [];
+    const trimmed = attributeValue.trim();
+    if (trimmed) {
+      const parts = trimmed.split(/\s+/);
+      for (let index = 0; index < parts.length; index += 1) {
+        const item = new SVGLength(MINT, {
+          readOnly: this.readOnly,
+          getAttribute: () => parts[index],
+          setAttribute: (value) => {
+            parts[index] = value;
+            cache.attributeValue = parts.join(" ");
+            this.setAttribute(parts.join(" "));
+          },
+        });
+        items.push(item);
+      }
+    }
+    cache.attributeValue = attributeValue;
+    cache.items = items;
+    return items;
+  }
+}
+
+class SVGAnimatedLengthList {
+  #baseVal = null;
+  #animVal = null;
+
+  constructor(mint, options) {
+    if (mint !== MINT) {
+      throw new TypeError("Illegal constructor");
+    }
+    this.getAttribute = options.getAttribute;
+    this.setAttribute = options.setAttribute;
+  }
+
+  get animVal() {
+    if (this.#animVal === null) {
+      this.#animVal = new SVGLengthList(MINT, {
+        readOnly: true,
+        getAttribute: this.getAttribute,
+        setAttribute: () => {},
+      });
+    }
+    return this.#animVal;
+  }
+
+  set animVal(_value) {
+    // Do nothing
+  }
+
+  get baseVal() {
+    if (this.#baseVal === null) {
+      this.#baseVal = new SVGLengthList(MINT, {
+        getAttribute: this.getAttribute,
+        setAttribute: this.setAttribute,
+      });
+    }
+    return this.#baseVal;
+  }
+
+  set baseVal(_value) {
+    // Do nothing
+  }
+}
+
 // ── SVG element classes ─────────────────────────────────────────────────────
 
 export class SVGElement extends Element {}
 
-class SVGGraphicsElement extends SVGElement {}
+// The shared transform / string-list surface of every graphics element
+// (transform as SVGAnimatedTransformList, requiredExtensions / systemLanguage
+// as SVGStringList) plus the layout-free geometry stubs happy-dom returns
+// (getBBox → empty DOMRect, getCTM / getScreenCTM → identity DOMMatrix).
+class SVGGraphicsElement extends SVGElement {
+  get transform() {
+    return animatedTransformList(this, "transform");
+  }
+  get requiredExtensions() {
+    return stringList(this, "requiredExtensions");
+  }
+  get systemLanguage() {
+    return stringList(this, "systemLanguage");
+  }
+  getBBox() {
+    return new DOMRect();
+  }
+  getCTM() {
+    return new DOMMatrix();
+  }
+  getScreenCTM() {
+    return new DOMMatrix();
+  }
+}
 
-class SVGGeometryElement extends SVGGraphicsElement {}
+// The geometry surface (pathLength SVGAnimatedNumber + the unimplemented
+// geometry probes happy-dom stubs to false / 0 / an origin SVGPoint).
+class SVGGeometryElement extends SVGGraphicsElement {
+  get pathLength() {
+    return animatedNumber(this, "pathLength");
+  }
+  isPointInFill() {
+    return false;
+  }
+  isPointInStroke() {
+    return false;
+  }
+  getTotalLength() {
+    return 0;
+  }
+  getPointAtLength() {
+    return new SVGPoint(MINT, {});
+  }
+}
 
 class SVGCircleElement extends SVGGeometryElement {
   get cx() {
@@ -1223,6 +2198,519 @@ class SVGClipPathElement extends SVGElement {
 class SVGDefsElement extends SVGGraphicsElement {}
 
 class SVGDescElement extends SVGElement {}
+
+// ── W8 element classes (SVGFilterElement – SVGViewElement) ──────────────────
+
+class SVGFilterElement extends SVGElement {
+  get href() {
+    return animatedString(this, "href");
+  }
+  get filterUnits() {
+    return animatedEnumeration(this, "filterUnits", ["userSpaceOnUse", "objectBoundingBox"], "userSpaceOnUse");
+  }
+  get primitiveUnits() {
+    return animatedEnumeration(this, "primitiveUnits", ["userSpaceOnUse", "objectBoundingBox"], "userSpaceOnUse");
+  }
+  get height() {
+    return animatedLength(this, "height");
+  }
+  get width() {
+    return animatedLength(this, "width");
+  }
+  get x() {
+    return animatedLength(this, "x");
+  }
+  get y() {
+    return animatedLength(this, "y");
+  }
+}
+
+class SVGForeignObjectElement extends SVGGraphicsElement {
+  get height() {
+    return animatedLength(this, "height");
+  }
+  get width() {
+    return animatedLength(this, "width");
+  }
+  get x() {
+    return animatedLength(this, "x");
+  }
+  get y() {
+    return animatedLength(this, "y");
+  }
+}
+
+class SVGGElement extends SVGGraphicsElement {}
+
+class SVGGradientElement extends SVGGraphicsElement {
+  static SVG_SPREADMETHOD_UNKNOWN = 0;
+  static SVG_SPREADMETHOD_PAD = 1;
+  static SVG_SPREADMETHOD_REFLECT = 2;
+  static SVG_SPREADMETHOD_REPEAT = 3;
+  get href() {
+    return animatedString(this, "href");
+  }
+  get gradientUnits() {
+    return animatedEnumeration(this, "gradientUnits", ["userSpaceOnUse", "objectBoundingBox"], "objectBoundingBox");
+  }
+  get gradientTransform() {
+    return animatedTransformList(this, "gradientTransform");
+  }
+  get spreadMethod() {
+    return animatedEnumeration(this, "spreadMethod", ["pad", "reflect", "repeat"], "pad");
+  }
+}
+
+class SVGImageElement extends SVGGraphicsElement {
+  get crossOrigin() {
+    return this.getAttribute("crossorigin");
+  }
+  set crossOrigin(value) {
+    this.setAttribute("crossorigin", value);
+  }
+  get href() {
+    return animatedString(this, "href");
+  }
+  get decoding() {
+    const value = this.getAttribute("decoding");
+    if (!value || !["sync", "async", "auto"].includes(value)) {
+      return "auto";
+    }
+    return value;
+  }
+  set decoding(value) {
+    this.setAttribute("decoding", value);
+  }
+  get preserveAspectRatio() {
+    return animatedPreserveAspectRatio(this, "preserveAspectRatio");
+  }
+  get height() {
+    return animatedLength(this, "height");
+  }
+  get width() {
+    return animatedLength(this, "width");
+  }
+  get x() {
+    return animatedLength(this, "x");
+  }
+  get y() {
+    return animatedLength(this, "y");
+  }
+  decode() {
+    return Promise.resolve();
+  }
+}
+
+class SVGLineElement extends SVGGeometryElement {
+  get x1() {
+    return animatedLength(this, "x1");
+  }
+  get y1() {
+    return animatedLength(this, "y1");
+  }
+  get x2() {
+    return animatedLength(this, "x2");
+  }
+  get y2() {
+    return animatedLength(this, "y2");
+  }
+}
+
+class SVGLinearGradientElement extends SVGGradientElement {
+  get x1() {
+    return animatedLength(this, "x1");
+  }
+  get y1() {
+    return animatedLength(this, "y1");
+  }
+  get x2() {
+    return animatedLength(this, "x2");
+  }
+  get y2() {
+    return animatedLength(this, "y2");
+  }
+}
+
+class SVGMPathElement extends SVGElement {
+  get href() {
+    return animatedString(this, "href");
+  }
+}
+
+class SVGMarkerElement extends SVGElement {
+  static SVG_MARKER_ORIENT_UNKNOWN = 0;
+  static SVG_MARKER_ORIENT_AUTO = 1;
+  static SVG_MARKER_ORIENT_ANGLE = 2;
+  static SVG_MARKERUNITS_UNKNOWN = 0;
+  static SVG_MARKERUNITS_USERSPACEONUSE = 1;
+  static SVG_MARKERUNITS_STROKEWIDTH = 2;
+  get markerUnits() {
+    return animatedEnumeration(this, "markerUnits", ["userSpaceOnUse", "strokeWidth"], "strokeWidth");
+  }
+  get markerWidth() {
+    return animatedLength(this, "markerWidth");
+  }
+  get markerHeight() {
+    return animatedLength(this, "markerHeight");
+  }
+  get orientType() {
+    return animatedEnumeration(this, "orientType", ["auto", null], "auto", "orient");
+  }
+  get orientAngle() {
+    return animatedAngle(this, "orientAngle", "orient");
+  }
+  get refX() {
+    return animatedLength(this, "refX");
+  }
+  get refY() {
+    return animatedLength(this, "refY");
+  }
+  get viewBox() {
+    return animatedRect(this, "viewBox");
+  }
+  get preserveAspectRatio() {
+    return animatedPreserveAspectRatio(this, "preserveAspectRatio");
+  }
+  setOrientToAuto() {
+    this.setAttribute("orient", "auto");
+  }
+}
+
+class SVGMaskElement extends SVGElement {
+  get maskUnits() {
+    return animatedEnumeration(this, "maskUnits", ["userSpaceOnUse", "objectBoundingBox"], "userSpaceOnUse");
+  }
+  get maskContentUnits() {
+    return animatedEnumeration(this, "maskContentUnits", ["userSpaceOnUse", "objectBoundingBox"], "userSpaceOnUse");
+  }
+  get width() {
+    return animatedLength(this, "width");
+  }
+  get height() {
+    return animatedLength(this, "height");
+  }
+  get x() {
+    return animatedLength(this, "x");
+  }
+  get y() {
+    return animatedLength(this, "y");
+  }
+}
+
+class SVGMetadataElement extends SVGElement {}
+
+class SVGPathElement extends SVGGeometryElement {}
+
+class SVGPatternElement extends SVGElement {
+  get href() {
+    return animatedString(this, "href");
+  }
+  get patternUnits() {
+    return animatedEnumeration(this, "patternUnits", ["userSpaceOnUse", "objectBoundingBox"], "objectBoundingBox");
+  }
+  get patternContentUnits() {
+    return animatedEnumeration(this, "patternContentUnits", ["userSpaceOnUse", "objectBoundingBox"], "userSpaceOnUse");
+  }
+  get patternTransform() {
+    return animatedTransformList(this, "patternTransform");
+  }
+  get width() {
+    return animatedLength(this, "width");
+  }
+  get height() {
+    return animatedLength(this, "height");
+  }
+  get x() {
+    return animatedLength(this, "x");
+  }
+  get y() {
+    return animatedLength(this, "y");
+  }
+}
+
+class SVGPolygonElement extends SVGGeometryElement {
+  get animatedPoints() {
+    return pointList(this, "animatedPoints", "points", true);
+  }
+  get points() {
+    return pointList(this, "points", "points");
+  }
+}
+
+class SVGPolylineElement extends SVGGeometryElement {
+  get animatedPoints() {
+    return pointList(this, "animatedPoints", "points", true);
+  }
+  get points() {
+    return pointList(this, "points", "points");
+  }
+}
+
+class SVGRadialGradientElement extends SVGGradientElement {
+  get cx() {
+    return animatedLength(this, "cx");
+  }
+  get cy() {
+    return animatedLength(this, "cy");
+  }
+  get r() {
+    return animatedLength(this, "r");
+  }
+  get fx() {
+    return animatedLength(this, "fx");
+  }
+  get fy() {
+    return animatedLength(this, "fy");
+  }
+}
+
+class SVGRectElement extends SVGGeometryElement {
+  get x() {
+    return animatedLength(this, "x");
+  }
+  get y() {
+    return animatedLength(this, "y");
+  }
+  get height() {
+    return animatedLength(this, "height");
+  }
+  get width() {
+    return animatedLength(this, "width");
+  }
+  get rx() {
+    return animatedLength(this, "rx");
+  }
+  get ry() {
+    return animatedLength(this, "ry");
+  }
+}
+
+class SVGSVGElement extends SVGGraphicsElement {
+  get currentScale() {
+    return this._currentScale ?? 1;
+  }
+  set currentScale(value) {
+    const parsedValue = typeof value !== "number" ? parseFloat(String(value)) : value;
+    if (Number.isNaN(parsedValue)) {
+      throw new TypeError("Failed to set the 'currentScale' property on 'SVGSVGElement': The provided float value is non-finite.");
+    }
+    // happy-dom ignores values below 1 (they never overwrite the current
+    // scale), so the default stays 1 while a previously set scale is kept.
+    if (parsedValue >= 1) {
+      this._currentScale = parsedValue;
+    }
+  }
+  get currentTranslate() {
+    if (!this._currentTranslate) {
+      this._currentTranslate = new SVGPoint(MINT, {});
+    }
+    return this._currentTranslate;
+  }
+  get preserveAspectRatio() {
+    return animatedPreserveAspectRatio(this, "preserveAspectRatio");
+  }
+  get height() {
+    return animatedLength(this, "height");
+  }
+  get width() {
+    return animatedLength(this, "width");
+  }
+  get x() {
+    return animatedLength(this, "x");
+  }
+  get y() {
+    return animatedLength(this, "y");
+  }
+  get viewBox() {
+    return animatedRect(this, "viewBox");
+  }
+  pauseAnimations() {}
+  unpauseAnimations() {}
+  getCurrentTime() {
+    return 0;
+  }
+  setCurrentTime() {}
+  getIntersectionList() {
+    return emptyNodeList(this);
+  }
+  getEnclosureList() {
+    return emptyNodeList(this);
+  }
+  checkIntersection() {
+    return false;
+  }
+  checkEnclosure() {
+    return false;
+  }
+  deselectAll() {}
+  createSVGNumber() {
+    return new SVGNumber(MINT, {});
+  }
+  createSVGLength() {
+    return new SVGLength(MINT, {});
+  }
+  createSVGAngle() {
+    return new SVGAngle(MINT, {});
+  }
+  createSVGPoint() {
+    return new SVGPoint(MINT, {});
+  }
+  createSVGMatrix() {
+    return new SVGMatrix(MINT, {});
+  }
+  createSVGRect() {
+    return new SVGRect(MINT, {});
+  }
+  createSVGTransform() {
+    return new SVGTransform(MINT, {});
+  }
+  createSVGTransformFromMatrix(matrix) {
+    const transform = new SVGTransform(MINT, {});
+    transform._matrix = matrix;
+    return transform;
+  }
+}
+
+function emptyNodeList(element) {
+  const handle = nodeHandleOf(element);
+  const documentHandle = handle?.ownerDocument();
+  if (!documentHandle) return [];
+  const scratch = documentHandle.createElement("div");
+  return new NodeList(scratch);
+}
+
+class SVGScriptElement extends SVGGraphicsElement {
+  get href() {
+    return animatedString(this, "href");
+  }
+  get type() {
+    return this.getAttribute("type") ?? "";
+  }
+  set type(value) {
+    this.setAttribute("type", value);
+  }
+}
+
+class SVGSetElement extends SVGAnimationElement {}
+
+class SVGStopElement extends SVGElement {
+  get offset() {
+    return animatedNumber(this, "offset");
+  }
+}
+
+class SVGStyleElement extends SVGElement {
+  get media() {
+    return this.getAttribute("media") ?? "all";
+  }
+  set media(value) {
+    this.setAttribute("media", value);
+  }
+  get type() {
+    return this.getAttribute("type") ?? "text/css";
+  }
+  set type(value) {
+    this.setAttribute("type", value);
+  }
+  get title() {
+    return this.getAttribute("title") ?? "";
+  }
+  set title(value) {
+    this.setAttribute("title", value);
+  }
+  get disabled() {
+    return this._disabled === true;
+  }
+  set disabled(value) {
+    this._disabled = !!value;
+  }
+}
+
+class SVGSwitchElement extends SVGGraphicsElement {}
+
+class SVGSymbolElement extends SVGGraphicsElement {}
+
+class SVGTextContentElement extends SVGGraphicsElement {
+  static LENGTHADJUST_UNKNOWN = 0;
+  static LENGTHADJUST_SPACING = 1;
+  static LENGTHADJUST_SPACINGANDGLYPHS = 2;
+  get textLength() {
+    return animatedLength(this, "textLength");
+  }
+  get lengthAdjust() {
+    return animatedEnumeration(this, "lengthAdjust", ["spacing", "spacingAndGlyphs"], "spacing");
+  }
+  getNumberOfChars() {
+    return 0;
+  }
+  getComputedTextLength() {
+    return 0;
+  }
+  getSubStringLength() {
+    return 0;
+  }
+  getStartPositionOfChar() {
+    return new SVGPoint(MINT, {});
+  }
+  getEndPositionOfChar() {
+    return new SVGPoint(MINT, {});
+  }
+  getExtentOfChar() {
+    return new SVGRect(MINT, {});
+  }
+  getRotationOfChar() {
+    return 0;
+  }
+  getCharNumAtPosition() {
+    return 0;
+  }
+}
+
+class SVGTextPathElement extends SVGTextContentElement {}
+
+class SVGTextPositioningElement extends SVGTextContentElement {
+  get x() {
+    return animatedLengthList(this, "x");
+  }
+  get y() {
+    return animatedLengthList(this, "y");
+  }
+  get dx() {
+    return animatedLengthList(this, "dx");
+  }
+  get dy() {
+    return animatedLengthList(this, "dy");
+  }
+  get rotate() {
+    return animatedNumberList(this, "rotate");
+  }
+}
+
+class SVGTextElement extends SVGTextPositioningElement {}
+
+class SVGTSpanElement extends SVGTextPositioningElement {}
+
+class SVGTitleElement extends SVGElement {}
+
+class SVGUseElement extends SVGGraphicsElement {
+  get href() {
+    return animatedString(this, "href");
+  }
+  get height() {
+    return animatedLength(this, "height");
+  }
+  get width() {
+    return animatedLength(this, "width");
+  }
+  get x() {
+    return animatedLength(this, "x");
+  }
+  get y() {
+    return animatedLength(this, "y");
+  }
+}
+
+class SVGViewElement extends SVGElement {}
 
 // The common filter-primitive geometry surface shared by the SVGFE* family
 // (width / height / x / y as SVGAnimatedLength, in1 / result as
@@ -1724,6 +3212,29 @@ const SVG_ELEMENT_EVENTS = [
   "wheel",
 ];
 
+// The window-level event names happy-dom registers as on<event> handler
+// attributes on SVGSVGElement (upstream svg-svg-element test).
+const SVG_ROOT_ELEMENT_EVENTS = [
+  "afterprint",
+  "beforeprint",
+  "beforeunload",
+  "gamepadconnected",
+  "gamepaddisconnected",
+  "hashchange",
+  "languagechange",
+  "message",
+  "messageerror",
+  "offline",
+  "online",
+  "pagehide",
+  "pageshow",
+  "popstate",
+  "rejectionhandled",
+  "storage",
+  "unhandledrejection",
+  "unload",
+];
+
 function ownerSvgElement(ctx, element) {
   let parent = nodeHandleOf(element)?.parentNode();
   while (parent !== null && parent !== undefined) {
@@ -1778,6 +3289,38 @@ const SVG_ELEMENT_CLASSES = [
   [SVGFESpotLightElement, "SVGFESpotLightElement"],
   [SVGFETileElement, "SVGFETileElement"],
   [SVGFETurbulenceElement, "SVGFETurbulenceElement"],
+  [SVGFilterElement, "SVGFilterElement"],
+  [SVGForeignObjectElement, "SVGForeignObjectElement"],
+  [SVGGElement, "SVGGElement"],
+  [SVGGradientElement, "SVGGradientElement"],
+  [SVGImageElement, "SVGImageElement"],
+  [SVGLineElement, "SVGLineElement"],
+  [SVGLinearGradientElement, "SVGLinearGradientElement"],
+  [SVGMPathElement, "SVGMPathElement"],
+  [SVGMarkerElement, "SVGMarkerElement"],
+  [SVGMaskElement, "SVGMaskElement"],
+  [SVGMetadataElement, "SVGMetadataElement"],
+  [SVGPathElement, "SVGPathElement"],
+  [SVGPatternElement, "SVGPatternElement"],
+  [SVGPolygonElement, "SVGPolygonElement"],
+  [SVGPolylineElement, "SVGPolylineElement"],
+  [SVGRadialGradientElement, "SVGRadialGradientElement"],
+  [SVGRectElement, "SVGRectElement"],
+  [SVGSVGElement, "SVGSVGElement"],
+  [SVGScriptElement, "SVGScriptElement"],
+  [SVGSetElement, "SVGSetElement"],
+  [SVGStopElement, "SVGStopElement"],
+  [SVGStyleElement, "SVGStyleElement"],
+  [SVGSwitchElement, "SVGSwitchElement"],
+  [SVGSymbolElement, "SVGSymbolElement"],
+  [SVGTextContentElement, "SVGTextContentElement"],
+  [SVGTextPathElement, "SVGTextPathElement"],
+  [SVGTextElement, "SVGTextElement"],
+  [SVGTextPositioningElement, "SVGTextPositioningElement"],
+  [SVGTSpanElement, "SVGTSpanElement"],
+  [SVGTitleElement, "SVGTitleElement"],
+  [SVGUseElement, "SVGUseElement"],
+  [SVGViewElement, "SVGViewElement"],
 ];
 
 const SVG_VALUE_CLASSES = [
@@ -1795,6 +3338,18 @@ const SVG_VALUE_CLASSES = [
   [SVGUnitTypes, "SVGUnitTypes"],
   [SVGAnimatedPreserveAspectRatio, "SVGAnimatedPreserveAspectRatio"],
   [SVGPreserveAspectRatio, "SVGPreserveAspectRatio"],
+  [SVGMatrix, "SVGMatrix"],
+  [SVGPoint, "SVGPoint"],
+  [SVGPointList, "SVGPointList"],
+  [SVGTransform, "SVGTransform"],
+  [SVGTransformList, "SVGTransformList"],
+  [SVGAnimatedTransformList, "SVGAnimatedTransformList"],
+  [SVGRect, "SVGRect"],
+  [SVGAnimatedRect, "SVGAnimatedRect"],
+  [SVGAngle, "SVGAngle"],
+  [SVGAnimatedAngle, "SVGAnimatedAngle"],
+  [SVGLengthList, "SVGLengthList"],
+  [SVGAnimatedLengthList, "SVGAnimatedLengthList"],
 ];
 
 // The SVG tag → class mapping (happy-dom SVGElementConfig localNames).
@@ -1832,6 +3387,35 @@ const SVG_TAG_CLASSES = [
   ["feSpotLight", SVGFESpotLightElement],
   ["feTile", SVGFETileElement],
   ["feTurbulence", SVGFETurbulenceElement],
+  ["filter", SVGFilterElement],
+  ["foreignObject", SVGForeignObjectElement],
+  ["g", SVGGElement],
+  ["image", SVGImageElement],
+  ["line", SVGLineElement],
+  ["linearGradient", SVGLinearGradientElement],
+  ["mpath", SVGMPathElement],
+  ["marker", SVGMarkerElement],
+  ["mask", SVGMaskElement],
+  ["metadata", SVGMetadataElement],
+  ["path", SVGPathElement],
+  ["pattern", SVGPatternElement],
+  ["polygon", SVGPolygonElement],
+  ["polyline", SVGPolylineElement],
+  ["radialGradient", SVGRadialGradientElement],
+  ["rect", SVGRectElement],
+  ["svg", SVGSVGElement],
+  ["script", SVGScriptElement],
+  ["set", SVGSetElement],
+  ["stop", SVGStopElement],
+  ["style", SVGStyleElement],
+  ["switch", SVGSwitchElement],
+  ["symbol", SVGSymbolElement],
+  ["text", SVGTextElement],
+  ["textPath", SVGTextPathElement],
+  ["tspan", SVGTSpanElement],
+  ["title", SVGTitleElement],
+  ["use", SVGUseElement],
+  ["view", SVGViewElement],
 ];
 
 export function install(ctx) {
@@ -1886,7 +3470,22 @@ export function install(ctx) {
     });
   }
 
-  // Window globals (happy-dom BrowserWindow exposes the SVG classes directly).
+  // SVGSVGElement: the window-level on<event> handler-attribute accessors
+  // happy-dom exposes on the root svg element (upstream svg-svg-element test).
+  for (const eventName of SVG_ROOT_ELEMENT_EVENTS) {
+    const property = `on${eventName}`;
+    ctx.defineAccessor(SVGSVGElement.prototype, property, function svgRootEventHandler() {
+      return eventHandlerGetter(ctx, this, eventName);
+    }, function svgRootEventHandler(value) {
+      eventHandlerSetter(ctx, this, eventName, value);
+    });
+  }
+
+  // Window globals (happy-dom BrowserWindow exposes the SVG classes directly,
+  // plus the shared NodeList class as a plain global).
+  ctx.defineAccessor(Window.prototype, "NodeList", function getNodeListClass() {
+    return NodeList;
+  }, undefined);
   for (const [Class, name] of SVG_VALUE_CLASSES) {
     ctx.defineAccessor(Window.prototype, name, function getSvgValueClass() {
       return Class;

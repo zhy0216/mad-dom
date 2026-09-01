@@ -235,3 +235,176 @@ export function observeEventHandler(api, window, element, eventName, recordPrefi
   api.record.value(`${recordPrefix}${eventName}-assigned-called`, window.test);
   api.record.value(`${recordPrefix}${eventName}-attr-removed`, element.getAttribute(`on${eventName}`));
 }
+
+// SVGAnimatedTransformList reflection (g transform / gradientTransform /
+// patternTransform). The upstream write-back path constructs the transform
+// through the internal `new window.SVGTransform(illegalConstructor, window)`;
+// the public equivalent creates it through a scratch `<svg>` element's
+// `createSVGTransform()` (the public mint entry both ends expose).
+export function observeTransformList(api, window, element, prop, attr) {
+  api.record.value(`${prop}-animated-type`, element[prop] instanceof window.SVGAnimatedTransformList);
+  api.record.value(`${prop}-identity`, element[prop] === element[prop]);
+  element.setAttribute(attr, "matrix(1 2 3 4 5 6) translate(10 20)");
+  api.record.value(`${prop}-base-numberOfItems`, element[prop].baseVal.numberOfItems);
+  api.record.value(`${prop}-base-item0-type`, element[prop].baseVal.getItem(0).type);
+  api.record.value(`${prop}-base-item0-matrix-a`, element[prop].baseVal.getItem(0).matrix.a);
+  api.record.value(`${prop}-base-item0-matrix-b`, element[prop].baseVal.getItem(0).matrix.b);
+  api.record.value(`${prop}-base-item0-matrix-c`, element[prop].baseVal.getItem(0).matrix.c);
+  api.record.value(`${prop}-base-item0-matrix-d`, element[prop].baseVal.getItem(0).matrix.d);
+  api.record.value(`${prop}-base-item0-matrix-e`, element[prop].baseVal.getItem(0).matrix.e);
+  api.record.value(`${prop}-base-item0-matrix-f`, element[prop].baseVal.getItem(0).matrix.f);
+  api.record.value(`${prop}-base-item1-type`, element[prop].baseVal.getItem(1).type);
+  api.record.value(`${prop}-base-item1-matrix-a`, element[prop].baseVal.getItem(1).matrix.a);
+  api.record.value(`${prop}-base-item1-matrix-b`, element[prop].baseVal.getItem(1).matrix.b);
+  api.record.value(`${prop}-base-item1-matrix-c`, element[prop].baseVal.getItem(1).matrix.c);
+  api.record.value(`${prop}-base-item1-matrix-d`, element[prop].baseVal.getItem(1).matrix.d);
+  api.record.value(`${prop}-base-item1-matrix-e`, element[prop].baseVal.getItem(1).matrix.e);
+  api.record.value(`${prop}-base-item1-matrix-f`, element[prop].baseVal.getItem(1).matrix.f);
+  api.record.value(`${prop}-anim-numberOfItems`, element[prop].animVal.numberOfItems);
+  api.record.value(`${prop}-anim-item0-type`, element[prop].animVal.getItem(0).type);
+  api.record.value(`${prop}-anim-item0-matrix-a`, element[prop].animVal.getItem(0).matrix.a);
+  api.record.value(`${prop}-anim-item1-type`, element[prop].animVal.getItem(1).type);
+  api.record.value(`${prop}-anim-item1-matrix-e`, element[prop].animVal.getItem(1).matrix.e);
+  const transform = svgPublicMint(window, "createSVGTransform");
+  transform.setScale(10, 20);
+  element[prop].baseVal.initialize(transform);
+  api.record.value(`${prop}-initialize-writeback`, element.getAttribute(attr));
+  try {
+    element[prop].animVal.initialize(transform);
+    api.record.value(`${prop}-anim-initialize`, "no-throw");
+  } catch (error) {
+    api.record.error(error, "sync-throw");
+  }
+}
+
+// SVGPointList reflection (polygon/polyline points + read-only animatedPoints).
+// The upstream `new window.SVGPoint(illegalConstructor, window)` construction
+// is replaced by the public `createSVGPoint()` mint.
+export function observePointList(api, window, element, prop, attr) {
+  api.record.value(`${prop}-type`, element[prop] instanceof window.SVGPointList);
+  api.record.value(`${prop}-identity`, element[prop] === element[prop]);
+  element.setAttribute(attr, "10,10 20,20 30,30");
+  api.record.value(`${prop}-length`, element[prop].length);
+  api.record.value(`${prop}-item0-x`, element[prop][0].x);
+  api.record.value(`${prop}-item0-y`, element[prop][0].y);
+  api.record.value(`${prop}-item1-x`, element[prop][1].x);
+  api.record.value(`${prop}-item1-y`, element[prop][1].y);
+  api.record.value(`${prop}-item2-x`, element[prop][2].x);
+  api.record.value(`${prop}-item2-y`, element[prop][2].y);
+  element.setAttribute(attr, "10 20 30 40 50 60");
+  api.record.value(`${prop}-relength`, element[prop].length);
+  api.record.value(`${prop}-reitem0-x`, element[prop][0].x);
+  api.record.value(`${prop}-reitem0-y`, element[prop][0].y);
+  api.record.value(`${prop}-reitem2-x`, element[prop][2].x);
+  api.record.value(`${prop}-reitem2-y`, element[prop][2].y);
+  element.setAttribute(attr, "10,10 20,20 30,30");
+  element[prop][0].x = 100;
+  element[prop][0].y = 200;
+  api.record.value(`${prop}-writeback`, element.getAttribute(attr));
+  element[prop].removeItem(1);
+  api.record.value(`${prop}-remove`, element.getAttribute(attr));
+  const point = svgPublicMint(window, "createSVGPoint");
+  point.x = 300;
+  point.y = 400;
+  element[prop].appendItem(point);
+  api.record.value(`${prop}-append`, element.getAttribute(attr));
+  element[prop].clear();
+  api.record.value(`${prop}-clear`, element.getAttribute(attr));
+}
+
+// SVGAnimatedLengthList reflection (text x/y/dx/dy). The read-only animVal
+// write is the same SVGLength read-only error observed in observeLength.
+export function observeLengthList(api, window, element, prop, attr) {
+  api.record.value(`${prop}-animated-type`, element[prop] instanceof window.SVGAnimatedLengthList);
+  api.record.value(`${prop}-identity`, element[prop] === element[prop]);
+  element.setAttribute(attr, "10px 20cm 30in 40mm");
+  api.record.value(`${prop}-base-length`, element[prop].baseVal.length);
+  api.record.value(`${prop}-base-item0-vius`, element[prop].baseVal[0].valueInSpecifiedUnits);
+  api.record.value(`${prop}-base-item1-vius`, element[prop].baseVal[1].valueInSpecifiedUnits);
+  api.record.value(`${prop}-base-item2-vius`, element[prop].baseVal[2].valueInSpecifiedUnits);
+  api.record.value(`${prop}-base-item3-vius`, element[prop].baseVal[3].valueInSpecifiedUnits);
+  api.record.value(`${prop}-anim-length`, element[prop].animVal.length);
+  api.record.value(`${prop}-anim-item0-vius`, element[prop].animVal[0].valueInSpecifiedUnits);
+  api.record.value(`${prop}-anim-item1-vius`, element[prop].animVal[1].valueInSpecifiedUnits);
+  element[prop].baseVal[0].newValueSpecifiedUnits(window.SVGLength.SVG_LENGTHTYPE_CM, 100);
+  api.record.value(`${prop}-writeback`, element.getAttribute(attr));
+  try {
+    element[prop].animVal[0].newValueSpecifiedUnits(window.SVGLength.SVG_LENGTHTYPE_PX, 20);
+    api.record.value(`${prop}-anim-write`, "no-throw");
+  } catch (error) {
+    api.record.error(error, "sync-throw");
+  }
+}
+
+// SVGAnimatedNumberList rotate write-back (text rotate): baseVal[0].value
+// re-serializes the list and the animVal item is read-only.
+export function observeRotateList(api, window, element) {
+  element.setAttribute("rotate", "10 20.2 30");
+  api.record.value("rotate-type", element.rotate instanceof window.SVGAnimatedNumberList);
+  api.record.value("rotate-base-length", element.rotate.baseVal.length);
+  api.record.value("rotate-base-item0", element.rotate.baseVal[0].value);
+  api.record.value("rotate-base-item1", element.rotate.baseVal[1].value);
+  api.record.value("rotate-base-item2", element.rotate.baseVal[2].value);
+  api.record.value("rotate-anim-item0", element.rotate.animVal[0].value);
+  element.rotate.baseVal[0].value = 100;
+  api.record.value("rotate-writeback", element.getAttribute("rotate"));
+  try {
+    element.rotate.animVal[0].value = 200;
+    api.record.value("rotate-anim-write", "no-throw");
+  } catch (error) {
+    api.record.error(error, "sync-throw");
+  }
+}
+
+// SVGAnimatedRect reflection (marker/svg viewBox).
+export function observeRect(api, window, element, prop, attr) {
+  api.record.value(`${prop}-type`, element[prop] instanceof window.SVGAnimatedRect);
+  element.setAttribute(attr, "10 20 100 200");
+  api.record.value(`${prop}-base-x`, element[prop].baseVal.x);
+  api.record.value(`${prop}-base-y`, element[prop].baseVal.y);
+  api.record.value(`${prop}-base-width`, element[prop].baseVal.width);
+  api.record.value(`${prop}-base-height`, element[prop].baseVal.height);
+  api.record.value(`${prop}-anim-x`, element[prop].animVal.x);
+  api.record.value(`${prop}-anim-y`, element[prop].animVal.y);
+  api.record.value(`${prop}-anim-width`, element[prop].animVal.width);
+  api.record.value(`${prop}-anim-height`, element[prop].animVal.height);
+  element[prop].baseVal.x = 20;
+  element[prop].baseVal.y = 30;
+  element[prop].baseVal.width = 200;
+  element[prop].baseVal.height = 300;
+  api.record.value(`${prop}-writeback`, element.getAttribute(attr));
+  try {
+    element[prop].animVal.x = 40;
+    api.record.value(`${prop}-anim-write`, "no-throw");
+  } catch (error) {
+    api.record.error(error, "sync-throw");
+  }
+}
+
+// SVGAnimatedEnumeration reflection using window.SVGUnitTypes statics
+// (filterUnits / primitiveUnits / gradientUnits / maskUnits / …).
+export function observeUnitEnumeration(api, window, element, prop, attr, defaultValue) {
+  api.record.value(`${prop}-animated-type`, element[prop] instanceof window.SVGAnimatedEnumeration);
+  api.record.value(`${prop}-default-base`, element[prop].baseVal);
+  api.record.value(`${prop}-default-anim`, element[prop].animVal);
+  for (const value of ["userSpaceOnUse", "objectBoundingBox"]) {
+    const constant = window.SVGUnitTypes[`SVG_UNIT_TYPE_${value.toUpperCase()}`];
+    element.setAttribute(attr, value);
+    api.record.value(`${prop}-${value}-base`, element[prop].baseVal);
+    api.record.value(`${prop}-${value}-anim`, element[prop].animVal);
+    element.removeAttribute(attr);
+    element[prop].baseVal = constant;
+    api.record.value(`${prop}-${value}-writeback`, element.getAttribute(attr));
+    element.removeAttribute(attr);
+    element[prop].animVal = window.SVGUnitTypes[`SVG_UNIT_TYPE_${defaultValue.toUpperCase()}`];
+    api.record.value(`${prop}-${value}-anim-write-noop`, element.getAttribute(attr));
+  }
+}
+
+// Mint a value object through the public `<svg>` element factory surface (the
+// public equivalent of the upstream internal `new window.SVG<Value>(…,
+// PropertySymbol.illegalConstructor, …)` constructions).
+export function svgPublicMint(window, method) {
+  const svg = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  return svg[method]();
+}

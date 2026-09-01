@@ -1,6 +1,6 @@
 # 08 差分移植波次 W8：nodes svg 元素内部类（SVGFilter*–SVGView*）
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：W8
 - 条目 ID：`D08`

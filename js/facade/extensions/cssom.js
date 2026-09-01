@@ -3322,11 +3322,53 @@ function computedStyleFor(ctx, window, element) {
   return computed;
 }
 
+// Collects the `{ name, value, important }` declarations of every `<style>`
+// sheet rule that matches `elementHandle`, in source order. Non-matching or
+// unparseable selectors are skipped silently (they simply do not apply).
+function collectSheetDeclarations(docHandle, elementHandle) {
+  const declarations = [];
+  let styleHandles;
+  try {
+    // Namespace-agnostic discovery (matching happy-dom): an SVG `<style>`
+    // element must be found too, while a bare CSS type selector only matches
+    // the default (HTML) namespace.
+    styleHandles = docHandle.getElementsByTagName("style");
+  } catch {
+    return declarations;
+  }
+  for (const styleHandle of styleHandles) {
+    const sheet = sheetOf(null, styleHandle);
+    collectRuleDeclarations(sheet.cssRules, elementHandle, declarations);
+  }
+  return declarations;
+}
+
+function collectRuleDeclarations(rules, elementHandle, out) {
+  for (const rule of rules) {
+    if (rule instanceof CSSStyleRule) {
+      try {
+        if (elementHandle.matches(rule.selectorText)) {
+          const { rules: parsed } = parseCssText(rule.style.cssText);
+          for (const declaration of parsed) out.push(declaration);
+        }
+      } catch {
+        // Non-matching / invalid selector: ignore.
+      }
+    } else if (rule instanceof CSSGroupingRule) {
+      collectRuleDeclarations(rule.cssRules, elementHandle, out);
+    }
+  }
+}
+
 // The layout-free computed-style engine: walks the element's parent chain
-// applying the per-tag default CSS, the inline `style` attribute and the
-// inherited font/direction/color properties. It never fabricates
-// layout-dependent values (no measurement of widths/heights) — only the stable
-// defaults happy-dom computes without a layout engine are produced.
+// applying the per-tag default CSS, the matching `<style>` sheet rules, the
+// inline `style` attribute and the inherited font/direction/color properties.
+// It never fabricates layout-dependent values (no measurement of
+// widths/heights) — only the stable defaults happy-dom computes without a
+// layout engine are produced. Sheet rules are applied before the inline
+// `style` attribute so the inline origin wins among non-important declarations
+// (happy-dom cascade); `!important` declarations beat later non-important
+// ones, mirroring the rest of the engine.
 function getComputedPropertyManager(declaration, elementHandle) {
   // happy-dom returns an empty computed style for detached elements.
   if (!elementHandle.isConnected()) return new PropertyManager();
@@ -3341,11 +3383,31 @@ function getComputedPropertyManager(declaration, elementHandle) {
     current = current.parentNode();
   }
 
+  const docHandle = elementHandle.ownerDocument();
   const propertyManager = new PropertyManager();
   const cssProperties = {};
   let rootFontSize = 16;
   let parentFontSize = 16;
   const targetElement = elementHandle;
+
+  const applyDeclaration = (element, name, value, important) => {
+    if (INHERITED_PROPERTIES.has(name) || element === targetElement) {
+      const parsedValue = parseCssVariablesInValue(value.trim(), cssProperties);
+      if (parsedValue && (!propertyManager.get(name)?.important || important)) {
+        propertyManager.set(name, parsedValue, important);
+        if (name === "font" || name === "font-size") {
+          const fontSize = propertyManager.properties["font-size"];
+          if (fontSize !== null) {
+            if (String(element.nodeName()).toUpperCase() === "HTML") {
+              rootFontSize = measurementToNumber(fontSize.value, rootFontSize);
+            } else if (element !== targetElement) {
+              parentFontSize = measurementToNumber(fontSize.value, rootFontSize);
+            }
+          }
+        }
+      }
+    }
+  };
 
   for (const element of chain) {
     const tagName = String(element.nodeName()).toUpperCase();
@@ -3362,27 +3424,24 @@ function getComputedPropertyManager(declaration, elementHandle) {
         }
       }
     }
-    const styleAttribute = element.getAttribute("style");
-    if (styleAttribute) elementCSSText += styleAttribute;
 
     const { rules, properties } = parseCssText(elementCSSText);
     Object.assign(cssProperties, properties);
     for (const { name, value, important } of rules) {
-      if (INHERITED_PROPERTIES.has(name) || element === targetElement) {
-        const parsedValue = parseCssVariablesInValue(value.trim(), cssProperties);
-        if (parsedValue && (!propertyManager.get(name)?.important || important)) {
-          propertyManager.set(name, parsedValue, important);
-          if (name === "font" || name === "font-size") {
-            const fontSize = propertyManager.properties["font-size"];
-            if (fontSize !== null) {
-              if (tagName === "HTML") {
-                rootFontSize = measurementToNumber(fontSize.value, rootFontSize);
-              } else if (element !== targetElement) {
-                parentFontSize = measurementToNumber(fontSize.value, rootFontSize);
-              }
-            }
-          }
-        }
+      applyDeclaration(element, name, value, important);
+    }
+
+    // Matching `<style>` sheet rules (before the inline origin).
+    for (const { name, value, important } of collectSheetDeclarations(docHandle, element)) {
+      applyDeclaration(element, name, value, important);
+    }
+
+    const styleAttribute = element.getAttribute("style");
+    if (styleAttribute) {
+      const inline = parseCssText(styleAttribute);
+      Object.assign(cssProperties, inline.properties);
+      for (const { name, value, important } of inline.rules) {
+        applyDeclaration(element, name, value, important);
       }
     }
   }
@@ -3651,12 +3710,14 @@ export function install(ctx) {
     styleOf(ctx, handle).cssText = value;
   });
 
-  // Document surface: `styleSheets` walks connected `<style>` elements and
-  // `adoptedStyleSheets` is a plain settable array of CSSStyleSheet objects.
+  // Document surface: `styleSheets` walks connected `<style>` elements (both
+  // HTML and SVG namespaces, via the namespace-agnostic
+  // `getElementsByTagName`, matching happy-dom) and `adoptedStyleSheets` is a
+  // plain settable array of CSSStyleSheet objects.
   ctx.defineAccessor(Document.prototype, "styleSheets", function styleSheets() {
     const handle = facadeDocumentHandle(ctx, this, "styleSheets");
     const sheets = [];
-    for (const child of handle.querySelectorAll("style")) {
+    for (const child of handle.getElementsByTagName("style")) {
       const element = ctx.wrap(child);
       const sheet = element.sheet;
       if (sheet !== null) sheets.push(sheet);
