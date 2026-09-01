@@ -495,3 +495,129 @@ describe("package entry CSSOM exports (T44)", () => {
     expect(win.innerHeight).toBe(768);
   });
 });
+
+// ─── W1 differential-pilot facade fixes ──────────────────────────────────────
+
+describe("W1 css differential-pilot facade surface", () => {
+  test("window.CSS escape() follows the CSSOM escaping algorithm", () => {
+    const win = freshWindow();
+    const css = win.CSS;
+    expect(css.escape(".foo#bar")).toBe("\\.foo\\#bar");
+    expect(css.escape("()[]{}")).toBe("\\(\\)\\[\\]\\{\\}");
+    expect(css.escape("--a")).toBe("--a");
+    expect(css.escape("0")).toBe("\\30 ");
+    expect(css.escape("\0")).toBe("\ufffd");
+    expect(css.escape("-")).toBe("\\-");
+  });
+
+  test("window.CSS exposes unit factories and supports()", () => {
+    const win = freshWindow();
+    const css = win.CSS;
+    const px = css.px(100);
+    expect(px.unit).toBe("px");
+    expect(px.value).toBe(100);
+    const em = css.em(2);
+    expect(em.unit).toBe("em");
+    expect(em.value).toBe(2);
+    expect(css.supports("condition")).toBe(true);
+    expect(css.supports("property", "value")).toBe(true);
+  });
+
+  test("MediaList supports numeric index access", () => {
+    const win = freshWindow();
+    const sheet = new win.CSSStyleSheet();
+    sheet.insertRule("@media screen, print { }");
+    const media = sheet.cssRules[0].media;
+    expect(media.mediaText).toBe("screen, print");
+    expect(media.length).toBe(2);
+    expect(media[0]).toBe("screen");
+    expect(media[1]).toBe("print");
+    expect(media[2]).toBeUndefined();
+    expect(media.item(0)).toBe("screen");
+  });
+
+  test("CSSGroupingRule enforces the WebIDL argument count and rejects empty selectors", () => {
+    const win = freshWindow();
+    const sheet = new win.CSSStyleSheet();
+    sheet.insertRule("@scope { }");
+    const scope = sheet.cssRules[0];
+    expect(() => scope.insertRule()).toThrow(
+      "Failed to execute 'insertRule' on 'CSSScopeRule': 1 argument required, but only 0 present.",
+    );
+    expect(() => scope.insertRule("{ color: red; }")).toThrow(
+      "Failed to execute 'insertRule' on 'CSSScopeRule': Failed to parse the rule '{ color: red; }'.",
+    );
+    expect(() => scope.insertRule("body { color: red; } .test { color: blue; }")).toThrow(
+      "Failed to execute 'insertRule' on 'CSSScopeRule': Failed to parse the rule 'body { color: red; } .test { color: blue; }'.",
+    );
+    expect(() => scope.deleteRule()).toThrow(
+      "Failed to execute 'deleteRule' on 'CSSScopeRule': 1 argument required, but only 0 present.",
+    );
+    expect(() => scope.deleteRule(5)).toThrow(
+      "Failed to execute 'deleteRule' on 'CSSScopeRule': the index (5) is greater than the length of the rule list.",
+    );
+  });
+
+  test("CSSKeyframesRule enforces the WebIDL argument count", () => {
+    const win = freshWindow();
+    const sheet = new win.CSSStyleSheet();
+    sheet.insertRule("@keyframes spin { 0% { transform: rotate(0deg); } }");
+    const keyframes = sheet.cssRules[0];
+    expect(() => keyframes.appendRule()).toThrow(
+      "Failed to execute 'appendRule' on 'CSSKeyframesRule': 1 argument required, but only 0 present.",
+    );
+    expect(() => keyframes.deleteRule()).toThrow(
+      "Failed to execute 'deleteRule' on 'CSSKeyframesRule': 1 argument required, but only 0 present.",
+    );
+  });
+
+  test("CSSStyleRule.styleMap is a live StylePropertyMap over the rule style", () => {
+    const win = freshWindow();
+    const sheet = new win.CSSStyleSheet();
+    sheet.insertRule("div { color: red; border: 1px solid black }");
+    const rule = sheet.cssRules[0];
+    expect(rule.styleMap).toBe(rule.styleMap);
+    rule.styleMap.set("color", "red");
+    rule.styleMap.set("border", "1px solid black");
+    rule.styleMap.set("border-top", "2px solid red");
+    expect(rule.cssText).toBe(
+      "div { color: red; border-width: 2px 1px 1px; border-style: solid; border-color: red black black; border-image: initial; }",
+    );
+  });
+
+  test("the parser keeps the -webkit- keyframes prefix in cssText", () => {
+    const win = freshWindow();
+    const sheet = new win.CSSStyleSheet();
+    sheet.insertRule("@-webkit-keyframes spin { 0% { transform: rotate(0deg); } }");
+    expect(sheet.cssRules[0].cssText).toBe(
+      "@-webkit-keyframes spin { \n  0% { transform: rotate(0deg); }\n}",
+    );
+  });
+
+  test("the parser drops a rule whose selector is empty or opens with ';'", () => {
+    const win = freshWindow();
+    const document = win.document;
+    const style = document.createElement("style");
+    style.textContent = ".foo { color: red; } ; .invalidAsThereIsASemicolon { color: red; } .validAsThereIsNoSemicolon { color: pink; }";
+    document.head.appendChild(style);
+    expect(style.sheet.cssRules.length).toBe(2);
+    expect(style.sheet.cssRules[0].selectorText).toBe(".foo");
+    expect(style.sheet.cssRules[1].selectorText).toBe(".validAsThereIsNoSemicolon");
+  });
+
+  test("getComputedStyle resolves var() references against custom properties", () => {
+    const win = freshWindow();
+    const document = win.document;
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    el.setAttribute("style", "--bg-color: rgb(0 128 0 / 1); background-color: var(--bg-color);");
+    expect(win.getComputedStyle(el).getPropertyValue("background-color")).toBe("rgb(0 128 0 / 1)");
+
+    el.setAttribute(
+      "style",
+      "--bg-color-alpha: 1; background-color: rgb(0 128 0 / var(--bg-color-alpha, 1));",
+    );
+    expect(win.getComputedStyle(el).getPropertyValue("background-color")).toBe("rgb(0 128 0 / 1)");
+  });
+});

@@ -1,6 +1,6 @@
 # 计划 0002：hdunit 内部耦合 skip 文件 1:1 移植为公开 API 差分场景
 
-- 状态：草案
+- 状态：执行中
 - 对应 ADR：[ADR-0001 §6（上游用例移植）](../adr/0001-basic-technical-architecture.md)、[ADR-0002（兼容基线与差分协议）](../adr/0002-happy-dom-compatibility-baseline-and-differential-protocol.md)、[ADR-0006（hdunit 套件与 triage 门禁）](../adr/0006-happy-dom-unit-suite-hdunit.md)
 - 计划日期：2026-09-01
 - 用户决策（2026-09-01）：产物放差分赛道（hc-diff）；粒度 1:1 逐文件移植；本计划先行
@@ -146,3 +146,54 @@ fidelity 由差分器机械保证，不再依赖人工核对断言期望值。
 3. runner 时长基线（§8 性能项）。
 4. triage reason 改为 `ported-to-diff (hc-diff-<id>)` 后 `compat:hdunit:validate`
    与 `compat:hdunit:report` 计数口径不变。
+
+## 12. 验证点结论（W1 pilot，2026-09-01）
+
+W1（css，17 文件）已完成并合入，四个机制点全部实测通过：
+
+1. **`up` 套件自锚通过 `compat:ledger`**。14 条 `hc-up-*` 条目以
+   `upstreamRef: "hc-up-<id>"` 自锚（id 即自身），经 `npm run compat:ledger`
+   全绿：`ledger-lib.js:537` 只要求 `upstreamRef` 存在于 upstream-map 的
+   `localIdSet`，`validateUpstreamMap` 要求 localId 是 ledger 中 `up`/`hdunit`
+   套件条目 id（双向校验闭环）。首次实测无 schema/交叉核对报错，无需任何绕过。
+2. **子目录递归发现与 id 去重**。14 个场景放 `tests/compat/scenarios/dom/css/`
+   子目录被 runner `listScenarioFiles` 递归发现（`run.js:89`，跳过 `_`/`divergent`），
+   `compat:ledger` 交叉核对显示 47 个 real-pair 场景（含 14 个 css）每个恰有
+   一条 diff 条目。id 去重：`loadScenarios` 对重复 id 直接 `failInfrastructure`
+   （`run.js:111`）；用两个同名 mock 场景实测复现 `duplicate scenario id` 报错，
+   拒绝行为确认。
+3. **runner 时长基线（W1 场景）**。`bun tests/compat/runner/run.js
+   tests/compat/scenarios/dom/css --json` 全量对拍 14 场景 = 28 个子进程：
+   热跑稳定 ~1.43s（首次含冷启动 1.48s），单场景平均 ~102ms、单子进程平均
+   ~51ms（串行 `spawnSync`）。按 §8 估算：终态 180 场景 ≈ 360 子进程 ≈
+   ~18s，未超典型 CI 预算；D11 收尾再复核。
+4. **triage reason 改 `ported-to-diff` 后计数口径不变**。14 个文件 reason 改为
+   `ported-to-diff (hc-diff-<id>)`、2 个改为 `internal-only-no-public-surface`，
+   status 全部保持 `skip`。`compat:hdunit:validate` 仍绿（enabled 68 / expected-fail 22 /
+   skip 208），`compat:hdunit:report` 与 `report-baseline.json` 的 delta 为
+   enabled 0 / expected-fail 0 / skip 0；css 子系统保持 enabled 3 / skip 17。
+
+### 工作量系数（W1：17 文件）
+
+- **A 档 14**：写场景 `tests/compat/scenarios/dom/css/<id>.js` 并登记四件套
+  （ledger diff/up + upstream-map + triage）。
+- **B 档 2**：`css/CSSUnitValue.test.ts`（一问可构造——`CSSUnitValue` 无公开入口导出，
+  无法经公开 API 构造）、`css/declaration/CSSStyleDeclarationValueParser.test.ts`
+  （一问可构造——被测静态解析类无公开等价构造面）。
+- **enum-only 排除 1**：`css/CSSStyleSheet.test.ts` 运行时导入仅
+  `DOMExceptionNameEnum` 纯枚举，无内部实现模块运行时构造（triage 不动，归 T12 机械路线）。
+- **修 facade/core**：facade 8 处、全部落在 `js/facade/extensions/cssom.js`：
+  (1) `CSS.escape` 按 CSSOM §2.4 实现；(2) `MediaList` 数字索引 accessor；
+  (3) `CSSGroupingRule.insertRule/deleteRule` 补 WebIDL 参数个数校验；
+  (4) `CSSKeyframesRule.appendRule/deleteRule/findRule` 补参数个数校验 +
+  `@-webkit-keyframes` 前缀保留；(5) `CSSStyleRule.styleMap` getter（挂到既有
+  `StylePropertyMap`）；(6) `parseCssRules` 空选择器/以 `;` 开头选择器丢弃 +
+  keyframes 前缀；(7) 计算样式 `var()` 解析（`parseCssVariablesInValue`）；
+  (8) 属性访问器表补 `src`（`@font-face`）。core（Rust）0 处。
+- **单文件平均耗时**：场景对拍 + 三问判定 + 登记合计，本波实测约 15–25 分钟/文件
+  （A 档含 facade 修复对拍迭代），移植 : 修实现 ≈ 14 : 8（文件口径），
+  W5–W9 工作量估算以「每 A 档文件约 20 分钟 + 预计 1/2 文件需小型 facade 修复」为基准。
+
+**结论对后续波次的影响**：四机制点全部按计划 §5/§11 的假定成立，W2–W10 可按
+共用协议照常推进；css 子系统的 facade 差距集中在 cssom.js 单文件，nodes/svg 波次
+预计以 core（Rust）修复为主、结构不同，系数不直接外推，W5 后再复核是否按文件数重排。

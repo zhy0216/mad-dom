@@ -2010,8 +2010,48 @@ const CSS_NAMESPACE = {
   supports() {
     return true;
   },
-  escape(text) {
-    return String(text).replace(/[\n\r\f]/g, "\\$&");
+  // CSSOM §2.4 "Escaping" (the CSSOM `CSS.escape` algorithm). Ported from the
+  // happy-dom oracle so the differential surface matches byte-for-byte.
+  escape(value) {
+    if (arguments.length === 0) {
+      throw new TypeError("`CSS.escape` requires an argument.");
+    }
+    const returnValue = String(value);
+    const length = returnValue.length;
+    let result = "";
+    const firstCodeUnit = returnValue.charCodeAt(0);
+    if (length === 1 && firstCodeUnit === 0x002d) {
+      return "\\" + returnValue;
+    }
+    for (let index = 0; index < length; index++) {
+      const codeUnit = returnValue.charCodeAt(index);
+      if (codeUnit === 0x0000) {
+        result += "\ufffd";
+        continue;
+      }
+      if (
+        (codeUnit >= 0x0001 && codeUnit <= 0x001f) ||
+        codeUnit === 0x007f ||
+        (index === 0 && codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
+        (index === 1 && codeUnit >= 0x0030 && codeUnit <= 0x0039 && firstCodeUnit === 0x002d)
+      ) {
+        result += "\\" + codeUnit.toString(16) + " ";
+        continue;
+      }
+      if (
+        codeUnit >= 0x0080 ||
+        codeUnit === 0x002d ||
+        codeUnit === 0x005f ||
+        (codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
+        (codeUnit >= 0x0041 && codeUnit <= 0x005a) ||
+        (codeUnit >= 0x0061 && codeUnit <= 0x007a)
+      ) {
+        result += returnValue.charAt(index);
+        continue;
+      }
+      result += "\\" + returnValue.charAt(index);
+    }
+    return result;
   },
 };
 
@@ -2395,6 +2435,13 @@ export class CSSStyleRule extends CSSRule {
     }
     return this._style;
   }
+
+  get styleMap() {
+    if (!this._styleMap) {
+      this._styleMap = new StylePropertyMap(this.style);
+    }
+    return this._styleMap;
+  }
 }
 
 export class CSSGroupingRule extends CSSRule {
@@ -2409,6 +2456,11 @@ export class CSSGroupingRule extends CSSRule {
   }
 
   insertRule(rule, index) {
+    if (arguments.length === 0) {
+      throw new TypeError(
+        `Failed to execute 'insertRule' on '${this.constructor.name}': 1 argument required, but only 0 present.`,
+      );
+    }
     const rules = parseCssRules(rule, this);
     if (rules.length === 0 || rules.length > 1) {
       throw new DOMException(
@@ -2432,6 +2484,11 @@ export class CSSGroupingRule extends CSSRule {
   }
 
   deleteRule(index) {
+    if (arguments.length === 0) {
+      throw new TypeError(
+        `Failed to execute 'deleteRule' on '${this.constructor.name}': 1 argument required, but only 0 present.`,
+      );
+    }
     index = Number(index);
     if (isNaN(index) || index < 0 || index >= this._cssRules.length) {
       throw new DOMException(
@@ -2530,6 +2587,7 @@ export class CSSKeyframesRule extends CSSRule {
     super();
     createRuleState(this, { parentRule, parentStyleSheet });
     this._name = name;
+    this._rulePrefix = "";
     this._cssRules = [];
   }
 
@@ -2539,7 +2597,7 @@ export class CSSKeyframesRule extends CSSRule {
     let cssText = "";
     for (const cssRule of this._cssRules) cssText += "\n  " + cssRule.cssText;
     cssText += "\n";
-    return `@keyframes ${this._name} { ${cssText}}`;
+    return `@${this._rulePrefix}keyframes ${this._name} { ${cssText}}`;
   }
 
   get cssRules() { return this._cssRules; }
@@ -2549,6 +2607,11 @@ export class CSSKeyframesRule extends CSSRule {
   get length() { return this._cssRules.length; }
 
   appendRule(rule) {
+    if (arguments.length === 0) {
+      throw new TypeError(
+        `Failed to execute 'appendRule' on 'CSSKeyframesRule': 1 argument required, but only 0 present.`,
+      );
+    }
     const match = String(rule).trim().match(/^(from|to|[0-9]{1,3}%)\s*{([^}]*)}$/);
     if (!match) {
       throw new DOMException(`Invalid or unexpected token`, "SyntaxError");
@@ -2563,6 +2626,11 @@ export class CSSKeyframesRule extends CSSRule {
   }
 
   deleteRule(rule) {
+    if (arguments.length === 0) {
+      throw new TypeError(
+        `Failed to execute 'deleteRule' on 'CSSKeyframesRule': 1 argument required, but only 0 present.`,
+      );
+    }
     for (let i = 0, max = this._cssRules.length; i < max; i++) {
       if (this._cssRules[i].keyText === rule) {
         this._cssRules.splice(i, 1);
@@ -2572,6 +2640,11 @@ export class CSSKeyframesRule extends CSSRule {
   }
 
   findRule(rule) {
+    if (arguments.length === 0) {
+      throw new TypeError(
+        `Failed to execute 'findRule' on 'CSSKeyframesRule': 1 argument required, but only 0 present.`,
+      );
+    }
     for (let i = 0, max = this._cssRules.length; i < max; i++) {
       if (this._cssRules[i].keyText === rule) return this._cssRules[i];
     }
@@ -2677,9 +2750,31 @@ export class MediaList {
   }
 }
 
+// Numeric index accessors (`mediaList[0]` → `item(0)`), matching the
+// happy-dom MediaList array-like surface (its Proxy-based `get` trap returns
+// the item at the numeric index, `undefined` out of range).
+for (let i = 0; i <= 99; i++) {
+  const indexFor = i;
+  Object.defineProperty(MediaList.prototype, String(i), {
+    configurable: true,
+    enumerable: false,
+    get() {
+      return this._items()[indexFor];
+    },
+  });
+}
+
 // ─── CSS rules parser (happy-dom CSSParser port) ─────────────────────────────
 
 const COMMENT_REGEXP = /\/\*[\s\S]*?\*\//gm;
+
+// happy-dom's CSSParser validates every style-rule selector with its
+// SelectorParser before creating the rule; an empty selector or one that opens
+// with an unbalanced `;` yields no selector groups and the rule is dropped.
+// The facade port keeps the observable subset of that validation.
+function isValidStyleSelector(selectorText) {
+  return selectorText !== "" && !selectorText.startsWith(";");
+}
 
 function parseCssRules(cssText, parentStyleSheet) {
   const css = cssText.replace(COMMENT_REGEXP, "");
@@ -2700,6 +2795,7 @@ function parseCssRules(cssText, parentStyleSheet) {
           case "@keyframes":
           case "@-webkit-keyframes": {
             const keyframesRule = new CSSKeyframesRule(ruleParameters, parentStyleSheet, parentRule);
+            keyframesRule._rulePrefix = ruleType === "@-webkit-keyframes" ? "-webkit-" : "";
             if (parentRule) {
               if (parentRule.type === 4 || parentRule.type === 0 || parentRule.type === 12) parentRule.cssRules.push(keyframesRule);
             } else {
@@ -2784,13 +2880,17 @@ function parseCssRules(cssText, parentStyleSheet) {
         parentRule.cssRules.push(newRule);
         parentRule = newRule;
       } else if (parentRule && (parentRule.type === 4 || parentRule.type === 0 || parentRule.type === 12)) {
-        const newRule = new CSSStyleRule(selectorText, "", parentStyleSheet, parentRule);
-        parentRule.cssRules.push(newRule);
-        parentRule = newRule;
+        if (isValidStyleSelector(selectorText)) {
+          const newRule = new CSSStyleRule(selectorText, "", parentStyleSheet, parentRule);
+          parentRule.cssRules.push(newRule);
+          parentRule = newRule;
+        }
       } else {
-        const newRule = new CSSStyleRule(selectorText, "", parentStyleSheet, parentRule);
-        if (!parentRule) cssRules.push(newRule);
-        parentRule = newRule;
+        if (isValidStyleSelector(selectorText)) {
+          const newRule = new CSSStyleRule(selectorText, "", parentStyleSheet, parentRule);
+          if (!parentRule) cssRules.push(newRule);
+          parentRule = newRule;
+        }
       }
       if (parentRule) stack.push(parentRule);
     } else {
@@ -3190,6 +3290,25 @@ const MEASUREMENT_PROPERTIES = new Set([
 
 const COMPUTED_CACHE = new WeakMap();
 
+// happy-dom resolves `var(--name[, fallback])` references in computed values
+// against the custom properties accumulated along the element chain (parent
+// first). The no-fallback pass runs before the fallback pass, mirroring the
+// oracle's `parseCSSVariablesInValue`.
+const SINGLE_CSS_VARIABLE_REGEXP = /var\( *(--[^), ]+)\)/;
+const CSS_VARIABLE_FALLBACK_REGEXP = /var\( *(--[^), ]+), *([^), ]+)\)/;
+
+function parseCssVariablesInValue(value, cssProperties) {
+  let newValue = value;
+  let match;
+  while ((match = newValue.match(SINGLE_CSS_VARIABLE_REGEXP)) != null) {
+    newValue = newValue.replace(match[0], cssProperties[match[1]] || "");
+  }
+  while ((match = newValue.match(CSS_VARIABLE_FALLBACK_REGEXP)) !== null) {
+    newValue = newValue.replace(match[0], cssProperties[match[1]] || match[2]);
+  }
+  return newValue;
+}
+
 function computedStyleFor(ctx, window, element) {
   const handle = facadeNodeHandle(ctx, element, "getComputedStyle");
   if (handle.nodeType() !== 1) {
@@ -3223,6 +3342,7 @@ function getComputedPropertyManager(declaration, elementHandle) {
   }
 
   const propertyManager = new PropertyManager();
+  const cssProperties = {};
   let rootFontSize = 16;
   let parentFontSize = 16;
   const targetElement = elementHandle;
@@ -3245,10 +3365,11 @@ function getComputedPropertyManager(declaration, elementHandle) {
     const styleAttribute = element.getAttribute("style");
     if (styleAttribute) elementCSSText += styleAttribute;
 
-    const { rules } = parseCssText(elementCSSText);
+    const { rules, properties } = parseCssText(elementCSSText);
+    Object.assign(cssProperties, properties);
     for (const { name, value, important } of rules) {
       if (INHERITED_PROPERTIES.has(name) || element === targetElement) {
-        const parsedValue = value.trim();
+        const parsedValue = parseCssVariablesInValue(value.trim(), cssProperties);
         if (parsedValue && (!propertyManager.get(name)?.important || important)) {
           propertyManager.set(name, parsedValue, important);
           if (name === "font" || name === "font-size") {
@@ -3455,7 +3576,7 @@ const CSS_PROPERTY_ACCESSORS = {
   "stroke": "stroke", "strokeDasharray": "stroke-dasharray", "strokeDashoffset": "stroke-dashoffset",
   "strokeLinecap": "stroke-linecap", "strokeLinejoin": "stroke-linejoin",
   "strokeMiterlimit": "stroke-miterlimit", "strokeOpacity": "stroke-opacity",
-  "strokeWidth": "stroke-width", "tabSize": "tab-size", "tableLayout": "table-layout",
+  "strokeWidth": "stroke-width", "src": "src", "tabSize": "tab-size", "tableLayout": "table-layout",
   "textAlign": "text-align", "textAlignLast": "text-align-last", "textAnchor": "text-anchor",
   "textCombineUpright": "text-combine-upright", "textDecoration": "text-decoration",
   "textDecorationColor": "text-decoration-color", "textDecorationLine": "text-decoration-line",
