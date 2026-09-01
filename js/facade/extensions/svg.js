@@ -290,10 +290,11 @@ class SVGLength {
       this.getAttribute = null;
       this.setAttribute = null;
     }
+    this.attributeValue = null;
   }
 
   get unitType() {
-    const attributeValue = this.getAttribute ? this.getAttribute() || "" : "";
+    const attributeValue = this.getAttribute ? this.getAttribute() || "" : this.attributeValue || "";
     const match = attributeValue.match(LENGTH_ATTRIBUTE_REGEXP);
     if (!match) {
       return LENGTH_TYPE_UNKNOWN;
@@ -326,7 +327,7 @@ class SVGLength {
   }
 
   get value() {
-    const attributeValue = this.getAttribute ? this.getAttribute() || "" : "";
+    const attributeValue = this.getAttribute ? this.getAttribute() || "" : this.attributeValue || "";
     const match = attributeValue.match(LENGTH_ATTRIBUTE_REGEXP);
     if (!match) {
       return 0;
@@ -405,13 +406,14 @@ class SVGLength {
       default:
         break;
     }
+    this.attributeValue = String(valueInSpecifiedUnits) + unitType;
     if (this.setAttribute) {
-      this.setAttribute(String(valueInSpecifiedUnits) + unitType);
+      this.setAttribute(this.attributeValue);
     }
   }
 
   get valueAsString() {
-    return this.getAttribute ? this.getAttribute() || "0" : "0";
+    return this.getAttribute ? this.getAttribute() || "0" : this.attributeValue || "0";
   }
 
   get valueInSpecifiedUnits() {
@@ -460,8 +462,9 @@ class SVGLength {
       default:
         break;
     }
+    this.attributeValue = String(value) + unit;
     if (this.setAttribute) {
-      this.setAttribute(String(value) + unit);
+      this.setAttribute(this.attributeValue);
     }
   }
 
@@ -508,8 +511,9 @@ class SVGLength {
       default:
         break;
     }
+    this.attributeValue = String(value) + unit;
     if (this.setAttribute) {
-      this.setAttribute(String(value) + unit);
+      this.setAttribute(this.attributeValue);
     }
   }
 }
@@ -862,9 +866,25 @@ class SVGNumberList {
     if (this.readOnly) {
       throw new TypeError("Failed to execute 'clear' on 'SVGNumberList': The object is read-only.");
     }
+    this.detachItems();
     this.cache.items = [];
     this.cache.attributeValue = "";
     this.setAttribute("");
+  }
+
+  initialize(newItem) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'initialize' on 'SVGNumberList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGNumber)) {
+      throw new TypeError("Failed to execute 'initialize' on 'SVGNumberList': parameter 1 is not of type 'SVGNumber'.");
+    }
+    this.detachItems();
+    this.bindItem(newItem);
+    this.cache.items = [newItem];
+    this.cache.attributeValue = newItem.attributeValue;
+    this.setAttribute(newItem.attributeValue || "");
+    return newItem;
   }
 
   getItem(index) {
@@ -875,6 +895,81 @@ class SVGNumberList {
     index = Number(index);
     index = Number.isNaN(index) ? 0 : index;
     return items[index] ? items[index] : null;
+  }
+
+  insertItemBefore(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'insertItemBefore' on 'SVGNumberList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGNumber)) {
+      throw new TypeError("Failed to execute 'insertItemBefore' on 'SVGNumberList': parameter 1 is not of type 'SVGNumber'.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index > items.length) {
+      index = items.length;
+    }
+    items.splice(index, 0, newItem);
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return newItem;
+  }
+
+  replaceItem(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'replaceItem' on 'SVGNumberList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGNumber)) {
+      throw new TypeError("Failed to execute 'replaceItem' on 'SVGNumberList': parameter 1 is not of type 'SVGNumber'.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex === index) {
+      return newItem;
+    }
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index >= items.length) {
+      index = items.length - 1;
+    }
+    if (items[index]) {
+      items[index].getAttribute = null;
+      items[index].setAttribute = null;
+    }
+    const replacedItem = items[index];
+    items[index] = newItem;
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return replacedItem;
+  }
+
+  bindItem(newItem) {
+    newItem.getAttribute = () => newItem.attributeValue;
+    newItem.setAttribute = () => {
+      this.cache.attributeValue = this.serializeItems(this.getItemList());
+      this.setAttribute(this.cache.attributeValue);
+    };
+  }
+
+  detachItems() {
+    for (const item of this.cache.items) {
+      item.getAttribute = null;
+      item.setAttribute = null;
+    }
+  }
+
+  serializeItems(items) {
+    return items.map((item) => item.attributeValue || "0").join(" ");
   }
 
   appendItem(newItem) {
@@ -902,6 +997,31 @@ class SVGNumberList {
       .join(" ");
     this.setAttribute(this.cache.attributeValue);
     return newItem;
+  }
+
+  removeItem(index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGNumberList': The object is read-only.");
+    }
+    const items = this.getItemList();
+    index = Number(index);
+    if (Number.isNaN(index)) {
+      index = 0;
+    }
+    if (index >= items.length) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGNumberList':  The index provided is greater than the maximum bound.");
+    }
+    if (index < 0) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGNumberList':  The index provided is negative.");
+    }
+    const removedItem = items[index];
+    if (removedItem) {
+      removedItem.getAttribute = null;
+      removedItem.setAttribute = null;
+    }
+    items.splice(index, 1);
+    this.setAttribute(items.map((item) => item.attributeValue || "0").join(" "));
+    return removedItem;
   }
 
   getItemList() {
@@ -1009,6 +1129,19 @@ class SVGStringList {
     this.setAttribute("");
   }
 
+  initialize(newItem) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'initialize' on 'SVGStringList': The object is read-only.");
+    }
+    newItem = String(newItem);
+    if (!newItem) {
+      this.clear();
+      return;
+    }
+    this.setAttribute(newItem);
+    return newItem;
+  }
+
   getItem(index) {
     const items = this.getItemList();
     if (typeof index === "number") {
@@ -1017,6 +1150,49 @@ class SVGStringList {
     index = Number(index);
     index = Number.isNaN(index) ? 0 : index;
     return items[index] ? items[index] : null;
+  }
+
+  insertItemBefore(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'insertItemBefore' on 'SVGStringList': The object is read-only.");
+    }
+    newItem = String(newItem);
+    if (!newItem) {
+      return newItem;
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index > items.length) {
+      index = items.length;
+    }
+    items.splice(index, 0, newItem);
+    this.setAttribute(items.join(" "));
+    return newItem;
+  }
+
+  replaceItem(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'replaceItem' on 'SVGStringList': The object is read-only.");
+    }
+    newItem = String(newItem);
+    if (!newItem) {
+      return this.removeItem(index);
+    }
+    const items = this.getItemList();
+    if (index < 0) {
+      index = 0;
+    } else if (index >= items.length) {
+      index = items.length - 1;
+    }
+    const replacedItem = items[index];
+    items[index] = newItem;
+    this.setAttribute(items.join(" "));
+    return replacedItem;
   }
 
   appendItem(newItem) {
@@ -1234,28 +1410,347 @@ class SVGAnimatedPreserveAspectRatio {
 
 // ── SVGMatrix ───────────────────────────────────────────────────────────────
 
-// The SVG matrix value class (identity defaults, a…f reflectors). happy-dom
-// exposes it as the plain `window.SVGMatrix` global; `SVGTransform.matrix` and
-// `createSVGMatrix()` return instances of it.
+// The SVG matrix value class (identity defaults, a…f reflectors, the SVG2
+// transform methods). happy-dom exposes it as the plain `window.SVGMatrix`
+// global; `SVGTransform.matrix` and `createSVGMatrix()` return instances of it.
+// A matrix parses its state from the bound attribute (or its own
+// `attributeValue`), so an attribute-backed matrix (a transform-list item's
+// `matrix`) reflects the transform string and `a…f` writes re-serialize it
+// (happy-dom's DOMMatrix-backed semantics).
+const TRANSFORM_REGEXP = /([a-zA-Z0-9]+)\(([^)]+)\)/;
+const TRANSFORM_PARAMETER_SPLIT_REGEXP = /[\s,]+/;
+
+function identity2d() {
+  return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+}
+
+// happy-dom DOMMatrixReadOnly `multiplySelf` restricted to the 2D entries
+// (identical results for 2D matrices, same column-major convention).
+function multiply2d(m, n) {
+  return {
+    a: m.a * n.a + m.c * n.b,
+    b: m.b * n.a + m.d * n.b,
+    c: m.a * n.c + m.c * n.d,
+    d: m.b * n.c + m.d * n.d,
+    e: m.a * n.e + m.c * n.f + m.e,
+    f: m.b * n.e + m.d * n.f + m.f,
+  };
+}
+
+function translate2d(m, x, y) {
+  return multiply2d(m, { a: 1, b: 0, c: 0, d: 1, e: x, f: y });
+}
+
+// happy-dom DOMMatrixReadOnly `rotateAxisAngleSelf` 2D result (the axis-angle
+// matrix entries with the 1e15 rounding happy-dom applies).
+function rotateAxisAngle2d(x, y, z, angle) {
+  if (Number.isNaN(Number(x)) || Number.isNaN(Number(y)) || Number.isNaN(Number(z)) || Number.isNaN(Number(angle))) {
+    throw new TypeError("Failed to execute 'rotateAxisAngleSelf' on 'DOMMatrix': The arguments must be numbers.");
+  }
+  const length = Math.hypot(x, y, z);
+  if (length === 0) {
+    return identity2d();
+  }
+  if (length !== 1) {
+    x /= length;
+    y /= length;
+    z /= length;
+  }
+  const alpha = -((angle * Math.PI) / 360);
+  const round = (value) => Math.round(value * 1e15) / 1e15;
+  const sc = Math.sin(alpha) * Math.cos(alpha);
+  const sq = Math.sin(alpha) * Math.sin(alpha);
+  // happy-dom builds a 4x4 fromArray column-major; the 2D entries land as:
+  //   a = m11 = round(1 - 2*(y²+z²)*sq), b = m12 = round(2*(x*y*sq - z*sc)),
+  //   c = m21 = round(2*(x*y*sq + z*sc)), d = m22 = round(1 - 2*(x²+z²)*sq)
+  return {
+    a: round(1 - 2 * (y * y + z * z) * sq),
+    b: round(2 * (x * y * sq - z * sc)),
+    c: round(2 * (x * y * sq + z * sc)),
+    d: round(1 - 2 * (x * x + z * z) * sq),
+    e: 0,
+    f: 0,
+  };
+}
+
+// happy-dom SVGMatrix `[getDOMMatrix]` parse of a single transform segment.
+function svgMatrixParse(attributeValue) {
+  if (!attributeValue) {
+    return identity2d();
+  }
+  const match = String(attributeValue).match(TRANSFORM_REGEXP);
+  if (!match) {
+    return identity2d();
+  }
+  const parameters = [];
+  for (const parameter of match[2].trim().split(TRANSFORM_PARAMETER_SPLIT_REGEXP)) {
+    const value = Number(parameter);
+    if (Number.isNaN(value)) {
+      throw new TypeError(
+        `Failed to parse transform attribute: Expected number, but got "${parameter}" in "${attributeValue}".`,
+      );
+    }
+    parameters.push(value);
+  }
+  switch (match[1]) {
+    case "matrix":
+      if (parameters.length !== 6) {
+        throw new TypeError(`Failed to parse transform attribute: Expected 6 parameters in "${attributeValue}".`);
+      }
+      return {
+        a: parameters[0],
+        b: parameters[1],
+        c: parameters[2],
+        d: parameters[3],
+        e: parameters[4],
+        f: parameters[5],
+      };
+    case "translate":
+      if (parameters.length !== 1 && parameters.length !== 2) {
+        throw new TypeError(`Failed to parse transform attribute: Expected 1 or 2 parameters in "${attributeValue}".`);
+      }
+      return translate2d(identity2d(), parameters[0], parameters[1] ?? 0);
+    case "scale": {
+      if (parameters.length !== 1 && parameters.length !== 2) {
+        throw new TypeError(`Failed to parse transform attribute: Expected 1 or 2 parameters in "${attributeValue}".`);
+      }
+      const sx = parameters[0];
+      // happy-dom DOMMatrix.fromString only applies `scale` when sx !== 1
+      // (scale(1 …) is a no-op in the parser).
+      if (sx === 1) {
+        return identity2d();
+      }
+      const sy = parameters.length === 2 ? parameters[1] : sx;
+      return multiply2d(identity2d(), { a: sx, b: 0, c: 0, d: sy, e: 0, f: 0 });
+    }
+    case "skewX":
+    case "skewY":
+      if (parameters.length !== 1) {
+        throw new TypeError(`Failed to parse transform attribute: Expected 1 parameter in "${attributeValue}".`);
+      }
+      if (match[1] === "skewX") {
+        const value = Math.tan((parameters[0] * Math.PI) / 180);
+        return { a: 1, b: 0, c: value, d: 1, e: 0, f: 0 };
+      }
+      {
+        const value = Math.tan((parameters[0] * Math.PI) / 180);
+        return { a: 1, b: value, c: 0, d: 1, e: 0, f: 0 };
+      }
+    case "rotate": {
+      if (parameters.length !== 1 && parameters.length !== 3) {
+        throw new TypeError(`Failed to parse transform attribute: Expected 1 or 3 parameters in "${attributeValue}".`);
+      }
+      const [angle, x, y] = parameters;
+      let matrix = identity2d();
+      if (x || y) {
+        matrix = translate2d(matrix, x, y);
+      }
+      const radian = (angle * Math.PI) / 180;
+      matrix = multiply2d(matrix, {
+        a: Math.cos(radian),
+        b: Math.sin(radian),
+        c: -Math.sin(radian),
+        d: Math.cos(radian),
+        e: 0,
+        f: 0,
+      });
+      if (x || y) {
+        matrix = translate2d(matrix, -x, -y);
+      }
+      return matrix;
+    }
+    default:
+      throw new TypeError(`Failed to parse transform attribute: Unknown transformation "${attributeValue}".`);
+  }
+}
+
 class SVGMatrix {
   constructor(mint, options) {
     if (mint !== MINT) {
       throw new TypeError("Illegal constructor");
     }
-    this.a = options?.a ?? 1;
-    this.b = options?.b ?? 0;
-    this.c = options?.c ?? 0;
-    this.d = options?.d ?? 1;
-    this.e = options?.e ?? 0;
-    this.f = options?.f ?? 0;
+    if (options) {
+      this.readOnly = !!options.readOnly;
+      this.getAttribute = options.getAttribute || null;
+      this.setAttribute = options.setAttribute || null;
+    } else {
+      this.readOnly = false;
+      this.getAttribute = null;
+      this.setAttribute = null;
+    }
+    this.attributeValue = null;
+    this._cache = null;
+  }
+
+  _values() {
+    const attributeValue = this.getAttribute ? this.getAttribute() : this.attributeValue;
+    if (this._cache && this._cache.attr === attributeValue) {
+      return this._cache;
+    }
+    const values = svgMatrixParse(attributeValue);
+    this._cache = { attr: attributeValue, ...values };
+    return this._cache;
+  }
+
+  _write(values) {
+    this.attributeValue = `matrix(${values.a} ${values.b} ${values.c} ${values.d} ${values.e} ${values.f})`;
+    if (this.setAttribute) {
+      this.setAttribute(this.attributeValue);
+    }
+    this._cache = { attr: this.attributeValue, ...values };
+  }
+
+  get a() {
+    return this._values().a;
+  }
+  get b() {
+    return this._values().b;
+  }
+  get c() {
+    return this._values().c;
+  }
+  get d() {
+    return this._values().d;
+  }
+  get e() {
+    return this._values().e;
+  }
+  get f() {
+    return this._values().f;
+  }
+
+  set a(value) {
+    if (this.readOnly) return;
+    const values = this._values();
+    values.a = value;
+    this._write(values);
+  }
+  set b(value) {
+    if (this.readOnly) return;
+    const values = this._values();
+    values.b = value;
+    this._write(values);
+  }
+  set c(value) {
+    if (this.readOnly) return;
+    const values = this._values();
+    values.c = value;
+    this._write(values);
+  }
+  set d(value) {
+    if (this.readOnly) return;
+    const values = this._values();
+    values.d = value;
+    this._write(values);
+  }
+  set e(value) {
+    if (this.readOnly) return;
+    const values = this._values();
+    values.e = value;
+    this._write(values);
+  }
+  set f(value) {
+    if (this.readOnly) return;
+    const values = this._values();
+    values.f = value;
+    this._write(values);
+  }
+
+  _clone() {
+    return new SVGMatrix(MINT, {});
+  }
+
+  multiply(secondMatrix) {
+    if (!(secondMatrix instanceof SVGMatrix)) {
+      throw new TypeError("Failed to execute 'multiply' on 'SVGMatrix': parameter 1 is not of type 'SVGMatrix'.");
+    }
+    const result = this._clone();
+    result._write(multiply2d(this._values(), secondMatrix._values()));
+    return result;
+  }
+
+  translate(x = 0, y = 0) {
+    const result = this._clone();
+    result._write(translate2d(this._values(), x, y));
+    return result;
+  }
+
+  scale(scale) {
+    const result = this._clone();
+    result._write(multiply2d(this._values(), { a: scale, b: 0, c: 0, d: scale, e: 0, f: 0 }));
+    return result;
+  }
+
+  scaleNonUniform(scaleX = 1, scaleY = 1) {
+    const result = this._clone();
+    result._write(multiply2d(this._values(), { a: scaleX, b: 0, c: 0, d: scaleY, e: 0, f: 0 }));
+    return result;
+  }
+
+  rotate(angle) {
+    const result = this._clone();
+    result._write(multiply2d(this._values(), rotateAxisAngle2d(0, 0, 1, angle)));
+    return result;
+  }
+
+  rotateFromVector(x = 0, y = 0) {
+    const result = this._clone();
+    if (x === 0 && y === 0) {
+      result._write(this._values());
+      return result;
+    }
+    result._write(multiply2d(this._values(), rotateAxisAngle2d(0, 0, 1, (Math.atan2(y, x) * 180) / Math.PI)));
+    return result;
+  }
+
+  skewX(angle) {
+    const result = this._clone();
+    const value = Math.tan((angle * Math.PI) / 180);
+    result._write(multiply2d(this._values(), { a: 1, b: 0, c: value, d: 1, e: 0, f: 0 }));
+    return result;
+  }
+
+  skewY(angle) {
+    const result = this._clone();
+    const value = Math.tan((angle * Math.PI) / 180);
+    result._write(multiply2d(this._values(), { a: 1, b: value, c: 0, d: 1, e: 0, f: 0 }));
+    return result;
+  }
+
+  flipX() {
+    const result = this._clone();
+    result._write(multiply2d(this._values(), { a: -1, b: 0, c: 0, d: 1, e: 0, f: 0 }));
+    return result;
+  }
+
+  flipY() {
+    const result = this._clone();
+    result._write(multiply2d(this._values(), { a: 1, b: 0, c: 0, d: -1, e: 0, f: 0 }));
+    return result;
+  }
+
+  inverse() {
+    const result = this._clone();
+    const values = this._values();
+    const det = values.a * values.d - values.b * values.c;
+    result._write({
+      a: values.d / det || 0,
+      b: -values.b / det || 0,
+      c: -values.c / det || 0,
+      d: values.a / det || 0,
+      e: (values.c * values.f - values.d * values.e) / det || 0,
+      f: (values.b * values.e - values.a * values.f) / det || 0,
+    });
+    return result;
   }
 }
 
 // ── SVGPoint / SVGPointList ─────────────────────────────────────────────────
 
 // The SVG point value class. A list item carries the owning list and its own
-// index; reads parse the whole list attribute and writes re-serialize it. A
-// standalone point (from `createSVGPoint()`) keeps plain `_x` / `_y` state.
+// serialized `attributeValue` (`"x y"`); reads parse it and writes re-serialize
+// the whole list (happy-dom's item model). A standalone point (from
+// `createSVGPoint()`) keeps the same `attributeValue` state with no binding.
 class SVGPoint {
   constructor(mint, options) {
     if (mint !== MINT) {
@@ -1270,66 +1765,44 @@ class SVGPoint {
       this.getAttribute = null;
       this.setAttribute = null;
     }
+    this.attributeValue = null;
     this._list = null;
-    this._index = 0;
-    this._x = 0;
-    this._y = 0;
   }
 
   get x() {
-    if (this.getAttribute) {
-      const numbers = parsePointListNumbers(this.getAttribute());
-      return numbers[this._index * 2] ?? 0;
-    }
-    return this._x;
+    const attributeValue = this.getAttribute ? this.getAttribute() : this.attributeValue;
+    const parts = (attributeValue || "").split(POINT_LIST_SEPARATOR_REGEXP);
+    return parts[0] ? parseFloat(parts[0]) : 0;
   }
 
   set x(value) {
     if (this.readOnly) {
       throw new TypeError("Failed to set the 'x' property on 'SVGPoint': The object is read-only.");
     }
+    this.attributeValue = `${value} ${this.y}`;
     if (this.setAttribute) {
-      const numbers = parsePointListNumbers(this.getAttribute());
-      numbers[this._index * 2] = Number(value);
-      this.setAttribute(serializePointListNumbers(numbers));
-    } else {
-      this._x = Number(value);
+      this.setAttribute(this.attributeValue);
     }
   }
 
   get y() {
-    if (this.getAttribute) {
-      const numbers = parsePointListNumbers(this.getAttribute());
-      return numbers[this._index * 2 + 1] ?? 0;
-    }
-    return this._y;
+    const attributeValue = this.getAttribute ? this.getAttribute() : this.attributeValue;
+    const parts = (attributeValue || "").split(POINT_LIST_SEPARATOR_REGEXP);
+    return parts[1] ? parseFloat(parts[1]) : 0;
   }
 
   set y(value) {
     if (this.readOnly) {
       throw new TypeError("Failed to set the 'y' property on 'SVGPoint': The object is read-only.");
     }
+    this.attributeValue = `${this.x} ${value}`;
     if (this.setAttribute) {
-      const numbers = parsePointListNumbers(this.getAttribute());
-      numbers[this._index * 2 + 1] = Number(value);
-      this.setAttribute(serializePointListNumbers(numbers));
-    } else {
-      this._y = Number(value);
+      this.setAttribute(this.attributeValue);
     }
   }
 }
 
 const POINT_LIST_SEPARATOR_REGEXP = /[\t\f\n\r, ]+/;
-
-function parsePointListNumbers(attributeValue) {
-  const trimmed = (attributeValue ?? "").trim();
-  if (!trimmed) return [];
-  return trimmed.split(POINT_LIST_SEPARATOR_REGEXP).map(Number);
-}
-
-function serializePointListNumbers(numbers) {
-  return numbers.join(" ");
-}
 
 class SVGPointList {
   constructor(mint, options) {
@@ -1359,9 +1832,25 @@ class SVGPointList {
     if (this.readOnly) {
       throw new TypeError("Failed to execute 'clear' on 'SVGPointList': The object is read-only.");
     }
+    this.detachItems();
     this.cache.items = [];
     this.cache.attributeValue = "";
     this.setAttribute("");
+  }
+
+  initialize(newItem) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'initialize' on 'SVGPointList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGPoint)) {
+      throw new TypeError("Failed to execute 'appendItem' on 'SVGPointList': parameter 1 is not of type 'SVGPoint'.");
+    }
+    this.detachItems();
+    this.bindItem(newItem);
+    this.cache.items = [newItem];
+    this.cache.attributeValue = newItem.attributeValue;
+    this.setAttribute(newItem.attributeValue || "");
+    return newItem;
   }
 
   getItem(index) {
@@ -1371,6 +1860,87 @@ class SVGPointList {
     return items[index] ? items[index] : null;
   }
 
+  insertItemBefore(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'insertItemBefore' on 'SVGPointList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGPoint)) {
+      throw new TypeError("Failed to execute 'insertItemBefore' on 'SVGPointList': parameter 1 is not of type 'SVGPoint'.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index > items.length) {
+      index = items.length;
+    }
+    items.splice(index, 0, newItem);
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return newItem;
+  }
+
+  replaceItem(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'replaceItem' on 'SVGPointList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGPoint)) {
+      throw new TypeError("Failed to execute 'replaceItem' on 'SVGPointList': parameter 1 is not of type 'SVGPoint'.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex === index) {
+      return newItem;
+    }
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index >= items.length) {
+      index = items.length - 1;
+    }
+    if (items[index]) {
+      items[index].getAttribute = null;
+      items[index].setAttribute = null;
+    }
+    const replacedItem = items[index];
+    items[index] = newItem;
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return replacedItem;
+  }
+
+  removeItem(index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList': The object is read-only.");
+    }
+    const items = this.getItemList();
+    index = Number(index);
+    if (Number.isNaN(index)) {
+      index = 0;
+    }
+    if (index >= items.length) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList':  The index provided is greater than the maximum bound.");
+    }
+    if (index < 0) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList':  The index provided is negative.");
+    }
+    const removedItem = items[index];
+    if (removedItem) {
+      removedItem.getAttribute = null;
+      removedItem.setAttribute = null;
+    }
+    items.splice(index, 1);
+    this.setAttribute(this.serializeItems(items));
+    return removedItem;
+  }
+
   appendItem(newItem) {
     if (this.readOnly) {
       throw new TypeError("Failed to execute 'appendItem' on 'SVGPointList': The object is read-only.");
@@ -1378,36 +1948,35 @@ class SVGPointList {
     if (!(newItem instanceof SVGPoint)) {
       throw new TypeError("Failed to execute 'appendItem' on 'SVGPointList': parameter 1 is not of type 'SVGPoint'.");
     }
-    const numbers = parsePointListNumbers(this.getAttribute());
-    numbers.push(Number(newItem.x), Number(newItem.y));
-    this.cache.attributeValue = "";
-    this.setAttribute(serializePointListNumbers(numbers));
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    items.push(newItem);
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
     return newItem;
   }
 
-  removeItem(index) {
-    if (this.readOnly) {
-      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList': The object is read-only.");
+  bindItem(newItem) {
+    newItem.getAttribute = () => newItem.attributeValue;
+    newItem.setAttribute = () => {
+      this.cache.attributeValue = this.serializeItems(this.getItemList());
+      this.setAttribute(this.cache.attributeValue);
+    };
+  }
+
+  detachItems() {
+    for (const item of this.cache.items) {
+      item.getAttribute = null;
+      item.setAttribute = null;
     }
-    index = Number(index);
-    if (Number.isNaN(index)) {
-      index = 0;
-    }
-    const numbers = parsePointListNumbers(this.getAttribute());
-    const itemIndex = index * 2;
-    if (itemIndex >= numbers.length) {
-      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList':  The index provided is greater than the maximum bound.");
-    }
-    if (index < 0) {
-      throw new TypeError("Failed to execute 'removeItem' on 'SVGPointList':  The index provided is negative.");
-    }
-    const removed = numbers.splice(itemIndex, 2);
-    this.cache.attributeValue = "";
-    this.setAttribute(serializePointListNumbers(numbers));
-    const item = new SVGPoint(MINT, {});
-    item._x = removed[0] ?? 0;
-    item._y = removed[1] ?? 0;
-    return item;
+  }
+
+  serializeItems(items) {
+    return items.map((item) => item.attributeValue || "0 0").join(" ");
   }
 
   getItemList() {
@@ -1416,17 +1985,28 @@ class SVGPointList {
     if (cache.attributeValue === attributeValue) {
       return cache.items;
     }
-    const numbers = parsePointListNumbers(attributeValue);
+    if (cache.items.length) {
+      this.detachItems();
+    }
     const items = [];
-    for (let index = 0; index * 2 < numbers.length; index += 1) {
-      const item = new SVGPoint(MINT, {
-        readOnly: this.readOnly,
-        getAttribute: this.getAttribute,
-        setAttribute: this.setAttribute,
-      });
-      item._list = this;
-      item._index = index;
-      items.push(item);
+    const trimmed = attributeValue.trim();
+    if (trimmed) {
+      const parts = trimmed.split(POINT_LIST_SEPARATOR_REGEXP);
+      for (let i = 0; i < parts.length; i += 2) {
+        const x = parseFloat(parts[i]);
+        const y = parts[i + 1] !== undefined ? " " + parseFloat(parts[i + 1]) : "";
+        const item = new SVGPoint(MINT, {
+          readOnly: this.readOnly,
+          getAttribute: () => item.attributeValue,
+          setAttribute: () => {
+            this.cache.attributeValue = this.serializeItems(this.getItemList());
+            this.setAttribute(this.cache.attributeValue);
+          },
+        });
+        item._list = this;
+        item.attributeValue = `${x}${y}`;
+        items.push(item);
+      }
     }
     cache.attributeValue = attributeValue;
     cache.items = items;
@@ -1441,57 +2021,22 @@ const TRANSFORM_TYPE_UNKNOWN = 0;
 const TRANSFORM_TYPE_MATRIX = 1;
 const TRANSFORM_TYPE_TRANSLATE = 2;
 const TRANSFORM_TYPE_SCALE = 3;
+const TRANSFORM_TYPE_ROTATE = 4;
+const TRANSFORM_TYPE_SKEWX = 5;
+const TRANSFORM_TYPE_SKEWY = 6;
 
-function parseTransformSegment(segment) {
-  const match = segment.match(/^([a-zA-Z]+)\(([^)]*)\)$/);
-  if (!match) return null;
-  const name = match[1];
-  const args = match[2]
-    .trim()
-    .split(/[\t\f\n\r, ]+/)
-    .filter((part) => part !== "")
-    .map(Number);
-  switch (name) {
-    case "matrix":
-      return {
-        type: TRANSFORM_TYPE_MATRIX,
-        a: args[0] ?? 0,
-        b: args[1] ?? 0,
-        c: args[2] ?? 0,
-        d: args[3] ?? 0,
-        e: args[4] ?? 0,
-        f: args[5] ?? 0,
-      };
-    case "translate":
-      return { type: TRANSFORM_TYPE_TRANSLATE, a: 1, b: 0, c: 0, d: 1, e: args[0] ?? 0, f: args[1] ?? 0 };
-    case "scale": {
-      const sx = args[0] ?? 1;
-      return { type: TRANSFORM_TYPE_SCALE, a: sx, b: 0, c: 0, d: args[1] ?? sx, e: 0, f: 0 };
-    }
-    default:
-      return null;
-  }
-}
-
-function splitTransformList(text) {
-  const segments = [];
-  let depth = 0;
-  let current = "";
-  for (const ch of String(text ?? "")) {
-    if (ch === "(") depth += 1;
-    if (ch === ")") depth -= 1;
-    if (/\s/.test(ch) && depth === 0) {
-      if (current.trim() !== "") segments.push(current.trim());
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  if (current.trim() !== "") segments.push(current.trim());
-  return segments;
-}
+const TRANSFORM_LIST_REGEXP = /([a-zA-Z0-9]+)\(([^)]+)\)/gm;
+const EMPTY_MATRIX = "matrix(1 0 0 1 0 0)";
 
 class SVGTransform {
+  static SVG_TRANSFORM_UNKNOWN = TRANSFORM_TYPE_UNKNOWN;
+  static SVG_TRANSFORM_MATRIX = TRANSFORM_TYPE_MATRIX;
+  static SVG_TRANSFORM_TRANSLATE = TRANSFORM_TYPE_TRANSLATE;
+  static SVG_TRANSFORM_SCALE = TRANSFORM_TYPE_SCALE;
+  static SVG_TRANSFORM_ROTATE = TRANSFORM_TYPE_ROTATE;
+  static SVG_TRANSFORM_SKEWX = TRANSFORM_TYPE_SKEWX;
+  static SVG_TRANSFORM_SKEWY = TRANSFORM_TYPE_SKEWY;
+
   constructor(mint, options) {
     if (mint !== MINT) {
       throw new TypeError("Illegal constructor");
@@ -1505,69 +2050,185 @@ class SVGTransform {
       this.getAttribute = null;
       this.setAttribute = null;
     }
-    this._list = null;
-    this._index = 0;
-    this._type = TRANSFORM_TYPE_UNKNOWN;
+    this.attributeValue = null;
     this._matrix = null;
   }
 
+  _attribute() {
+    return this.getAttribute ? this.getAttribute() : this.attributeValue;
+  }
+
   get type() {
-    if (this._list) {
-      const parsed = parseTransformSegment(this._list.getSegment(this._index));
-      return parsed ? parsed.type : TRANSFORM_TYPE_UNKNOWN;
+    const match = this._attribute()?.match(TRANSFORM_REGEXP);
+    if (!match) {
+      return TRANSFORM_TYPE_UNKNOWN;
     }
-    return this._type;
+    switch (match[1]) {
+      case "matrix":
+        return TRANSFORM_TYPE_MATRIX;
+      case "translate":
+        return TRANSFORM_TYPE_TRANSLATE;
+      case "rotate":
+        return TRANSFORM_TYPE_ROTATE;
+      case "scale":
+        return TRANSFORM_TYPE_SCALE;
+      case "skewX":
+        return TRANSFORM_TYPE_SKEWX;
+      case "skewY":
+        return TRANSFORM_TYPE_SKEWY;
+    }
+    return 0;
+  }
+
+  get angle() {
+    const match = this._attribute()?.match(TRANSFORM_REGEXP);
+    if (!match) {
+      return 0;
+    }
+    const angle = parseFloat(match[2].trim().split(TRANSFORM_PARAMETER_SPLIT_REGEXP)[0]);
+    if (Number.isNaN(angle)) {
+      return 0;
+    }
+    switch (match[1]) {
+      case "rotate":
+      case "skewX":
+      case "skewY":
+        return angle;
+    }
+    return 0;
   }
 
   get matrix() {
     if (this._matrix) return this._matrix;
-    if (this._list) {
-      const parsed = parseTransformSegment(this._list.getSegment(this._index));
-      if (parsed) return new SVGMatrix(MINT, parsed);
-      return new SVGMatrix(MINT, {});
+    this._matrix = new SVGMatrix(MINT, {
+      readOnly: this.readOnly,
+      getAttribute: () => {
+        if (this.getAttribute) return this.getAttribute();
+        return this.attributeValue;
+      },
+      setAttribute: (value) => {
+        this.attributeValue = value;
+        if (this.setAttribute) {
+          this.setAttribute(value);
+        }
+      },
+    });
+    return this._matrix;
+  }
+
+  setMatrix(matrix) {
+    if (!(matrix instanceof SVGMatrix)) {
+      throw new TypeError('Failed to set the "matrix" property on "SVGTransform": The provided value is not of type "SVGMatrix".');
     }
-    return new SVGMatrix(MINT, {});
+    if (this.readOnly) {
+      return;
+    }
+    matrix.getAttribute = () => {
+      if (this.getAttribute) return this.getAttribute();
+      return this.attributeValue;
+    };
+    matrix.setAttribute = (value) => {
+      this.attributeValue = value;
+      if (this.setAttribute) {
+        this.setAttribute(value);
+      }
+    };
+    this._matrix = matrix;
+    if (matrix.attributeValue !== this.attributeValue) {
+      this.attributeValue = matrix.attributeValue;
+      if (this.setAttribute) {
+        this.setAttribute(this.attributeValue || "");
+      }
+    }
+  }
+
+  setTranslate(x, y) {
+    if (arguments.length < 2) {
+      throw new TypeError(`Failed to execute 'setTranslate' on 'SVGTransform': 2 arguments required, but only ${arguments.length} present.`);
+    }
+    x = Number(x);
+    y = Number(y);
+    if (Number.isNaN(x) || Number.isNaN(y)) {
+      throw new TypeError("Failed to execute 'setTranslate' on 'SVGTransform':  The provided float value is non-finite.");
+    }
+    if (this.readOnly) {
+      return;
+    }
+    this.attributeValue = `translate(${x} ${y})`;
+    if (this.setAttribute) {
+      this.setAttribute(this.attributeValue);
+    }
   }
 
   setScale(x, y) {
+    if (arguments.length < 2) {
+      throw new TypeError(`Failed to execute 'setScale' on 'SVGTransform': 2 arguments required, but only ${arguments.length} present.`);
+    }
+    x = Number(x);
+    y = Number(y);
+    if (Number.isNaN(x) || Number.isNaN(y)) {
+      throw new TypeError("Failed to execute 'setScale' on 'SVGTransform':  The provided float value is non-finite.");
+    }
     if (this.readOnly) {
-      throw new TypeError("Failed to execute 'setScale' on 'SVGTransform': The object is read-only.");
+      return;
     }
-    const sx = Number(x);
-    const sy = y === undefined ? sx : Number(y);
-    this._type = TRANSFORM_TYPE_SCALE;
-    this._matrix = new SVGMatrix(MINT, { a: sx, b: 0, c: 0, d: sy, e: 0, f: 0 });
-    if (this._list) {
-      this._list._updateFromTransform(this._index, serializeTransform(this));
+    this.attributeValue = `scale(${x} ${y})`;
+    if (this.setAttribute) {
+      this.setAttribute(this.attributeValue);
     }
-    return this;
   }
 
-  serialize() {
-    if (this._matrix) return serializeTransform(this);
-    if (this._list) {
-      const parsed = parseTransformSegment(this._list.getSegment(this._index));
-      if (parsed) {
-        return `${["unknown", "matrix", "translate", "scale"][parsed.type]}(${parsed.a} ${parsed.b} ${parsed.c} ${parsed.d} ${parsed.e} ${parsed.f})`;
-      }
-      return "";
+  setRotate(angle, x, y) {
+    if (arguments.length < 3) {
+      throw new TypeError(`Failed to execute 'setRotate' on 'SVGTransform': 3 arguments required, but only ${arguments.length} present.`);
     }
-    return "";
+    angle = Number(angle);
+    x = Number(x);
+    y = Number(y);
+    if (Number.isNaN(angle) || Number.isNaN(x) || Number.isNaN(y)) {
+      throw new TypeError("Failed to execute 'setRotate' on 'SVGTransform':  The provided float value is non-finite.");
+    }
+    if (this.readOnly) {
+      return;
+    }
+    this.attributeValue = `rotate(${angle} ${x} ${y})`;
+    if (this.setAttribute) {
+      this.setAttribute(this.attributeValue);
+    }
   }
-}
 
-function serializeTransform(transform) {
-  const matrix = transform._matrix;
-  if (matrix === null) return "";
-  switch (transform._type) {
-    case TRANSFORM_TYPE_SCALE:
-      return `scale(${matrix.a} ${matrix.d})`;
-    case TRANSFORM_TYPE_TRANSLATE:
-      return `translate(${matrix.e} ${matrix.f})`;
-    case TRANSFORM_TYPE_MATRIX:
-      return `matrix(${matrix.a} ${matrix.b} ${matrix.c} ${matrix.d} ${matrix.e} ${matrix.f})`;
-    default:
-      return "";
+  setSkewX(angle) {
+    if (arguments.length < 1) {
+      throw new TypeError(`Failed to execute 'setSkewX' on 'SVGTransform': 1 arguments required, but only ${arguments.length} present.`);
+    }
+    angle = Number(angle);
+    if (Number.isNaN(angle)) {
+      throw new TypeError("Failed to execute 'setSkewX' on 'SVGTransform':  The provided float value is non-finite.");
+    }
+    if (this.readOnly) {
+      return;
+    }
+    this.attributeValue = `skewX(${angle})`;
+    if (this.setAttribute) {
+      this.setAttribute(this.attributeValue);
+    }
+  }
+
+  setSkewY(angle) {
+    if (arguments.length < 1) {
+      throw new TypeError(`Failed to execute 'setSkewY' on 'SVGTransform': 1 arguments required, but only ${arguments.length} present.`);
+    }
+    angle = Number(angle);
+    if (Number.isNaN(angle)) {
+      throw new TypeError("Failed to execute 'setSkewY' on 'SVGTransform':  The provided float value is non-finite.");
+    }
+    if (this.readOnly) {
+      return;
+    }
+    this.attributeValue = `skewY(${angle})`;
+    if (this.setAttribute) {
+      this.setAttribute(this.attributeValue);
+    }
   }
 }
 
@@ -1595,11 +2256,14 @@ class SVGTransformList {
     return this.getItemList().values();
   }
 
-  getItem(index) {
-    const items = this.getItemList();
-    index = Number(index);
-    index = Number.isNaN(index) ? 0 : index;
-    return items[index] ? items[index] : null;
+  clear() {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'clear' on 'SVGTransformList': The object is read-only.");
+    }
+    this.detachItems();
+    this.cache.items = [];
+    this.cache.attributeValue = "";
+    this.setAttribute("");
   }
 
   initialize(newItem) {
@@ -1607,25 +2271,141 @@ class SVGTransformList {
       throw new TypeError("Failed to execute 'initialize' on 'SVGTransformList': The object is read-only.");
     }
     if (!(newItem instanceof SVGTransform)) {
-      throw new TypeError("Failed to execute 'initialize' on 'SVGTransformList': parameter 1 is not of type 'SVGTransform'.");
+      throw new TypeError("Failed to execute 'appendItem' on 'SVGTransformList': parameter 1 is not of type 'SVGTransform'.");
     }
-    const serialized = serializeTransform(newItem);
+    this.detachItems();
+    this.bindItem(newItem);
     this.cache.items = [newItem];
-    this.cache.attributeValue = serialized;
-    this.setAttribute(serialized);
+    this.cache.attributeValue = newItem.attributeValue;
+    this.setAttribute(newItem.attributeValue || "");
     return newItem;
   }
 
-  getSegment(index) {
-    const segments = splitTransformList(this.getAttribute() ?? "");
-    return segments[index] ?? "";
+  getItem(index) {
+    const items = this.getItemList();
+    index = Number(index);
+    index = Number.isNaN(index) ? 0 : index;
+    return items[index] ? items[index] : null;
   }
 
-  _updateFromTransform(index, serialized) {
-    const segments = splitTransformList(this.getAttribute() ?? "");
-    segments[index] = serialized;
-    this.cache.attributeValue = "";
-    this.setAttribute(segments.join(" "));
+  insertItemBefore(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'insertItemBefore' on 'SVGTransformList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGTransform)) {
+      throw new TypeError("Failed to execute 'insertItemBefore' on 'SVGTransformList': parameter 1 is not of type 'SVGTransform'.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index > items.length) {
+      index = items.length;
+    }
+    items.splice(index, 0, newItem);
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return newItem;
+  }
+
+  replaceItem(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'replaceItem' on 'SVGTransformList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGTransform)) {
+      throw new TypeError("Failed to execute 'replaceItem' on 'SVGTransformList': parameter 1 is not of type 'SVGTransform'.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex === index) {
+      return newItem;
+    }
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index >= items.length) {
+      index = items.length - 1;
+    }
+    if (items[index]) {
+      items[index].getAttribute = null;
+      items[index].setAttribute = null;
+    }
+    const replacedItem = items[index];
+    items[index] = newItem;
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return replacedItem;
+  }
+
+  removeItem(index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGTransformList': The object is read-only.");
+    }
+    const items = this.getItemList();
+    index = Number(index);
+    if (Number.isNaN(index)) {
+      index = 0;
+    }
+    if (index >= items.length) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGTransformList':  The index provided is greater than the maximum bound.");
+    }
+    if (index < 0) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGTransformList':  The index provided is negative.");
+    }
+    const removedItem = items[index];
+    if (removedItem) {
+      removedItem.getAttribute = null;
+      removedItem.setAttribute = null;
+    }
+    items.splice(index, 1);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return removedItem;
+  }
+
+  appendItem(newItem) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'appendItem' on 'SVGTransformList': The object is read-only.");
+    }
+    if (!(newItem instanceof SVGTransform)) {
+      throw new TypeError("Failed to execute 'appendItem' on 'SVGTransformList': parameter 1 is not of type 'SVGTransform'.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    items.push(newItem);
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return newItem;
+  }
+
+  bindItem(newItem) {
+    newItem.getAttribute = () => newItem.attributeValue;
+    newItem.setAttribute = () => {
+      this.cache.attributeValue = this.serializeItems(this.getItemList());
+      this.setAttribute(this.cache.attributeValue);
+    };
+  }
+
+  detachItems() {
+    for (const item of this.cache.items) {
+      item.getAttribute = null;
+      item.setAttribute = null;
+    }
+  }
+
+  serializeItems(items) {
+    return items.map((item) => item.attributeValue || EMPTY_MATRIX).join(" ");
   }
 
   getItemList() {
@@ -1634,17 +2414,26 @@ class SVGTransformList {
     if (cache.attributeValue === attributeValue) {
       return cache.items;
     }
+    if (cache.items.length) {
+      this.detachItems();
+    }
     const items = [];
-    const segments = splitTransformList(attributeValue);
-    for (let index = 0; index < segments.length; index += 1) {
-      const item = new SVGTransform(MINT, {
-        readOnly: this.readOnly,
-        getAttribute: this.getAttribute,
-        setAttribute: this.setAttribute,
-      });
-      item._list = this;
-      item._index = index;
-      items.push(item);
+    const trimmed = attributeValue.trim();
+    if (trimmed) {
+      const regexp = new RegExp(TRANSFORM_LIST_REGEXP);
+      let match;
+      while ((match = regexp.exec(trimmed))) {
+        const item = new SVGTransform(MINT, {
+          readOnly: this.readOnly,
+          getAttribute: () => item.attributeValue,
+          setAttribute: () => {
+            this.cache.attributeValue = this.serializeItems(this.getItemList());
+            this.setAttribute(this.cache.attributeValue);
+          },
+        });
+        item.attributeValue = `${match[1]}(${match[2]})`;
+        items.push(item);
+      }
     }
     cache.attributeValue = attributeValue;
     cache.items = items;
@@ -1838,7 +2627,7 @@ const ANGLE_TYPE_DEG = 2;
 const ANGLE_TYPE_RAD = 3;
 const ANGLE_TYPE_GRAD = 4;
 
-const ANGLE_ATTRIBUTE_REGEXP = /^([-+]?\d*\.?\d+)(deg|rad|grad|turn)?$/;
+const ANGLE_ATTRIBUTE_REGEXP = /^(\d+|\d+\.\d+)(deg|rad|grad|turn|)$/;
 
 class SVGAngle {
   static SVG_ANGLETYPE_UNKNOWN = ANGLE_TYPE_UNKNOWN;
@@ -1860,15 +2649,33 @@ class SVGAngle {
       this.getAttribute = null;
       this.setAttribute = null;
     }
+    this.attributeValue = "";
   }
 
   get value() {
-    const attributeValue = this.getAttribute ? this.getAttribute() || "" : "";
-    const match = attributeValue.match(ANGLE_ATTRIBUTE_REGEXP);
+    const attributeValue = this.getAttribute ? this.getAttribute() : this.attributeValue;
+    const match = attributeValue?.match(ANGLE_ATTRIBUTE_REGEXP);
     if (!match) {
       return 0;
     }
-    return parseFloat(match[1]);
+    const parsedValue = parseFloat(match[1]);
+    if (Number.isNaN(parsedValue)) {
+      return 0;
+    }
+    switch (match[2]) {
+      case "":
+        return parsedValue;
+      case "deg":
+        return parsedValue;
+      case "rad":
+        return parsedValue * (180 / Math.PI);
+      case "grad":
+        return parsedValue * (180 / 200);
+      case "turn":
+        return parsedValue * 360;
+      default:
+        return parsedValue;
+    }
   }
 
   set value(value) {
@@ -1879,46 +2686,68 @@ class SVGAngle {
     if (Number.isNaN(value)) {
       throw new TypeError("Failed to set the 'value' property on 'SVGAngle': The provided float value is non-finite.");
     }
-    let unit = "";
+    let unitType = "";
+    let valueInSpecifiedUnits = value;
     switch (this.unitType) {
+      case ANGLE_TYPE_UNSPECIFIED:
+        valueInSpecifiedUnits = value;
+        unitType = "";
+        break;
       case ANGLE_TYPE_DEG:
-        unit = "deg";
+        valueInSpecifiedUnits = value;
+        unitType = "deg";
         break;
       case ANGLE_TYPE_RAD:
-        unit = "rad";
+        valueInSpecifiedUnits = value / (180 / Math.PI);
+        unitType = "rad";
         break;
       case ANGLE_TYPE_GRAD:
-        unit = "grad";
+        valueInSpecifiedUnits = value / (180 / 200);
+        unitType = "grad";
         break;
+      case ANGLE_TYPE_UNKNOWN:
+        valueInSpecifiedUnits = value / 360;
+        unitType = "turn";
       default:
-        unit = "";
         break;
     }
+    this.attributeValue = String(valueInSpecifiedUnits) + unitType;
     if (this.setAttribute) {
-      this.setAttribute(String(value) + unit);
+      this.setAttribute(this.attributeValue);
     }
   }
 
   get unitType() {
-    const attributeValue = this.getAttribute ? this.getAttribute() || "" : "";
-    const match = attributeValue.match(ANGLE_ATTRIBUTE_REGEXP);
+    const attributeValue = this.getAttribute ? this.getAttribute() : this.attributeValue;
+    const match = attributeValue?.match(ANGLE_ATTRIBUTE_REGEXP);
     if (!match) {
       return ANGLE_TYPE_UNKNOWN;
     }
+    if (Number.isNaN(parseFloat(match[1]))) {
+      return ANGLE_TYPE_UNKNOWN;
+    }
     switch (match[2]) {
+      case "":
+        return ANGLE_TYPE_UNSPECIFIED;
       case "deg":
         return ANGLE_TYPE_DEG;
       case "rad":
         return ANGLE_TYPE_RAD;
       case "grad":
         return ANGLE_TYPE_GRAD;
+      case "turn":
+        return ANGLE_TYPE_UNKNOWN;
       default:
         return ANGLE_TYPE_UNSPECIFIED;
     }
   }
 
   get valueAsString() {
-    return this.getAttribute ? this.getAttribute() || "0" : "0";
+    return this.getAttribute ? this.getAttribute() || "0" : this.attributeValue || "0";
+  }
+
+  get valueInSpecifiedUnits() {
+    return parseFloat(this.valueAsString) || 0;
   }
 
   newValueSpecifiedUnits(unitType, value) {
@@ -1928,12 +2757,15 @@ class SVGAngle {
     if (typeof unitType !== "number") {
       throw new TypeError("Failed to execute 'newValueSpecifiedUnits' on 'SVGAngle': parameter 1 ('unitType') is not of type 'number'.");
     }
-    value = typeof value !== "number" ? parseFloat(String(value)) : value;
+    value = typeof value !== "number" ? parseFloat(value) : value;
     if (Number.isNaN(value)) {
       throw new TypeError("Failed to execute 'newValueSpecifiedUnits' on 'SVGAngle': The provided float value is non-finite.");
     }
     let unit = "";
     switch (unitType) {
+      case ANGLE_TYPE_UNSPECIFIED:
+        unit = "";
+        break;
       case ANGLE_TYPE_DEG:
         unit = "deg";
         break;
@@ -1943,12 +2775,52 @@ class SVGAngle {
       case ANGLE_TYPE_GRAD:
         unit = "grad";
         break;
+      case ANGLE_TYPE_UNKNOWN:
+        unit = "turn";
+        break;
       default:
-        unit = "";
         break;
     }
+    this.attributeValue = String(value) + unit;
     if (this.setAttribute) {
-      this.setAttribute(String(value) + unit);
+      this.setAttribute(this.attributeValue);
+    }
+  }
+
+  convertToSpecifiedUnits(unitType) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'convertToSpecifiedUnits' on 'SVGAngle': The object is read-only.");
+    }
+    if (typeof unitType !== "number") {
+      throw new TypeError("Failed to execute 'convertToSpecifiedUnits' on 'SVGAngle': parameter 1 ('unitType') is not of type 'number'.");
+    }
+    let value = this.value;
+    let unit = "";
+    switch (unitType) {
+      case ANGLE_TYPE_UNSPECIFIED:
+        unit = "";
+        break;
+      case ANGLE_TYPE_DEG:
+        unit = "deg";
+        break;
+      case ANGLE_TYPE_RAD:
+        unit = "rad";
+        value = value / (180 / Math.PI);
+        break;
+      case ANGLE_TYPE_GRAD:
+        unit = "grad";
+        value = value / (180 / 200);
+        break;
+      case ANGLE_TYPE_UNKNOWN:
+        unit = "turn";
+        value = value / 360;
+        break;
+      default:
+        break;
+    }
+    this.attributeValue = String(value) + unit;
+    if (this.setAttribute) {
+      this.setAttribute(this.attributeValue);
     }
   }
 }
@@ -1996,6 +2868,8 @@ class SVGAnimatedAngle {
 
 // ── SVGLengthList / SVGAnimatedLengthList ───────────────────────────────────
 
+const LENGTH_LIST_SEPARATOR_REGEXP = /[\t\f\n\r, ]+/;
+
 class SVGLengthList {
   constructor(mint, options) {
     if (mint !== MINT) {
@@ -2020,11 +2894,138 @@ class SVGLengthList {
     return this.getItemList().values();
   }
 
+  clear() {
+    this.setAttribute("");
+  }
+
+  initialize(newItem) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'initialize' on 'SVGLengthList': The object is read-only.");
+    }
+    this.detachItems();
+    this.bindItem(newItem);
+    this.cache.items = [newItem];
+    this.cache.attributeValue = newItem.attributeValue;
+    this.setAttribute(newItem.attributeValue || "");
+    return newItem;
+  }
+
   getItem(index) {
     const items = this.getItemList();
     index = Number(index);
     index = Number.isNaN(index) ? 0 : index;
     return items[index] ? items[index] : null;
+  }
+
+  insertItemBefore(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'insertItemBefore' on 'SVGLengthList': The object is read-only.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index > items.length) {
+      index = items.length;
+    }
+    items.splice(index, 0, newItem);
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return newItem;
+  }
+
+  replaceItem(newItem, index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'replaceItem' on 'SVGLengthList': The object is read-only.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex === index) {
+      return newItem;
+    }
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    if (index < 0) {
+      index = 0;
+    } else if (index >= items.length) {
+      index = items.length - 1;
+    }
+    if (items[index]) {
+      items[index].getAttribute = null;
+      items[index].setAttribute = null;
+    }
+    const replacedItem = items[index];
+    items[index] = newItem;
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return replacedItem;
+  }
+
+  removeItem(index) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGLengthList': The object is read-only.");
+    }
+    const items = this.getItemList();
+    index = Number(index);
+    if (Number.isNaN(index)) {
+      index = 0;
+    }
+    if (index >= items.length) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGLengthList':  The index provided is greater than the maximum bound.");
+    }
+    if (index < 0) {
+      throw new TypeError("Failed to execute 'removeItem' on 'SVGLengthList':  The index provided is negative.");
+    }
+    const removedItem = items[index];
+    if (removedItem) {
+      removedItem.getAttribute = null;
+      removedItem.setAttribute = null;
+    }
+    items.splice(index, 1);
+    this.setAttribute(this.serializeItems(items));
+    return removedItem;
+  }
+
+  appendItem(newItem) {
+    if (this.readOnly) {
+      throw new TypeError("Failed to execute 'appendItem' on 'SVGLengthList': The object is read-only.");
+    }
+    const items = this.getItemList();
+    const existingIndex = items.indexOf(newItem);
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+    }
+    items.push(newItem);
+    this.bindItem(newItem);
+    this.cache.attributeValue = this.serializeItems(items);
+    this.setAttribute(this.cache.attributeValue);
+    return newItem;
+  }
+
+  bindItem(newItem) {
+    newItem.getAttribute = () => newItem.attributeValue;
+    newItem.setAttribute = (value) => {
+      newItem.attributeValue = value;
+      this.cache.attributeValue = this.serializeItems(this.getItemList());
+      this.setAttribute(this.cache.attributeValue);
+    };
+  }
+
+  detachItems() {
+    for (const item of this.cache.items) {
+      item.getAttribute = null;
+      item.setAttribute = null;
+    }
+  }
+
+  serializeItems(items) {
+    return items.map((item) => item.attributeValue ?? "0").join(" ");
   }
 
   getItemList() {
@@ -2033,20 +3034,25 @@ class SVGLengthList {
     if (cache.attributeValue === attributeValue) {
       return cache.items;
     }
+    if (cache.items.length) {
+      this.detachItems();
+    }
     const items = [];
     const trimmed = attributeValue.trim();
     if (trimmed) {
-      const parts = trimmed.split(/\s+/);
+      const parts = trimmed.split(LENGTH_LIST_SEPARATOR_REGEXP);
       for (let index = 0; index < parts.length; index += 1) {
         const item = new SVGLength(MINT, {
           readOnly: this.readOnly,
-          getAttribute: () => parts[index],
+          getAttribute: () => item.attributeValue,
           setAttribute: (value) => {
-            parts[index] = value;
-            cache.attributeValue = parts.join(" ");
-            this.setAttribute(parts.join(" "));
+            item.attributeValue = value;
+            const newAttributeValue = items.map((entry) => entry.attributeValue ?? "0").join(" ");
+            cache.attributeValue = newAttributeValue;
+            this.setAttribute(newAttributeValue);
           },
         });
+        item.attributeValue = parts[index];
         items.push(item);
       }
     }
@@ -2566,7 +3572,7 @@ class SVGSVGElement extends SVGGraphicsElement {
   }
   createSVGTransformFromMatrix(matrix) {
     const transform = new SVGTransform(MINT, {});
-    transform._matrix = matrix;
+    transform.setMatrix(matrix);
     return transform;
   }
 }
