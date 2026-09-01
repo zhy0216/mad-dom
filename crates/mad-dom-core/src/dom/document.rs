@@ -173,12 +173,24 @@ impl Document {
     /// character must be a letter, digit, `-`, `.`, `_`, `:`, or a non-ASCII
     /// character, with the first character not being a digit).
     pub fn create_element(&mut self, name: &str) -> Result<NodeId, CoreError> {
+        self.create_element_ns(HTML_NAMESPACE, name)
+    }
+
+    /// Creates an element in the given `namespace` with `name` and returns its
+    /// handle.
+    ///
+    /// This is the read behind `document.createElementNS` (W7 svg element
+    /// surface): the element keeps the namespace verbatim, so SVG/MathML and
+    /// other non-HTML elements report their own `namespaceURI` and their
+    /// (mixed-case) tag names stay as passed. Validation and the custom-element
+    /// / `<template>` handling match [`Document::create_element`].
+    pub fn create_element_ns(&mut self, namespace: &str, name: &str) -> Result<NodeId, CoreError> {
         validate_element_name(name)?;
         let node = self.arena.allocate(
             self.id,
             Node::new(NodeData::Element {
                 name: LocalName::from(name.to_string()),
-                namespace: Namespace::from(HTML_NAMESPACE),
+                namespace: Namespace::from(namespace.to_string()),
                 attributes: Vec::new(),
                 mathml_annotation_xml_integration_point: false,
                 had_duplicate_attributes: false,
@@ -630,6 +642,30 @@ mod tests {
         assert_eq!(
             doc.get(el).unwrap().data().element_attributes(),
             Some(&[][..])
+        );
+    }
+
+    #[test]
+    fn create_element_ns_keeps_namespace_and_mixed_case_name() {
+        let mut doc = Document::new();
+        let el = doc
+            .create_element_ns("http://www.w3.org/2000/svg", "feBlend")
+            .unwrap();
+        assert_eq!(doc.node_type(el).unwrap(), NodeType::Element);
+        assert_eq!(doc.node_name(el).unwrap(), "feBlend");
+        assert_eq!(
+            doc.element_namespace_uri(el).unwrap(),
+            Some("http://www.w3.org/2000/svg")
+        );
+
+        let html = doc.create_element("div").unwrap();
+        assert_eq!(
+            doc.element_namespace_uri(html).unwrap(),
+            Some(HTML_NAMESPACE)
+        );
+        assert_eq!(
+            doc.element_namespace_uri(el).unwrap(),
+            Some("http://www.w3.org/2000/svg")
         );
     }
 

@@ -277,6 +277,11 @@ function eventHandlerSetter(ctx, element, eventName, value) {
   }
 }
 
+// Exported for the svg extension: happy-dom's `SVGElement` / animation
+// element expose the same `on<event>` handler-attribute accessors as
+// `HTMLElement` / the global window surface.
+export { eventHandlerGetter, eventHandlerSetter };
+
 const GLOBAL_EVENT_NAMES = [
   "afterprint",
   "beforeprint",

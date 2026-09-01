@@ -274,8 +274,11 @@ function facadeDocumentHandle(ctx, value, role) {
  * re-reads / re-writes the Core attribute storage through the native handle,
  * so no second DOM state exists (the mirror of happy-dom's `DOMStringMap`
  * Proxy over the element's attributes).
+ *
+ * Exported for the svg extension: happy-dom's `SVGElement` exposes the same
+ * live `dataset` surface as `HTMLElement`.
  */
-function datasetFor(ctx, element) {
+export function datasetFor(ctx, element) {
   let map = DATASET_MAPS.get(element);
   if (map === undefined) {
     const handle = ctx.documentContext.handleOf(element);

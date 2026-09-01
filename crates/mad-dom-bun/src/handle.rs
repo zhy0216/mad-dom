@@ -366,6 +366,17 @@ impl DocumentHandle {
         self.run(|doc| doc.create_element(name).map_err(BindingError::Core))
     }
 
+    pub(crate) fn create_element_ns_inner(
+        &self,
+        namespace: &str,
+        name: &str,
+    ) -> std::result::Result<NodeId, BindingError> {
+        self.run(|doc| {
+            doc.create_element_ns(namespace, name)
+                .map_err(BindingError::Core)
+        })
+    }
+
     pub(crate) fn create_text_inner(
         &self,
         data: &str,
@@ -466,6 +477,23 @@ impl DocumentHandle {
         check_affinity(&self.shared, &env)?;
         let id = self
             .create_element_inner(&name)
+            .map_err(|err| err.into_napi(&env))?;
+        self.shared.wrap_node(env, id)
+    }
+
+    /// Creates an element in the given namespace (the read behind
+    /// `document.createElementNS`). The element keeps `namespace` verbatim, so
+    /// an SVG element reports its SVG namespace URI and its mixed-case name.
+    #[napi(catch_unwind)]
+    pub fn create_element_ns(
+        &self,
+        env: Env,
+        namespace: String,
+        name: String,
+    ) -> napi::Result<Reference<NodeHandle>> {
+        check_affinity(&self.shared, &env)?;
+        let id = self
+            .create_element_ns_inner(&namespace, &name)
             .map_err(|err| err.into_napi(&env))?;
         self.shared.wrap_node(env, id)
     }
@@ -702,6 +730,15 @@ impl NodeHandle {
         self.run(|doc| {
             doc.node_type(self.id)
                 .map(node_type_value)
+                .map_err(BindingError::Core)
+        })
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn namespace_uri_inner(&self) -> std::result::Result<Option<String>, BindingError> {
+        self.run(|doc| {
+            doc.element_namespace_uri(self.id)
+                .map(|uri| uri.map(str::to_owned))
                 .map_err(BindingError::Core)
         })
     }
@@ -948,6 +985,23 @@ mod tests {
         let frag = wrap(&doc, doc.create_document_fragment_inner().unwrap());
         assert_eq!(frag.node_type_inner().unwrap(), 11);
         assert_eq!(frag.node_name_inner().unwrap(), "#document-fragment");
+    }
+
+    #[test]
+    fn create_element_ns_keeps_namespace_and_name() {
+        let _guard = lock();
+        let doc = DocumentHandle::new();
+        let svg = wrap(
+            &doc,
+            doc.create_element_ns_inner("http://www.w3.org/2000/svg", "feBlend")
+                .unwrap(),
+        );
+        assert_eq!(svg.node_type_inner().unwrap(), 1);
+        assert_eq!(svg.node_name_inner().unwrap(), "feBlend");
+        assert_eq!(
+            svg.namespace_uri_inner().unwrap().as_deref(),
+            Some("http://www.w3.org/2000/svg")
+        );
     }
 
     #[test]

@@ -57,6 +57,7 @@ import * as domGeometryExtension from "./dom-geometry.js";
 import * as domMatrixExtension from "./dom-matrix.js";
 import * as dndExtension from "./dnd.js";
 import * as hdunitNodesExtension from "./hdunit-nodes.js";
+import * as svgExtension from "./svg.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/index",
@@ -99,6 +100,7 @@ const EXTENSIONS = [
   domMatrixExtension,
   dndExtension,
   hdunitNodesExtension,
+  svgExtension,
 ];
 
 /**

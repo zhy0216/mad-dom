@@ -1,6 +1,6 @@
 # 07 差分移植波次 W7：nodes svg 元素内部类（SVGAnimate*–SVGFETurbulence*）
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：W7
 - 条目 ID：`D07`

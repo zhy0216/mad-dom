@@ -82,13 +82,33 @@ export const ELEMENT_MINT_SYMBOL = Symbol("mad-dom custom element mint");
 // the common classes through `registerElementClass` and the two fallbacks
 // through `setElementFallbackClasses`; the node creation/parse/import wrap
 // path (createNodeWrapper) picks the direct prototype per tag so
-// `Object.getPrototypeOf(el)` matches happy-dom's class chain.
+// `Object.getPrototypeOf(el)` matches happy-dom's class chain. The svg
+// extension registers the SVG element classes through
+// `registerSvgElementClass`; the selection below is namespace-aware, so an SVG
+// element (whatever its tag) resolves against the SVG registry while HTML
+// elements keep the existing HTML behaviour.
 const ELEMENT_CLASSES = new Map();
+const SVG_ELEMENT_CLASSES = new Map();
 let hyphenFallbackClass = null; // HTMLElement (an undefined hyphenated name)
 let unknownFallbackClass = null; // HTMLUnknownElement (an undefined plain name)
+let fallbackSvgElementClass = null; // SVGElement (an unknown SVG tag)
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 
 export function registerElementClass(tag, elementClass) {
   ELEMENT_CLASSES.set(tag, elementClass);
+}
+
+export function registerSvgElementClass(tag, elementClass) {
+  SVG_ELEMENT_CLASSES.set(tag, elementClass);
+  // The HTML5 parser lowercases SVG local names; happy-dom's SVGElementConfig
+  // keys are lowercased too, so a parsed `<feBlend>` also resolves.
+  SVG_ELEMENT_CLASSES.set(tag.toLowerCase(), elementClass);
+}
+
+export function setSvgElementFallbackClass(elementClass) {
+  fallbackSvgElementClass = elementClass;
 }
 
 export function setElementFallbackClasses(hyphenClass, unknownClass) {
@@ -178,12 +198,24 @@ export function nodeHandleOf(wrapper) {
 
 /**
  * Returns the per-tag element class for a native element handle, following the
- * happy-dom selection: a registered common tag uses its class, an undefined
- * hyphenated name uses `HTMLElement` and any other undefined name uses
- * `HTMLUnknownElement`.
+ * happy-dom selection: an SVG-namespace element resolves against the SVG
+ * registry (falling back to `SVGElement` for an unknown SVG tag), a registered
+ * HTML common tag uses its class, an undefined hyphenated HTML name uses
+ * `HTMLElement` and any other undefined HTML name uses `HTMLUnknownElement`.
  */
 export function elementClassFor(handle) {
   const tag = String(handle.nodeName());
+  const namespace = handle.namespaceUri();
+  if (namespace === SVG_NAMESPACE) {
+    const svgClass = SVG_ELEMENT_CLASSES.get(tag);
+    return svgClass ?? (fallbackSvgElementClass ?? Element);
+  }
+  // A non-HTML, non-SVG namespace yields a plain Element (happy-dom
+  // `createElementNS` default branch); only HTML-namespace tags resolve the
+  // per-tag HTML classes and their fallbacks.
+  if (namespace !== HTML_NAMESPACE) {
+    return Element;
+  }
   const known = ELEMENT_CLASSES.get(tag);
   if (known !== undefined) return known;
   const fallback = tag.includes("-") ? hyphenFallbackClass : unknownFallbackClass;
