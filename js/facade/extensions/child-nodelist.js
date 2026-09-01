@@ -49,6 +49,19 @@ export const seam = Object.freeze({
   status: "implemented",
 });
 
+// The owning Window facade of a native node handle (happy-dom NodeList.forEach
+// defaults the callback `this` to the Window instance). `ctx.wrap` converts the
+// parent's owner document and `windowFacadeOfDocument` resolves its window.
+function windowFacadeOfParent(ctx, parentHandle) {
+  try {
+    const documentFacade = ctx.wrap(parentHandle.ownerDocument());
+    const windowFacade = ctx.windowFacadeOfDocument(documentFacade);
+    return windowFacade ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // Native parent handle behind each NodeList instance, keyed by the live proxy
 // object: the Proxy forwards every method receiver to the proxy itself, so
 // module state is reachable through the exact object JavaScript holds.
@@ -155,9 +168,12 @@ export function install(ctx) {
     if (typeof callback !== "function") {
       throw new TypeError("NodeList.forEach requires a callback function");
     }
+    // happy-dom defaults `this` to the owning Window instance when no `thisArg`
+    // is provided; the owner document of the parent node resolves the window.
+    const defaultThis = windowFacadeOfParent(ctx, PARENT_HANDLES.get(this));
     const nodes = PARENT_HANDLES.get(this).childNodes();
     for (let i = 0; i < nodes.length; i += 1) {
-      callback.call(thisArg, ctx.wrap(nodes[i]), i, this);
+      callback.call(thisArg === undefined ? defaultThis : thisArg, ctx.wrap(nodes[i]), i, this);
     }
   });
 
@@ -188,4 +204,10 @@ export function install(ctx) {
       yield ctx.wrap(nodes[i]);
     }
   });
+
+  // `[object NodeList]` from `Object.prototype.toString` (happy-dom NodeList
+  // defines the `Symbol.toStringTag`).
+  ctx.defineAccessor(NodeList.prototype, Symbol.toStringTag, function toStringTag() {
+    return "NodeList";
+  }, undefined);
 }

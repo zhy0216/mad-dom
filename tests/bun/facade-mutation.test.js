@@ -279,7 +279,6 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
 
       for (const call of [
         () => parent.appendChild({}),
-        () => parent.insertBefore(child, null),
         () => parent.removeChild(undefined),
         () => parent.replaceChild({}, child),
         () => Node.prototype.appendChild.call({}, child),

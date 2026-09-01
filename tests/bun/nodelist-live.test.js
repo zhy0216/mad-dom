@@ -144,6 +144,7 @@ describe("live NodeList prototype surface (T25D)", () => {
       ["method", NodeList.prototype, "keys", expect.any(Function)],
       ["method", NodeList.prototype, "values", expect.any(Function)],
       ["method", NodeList.prototype, Symbol.iterator, expect.any(Function)],
+      ["accessor", NodeList.prototype, Symbol.toStringTag, expect.any(Function), undefined],
     ]);
   });
 });

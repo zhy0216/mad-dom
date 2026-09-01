@@ -358,15 +358,160 @@ export function install(ctx) {
   });
 
   // `Node.contains` — whether `other` is a descendant of (or equal to) this
-  // node.
+  // node. `null` / `undefined` (and any non-node) reads `false`, matching
+  // happy-dom.
   ctx.defineMethod(Node.prototype, "contains", function contains(other) {
+    if (other === null || other === undefined) return false;
     const otherHandle = handleOf(other);
+    if (otherHandle === undefined) return false;
     const thisHandle = handleOf(this);
     if (otherHandle === thisHandle) return true;
     for (let parent = otherHandle.parentNode(); parent !== null; parent = parent.parentNode()) {
       if (parent === thisHandle) return true;
     }
     return false;
+  });
+
+  // `Node.hasChildNodes()` — whether this node has any child nodes.
+  ctx.defineMethod(Node.prototype, "hasChildNodes", function hasChildNodes() {
+    return handleOf(this).childNodes().length > 0;
+  });
+
+  // `Node.isSameNode(other)` — whether `other` is the very same node object.
+  ctx.defineMethod(Node.prototype, "isSameNode", function isSameNode(other) {
+    return this === other;
+  });
+
+  // `Node.parentElement` — the nearest element ancestor, or null.
+  ctx.defineAccessor(Node.prototype, "parentElement", function parentElement() {
+    for (let parent = handleOf(this).parentNode(); parent !== null; parent = parent.parentNode()) {
+      if (parent.nodeType() === 1) return ctx.wrap(parent);
+    }
+    return null;
+  }, undefined);
+
+  // `Node.previousElementSibling` / `nextElementSibling` — the nearest element
+  // sibling in either direction, or null (happy-dom NonDocumentChildNode).
+  ctx.defineAccessor(Node.prototype, "previousElementSibling", function previousElementSibling() {
+    for (let sibling = handleOf(this).previousSibling(); sibling !== null; sibling = sibling.previousSibling()) {
+      if (sibling.nodeType() === 1) return ctx.wrap(sibling);
+    }
+    return null;
+  }, undefined);
+  ctx.defineAccessor(Node.prototype, "nextElementSibling", function nextElementSibling() {
+    for (let sibling = handleOf(this).nextSibling(); sibling !== null; sibling = sibling.nextSibling()) {
+      if (sibling.nodeType() === 1) return ctx.wrap(sibling);
+    }
+    return null;
+  }, undefined);
+
+  // ParentNode element getters (`firstElementChild` / `lastElementChild` /
+  // `childElementCount`) on Element and DocumentFragment (happy-dom
+  // ParentNode). `children` already lives on Element; install it on
+  // DocumentFragment too.
+  const parentNodeElementAccessors = (Class) => {
+    ctx.defineAccessor(Class.prototype, "firstElementChild", function firstElementChild() {
+      return firstElementChildOf(ctx, this);
+    }, undefined);
+    ctx.defineAccessor(Class.prototype, "lastElementChild", function lastElementChild() {
+      return lastElementChildOf(ctx, this);
+    }, undefined);
+    ctx.defineAccessor(Class.prototype, "childElementCount", function childElementCount() {
+      return childElementCountOf(ctx, this);
+    }, undefined);
+  };
+  parentNodeElementAccessors(Element);
+  parentNodeElementAccessors(DocumentFragment);
+  ctx.defineAccessor(DocumentFragment.prototype, "children", function children() {
+    return childrenOf(ctx, this);
+  }, undefined);
+
+  // `Node.prepend(...nodes)` / `Node.replaceChildren(...nodes)` — ParentNode
+  // mutation (string arguments become text nodes).
+  ctx.defineMethod(Node.prototype, "prepend", function prepend(...nodes) {
+    const firstChild = this.firstChild;
+    for (const node of nodes) {
+      const child = typeof node === "string" ? textNodeOf(ctx, this, node) : node;
+      if (firstChild === null) this.appendChild(child);
+      else this.insertBefore(child, firstChild);
+    }
+  });
+  ctx.defineMethod(Node.prototype, "replaceChildren", function replaceChildren(...nodes) {
+    while (this.firstChild !== null) {
+      this.removeChild(this.firstChild);
+    }
+    for (const node of nodes) {
+      this.appendChild(typeof node === "string" ? textNodeOf(ctx, this, node) : node);
+    }
+  });
+
+  // `Node.before(...nodes)` / `Node.after(...nodes)` / `Node.replaceWith(...nodes)`
+  // — ChildNode mutation (string arguments become text nodes; no-op when this
+  // node has no parent).
+  ctx.defineMethod(Node.prototype, "before", function before(...nodes) {
+    const parent = this.parentNode;
+    if (parent === null) return;
+    for (const node of nodes) {
+      parent.insertBefore(typeof node === "string" ? textNodeOf(ctx, this, node) : node, this);
+    }
+  });
+  ctx.defineMethod(Node.prototype, "after", function after(...nodes) {
+    const parent = this.parentNode;
+    if (parent === null) return;
+    const nextSibling = this.nextSibling;
+    for (const node of nodes) {
+      const child = typeof node === "string" ? textNodeOf(ctx, this, node) : node;
+      if (nextSibling === null) parent.appendChild(child);
+      else parent.insertBefore(child, nextSibling);
+    }
+  });
+  ctx.defineMethod(Node.prototype, "replaceWith", function replaceWith(...nodes) {
+    const parent = this.parentNode;
+    if (parent === null) return;
+    const nextSibling = this.nextSibling;
+    parent.removeChild(this);
+    for (const node of nodes) {
+      const child = typeof node === "string" ? textNodeOf(ctx, this, node) : node;
+      if (nextSibling === null) parent.appendChild(child);
+      else parent.insertBefore(child, nextSibling);
+    }
+  });
+
+  // `Node.normalize()` — merge adjacent Text nodes and drop empty ones,
+  // recursing into element children (happy-dom Node.normalize).
+  ctx.defineMethod(Node.prototype, "normalize", function normalize() {
+    const children = Array.from(this.childNodes);
+    let run = [];
+    const flush = (before) => {
+      if (run.length === 0) return;
+      const merged = run.map((child) => child.data ?? "").join("");
+      if (merged !== "") {
+        const text = this.ownerDocument.createTextNode(merged);
+        if (before === null) this.appendChild(text);
+        else this.insertBefore(text, before);
+      }
+      for (const child of run) {
+        this.removeChild(child);
+      }
+      run = [];
+    };
+    for (const child of children) {
+      if (child.nodeType === 3) {
+        run.push(child);
+      } else {
+        flush(child);
+        if (child.nodeType === 1) child.normalize();
+      }
+    }
+    flush(null);
+  });
+
+  // `Element.role` — a DOMString reflected attribute (happy-dom reflected
+  // attribute surface).
+  ctx.defineAccessor(Element.prototype, "role", function role() {
+    return handleOf(this).getAttribute("role") ?? "";
+  }, function role(value) {
+    handleOf(this).setAttribute("role", String(value));
   });
 
   // CharacterData surface not covered by the T33 `Node.data`/`length` reads:
@@ -1005,4 +1150,35 @@ function childrenOf(ctx, element) {
     CHILDREN_LISTS.set(element, list);
   }
   return list;
+}
+
+// First / last direct element child and the element-child count (ParentNode
+// element getters). These are stable reads over the same native child list.
+function firstElementChildOf(ctx, node) {
+  for (const child of handleOf(node).childNodes()) {
+    if (child.nodeType() === 1) return ctx.wrap(child);
+  }
+  return null;
+}
+
+function lastElementChildOf(ctx, node) {
+  let last = null;
+  for (const child of handleOf(node).childNodes()) {
+    if (child.nodeType() === 1) last = ctx.wrap(child);
+  }
+  return last;
+}
+
+function childElementCountOf(ctx, node) {
+  let count = 0;
+  for (const child of handleOf(node).childNodes()) {
+    if (child.nodeType() === 1) count += 1;
+  }
+  return count;
+}
+
+// Mints a text node through the receiver's owning document (ChildNode /
+// ParentNode string arguments become Text nodes, happy-dom parity).
+function textNodeOf(ctx, node, value) {
+  return ctx.wrap(handleOf(node).ownerDocument().createText(String(value)));
 }

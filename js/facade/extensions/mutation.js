@@ -113,6 +113,13 @@ export function install(ctx) {
   ctx.defineMethod(Node.prototype, "insertBefore", function insertBefore(child, reference) {
     const parentHandle = facadeNodeHandle(ctx, this, "insertBefore");
     const childHandle = facadeNodeHandle(ctx, child, "insertBefore");
+    // A null / undefined reference appends at the end (WHATWG insertBefore
+    // semantics, matching happy-dom); the native contract has no null slot, so
+    // the facade routes the null case through appendChild.
+    if (reference === null || reference === undefined) {
+      nativeMutation(ctx, "appendChild", parentHandle, [childHandle]);
+      return ctx.wrap(childHandle);
+    }
     const referenceHandle = facadeNodeHandle(ctx, reference, "insertBefore");
     nativeMutation(ctx, "insertBefore", parentHandle, [childHandle, referenceHandle]);
     return ctx.wrap(childHandle);

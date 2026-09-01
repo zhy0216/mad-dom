@@ -1,6 +1,6 @@
 # 05 差分移植波次 W5：nodes 核心内部类
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：W5
 - 条目 ID：`D05`
@@ -31,7 +31,7 @@ nodes 子系统 104 个 `unmapped-internal-import` 文件按上游目录拆 4 �
 
 ## 条目
 
-- [ ] **D05 — W5 nodes 核心内部类差分移植**
+- [x] **D05 — W5 nodes 核心内部类差分移植**
   - 实现：
     - 逐文件核实运行时导入（读 `tests/happy-dom/rewritten/nodes/**`）：enum/type-only 排除（如 Attr 若仅 NodeTypeEnum，triage 不动，commit body 列明）；其余三问 A/B 判定，B 档 reason `internal-only-no-public-surface (哪一问: 简述)`。
     - 纯 *Utility 文件（CharacterDataUtility、ChildNodeUtility、NodeUtility、ParentNodeUtility 等）上游直接断言内部工具函数行为，公开面通常无法等价构造/观测 → 大概率 B 档，如实判定。
