@@ -15,12 +15,12 @@
     {
       "file": "fetch/Fetch.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-enum): exception/DOMExceptionNameEnum.js; unmapped-internal-import (internal-other): fetch/certificate/FetchHTTPSCertificate.js"
+      "reason": "ported-to-diff (hc-diff-fetch-fetch)"
     },
     {
       "file": "fetch/FetchCORSUtility.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-utility): fetch/utilities/FetchCORSUtility.js"
+      "reason": "internal-only-no-public-surface (一问可构造: FetchCORSUtility 静态工具类无公开导出入口，isCORS 为内部 CORS 决策，公开面无法调用)"
     },
     {
       "file": "fetch/Headers.test.ts",
@@ -30,32 +30,32 @@
     {
       "file": "fetch/Request.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-enum): exception/DOMExceptionNameEnum.js; unmapped-internal-import (internal-parser): fetch/multipart/MultipartFormDataParser.js; unmapped-internal-import (internal-utility): fetch/utilities/FetchBodyUtility.js"
+      "reason": "ported-to-diff (hc-diff-fetch-request)"
     },
     {
       "file": "fetch/ResourceFetch.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class): fetch/Fetch.js, fetch/ResourceFetch.js, fetch/SyncFetch.js, fetch/preload/PreloadEntry.js; unmapped-internal-import (internal-utility): fetch/preload/PreloadUtility.js"
+      "reason": "internal-only-no-public-surface (一问可构造: ResourceFetch 为内部资源加载类，无公开构造入口；被测行为依赖对内部 Fetch/SyncFetch.prototype.send 的 vi mock，无公开等价面)"
     },
     {
       "file": "fetch/Response.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-enum): exception/DOMExceptionNameEnum.js; unmapped-internal-import (internal-parser): fetch/multipart/MultipartFormDataParser.js; unmapped-internal-import (internal-utility): fetch/utilities/FetchBodyUtility.js"
+      "reason": "ported-to-diff (hc-diff-fetch-response)"
     },
     {
       "file": "fetch/SyncFetch.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class): fetch/SyncFetch.js, fetch/utilities/SyncFetchScriptBuilder.js; unmapped-internal-import (internal-enum): exception/DOMExceptionNameEnum.js"
+      "reason": "internal-only-no-public-surface (三问可差分: 同步 fetch 网络路径依赖 child_process 宿主执行与内部 SyncFetchScriptBuilder 脚本，断言无法经公开 API 差分)"
     },
     {
       "file": "fetch/cache/response/ResponseCache.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class, internal-enum): fetch/cache/response/CachedResponseStateEnum.js, fetch/cache/response/ResponseCache.js"
+      "reason": "internal-only-no-public-surface (一问可构造: ResponseCache 为内部缓存类，无公开构造入口；缓存状态读取依赖内部对象与 Date.now 真实时间)"
     },
     {
       "file": "fetch/cache/response/ResponseCacheFileSystem.test.ts",
       "status": "skip",
-      "reason": "unmapped-internal-import (internal-class, internal-type): fetch/cache/response/ICachedResponse.js, fetch/cache/response/ResponseCacheFileSystem.js"
+      "reason": "internal-only-no-public-surface (三问可差分: 断言 mock 文件系统 FS/Path 并依赖 Date.now，宿主 I/O 不可差分)"
     }
   ]
 }

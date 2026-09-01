@@ -226,6 +226,87 @@ async function consumeBodyStream(requestOrResponse) {
   return Buffer.concat(chunks, bytes);
 }
 
+// --- formData parsing (mirrors happy-dom MultipartFormDataParser) ------------
+
+const CRLF = Buffer.from("\r\n", "latin1");
+const DOUBLE_CRLF = Buffer.from("\r\n\r\n", "latin1");
+
+function parseMultipartFormData(window, buffer, contentType) {
+  const match = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!match) {
+    throw new window.DOMException(
+      'Failed to build FormData object: The "content-type" header doesn\'t contain any multipart boundary.',
+      "InvalidStateError",
+    );
+  }
+  const boundaryMarker = Buffer.from(`--${match[1] || match[2]}`, "latin1");
+  const formData = new window.FormData();
+  let pos = buffer.indexOf(boundaryMarker);
+  while (pos !== -1) {
+    let cursor = pos + boundaryMarker.length;
+    // A trailing `--` marks the closing boundary.
+    if (buffer[cursor] === 0x2d && buffer[cursor + 1] === 0x2d) break;
+    if (buffer[cursor] === 0x0d && buffer[cursor + 1] === 0x0a) cursor += 2;
+    else if (buffer[cursor] === 0x0a) cursor += 1;
+    const headerEnd = buffer.indexOf(DOUBLE_CRLF, cursor);
+    if (headerEnd === -1) break;
+    const headerBlock = buffer.slice(cursor, headerEnd).toString("latin1");
+    cursor = headerEnd + DOUBLE_CRLF.length;
+    const disposition = headerBlock.match(/content-disposition:\s*form-data;\s*name="([^"]*)"/i);
+    const filename = headerBlock.match(/filename="([^"]*)"/i);
+    const contentTypeMatch = headerBlock.match(/content-type:\s*([^\r\n]+)/i);
+    const nextBoundary = buffer.indexOf(boundaryMarker, cursor);
+    const valueEnd =
+      nextBoundary === -1 ? buffer.length - 2 : nextBoundary - CRLF.length;
+    let value = Buffer.from(buffer.slice(cursor, Math.max(cursor, valueEnd)));
+    if (value.length >= 2 && value[value.length - 2] === 0x0d && value[value.length - 1] === 0x0a) {
+      value = value.slice(0, -2);
+    }
+    if (disposition) {
+      const name = disposition[1];
+      if (filename) {
+        formData.append(
+          name,
+          new window.File([value], filename[1], {
+            type: contentTypeMatch?.[1]?.trim() ?? "",
+          }),
+        );
+      } else if (value.length > 0) {
+        formData.append(name, value.toString("utf8"));
+      }
+    }
+    pos = nextBoundary;
+  }
+  return formData;
+}
+
+async function parseFormDataBody(window, requestOrResponse, contentType) {
+  const contentHeader = contentType ?? requestOrResponse.headers.get("Content-Type");
+  if (contentHeader && requestOrResponse.body && /multipart/i.test(contentHeader)) {
+    let buffer = requestOrResponse[BUFFER];
+    if (!buffer) {
+      buffer = await consumeBodyStream(requestOrResponse);
+    }
+    return parseMultipartFormData(window, buffer, contentHeader);
+  }
+  if (contentHeader?.startsWith("application/x-www-form-urlencoded")) {
+    let text = requestOrResponse[BUFFER]?.toString("utf8");
+    if (text === undefined) {
+      text = new TextDecoder().decode(await consumeBodyStream(requestOrResponse));
+    }
+    const parameters = new URLSearchParams(text ?? "");
+    const formData = new window.FormData();
+    for (const [key, value] of parameters) {
+      formData.append(key, value);
+    }
+    return formData;
+  }
+  throw new window.DOMException(
+    'Failed to build FormData object: The "content-type" header is neither "application/x-www-form-urlencoded" nor "multipart/form-data".',
+    "InvalidStateError",
+  );
+}
+
 function cloneBodyStream(window, requestOrResponse) {
   if (requestOrResponse.bodyUsed) {
     throw new window.DOMException(
@@ -276,14 +357,20 @@ const FORBIDDEN_HEADER_NAMES = [
 
 function removeForbiddenHeaders(headers) {
   for (const key of Object.keys(headers[ENTRIES])) {
-    if (
-      FORBIDDEN_HEADER_NAMES.includes(key) ||
-      key.startsWith("proxy-") ||
-      key.startsWith("sec-")
-    ) {
+    if (isHeaderForbidden(key)) {
       delete headers[ENTRIES][key];
     }
   }
+}
+
+// Shared with the XMLHttpRequest facade (happy-dom `FetchRequestHeaderUtility`).
+export function isHeaderForbidden(name) {
+  const lower = String(name).toLowerCase();
+  return (
+    FORBIDDEN_HEADER_NAMES.includes(lower) ||
+    lower.startsWith("proxy-") ||
+    lower.startsWith("sec-")
+  );
 }
 
 // --- request validation (mirrors happy-dom FetchRequestValidationUtility) ----
@@ -658,6 +745,22 @@ export class Request {
     return JSON.parse(text);
   }
 
+  async blob() {
+    const type = this.headers.get("Content-Type") || "";
+    const buffer = await this.arrayBuffer();
+    return new this[WINDOW].Blob([buffer], { type });
+  }
+
+  async formData() {
+    const window = this[WINDOW];
+    if (this[BODY_USED]) {
+      throw new DOMException(`Body has already been used for "${this.url}".`, "InvalidStateError");
+    }
+    const contentType = this.headers.get("Content-Type") ?? this[CONTENT_TYPE];
+    this[BODY_USED] = true;
+    return parseFormDataBody(window, this, contentType);
+  }
+
   clone() {
     return new this[WINDOW].Request(this);
   }
@@ -757,6 +860,21 @@ export class Response {
   async json() {
     const text = await this.text();
     return JSON.parse(text);
+  }
+
+  async blob() {
+    const type = this.headers.get("Content-Type") || "";
+    const buffer = await this.arrayBuffer();
+    return new this[WINDOW].Blob([buffer], { type });
+  }
+
+  async formData() {
+    const window = this[WINDOW];
+    if (this.bodyUsed) {
+      throw new DOMException(`Body has already been used for "${this.url}".`, "InvalidStateError");
+    }
+    this.bodyUsed = true;
+    return parseFormDataBody(window, this, this.headers.get("Content-Type"));
   }
 
   clone() {
@@ -1107,6 +1225,14 @@ async function fetchImpl(ctx, windowFacade, url, init) {
     return new surface.Response(result.buffer, {
       headers: { "Content-Type": result.type },
     });
+  }
+
+  // Security check for "https" to "http" requests (mirrors happy-dom Fetch).
+  if (protocol === "http:" && new URL(windowFacade.location.href).protocol === "https:") {
+    throw new windowFacade.DOMException(
+      `Mixed Content: The page at '${windowFacade.location.href}' was loaded over HTTPS, but requested an insecure XMLHttpRequest endpoint '${request.url}'. This request has been blocked; the content must be served over HTTPS.`,
+      "SecurityError",
+    );
   }
 
   // http(s): adapt Bun's native fetch. Real network I/O (exactly like

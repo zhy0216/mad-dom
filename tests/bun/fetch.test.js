@@ -62,6 +62,7 @@ describe("fetch export shapes (T46)", () => {
       "Request",
       "Response",
       "install",
+      "isHeaderForbidden",
       "seam",
     ]);
     expect(mod.seam.owner).toBe("T46");
@@ -518,6 +519,83 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
       expect(response.headers.has("Set-Cookie")).toBe(false);
     } finally {
       server.stop(true);
+      win.destroy();
+    }
+  });
+
+  test("Request/Response blob() returns a per-window Blob with the Content-Type and flips bodyUsed (W3 parity)", async () => {
+    const win = new Window();
+    try {
+      const request = new win.Request("https://example.com", {
+        method: "POST",
+        body: "Hello World",
+        headers: { "Content-Type": "text/plain" },
+      });
+      const requestBlob = await request.blob();
+      expect(requestBlob instanceof win.Blob).toBe(true);
+      expect(requestBlob.type).toBe("text/plain");
+      expect(await requestBlob.text()).toBe("Hello World");
+      expect(request.bodyUsed).toBe(true);
+
+      const response = new win.Response("Hello World", {
+        headers: { "Content-Type": "text/plain" },
+      });
+      const responseBlob = await response.blob();
+      expect(responseBlob instanceof win.Blob).toBe(true);
+      expect(responseBlob.type).toBe("text/plain");
+      expect(await responseBlob.text()).toBe("Hello World");
+      expect(response.bodyUsed).toBe(true);
+    } finally {
+      win.destroy();
+    }
+  });
+
+  test("Request/Response formData() round-trips urlencoded and multipart bodies (W3 parity)", async () => {
+    const win = new Window();
+    try {
+      // urlencoded string body → formData fields.
+      const request = new win.Request("https://example.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "key1=value1&key2=value2",
+      });
+      const requestFormData = await request.formData();
+      expect(requestFormData instanceof win.FormData).toBe(true);
+      expect(requestFormData.get("key1")).toBe("value1");
+      expect(requestFormData.get("key2")).toBe("value2");
+
+      // multipart FormData round-trip through Response.
+      const formData = new win.FormData();
+      formData.set("key1", "value1");
+      formData.set("key2", "value2");
+      const response = new win.Response(formData);
+      expect(response.headers.get("Content-Type")).toMatch(/^multipart\/form-data; boundary=/);
+      const roundTrip = await response.formData();
+      expect(roundTrip instanceof win.FormData).toBe(true);
+      expect(roundTrip.get("key1")).toBe("value1");
+      expect(roundTrip.get("key2")).toBe("value2");
+
+      // Non-form content type rejects with the baseline InvalidStateError.
+      const textResponse = new win.Response("plain", {
+        headers: { "Content-Type": "text/plain" },
+      });
+      await expect(textResponse.formData()).rejects.toMatchObject({
+        name: "InvalidStateError",
+      });
+    } finally {
+      win.destroy();
+    }
+  });
+
+  test("window.fetch blocks an HTTPS page from requesting an HTTP endpoint (mixed content, W3 parity)", async () => {
+    const win = new Window({ url: "https://localhost:8080/" });
+    try {
+      await expect(win.fetch("http://localhost:8080/some/path")).rejects.toMatchObject({
+        name: "SecurityError",
+        message:
+          "Mixed Content: The page at 'https://localhost:8080/' was loaded over HTTPS, but requested an insecure XMLHttpRequest endpoint 'http://localhost:8080/some/path'. This request has been blocked; the content must be served over HTTPS.",
+      });
+    } finally {
       win.destroy();
     }
   });

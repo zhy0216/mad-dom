@@ -13,6 +13,13 @@
 //     child `bun` process that performs the fetch and serializes the result
 //     (there is no synchronous HTTP in-process), then dispatches `load`.
 //
+// The public state-machine surface mirrors the happy-dom baseline so the
+// differential XMLHttpRequest scenario can drive it offline: `responseType`
+// getter/setter validation, `responseText` / `responseXML` accessor errors,
+// forbidden-method / sync-response-type validation in `open()`, the
+// `setRequestHeader` boolean returns (false for forbidden headers) and the
+// `send()` / `setRequestHeader()` / `overrideMimeType()` state guards.
+//
 // Listener surface extends the global `EventTarget`, so
 // `addEventListener('load' | 'error' | 'readystatechange', …)` and the
 // `onload` / `onerror` / `onreadystatechange` handlers work.
@@ -21,6 +28,7 @@ import { spawnSync } from "node:child_process";
 
 import { Window } from "../window.js";
 import { isFormData, serializeFormData } from "./form-data.js";
+import { isHeaderForbidden } from "./fetch.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/xhr",
@@ -33,8 +41,14 @@ const METHOD = Symbol("mad-dom-xhr-method");
 const URL = Symbol("mad-dom-xhr-url");
 const ASYNC = Symbol("mad-dom-xhr-async");
 const HEADERS = Symbol("mad-dom-xhr-request-headers");
-const RESPONSE_HEADERS = Symbol("mad-dom-xhr-response-headers");
 const WINDOW = Symbol("mad-dom-window");
+const READY_STATE = Symbol("mad-dom-xhr-ready-state");
+const RESPONSE = Symbol("mad-dom-xhr-response");
+const RESPONSE_BODY = Symbol("mad-dom-xhr-response-body");
+const RESPONSE_TYPE = Symbol("mad-dom-xhr-response-type");
+const ABORTED = Symbol("mad-dom-xhr-aborted");
+const ABORT_CONTROLLER = Symbol("mad-dom-xhr-abort-controller");
+const OVERRIDDEN_MIME_TYPE = Symbol("mad-dom-xhr-overridden-mime-type");
 
 const UNSENT = 0;
 const OPENED = 1;
@@ -119,58 +133,131 @@ export class XMLHttpRequest extends globalThis.EventTarget {
     return DONE;
   }
 
-  readyState = UNSENT;
-  status = 0;
-  statusText = "";
-  responseText = "";
-  response = null;
-  responseURL = "";
-  timeout = 0;
-  withCredentials = false;
-
   constructor() {
     super();
+    if (!this[WINDOW]) {
+      throw new TypeError(
+        `Failed to construct 'XMLHttpRequest': 'XMLHttpRequest' was constructed outside a Window context.`,
+      );
+    }
+    this.upload = new this[WINDOW].XMLHttpRequestUpload();
+    this.withCredentials = false;
     this[METHOD] = "GET";
     this[URL] = "";
     this[ASYNC] = true;
     this[HEADERS] = [];
-    this[RESPONSE_HEADERS] = {};
+    this[READY_STATE] = UNSENT;
+    this[RESPONSE] = null;
+    this[RESPONSE_BODY] = null;
+    this[RESPONSE_TYPE] = "";
+    this[ABORTED] = false;
+    this[ABORT_CONTROLLER] = null;
+    this[OVERRIDDEN_MIME_TYPE] = null;
   }
 
-  get UNSENT() {
-    return UNSENT;
-  }
-  get OPENED() {
-    return OPENED;
-  }
-  get HEADERS_RECEIVED() {
-    return HEADERS_RECEIVED;
-  }
-  get LOADING() {
-    return LOADING;
-  }
-  get DONE() {
-    return DONE;
+  get readyState() {
+    return this[READY_STATE];
   }
 
-  open(method, url, async = true) {
-    this[METHOD] = String(method).toUpperCase();
+  get status() {
+    return this[RESPONSE]?.status || 0;
+  }
+
+  get statusText() {
+    return this[RESPONSE]?.statusText || "";
+  }
+
+  get response() {
+    return this[RESPONSE] ? this[RESPONSE_BODY] : "";
+  }
+
+  get responseText() {
+    if (this.responseType !== "text" && this.responseType !== "") {
+      throw new this[WINDOW].DOMException(
+        `Failed to read the 'responseText' property from 'XMLHttpRequest': The value is only accessible if the object's 'responseType' is '' or 'text' (was '${this.responseType}').`,
+        "InvalidStateError",
+      );
+    }
+    return this[RESPONSE_BODY] !== null ? this[RESPONSE_BODY] : "";
+  }
+
+  get responseXML() {
+    if (this.responseType !== "document" && this.responseType !== "") {
+      throw new this[WINDOW].DOMException(
+        `Failed to read the 'responseXML' property from 'XMLHttpRequest': The value is only accessible if the object's 'responseType' is '' or 'document' (was '${this.responseType}').`,
+        "InvalidStateError",
+      );
+    }
+    return this.responseType === "" ? null : this[RESPONSE_BODY];
+  }
+
+  get responseURL() {
+    return this[RESPONSE]?.url || "";
+  }
+
+  get responseType() {
+    return this[RESPONSE_TYPE];
+  }
+
+  set responseType(type) {
+    if (this.readyState !== OPENED && this.readyState !== UNSENT) {
+      throw new this[WINDOW].DOMException(
+        `Failed to set the 'responseType' property on 'XMLHttpRequest': The object's state must be OPENED or UNSENT.`,
+        "InvalidStateError",
+      );
+    }
+    if (!this[ASYNC]) {
+      throw new this[WINDOW].DOMException(
+        `Failed to set the 'responseType' property on 'XMLHttpRequest': The response type cannot be changed for synchronous requests made from a document.`,
+        "InvalidStateError",
+      );
+    }
+    this[RESPONSE_TYPE] = type;
+  }
+
+  open(method, url, async = true, user, password) {
+    const window = this[WINDOW];
+    if (!async && this.responseType && this.responseType !== "text") {
+      throw new window.DOMException(
+        `Failed to execute 'open' on 'XMLHttpRequest': Synchronous requests from a document must not set a response type.`,
+        "InvalidAccessError",
+      );
+    }
+    const headers = new window.Headers();
+    if (user) {
+      const authBuffer = Buffer.from(`${user}:${password || ""}`);
+      headers.set("Authorization", "Basic " + authBuffer.toString("base64"));
+    }
+    this[ASYNC] = async;
+    this[ABORTED] = false;
+    this[RESPONSE] = null;
+    this[RESPONSE_BODY] = null;
+    this[METHOD] = String(method);
     this[URL] = String(url);
-    this[ASYNC] = async !== false;
     this[HEADERS] = [];
-    this[RESPONSE_HEADERS] = {};
-    this.status = 0;
-    this.statusText = "";
-    this.responseText = "";
-    this.response = null;
-    this.responseURL = "";
-    this.readyState = OPENED;
-    dispatchType(this, "readystatechange");
+    this[ABORT_CONTROLLER] = new window.AbortController();
+    // Method / URL / credentials validation flows through the public Request
+    // constructor (mirrors happy-dom building `new window.Request(...)` in
+    // `open()`), so forbidden methods and unsupported syntax raise the same
+    // `DOMException`s.
+    new window.Request(url, {
+      method,
+      headers,
+      signal: this[ABORT_CONTROLLER].signal,
+      credentials: this.withCredentials ? "include" : "same-origin",
+    });
+    this[READY_STATE] = OPENED;
   }
 
   setRequestHeader(name, value) {
     if (this.readyState !== OPENED) {
-      throw new DOMException("Failed to execute 'setRequestHeader' on 'XMLHttpRequest': The object's state must be OPENED.", "InvalidStateError");
+      throw new this[WINDOW].DOMException(
+        `Failed to execute 'setRequestHeader' on 'XMLHttpRequest': The object's state must be OPENED.`,
+        "InvalidStateError",
+      );
+    }
+    if (isHeaderForbidden(name)) {
+      return false;
     }
     const key = String(name).toLowerCase();
     const index = this[HEADERS].findIndex(([entryName]) => entryName.toLowerCase() === key);
@@ -179,29 +266,51 @@ export class XMLHttpRequest extends globalThis.EventTarget {
     } else {
       this[HEADERS].push([String(name), String(value)]);
     }
+    return true;
   }
 
   getResponseHeader(name) {
-    const key = String(name).toLowerCase();
-    const value = this[RESPONSE_HEADERS][key];
-    return value === undefined ? null : value;
+    return this[RESPONSE]?.headers.get(name) ?? null;
   }
 
   getAllResponseHeaders() {
-    return Object.entries(this[RESPONSE_HEADERS])
-      .map(([key, value]) => `${key}: ${value}`)
-      .join("\r\n");
+    if (!this[RESPONSE]) {
+      return "";
+    }
+    const result = [];
+    for (const [name, value] of this[RESPONSE].headers) {
+      const lowerName = name.toLowerCase();
+      if (lowerName !== "set-cookie" && lowerName !== "set-cookie2") {
+        result.push(`${name}: ${value}`);
+      }
+    }
+    return result.join("\r\n");
   }
 
   abort() {
-    this.readyState = UNSENT;
-    this.response = null;
-    this.responseText = "";
+    if (this[ABORTED]) {
+      return;
+    }
+    this[ABORTED] = true;
+    this[ABORT_CONTROLLER]?.abort();
+  }
+
+  overrideMimeType(mimeType) {
+    if (this.readyState === LOADING || this.readyState === DONE) {
+      throw new this[WINDOW].DOMException(
+        `Failed to execute 'overrideMimeType' on 'XMLHttpRequest': MIME type cannot be overridden when the request state is LOADING or DONE.`,
+        "InvalidStateError",
+      );
+    }
+    this[OVERRIDDEN_MIME_TYPE] = mimeType;
   }
 
   send(body = null) {
     if (this.readyState !== OPENED) {
-      throw new DOMException("Failed to execute 'send' on 'XMLHttpRequest': The object's state must be OPENED.", "InvalidStateError");
+      throw new this[WINDOW].DOMException(
+        `Failed to execute 'send' on 'XMLHttpRequest': Connection must be opened before send() is called.`,
+        "InvalidStateError",
+      );
     }
     const windowFacade = this[WINDOW];
     if (this[ASYNC]) {
@@ -212,43 +321,36 @@ export class XMLHttpRequest extends globalThis.EventTarget {
   }
 
   async sendAsync(windowFacade, body) {
-    this.readyState = LOADING;
+    this[READY_STATE] = LOADING;
     dispatchType(this, "readystatechange");
+    dispatchType(this, "loadstart");
     try {
       const bodyBuffer = normalizeRequestBody(windowFacade, body);
       const headers = {};
-      let contentTypeFromBody = null;
       for (const [name, value] of this[HEADERS]) {
         headers[name] = value;
       }
       if (bodyBuffer?.contentType && !Object.keys(headers).some((name) => name.toLowerCase() === "content-type")) {
         headers["Content-Type"] = bodyBuffer.contentType;
-        contentTypeFromBody = bodyBuffer.contentType;
       }
       const response = await windowFacade.fetch(this[URL], {
         method: this[METHOD],
         headers,
         body: bodyBuffer?.buffer ?? (isBodyPresent(body) ? String(body) : undefined),
       });
-      this.readyState = HEADERS_RECEIVED;
+      this[RESPONSE] = response;
+      this[READY_STATE] = HEADERS_RECEIVED;
       dispatchType(this, "readystatechange");
-      const responseHeaders = {};
-      for (const [key, value] of response.headers) {
-        responseHeaders[key.toLowerCase()] = value;
-      }
-      this[RESPONSE_HEADERS] = responseHeaders;
-      this.status = response.status;
-      this.statusText = response.statusText;
-      this.responseURL = response.url;
-      this.readyState = DONE;
       const text = await response.text();
-      this.responseText = text;
-      this.response = text;
+      this[RESPONSE_BODY] = text;
+      this[READY_STATE] = DONE;
       dispatchType(this, "readystatechange");
       dispatchType(this, "load");
+      dispatchType(this, "loadend");
     } catch (error) {
-      this.readyState = DONE;
+      this[READY_STATE] = DONE;
       dispatchType(this, "error");
+      dispatchType(this, "loadend");
     }
   }
 
@@ -263,26 +365,28 @@ export class XMLHttpRequest extends globalThis.EventTarget {
         headers["Content-Type"] = bodyBuffer.contentType;
       }
       const result = syncFetch(windowFacade, this[METHOD], this[URL], Object.entries(headers), bodyBuffer?.buffer ?? null);
-      this.readyState = HEADERS_RECEIVED;
-      const responseHeaders = {};
-      for (const [key, value] of Object.entries(result.headers)) {
-        responseHeaders[key.toLowerCase()] = value;
-      }
-      this[RESPONSE_HEADERS] = responseHeaders;
-      this.status = result.status;
-      this.statusText = result.statusText;
-      this.responseURL = result.url;
-      this.responseText = Buffer.from(result.body, "base64").toString("utf8");
-      this.response = this.responseText;
-      this.readyState = DONE;
+      const responseHeaders = new windowFacade.Headers(result.headers);
+      this[RESPONSE] = {
+        status: result.status,
+        statusText: result.statusText,
+        url: result.url,
+        headers: responseHeaders,
+      };
+      this[READY_STATE] = HEADERS_RECEIVED;
+      this[RESPONSE_BODY] = Buffer.from(result.body, "base64").toString("utf8");
+      this[READY_STATE] = DONE;
       dispatchType(this, "readystatechange");
       dispatchType(this, "load");
+      dispatchType(this, "loadend");
     } catch (error) {
-      this.readyState = DONE;
+      this[READY_STATE] = DONE;
       dispatchType(this, "error");
+      dispatchType(this, "loadend");
     }
   }
 }
+
+class XMLHttpRequestUpload extends globalThis.EventTarget {}
 
 function isBodyPresent(body) {
   return body !== null && body !== undefined;
@@ -302,11 +406,16 @@ function normalizeRequestBody(windowFacade, body) {
 
 function createWindowXHR(windowFacade) {
   class WindowXMLHttpRequest extends XMLHttpRequest {}
+  class WindowXMLHttpRequestUpload extends XMLHttpRequestUpload {}
   Object.defineProperty(WindowXMLHttpRequest.prototype, WINDOW, {
     value: windowFacade,
     configurable: true,
   });
-  return WindowXMLHttpRequest;
+  Object.defineProperty(WindowXMLHttpRequestUpload.prototype, WINDOW, {
+    value: windowFacade,
+    configurable: true,
+  });
+  return { XMLHttpRequest: WindowXMLHttpRequest, XMLHttpRequestUpload: WindowXMLHttpRequestUpload };
 }
 
 const XHR_SURFACE = new WeakMap();
@@ -317,12 +426,26 @@ export function install(ctx) {
     "XMLHttpRequest",
     function getXMLHttpRequest() {
       const handle = ctx.documentContext.handleOf(this.document);
-      let constructor = XHR_SURFACE.get(handle);
-      if (constructor === undefined) {
-        constructor = createWindowXHR(this);
-        XHR_SURFACE.set(handle, constructor);
+      let surface = XHR_SURFACE.get(handle);
+      if (surface === undefined) {
+        surface = createWindowXHR(this);
+        XHR_SURFACE.set(handle, surface);
       }
-      return constructor;
+      return surface.XMLHttpRequest;
+    },
+    undefined,
+  );
+  ctx.defineAccessor(
+    Window.prototype,
+    "XMLHttpRequestUpload",
+    function getXMLHttpRequestUpload() {
+      const handle = ctx.documentContext.handleOf(this.document);
+      let surface = XHR_SURFACE.get(handle);
+      if (surface === undefined) {
+        surface = createWindowXHR(this);
+        XHR_SURFACE.set(handle, surface);
+      }
+      return surface.XMLHttpRequestUpload;
     },
     undefined,
   );
