@@ -319,15 +319,22 @@ pub struct EventHandle {
     time_stamp: f64,
 }
 
-/// Milliseconds since the Unix epoch, the native `Event.timeStamp` value the
-/// facade hands out for each event (set once at construction). The baseline
-/// uses `performance.now()` (a DOMHighResTimeStamp); the two clocks share no
+/// Milliseconds since a process-local fixed point, the native
+/// `Event.timeStamp` value the facade hands out for each event (set once at
+/// construction). The baseline uses `performance.now()` (a DOMHighResTimeStamp
+/// — a monotonic clock from the navigation start); the two clocks share no
 /// epoch, so the value is only ever observed as "a positive number".
+///
+/// A wall-clock epoch is deliberately avoided: `SystemTime::now()` on the
+/// supported hosts has only ~microsecond resolution, and at the current epoch
+/// magnitude (~1.8e12 ms) a plain f64 derived from it keeps even less — two
+/// events constructed back-to-back could collide on an identical stamp.
+/// `Instant::elapsed()` from a lazily captured start point has nanosecond
+/// resolution on every supported platform, so each construction is distinct.
 fn now_ms() -> f64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| duration.as_secs_f64() * 1000.0)
-        .unwrap_or_default()
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let start = *START.get_or_init(std::time::Instant::now);
+    start.elapsed().as_nanos() as f64 / 1_000_000.0
 }
 
 /// Creates a new event with the given WebIDL init values and returns the

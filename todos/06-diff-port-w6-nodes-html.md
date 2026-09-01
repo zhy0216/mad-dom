@@ -1,6 +1,6 @@
 # 06 差分移植波次 W6：nodes html 元素内部类
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：W6
 - 条目 ID：`D06`
@@ -17,7 +17,7 @@ nodes 104 个 `unmapped-internal-import` 文件按上游目录拆 4 波（W5–W
 
 ## 条目
 
-- [ ] **D06 — W6 nodes html 元素差分移植**
+- [x] **D06 — W6 nodes html 元素差分移植**
   - 实现：
     - 逐文件核实运行时导入；enum/type-only 排除（triage 不动，commit body 列明）；其余三问 A/B 判定，B 档 reason `internal-only-no-public-surface (哪一问: 简述)`。
     - `HTMLInputElementDateUtility`、`HTMLInputElementValueSanitizer`、`TextTrack`、`TimeRanges` 等是纯内部工具/内部类，公开面通常无法等价构造 → 大概率 B 档，如实判定；`HTMLCanvasElement` 若依赖真实渲染上下文归「不可差分」。

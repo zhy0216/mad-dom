@@ -591,12 +591,16 @@ export function install(ctx) {
   ctx.defineAccessor(HTMLLinkElement.prototype, "relList", function relList() {
     const handle = facadeNodeHandle(ctx, this, "relList");
     return tokenListOf(handle, "rel", ["stylesheet", "modulepreload", "preload"]);
-  }, undefined);
+  }, function relList(value) {
+    facadeNodeHandle(ctx, this, "relList").setAttribute("rel", String(value));
+  });
 
   ctx.defineAccessor(HTMLAnchorElement.prototype, "relList", function relList() {
     const handle = facadeNodeHandle(ctx, this, "relList");
     return tokenListOf(handle, "rel");
-  }, undefined);
+  }, function relList(value) {
+    facadeNodeHandle(ctx, this, "relList").setAttribute("rel", String(value));
+  });
 }
 
 /**

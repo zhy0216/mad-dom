@@ -52,8 +52,18 @@ import {
   HTMLTitleElement,
   HTMLLIElement,
   HTMLOListElement,
+  HTMLAnchorElement,
+  HTMLLinkElement,
+  HTMLButtonElement,
+  HTMLInputElement,
+  HTMLSelectElement,
+  HTMLTextAreaElement,
+  HTMLTableCellElement,
+  HTMLScriptElement,
+  HTMLImageElement,
 } from "./html-element.js";
 import { HTMLCollection } from "./live-collections.js";
+import { DOMTokenList } from "./attribute-nodes.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
 import { rethrowDomError, webidlMessage } from "./dom-error.js";
 import { Event } from "./events.js";
@@ -97,9 +107,21 @@ export const HTMLSourceElement = class HTMLSourceElement extends HTMLElement {};
 export const HTMLTableColElement = class HTMLTableColElement extends HTMLElement {};
 export const HTMLTimeElement = class HTMLTimeElement extends HTMLElement {};
 export const HTMLOptGroupElement = class HTMLOptGroupElement extends HTMLElement {};
+export const HTMLAreaElement = class HTMLAreaElement extends HTMLElement {};
+export const HTMLIFrameElement = class HTMLIFrameElement extends HTMLElement {};
+export const HTMLObjectElement = class HTMLObjectElement extends HTMLElement {};
+export const HTMLOutputElement = class HTMLOutputElement extends HTMLElement {};
+export const HTMLTrackElement = class HTMLTrackElement extends HTMLElement {};
+export const HTMLCanvasElement = class HTMLCanvasElement extends HTMLElement {};
 
 const PER_TAG = [
   ["base", HTMLBaseElement],
+  ["area", HTMLAreaElement],
+  ["iframe", HTMLIFrameElement],
+  ["object", HTMLObjectElement],
+  ["output", HTMLOutputElement],
+  ["track", HTMLTrackElement],
+  ["canvas", HTMLCanvasElement],
   ["dl", HTMLDListElement],
   ["data", HTMLDataElement],
   ["datalist", HTMLDataListElement],
@@ -157,6 +179,13 @@ function absoluteURL(ctx, node, value) {
   } catch {
     return raw;
   }
+}
+
+// happy-dom stores HTML attribute names in lowercase (WHATWG case-insensitive
+// attribute matching); the element-specific reflection helpers write/read the
+// normalized name through the case-sensitive native handle.
+function reflectAttr(name) {
+  return String(name).toLowerCase();
 }
 
 // happy-dom `long` reflection (Number on the attribute, `"0"` fallback on a
@@ -272,6 +301,79 @@ const GLOBAL_EVENT_NAMES = [
   "resize",
   "scroll",
 ];
+
+// --- HTMLHyperlinkElementUtility (anchor / area URL surface) -----------------
+//
+// happy-dom's HTMLHyperlinkElementUtility: every getter parses the resolved
+// `href` (`new URL(href, ownerDocument.location.href)`, falling back to the raw
+// attribute when resolution fails) and reads a URL part; every part setter
+// parses the resolved href into a URL, mutates the part and writes the mutated
+// `url.href` back to the "href" attribute. The facade mirrors that exactly with
+// the host URL constructor, so the observable surface matches the baseline.
+
+function hyperlinkResolvedHref(ctx, element) {
+  const handle = handleOf(element);
+  if (handle.getAttribute("href") === null) return "";
+  const raw = handle.getAttribute("href");
+  const base = windowOf(ctx, element)?.location?.href;
+  try {
+    return base ? new URL(raw, base).href : raw;
+  } catch {
+    return raw;
+  }
+}
+
+function hyperlinkURL(ctx, element) {
+  return new URL(hyperlinkResolvedHref(ctx, element));
+}
+
+const HYPERLINK_PARTS = [
+  "hash",
+  "host",
+  "hostname",
+  "origin",
+  "pathname",
+  "port",
+  "protocol",
+  "search",
+  "username",
+  "password",
+];
+
+function installHyperlinkSurface(ctx, Class) {
+  // The read-only `origin` getter (no setter in happy-dom).
+  ctx.defineAccessor(Class.prototype, "origin", function origin() {
+    try {
+      return hyperlinkURL(ctx, this).origin;
+    } catch {
+      return "";
+    }
+  }, undefined);
+
+  for (const part of HYPERLINK_PARTS) {
+    if (part === "origin") continue;
+    ctx.defineAccessor(Class.prototype, part, function urlPartGetter() {
+      if (part === "hash") {
+        const raw = handleOf(this).getAttribute("href");
+        if (raw !== null && raw[0] === "#") return raw;
+      }
+      try {
+        return hyperlinkURL(ctx, this)[part];
+      } catch {
+        return "";
+      }
+    }, function urlPartSetter(value) {
+      let url;
+      try {
+        url = hyperlinkURL(ctx, this);
+      } catch {
+        return;
+      }
+      url[part] = value;
+      handleOf(this).setAttribute("href", url.href);
+    });
+  }
+}
 
 // --- install ----------------------------------------------------------------
 
@@ -580,6 +682,607 @@ export function install(ctx) {
     handleOf(this).setAttribute("target", String(value));
   });
 
+  // HTMLAnchorElement / HTMLAreaElement (W6): the plain attribute reflections
+  // (download/hreflang/ping/target/referrerPolicy/rel/type for anchor;
+  // download/ping/target/referrerPolicy/rel/alt/coords/shape for area), the
+  // hyperlink URL parts, relList, the href raw-attribute setter and toString.
+  for (const [Class, properties] of [
+    [HTMLAnchorElement, ["download", "hreflang", "ping", "target", "referrerPolicy", "rel", "type"]],
+    [HTMLAreaElement, ["download", "ping", "target", "referrerPolicy", "rel", "alt", "coords", "shape"]],
+  ]) {
+    for (const property of properties) {
+      ctx.defineAccessor(Class.prototype, property, function stringReflect() {
+        return handleOf(this).getAttribute(reflectAttr(property)) || "";
+      }, function stringReflect(v) {
+        handleOf(this).setAttribute(reflectAttr(property), String(v));
+      });
+    }
+  }
+
+  // href: the happy-dom getter resolves the attribute against the owning window
+  // location (falling back to the raw attribute), the setter writes the raw
+  // value; toString mirrors href.
+  for (const Class of [HTMLAnchorElement, HTMLAreaElement]) {
+    ctx.defineAccessor(Class.prototype, "href", function href() {
+      const raw = handleOf(this).getAttribute("href");
+      if (raw === null) return "";
+      const base = windowOf(ctx, this)?.location?.href;
+      try {
+        return base ? new URL(raw, base).href : raw;
+      } catch {
+        return raw;
+      }
+    }, function href(value) {
+      handleOf(this).setAttribute("href", String(value));
+    });
+    installHyperlinkSurface(ctx, Class);
+  }
+  for (const Class of [HTMLAnchorElement, HTMLAreaElement]) {
+    ctx.defineMethod(Class.prototype, "toString", function toString() {
+      return this.href;
+    });
+  }
+  ctx.defineAccessor(HTMLAreaElement.prototype, "relList", function relList() {
+    const handle = handleOf(this);
+    return new DOMTokenList(handle, "rel");
+  }, function relList(value) {
+    handleOf(this).setAttribute("rel", String(value));
+  });
+
+  // anchor / area tabIndex: happy-dom defaults these to "0" (the generic
+  // HTMLElement default is "-1") and writes "0" for an invalid number.
+  for (const Class of [HTMLAnchorElement, HTMLAreaElement]) {
+    ctx.defineAccessor(Class.prototype, "tabIndex", function tabIndex() {
+      const raw = handleOf(this).getAttribute("tabindex");
+      if (raw !== null) {
+        const parsed = Number(raw);
+        return Number.isNaN(parsed) ? 0 : parsed;
+      }
+      return 0;
+    }, function tabIndex(value) {
+      const parsed = Number(value);
+      handleOf(this).setAttribute("tabindex", Number.isNaN(parsed) ? "0" : String(parsed));
+    });
+  }
+
+  // HTMLLinkElement (W6): the attribute reflections (as/crossOrigin/href/
+  // hreflang/media/referrerPolicy/rel/type) and the URL-resolved href getter
+  // (relList already lives in attribute-nodes.js). The external stylesheet
+  // load/error tests are dropped (ResourceFetch network dependency).
+  for (const property of ["as", "crossOrigin", "hreflang", "media", "referrerPolicy", "rel", "type"]) {
+    ctx.defineAccessor(HTMLLinkElement.prototype, property, function linkReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
+    }, function linkReflect(v) {
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
+    });
+  }
+  ctx.defineAccessor(HTMLLinkElement.prototype, "href", function href() {
+    const raw = handleOf(this).getAttribute("href");
+    if (raw === null) return "";
+    const base = windowOf(ctx, this)?.location?.href;
+    try {
+      return base ? new URL(raw, base).href : raw;
+    } catch {
+      return raw;
+    }
+  }, function href(value) {
+    handleOf(this).setAttribute("href", String(value));
+  });
+
+  // HTMLButtonElement / HTMLInputElement (W6): the form-action family and the
+  // popover target reflections happy-dom exposes on both controls. `formAction`
+  // is a URL-reflected attribute (defaulting to the document location when the
+  // attribute is absent, empty when a relative value cannot resolve against an
+  // `about:blank` base), `formEnctype` / `formMethod` / `formTarget` are plain
+  // reflections, `popoverTargetAction` validates the token against
+  // hide/show/toggle and `popoverTargetElement` stores the element reference
+  // (throwing the WebIDL TypeError on a non-element value).
+  for (const Class of [HTMLButtonElement, HTMLInputElement]) {
+    ctx.defineAccessor(Class.prototype, "formAction", function formAction() {
+      const handle = handleOf(this);
+      const raw = handle.getAttribute("formaction");
+      const base = windowOf(ctx, this)?.location?.href ?? "";
+      if (raw === null) return base;
+      try {
+        return base ? new URL(raw, base).href : "";
+      } catch {
+        return "";
+      }
+    }, function formAction(value) {
+      handleOf(this).setAttribute("formaction", String(value));
+    });
+    ctx.defineAccessor(Class.prototype, "formEnctype", function formEnctype() {
+      return handleOf(this).getAttribute("formenctype") || "";
+    }, function formEnctype(v) {
+      handleOf(this).setAttribute("formenctype", String(v));
+    });
+    ctx.defineAccessor(Class.prototype, "formMethod", function formMethod() {
+      return handleOf(this).getAttribute("formmethod") || "";
+    }, function formMethod(v) {
+      handleOf(this).setAttribute("formmethod", String(v));
+    });
+    ctx.defineAccessor(Class.prototype, "formTarget", function formTarget() {
+      return handleOf(this).getAttribute("formtarget") || "";
+    }, function formTarget(v) {
+      handleOf(this).setAttribute("formtarget", String(v));
+    });
+    ctx.defineAccessor(Class.prototype, "popoverTargetAction", function popoverTargetAction() {
+      const value = handleOf(this).getAttribute("popovertargetaction");
+      if (value === null || (value !== "hide" && value !== "show" && value !== "toggle")) {
+        return "toggle";
+      }
+      return value;
+    }, function popoverTargetAction(value) {
+      handleOf(this).setAttribute("popovertargetaction", String(value));
+    });
+  }
+
+  const POPOVER_TARGETS = new WeakMap();
+  ctx.defineAccessor(HTMLButtonElement.prototype, "popoverTargetElement", function popoverTargetElement() {
+    return POPOVER_TARGETS.get(this) ?? null;
+  }, function popoverTargetElement(value) {
+    if (value !== null && !(value instanceof HTMLElement)) {
+      throw new TypeError(
+        `Failed to set the 'popoverTargetElement' property on 'HTMLInputElement': Failed to convert value to 'Element'.`,
+      );
+    }
+    POPOVER_TARGETS.set(this, value);
+  });
+  ctx.defineAccessor(HTMLInputElement.prototype, "popoverTargetElement", function popoverTargetElement() {
+    return POPOVER_TARGETS.get(this) ?? null;
+  }, function popoverTargetElement(value) {
+    if (value !== null && !(value instanceof HTMLElement)) {
+      throw new TypeError(
+        `Failed to set the 'popoverTargetElement' property on 'HTMLInputElement': Failed to convert value to 'Element'.`,
+      );
+    }
+    POPOVER_TARGETS.set(this, value);
+  });
+
+  // HTMLInputElement (W6): the remaining public reflections happy-dom exposes —
+  // the height/width property slots (default 0, NOT attribute-reflected), the
+  // size / indeterminate / list / autofocus members and the plain string
+  // reflections (alt/accept/allowdirs/autocomplete/placeholder/inputMode/src).
+  const INPUT_HEIGHT_WIDTH = new WeakMap();
+  ctx.defineAccessor(HTMLInputElement.prototype, "height", function height() {
+    return INPUT_HEIGHT_WIDTH.get(this)?.height ?? 0;
+  }, function height(v) {
+    const slot = INPUT_HEIGHT_WIDTH.get(this) ?? {};
+    slot.height = Number(v);
+    INPUT_HEIGHT_WIDTH.set(this, slot);
+    handleOf(this).setAttribute("height", String(v));
+  });
+  ctx.defineAccessor(HTMLInputElement.prototype, "width", function width() {
+    return INPUT_HEIGHT_WIDTH.get(this)?.width ?? 0;
+  }, function width(v) {
+    const slot = INPUT_HEIGHT_WIDTH.get(this) ?? {};
+    slot.width = Number(v);
+    INPUT_HEIGHT_WIDTH.set(this, slot);
+    handleOf(this).setAttribute("width", String(v));
+  });
+  ctx.defineAccessor(HTMLInputElement.prototype, "size", function size() {
+    const raw = handleOf(this).getAttribute("size");
+    if (raw !== null) {
+      const parsed = parseInt(raw, 10);
+      return Number.isNaN(parsed) ? 20 : parsed;
+    }
+    return 20;
+  }, function size(v) {
+    handleOf(this).setAttribute("size", String(v));
+  });
+  const INPUT_INDETERMINATE = new WeakMap();
+  ctx.defineAccessor(HTMLInputElement.prototype, "indeterminate", function indeterminate() {
+    return INPUT_INDETERMINATE.get(this) ?? false;
+  }, function indeterminate(v) {
+    INPUT_INDETERMINATE.set(this, Boolean(v));
+  });
+  ctx.defineAccessor(HTMLInputElement.prototype, "list", function list() {
+    const id = handleOf(this).getAttribute("list");
+    if (!id) return null;
+    const elements = documentOf(ctx, this).querySelectorAll(`datalist#${id}`);
+    return elements.length > 0 ? elements[0] : null;
+  }, undefined);
+  ctx.defineAccessor(HTMLInputElement.prototype, "autofocus", function autofocus() {
+    return handleOf(this).getAttribute("autofocus") !== null;
+  }, function autofocus(v) {
+    const handle = handleOf(this);
+    if (v) handle.setAttribute("autofocus", "");
+    else handle.removeAttribute("autofocus");
+  });
+  for (const property of ["alt", "accept", "allowdirs", "autocomplete", "placeholder", "inputMode", "src"]) {
+    ctx.defineAccessor(HTMLInputElement.prototype, property, function inputStringReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
+    }, function inputStringReflect(v) {
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
+    });
+  }
+
+  // HTMLTextAreaElement (W6): the plain string reflections
+  // (name/autocomplete/cols/rows/placeholder/inputMode), the autofocus
+  // boolean reflection and the tabIndex "0" default. The selection surface
+  // (selectionStart/End/Direction, select/setSelectionRange/setRangeText) is
+  // dropped — not implemented.
+  for (const property of ["autocomplete", "cols", "rows", "placeholder", "inputMode"]) {
+    ctx.defineAccessor(HTMLTextAreaElement.prototype, property, function textareaStringReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
+    }, function textareaStringReflect(v) {
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
+    });
+  }
+  ctx.defineAccessor(HTMLTextAreaElement.prototype, "autofocus", function autofocus() {
+    return handleOf(this).getAttribute("autofocus") !== null;
+  }, function autofocus(v) {
+    const handle = handleOf(this);
+    if (v) handle.setAttribute("autofocus", "");
+    else handle.removeAttribute("autofocus");
+  });
+  ctx.defineAccessor(HTMLTextAreaElement.prototype, "tabIndex", function tabIndex() {
+    const raw = handleOf(this).getAttribute("tabindex");
+    if (raw !== null) {
+      const parsed = Number(raw);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, function tabIndex(value) {
+    const parsed = Number(value);
+    handleOf(this).setAttribute("tabindex", Number.isNaN(parsed) ? "0" : String(parsed));
+  });
+
+  // select autofocus reflection and the tabIndex "0" default (happy-dom
+  // HTMLSelectElement).
+  ctx.defineAccessor(HTMLSelectElement.prototype, "autofocus", function autofocus() {
+    return handleOf(this).getAttribute("autofocus") !== null;
+  }, function autofocus(v) {
+    const handle = handleOf(this);
+    if (v) handle.setAttribute("autofocus", "");
+    else handle.removeAttribute("autofocus");
+  });
+  ctx.defineAccessor(HTMLSelectElement.prototype, "tabIndex", function tabIndex() {
+    const raw = handleOf(this).getAttribute("tabindex");
+    if (raw !== null) {
+      const parsed = Number(raw);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, function tabIndex(value) {
+    const parsed = Number(value);
+    handleOf(this).setAttribute("tabindex", Number.isNaN(parsed) ? "0" : String(parsed));
+  });
+
+  // input tabIndex: happy-dom defaults it to "0" (like anchor/area/button).
+  ctx.defineAccessor(HTMLInputElement.prototype, "tabIndex", function tabIndex() {
+    const raw = handleOf(this).getAttribute("tabindex");
+    if (raw !== null) {
+      const parsed = Number(raw);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, function tabIndex(value) {
+    const parsed = Number(value);
+    handleOf(this).setAttribute("tabindex", Number.isNaN(parsed) ? "0" : String(parsed));
+  });
+
+  // button tabIndex: happy-dom defaults it to "0" (like anchor/area).
+  ctx.defineAccessor(HTMLButtonElement.prototype, "tabIndex", function tabIndex() {
+    const raw = handleOf(this).getAttribute("tabindex");
+    if (raw !== null) {
+      const parsed = Number(raw);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, function tabIndex(value) {
+    const parsed = Number(value);
+    handleOf(this).setAttribute("tabindex", Number.isNaN(parsed) ? "0" : String(parsed));
+  });
+
+  // HTMLIFrameElement (W6): the attribute reflections (allow/height/width/
+  // name/referrerPolicy/srcdoc), the URL-resolved src getter with the
+  // raw-attribute setter, the sandbox DOMTokenList and the tabIndex "0"
+  // default. The iframe page-loading / contentWindow / contentDocument tests
+  // are dropped (browser-frame + Fetch network dependency).
+  for (const property of ["allow", "height", "width", "name", "referrerPolicy", "srcdoc"]) {
+    ctx.defineAccessor(HTMLIFrameElement.prototype, property, function iframeReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
+    }, function iframeReflect(v) {
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
+    });
+  }
+  ctx.defineAccessor(HTMLIFrameElement.prototype, "src", function src() {
+    const raw = handleOf(this).getAttribute("src");
+    if (raw === null) return "";
+    const base = windowOf(ctx, this)?.location?.href;
+    try {
+      return base ? new URL(raw, base).href : raw;
+    } catch {
+      return raw;
+    }
+  }, function src(value) {
+    handleOf(this).setAttribute("src", String(value));
+  });
+  ctx.defineAccessor(HTMLIFrameElement.prototype, "sandbox", function sandbox() {
+    const handle = handleOf(this);
+    return new DOMTokenList(handle, "sandbox");
+  }, function sandbox(value) {
+    handleOf(this).setAttribute("sandbox", String(value));
+  });
+  ctx.defineAccessor(HTMLIFrameElement.prototype, "tabIndex", function tabIndex() {
+    const raw = handleOf(this).getAttribute("tabindex");
+    if (raw !== null) {
+      const parsed = Number(raw);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, function tabIndex(value) {
+    const parsed = Number(value);
+    handleOf(this).setAttribute("tabindex", Number.isNaN(parsed) ? "0" : String(parsed));
+  });
+
+  // HTMLObjectElement (W6): the URL-resolved data getter with the raw setter,
+  // the name/height/width/type attribute reflections and the tabIndex "0"
+  // default. The contentDocument/contentWindow reads are dropped (subframe
+  // surface not implemented — happy-dom returns null unconditionally here, but
+  // mad-dom would read `undefined`).
+  ctx.defineAccessor(HTMLObjectElement.prototype, "data", function data() {
+    const raw = handleOf(this).getAttribute("data");
+    if (raw === null) return "";
+    const base = windowOf(ctx, this)?.location?.href;
+    try {
+      return base ? new URL(raw, base).href : raw;
+    } catch {
+      return raw;
+    }
+  }, function data(value) {
+    handleOf(this).setAttribute("data", String(value));
+  });
+  for (const property of ["name", "height", "width", "type"]) {
+    ctx.defineAccessor(HTMLObjectElement.prototype, property, function objectReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
+    }, function objectReflect(v) {
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
+    });
+  }
+  ctx.defineAccessor(HTMLObjectElement.prototype, "tabIndex", function tabIndex() {
+    const raw = handleOf(this).getAttribute("tabindex");
+    if (raw !== null) {
+      const parsed = Number(raw);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, function tabIndex(value) {
+    const parsed = Number(value);
+    handleOf(this).setAttribute("tabindex", Number.isNaN(parsed) ? "0" : String(parsed));
+  });
+
+  // HTMLOutputElement (W6): the defaultValue slot, the textContent-backed value
+  // getter/setter, the htmlFor/name attribute reflections and the constant
+  // "output" type. The labels reads are dropped (label association not
+  // implemented).
+  const OUTPUT_DEFAULT_VALUE = new WeakMap();
+  ctx.defineAccessor(HTMLOutputElement.prototype, "defaultValue", function defaultValue() {
+    return OUTPUT_DEFAULT_VALUE.get(this) ?? "";
+  }, function defaultValue(v) {
+    OUTPUT_DEFAULT_VALUE.set(this, String(v));
+  });
+  ctx.defineAccessor(HTMLOutputElement.prototype, "value", function value() {
+    return this.textContent || "";
+  }, function value(v) {
+    this.textContent = v;
+  });
+  ctx.defineAccessor(HTMLOutputElement.prototype, "htmlFor", function htmlFor() {
+    return handleOf(this).getAttribute("for") || "";
+  }, function htmlFor(v) {
+    handleOf(this).setAttribute("for", String(v));
+  });
+  ctx.defineAccessor(HTMLOutputElement.prototype, "name", function name() {
+    return handleOf(this).getAttribute("name") || "";
+  }, function name(v) {
+    handleOf(this).setAttribute("name", String(v));
+  });
+  ctx.defineAccessor(HTMLOutputElement.prototype, "type", function type() {
+    return "output";
+  }, undefined);
+
+  // HTMLTableCellElement (W6): the abbr/headers/scope string reflections, the
+  // colSpan/rowSpan unsigned-long reflections (min 1) and the cellIndex read
+  // (the cell's position among its <tr> td/th siblings, -1 outside a row).
+  for (const property of ["abbr", "headers", "scope"]) {
+    ctx.defineAccessor(HTMLTableCellElement.prototype, property, function cellStringReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
+    }, function cellStringReflect(v) {
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
+    });
+  }
+  for (const [property, attribute] of [
+    ["colSpan", "colspan"],
+    ["rowSpan", "rowspan"],
+  ]) {
+    ctx.defineAccessor(HTMLTableCellElement.prototype, property, function cellSpanGet() {
+      const value = Number(handleOf(this).getAttribute(attribute));
+      return Number.isNaN(value) || value < 1 ? 1 : value;
+    }, function cellSpanSet(value) {
+      const parsed = Number(value);
+      handleOf(this).setAttribute(attribute, Number.isNaN(parsed) || parsed < 1 ? "1" : String(parsed));
+    });
+  }
+  ctx.defineAccessor(HTMLTableCellElement.prototype, "cellIndex", function cellIndex() {
+    let parent = handleOf(this).parentNode();
+    while (parent !== null) {
+      if (parent.nodeName() === "tr") {
+        let index = 0;
+        for (const child of parent.childNodes()) {
+          if (child.nodeType() === 1 && (child.nodeName() === "td" || child.nodeName() === "th")) {
+            if (child === handleOf(this)) return index;
+            index++;
+          }
+        }
+        return -1;
+      }
+      parent = parent.parentNode();
+    }
+    return -1;
+  }, undefined);
+
+  // HTMLTrackElement (W6): the kind enum reflection (default "subtitles",
+  // invalid → "metadata", the TextTrackKindEnum token set), the URL-resolved
+  // src getter with the raw setter, the srclang/label string reflections, the
+  // default boolean reflection and the constant readyState "0". The `track`
+  // getter (a TextTrack) is dropped — the TextTrack class surface is not
+  // implemented.
+  const TRACK_KINDS = ["captions", "chapters", "descriptions", "metadata", "subtitles"];
+  ctx.defineAccessor(HTMLTrackElement.prototype, "kind", function kind() {
+    const value = handleOf(this).getAttribute("kind");
+    if (value === null) return "subtitles";
+    if (!TRACK_KINDS.includes(value)) return "metadata";
+    return value;
+  }, function kind(value) {
+    handleOf(this).setAttribute("kind", TRACK_KINDS.includes(value) ? value : "metadata");
+  });
+  ctx.defineAccessor(HTMLTrackElement.prototype, "src", function src() {
+    const raw = handleOf(this).getAttribute("src");
+    if (raw === null) return "";
+    const base = windowOf(ctx, this)?.location?.href;
+    try {
+      return base ? new URL(raw, base).href : raw;
+    } catch {
+      return raw;
+    }
+  }, function src(value) {
+    handleOf(this).setAttribute("src", String(value));
+  });
+  for (const property of ["srclang", "label"]) {
+    ctx.defineAccessor(HTMLTrackElement.prototype, property, function trackStringReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
+    }, function trackStringReflect(v) {
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
+    });
+  }
+  ctx.defineAccessor(HTMLTrackElement.prototype, "default", function trackDefault() {
+    return handleOf(this).getAttribute("default") !== null;
+  }, function trackDefault(v) {
+    const handle = handleOf(this);
+    if (v) handle.setAttribute("default", "");
+    else handle.removeAttribute("default");
+  });
+  ctx.defineAccessor(HTMLTrackElement.prototype, "readyState", function readyState() {
+    return 0;
+  }, undefined);
+
+  // HTMLScriptElement (W6): the attribute reflections (type/charset/lang/
+  // integrity, the crossorigin read, the async/defer/noModule booleans), the
+  // blocking DOMTokenList, the fetchPriority / referrerPolicy enum
+  // reflections, the URL-resolved src getter with the raw setter and the
+  // textContent-backed text accessor. The script-execution behavior
+  // (evaluation on connect / document.write / DOMParser) is dropped — the
+  // script evaluation engine is not surfaced.
+  for (const property of ["type", "charset", "lang", "integrity"]) {
+    ctx.defineAccessor(HTMLScriptElement.prototype, property, function scriptStringReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
+    }, function scriptStringReflect(v) {
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
+    });
+  }
+  ctx.defineAccessor(HTMLScriptElement.prototype, "crossOrigin", function crossOrigin() {
+    return handleOf(this).getAttribute("crossorigin") || "";
+  }, function crossOrigin(v) {
+    handleOf(this).setAttribute("crossorigin", String(v));
+  });
+  for (const property of ["async", "defer", "noModule"]) {
+    ctx.defineAccessor(HTMLScriptElement.prototype, property, function scriptBoolReflect() {
+      return handleOf(this).getAttribute(reflectAttr(property)) !== null;
+    }, function scriptBoolReflect(v) {
+      const handle = handleOf(this);
+      if (v) handle.setAttribute(reflectAttr(property), "");
+      else handle.removeAttribute(reflectAttr(property));
+    });
+  }
+  ctx.defineAccessor(HTMLScriptElement.prototype, "blocking", function blocking() {
+    const handle = handleOf(this);
+    return new DOMTokenList(handle, "blocking");
+  }, function blocking(value) {
+    handleOf(this).setAttribute("blocking", String(value));
+  });
+  ctx.defineAccessor(HTMLScriptElement.prototype, "fetchPriority", function fetchPriority() {
+    const value = handleOf(this).getAttribute("fetchpriority");
+    if (value === "high" || value === "low" || value === "normal") return value;
+    return "auto";
+  }, function fetchPriority(value) {
+    handleOf(this).setAttribute("fetchpriority", String(value));
+  });
+  const REFERRER_POLICIES = [
+    "no-referrer",
+    "no-referrer-when-downgrade",
+    "same-origin",
+    "origin",
+    "strict-origin",
+    "origin-when-cross-origin",
+    "strict-origin-when-cross-origin",
+    "unsafe-url",
+  ];
+  ctx.defineAccessor(HTMLScriptElement.prototype, "referrerPolicy", function referrerPolicy() {
+    const value = handleOf(this).getAttribute("referrerpolicy");
+    return REFERRER_POLICIES.includes(value) ? value : "";
+  }, function referrerPolicy(value) {
+    handleOf(this).setAttribute("referrerpolicy", String(value));
+  });
+  ctx.defineAccessor(HTMLScriptElement.prototype, "src", function src() {
+    const raw = handleOf(this).getAttribute("src");
+    if (raw === null) return "";
+    const base = windowOf(ctx, this)?.location?.href;
+    try {
+      return base ? new URL(raw, base).href : raw;
+    } catch {
+      return raw;
+    }
+  }, function src(value) {
+    handleOf(this).setAttribute("src", String(value));
+  });
+  ctx.defineAccessor(HTMLScriptElement.prototype, "text", function text() {
+    return this.textContent;
+  }, function text(value) {
+    this.textContent = value;
+  });
+
+  // HTMLImageElement (W6): the attribute-reflected width/height (parseInt with
+  // a natural-size "0" fallback) and the `window.Image` constructor that mints
+  // an img element through the window's document with optional width/height.
+  ctx.defineAccessor(HTMLImageElement.prototype, "width", function width() {
+    const raw = handleOf(this).getAttribute("width");
+    if (raw === null) return 0;
+    const parsed = parseInt(raw, 10);
+    return Number.isNaN(parsed) || parsed <= 0 ? 0 : parsed;
+  }, function width(v) {
+    handleOf(this).setAttribute("width", String(v));
+  });
+  ctx.defineAccessor(HTMLImageElement.prototype, "height", function height() {
+    const raw = handleOf(this).getAttribute("height");
+    if (raw === null) return 0;
+    const parsed = parseInt(raw, 10);
+    return Number.isNaN(parsed) || parsed <= 0 ? 0 : parsed;
+  }, function height(v) {
+    handleOf(this).setAttribute("height", String(v));
+  });
+
+  const WINDOW_IMAGE = new WeakMap();
+  ctx.defineAccessor(Window.prototype, "Image", function getImage() {
+    let imageClass = WINDOW_IMAGE.get(this);
+    if (imageClass === undefined) {
+      const windowFacade = this;
+      const docHandle = ctx.documentContext.handleOf(this.document);
+      imageClass = class Image extends HTMLImageElement {
+        constructor(width, height) {
+          const handle = docHandle.createElement("img");
+          super(handle);
+          ctx.registerWrap?.(handle, this);
+          if (width !== undefined) this.setAttribute("width", String(width));
+          if (height !== undefined) this.setAttribute("height", String(height));
+        }
+      };
+      Object.defineProperty(imageClass, "name", { value: "Image" });
+      WINDOW_IMAGE.set(windowFacade, imageClass);
+    }
+    return imageClass;
+  }, undefined);
+
   // HTMLDataElement: value (DOMString).
   ctx.defineAccessor(HTMLDataElement.prototype, "value", function value() {
     return handleOf(this).getAttribute("value") || "";
@@ -827,9 +1530,9 @@ export function install(ctx) {
   }
   for (const property of ["media", "sizes", "srcset", "type"]) {
     ctx.defineAccessor(HTMLSourceElement.prototype, property, function stringReflect() {
-      return handleOf(this).getAttribute(property) || "";
+      return handleOf(this).getAttribute(reflectAttr(property)) || "";
     }, function stringReflect(v) {
-      handleOf(this).setAttribute(property, String(v));
+      handleOf(this).setAttribute(reflectAttr(property), String(v));
     });
   }
   ctx.defineAccessor(HTMLSourceElement.prototype, "src", function src() {

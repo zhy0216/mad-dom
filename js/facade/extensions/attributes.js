@@ -89,10 +89,17 @@ function facadeNodeHandle(ctx, value, role) {
  * message and the stable `code` (T48B).
  */
 export function install(ctx) {
+  // HTML attribute names are ASCII case-insensitive (WHATWG §3.2.5.1);
+  // happy-dom normalizes them to lowercase on write and matches them
+  // case-insensitively on read. The native handle is case-sensitive, so the
+  // facade normalizes the name before delegating — a write stores the
+  // lowercase name and any read finds it regardless of the caller's case.
+  const attributeName = (name) => String(name).toLowerCase();
+
   ctx.defineMethod(Element.prototype, "getAttribute", function getAttribute(name) {
     const handle = facadeNodeHandle(ctx, this, "getAttribute");
     try {
-      return handle.getAttribute(String(name));
+      return handle.getAttribute(attributeName(name));
     } catch (error) {
       rethrowDomError(error, webidlMessage(error, "getAttribute", "Element"));
     }
@@ -101,7 +108,7 @@ export function install(ctx) {
   ctx.defineMethod(Element.prototype, "setAttribute", function setAttribute(name, value) {
     const handle = facadeNodeHandle(ctx, this, "setAttribute");
     try {
-      handle.setAttribute(String(name), String(value));
+      handle.setAttribute(attributeName(name), String(value));
     } catch (error) {
       // The happy-dom verbatim message for an invalid attribute name; the
       // `Uncaught InvalidCharacterError: ` prefix is happy-dom's own literal
@@ -120,7 +127,7 @@ export function install(ctx) {
   ctx.defineMethod(Element.prototype, "removeAttribute", function removeAttribute(name) {
     const handle = facadeNodeHandle(ctx, this, "removeAttribute");
     try {
-      handle.removeAttribute(String(name));
+      handle.removeAttribute(attributeName(name));
     } catch (error) {
       rethrowDomError(error, webidlMessage(error, "removeAttribute", "Element"));
     }
@@ -130,7 +137,7 @@ export function install(ctx) {
   ctx.defineMethod(Element.prototype, "hasAttribute", function hasAttribute(name) {
     const handle = facadeNodeHandle(ctx, this, "hasAttribute");
     try {
-      return handle.hasAttribute(String(name));
+      return handle.hasAttribute(attributeName(name));
     } catch (error) {
       rethrowDomError(error, webidlMessage(error, "hasAttribute", "Element"));
     }

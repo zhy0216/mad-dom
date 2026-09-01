@@ -3645,7 +3645,11 @@ export function install(ctx) {
     const handle = facadeNodeHandle(ctx, this, "style");
     if (handle.nodeType() !== 1) return undefined;
     return styleOf(ctx, handle);
-  }, undefined);
+  }, function style(value) {
+    const handle = facadeNodeHandle(ctx, this, "style");
+    if (handle.nodeType() !== 1) return;
+    styleOf(ctx, handle).cssText = value;
+  });
 
   // Document surface: `styleSheets` walks connected `<style>` elements and
   // `adoptedStyleSheets` is a plain settable array of CSSStyleSheet objects.

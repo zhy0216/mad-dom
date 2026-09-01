@@ -829,7 +829,7 @@ export function install(ctx) {
   ctx.defineAccessor(Node.prototype, "pattern", function pattern() {
     const handle = facadeNodeHandle(ctx, this, "pattern");
     if (!isOneOf(handle, ["input", "textarea"])) return undefined;
-    return handle.getAttribute("pattern");
+    return handle.getAttribute("pattern") || "";
   }, function pattern(v) {
     const handle = facadeNodeHandle(ctx, this, "pattern");
     if (!isOneOf(handle, ["input", "textarea"])) return;
@@ -843,7 +843,7 @@ export function install(ctx) {
   ctx.defineAccessor(Node.prototype, "max", function max() {
     const handle = facadeNodeHandle(ctx, this, "max");
     if (!isOneOf(handle, ["input", "textarea"])) return undefined;
-    return handle.getAttribute("max");
+    return handle.getAttribute("max") || "";
   }, function max(v) {
     const handle = facadeNodeHandle(ctx, this, "max");
     if (!isOneOf(handle, ["input", "textarea"])) return;
@@ -857,7 +857,7 @@ export function install(ctx) {
   ctx.defineAccessor(Node.prototype, "min", function min() {
     const handle = facadeNodeHandle(ctx, this, "min");
     if (!isOneOf(handle, ["input", "textarea"])) return undefined;
-    return handle.getAttribute("min");
+    return handle.getAttribute("min") || "";
   }, function min(v) {
     const handle = facadeNodeHandle(ctx, this, "min");
     if (!isOneOf(handle, ["input", "textarea"])) return;
@@ -871,7 +871,7 @@ export function install(ctx) {
   ctx.defineAccessor(Node.prototype, "step", function step() {
     const handle = facadeNodeHandle(ctx, this, "step");
     if (!isOneOf(handle, ["input", "textarea"])) return undefined;
-    return handle.getAttribute("step");
+    return handle.getAttribute("step") || "";
   }, function step(v) {
     const handle = facadeNodeHandle(ctx, this, "step");
     if (!isOneOf(handle, ["input", "textarea"])) return;
@@ -1054,7 +1054,14 @@ export function install(ctx) {
   ctx.defineAccessor(Node.prototype, "action", function action() {
     const handle = facadeNodeHandle(ctx, this, "action");
     if (tagOf(handle) !== "form") return undefined;
-    return handle.getAttribute("action") || "";
+    const raw = handle.getAttribute("action");
+    const base = ctx.windowFacadeOfDocument(ctx.wrap(handle.ownerDocument()))?.location?.href ?? "";
+    if (raw === null) return base;
+    try {
+      return base ? new URL(raw, base).href : "";
+    } catch {
+      return "";
+    }
   }, function action(v) {
     const handle = facadeNodeHandle(ctx, this, "action");
     if (tagOf(handle) === "form") handle.setAttribute("action", String(v));
@@ -1082,6 +1089,26 @@ export function install(ctx) {
     if (tagOf(handle) === "form") handle.setAttribute("acceptcharset", String(v));
   });
 
+  // `form.encoding` / `form.autocomplete` (W6): plain DOMString reflections of
+  // the `encoding` / `autocomplete` attributes (happy-dom HTMLFormElement).
+  ctx.defineAccessor(Node.prototype, "encoding", function encoding() {
+    const handle = facadeNodeHandle(ctx, this, "encoding");
+    if (tagOf(handle) !== "form") return undefined;
+    return handle.getAttribute("encoding") || "";
+  }, function encoding(v) {
+    const handle = facadeNodeHandle(ctx, this, "encoding");
+    if (tagOf(handle) === "form") handle.setAttribute("encoding", String(v));
+  });
+
+  ctx.defineAccessor(Node.prototype, "autocomplete", function autocomplete() {
+    const handle = facadeNodeHandle(ctx, this, "autocomplete");
+    if (tagOf(handle) !== "form") return undefined;
+    return handle.getAttribute("autocomplete") || "";
+  }, function autocomplete(v) {
+    const handle = facadeNodeHandle(ctx, this, "autocomplete");
+    if (tagOf(handle) === "form") handle.setAttribute("autocomplete", String(v));
+  });
+
   ctx.defineAccessor(Node.prototype, "noValidate", function noValidate() {
     const handle = facadeNodeHandle(ctx, this, "noValidate");
     if (tagOf(handle) !== "form") return undefined;
@@ -1100,7 +1127,7 @@ export function install(ctx) {
 
   ctx.defineAccessor(Node.prototype, "form", function form() {
     const handle = facadeNodeHandle(ctx, this, "form");
-    if (!isOneOf(handle, ["input", "button", "select", "textarea", "option"])) {
+    if (!isOneOf(handle, ["input", "button", "select", "textarea", "option", "object", "output"])) {
       return undefined;
     }
     return ctx.wrap(handle.ownerForm());

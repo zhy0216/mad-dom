@@ -459,7 +459,7 @@ export function install(ctx) {
   // value; `isContentEditable` walks the parent chain for `inherit`).
   ctx.defineAccessor(HTMLElement.prototype, "contentEditable", function contentEditable() {
     const value = String(
-      facadeNodeHandle(ctx, this, "contentEditable").getAttribute("contentEditable"),
+      facadeNodeHandle(ctx, this, "contentEditable").getAttribute("contenteditable"),
     ).toLowerCase();
     switch (value) {
       case "false":
@@ -478,7 +478,7 @@ export function install(ctx) {
       normalized === "inherit"
     ) {
       const handle = facadeNodeHandle(ctx, this, "contentEditable");
-      handle.setAttribute("contentEditable", normalized);
+      handle.setAttribute("contenteditable", normalized);
       flushCustomElementReactions(ctx, handle);
       return;
     }
@@ -501,6 +501,51 @@ export function install(ctx) {
   ctx.defineAccessor(HTMLElement.prototype, "dataset", function dataset() {
     return datasetFor(ctx, this);
   }, undefined);
+
+  // accessKey and the layout dimension reads (W6): happy-dom exposes an
+  // `accesskey` attribute reflection and the always-zero offset/client box
+  // getters on HTMLElement (no layout engine).
+  ctx.defineAccessor(HTMLElement.prototype, "accessKey", function accessKey() {
+    return facadeNodeHandle(ctx, this, "accessKey").getAttribute("accesskey") || "";
+  }, function accessKey(v) {
+    facadeNodeHandle(ctx, this, "accessKey").setAttribute("accesskey", String(v));
+  });
+  for (const property of [
+    "offsetHeight",
+    "offsetWidth",
+    "offsetLeft",
+    "offsetTop",
+    "clientHeight",
+    "clientWidth",
+    "clientLeft",
+    "clientTop",
+  ]) {
+    ctx.defineAccessor(HTMLElement.prototype, property, function layoutZero() {
+      return 0;
+    }, undefined);
+  }
+
+  // popover enum reflection (happy-dom: null default, "auto" for the empty
+  // value, "manual" for any other value).
+  ctx.defineAccessor(HTMLElement.prototype, "popover", function popover() {
+    const value = facadeNodeHandle(ctx, this, "popover").getAttribute("popover");
+    switch (value) {
+      case null:
+        return null;
+      case "":
+      case "auto":
+        return "auto";
+      default:
+        return "manual";
+    }
+  }, function popover(value) {
+    const handle = facadeNodeHandle(ctx, this, "popover");
+    if (value === null) {
+      handle.removeAttribute("popover");
+      return;
+    }
+    handle.setAttribute("popover", String(value));
+  });
 
   // Base interaction: click dispatches a bubbling click Event; focus / blur
   // sequence the active element through the native contract and dispatch the
