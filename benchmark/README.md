@@ -40,7 +40,11 @@ The report shows two timings (median over 3 runs by default):
   over a local express server, WindowGlobals, exception observer). This is the
   stable DOM-workload signal and the number to compare.
 
-`npm run test:integration` runs the mad-dom copy (`bun test`).
+`npm run test:integration` runs the mad-dom copy as the CI gate. It uses the
+`test:ci` script, which excludes `Browser.test.js` (see below) and runs the
+deterministic cases plus the exception observer; the full suite including the
+live-network cases stays available via the package `test` script or
+`bun test test`.
 
 ## 与 hdunit 的关系
 
@@ -71,7 +75,9 @@ title and frame URL; page JavaScript is not evaluated. The
 routes uncaught window-script errors to the window `error` event and the
 `virtualConsolePrinter`).
 
-`Browser.test.js` still hits real github.com / npmjs.com content: the
-assertions depend on the live SSR markup (and the network path to those
-hosts), so it passes when the endpoints are reachable and their markup matches
-— treat its failures as environment noise, exactly like the happy-dom copy.
+`Browser.test.js` hits real github.com / npmjs.com content: the assertions
+depend on the live SSR markup (and the network path to those hosts), so it
+passes only when the endpoints are reachable and their markup matches — treat
+its failures as environment noise, exactly like the happy-dom copy. For this
+reason it is excluded from the CI gate (`test:ci`); it remains part of the
+`test` script and of the benchmark's full-suite run (`benchmark/run.mjs`).

@@ -157,7 +157,7 @@ function main() {
 
   // --- build / pack the host platform package and a staged main package ----
   const hostPkgName = hostPlatformPackageName();
-  const platformTgz = args.platformTgz ?? (() => {
+  const platformTgz = args.platformTgz ? resolve(REPO_ROOT, args.platformTgz) : (() => {
     const proc = run("bun", ["scripts/build-platform-package.mjs", "--version", version, "--out", join(outDir, "platform")]);
     if (proc.status !== 0) throw new Error(`build-platform-package failed: ${proc.stderr}`);
     const platformDir = join(outDir, "platform", hostPkgName);
@@ -165,7 +165,7 @@ function main() {
     if (pack.status !== 0) throw new Error(`npm pack ${hostPkgName} failed: ${pack.stderr}`);
     return join(outDir, `${hostPkgName.replace(/^@/, "").replace("/", "-")}-${version}.tgz`);
   })();
-  const mainTgz = args.mainTgz ?? packMainStaging(version, outDir, hostPkgName);
+  const mainTgz = args.mainTgz ? resolve(REPO_ROOT, args.mainTgz) : packMainStaging(version, outDir, hostPkgName);
 
   if (!existsSync(platformTgz)) throw new Error(`install-smoke: platform tarball missing: ${platformTgz}`);
   if (!existsSync(mainTgz)) throw new Error(`install-smoke: main tarball missing: ${mainTgz}`);
