@@ -34,15 +34,31 @@ export interface IWindowOptions {
   innerWidth?: number;
   /** Inner height (deprecated happy-dom alias); accepted for parity. */
   innerHeight?: number;
-  /** Browser-style settings (happy-dom parity): accepted and stored; only
-   * `enableJavaScriptEvaluation` governs `document.write` script evaluation. */
+  /** Console (happy-dom parity): used directly as `window.console` when
+   * given; otherwise the window logs into
+   * `window.happyDOM.virtualConsolePrinter`. */
+  console?: any;
+  /** Browser-style settings (happy-dom parity): merged into the window's
+   * `happyDOM.settings` (DefaultBrowserSettings shape); only
+   * `enableJavaScriptEvaluation` governs `document.write` script evaluation
+   * and `settings.navigator.userAgent` / `maxTouchPoints` feed
+   * `window.navigator`. Unknown keys throw like happy-dom. */
   settings?: IBrowserSettings;
 }
 
 /** The `window.happyDOM` detached-window API (T48 closure): the happy-dom
  * surface for test-driving a window from the outside. */
 export interface DetachedWindowAPI {
-  /** Resolves after the current microtask checkpoint (async work settles). */
+  /** The window's happy-dom browser settings (DefaultBrowserSettings merged
+   * with the constructor `settings` option; writable sections like
+   * `settings.navigation.userAgent` / `settings.navigator.userAgent` match
+   * happy-dom's observable behavior). */
+  settings: IBrowserSettings;
+  /** The window's virtual console printer (the default `window.console`
+   * writes into it; a browser page may repoint it at the page's printer). */
+  readonly virtualConsolePrinter: VirtualConsolePrinter;
+  /** Resolves once every registered pending task (window timers, external
+   * script loads, navigation promises) has settled. */
   waitUntilComplete(): Promise<void>;
   /** Deprecated alias of `waitUntilComplete`. */
   whenAsyncComplete(): Promise<void>;
@@ -52,6 +68,17 @@ export interface DetachedWindowAPI {
   cancelAsync(): Promise<void>;
   /** Aborts async work and closes the window. */
   close(): Promise<void>;
+  /** Sets the URL without navigating (simulated navigation). */
+  setURL(url: string): void;
+  /** Sets the viewport (`innerWidth` / `innerHeight` / `devicePixelRatio`
+   * follow; a size change dispatches `resize`). */
+  setViewport(viewport: { width?: number; height?: number; devicePixelRatio?: number }): void;
+  /** Deprecated alias of `setViewport`. */
+  setWindowSize(options?: { width?: number; height?: number }): void;
+  /** Deprecated alias of `setViewport({ width })`. */
+  setInnerWidth(width: number): void;
+  /** Deprecated alias of `setViewport({ height })`. */
+  setInnerHeight(height: number): void;
 }
 
 export declare class Window {
@@ -60,6 +87,16 @@ export declare class Window {
   readonly document: Document;
   /** The `window.happyDOM` detached-window API (T48): `waitUntilComplete()` etc. */
   readonly happyDOM: DetachedWindowAPI;
+  /** The window console (happy-dom parity): the constructor `console` option
+   * when given, otherwise a `VirtualConsole` writing into
+   * `window.happyDOM.virtualConsolePrinter`. */
+  readonly console: VirtualConsole;
+  /** WHATWG `window.open` (happy-dom `WindowPageOpenUtility` parity): opens a
+   * child page, navigates it (virtual-server-aware) and returns the child
+   * window — `null` with `noopener` / `noreferrer`, a cross-origin shim for a
+   * cross-origin target. The child navigation is covered by the opener's
+   * `happyDOM.waitUntilComplete()`. */
+  open(url?: string, target?: string, features?: string): Window | null;
   /** The WHATWG `Event` constructor (T37): `new window.Event("click", { bubbles: true })`. */
   readonly Event: typeof Event;
   /** The WHATWG `CustomEvent` constructor (T38). */
@@ -272,6 +309,72 @@ export declare class Window {
   close(): void;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
+}
+
+/**
+ * Browser window that runs scripts in the host global context (happy-dom
+ * `GlobalWindow` parity).
+ *
+ * Where the sandboxed `Window` evaluates scripts in a per-window `node:vm`
+ * context with its own intrinsics, `GlobalWindow` shadows `eval` with the host
+ * `eval` (script writes to `globalThis` land at process level) and mirrors the
+ * host intrinsics as instance members (`globalWindow.Array === global.Array`).
+ */
+export declare class GlobalWindow extends Window {
+  constructor(options?: IWindowOptions);
+  Array: typeof Array;
+  ArrayBuffer: typeof ArrayBuffer;
+  Boolean: typeof Boolean;
+  Buffer: typeof Buffer;
+  DataView: typeof DataView;
+  Date: typeof Date;
+  Error: typeof Error;
+  EvalError: typeof EvalError;
+  Float32Array: typeof Float32Array;
+  Float64Array: typeof Float64Array;
+  Function: typeof Function;
+  Infinity: typeof Infinity;
+  Int16Array: typeof Int16Array;
+  Int32Array: typeof Int32Array;
+  Int8Array: typeof Int8Array;
+  Intl: typeof Intl;
+  JSON: typeof JSON;
+  Map: MapConstructor;
+  Math: typeof Math;
+  NaN: typeof NaN;
+  Number: typeof Number;
+  Object: typeof Object;
+  Promise: typeof Promise;
+  RangeError: typeof RangeError;
+  ReferenceError: typeof ReferenceError;
+  RegExp: typeof RegExp;
+  Set: SetConstructor;
+  String: typeof String;
+  Symbol: Function;
+  SyntaxError: typeof SyntaxError;
+  TypeError: typeof TypeError;
+  URIError: typeof URIError;
+  Uint16Array: typeof Uint16Array;
+  Uint32Array: typeof Uint32Array;
+  Uint8Array: typeof Uint8Array;
+  Uint8ClampedArray: typeof Uint8ClampedArray;
+  WeakMap: WeakMapConstructor;
+  WeakSet: WeakSetConstructor;
+  decodeURI: typeof decodeURI;
+  decodeURIComponent: typeof decodeURIComponent;
+  encodeURI: typeof encodeURI;
+  encodeURIComponent: typeof encodeURIComponent;
+  eval: typeof eval;
+  /** @deprecated */
+  escape: (str: string) => string;
+  global: typeof globalThis;
+  isFinite: typeof isFinite;
+  isNaN: typeof isNaN;
+  parseFloat: typeof parseFloat;
+  parseInt: typeof parseInt;
+  undefined: typeof undefined;
+  /** @deprecated */
+  unescape: (str: string) => string;
 }
 
 // --- Event / EventTarget (T37, completed by T38) ------------------------------
@@ -1236,6 +1339,11 @@ export interface HTMLElement extends Element {
   contentEditable: string;
   /** WHATWG `HTMLElement.isContentEditable`: whether this element (or its nearest editable ancestor) is content-editable. */
   readonly isContentEditable: boolean;
+  /** WHATWG `HTMLElement.innerText` (happy-dom parity): the rendered text — a
+   * disconnected element reads its `textContent`, a connected one walks its
+   * children honoring computed `display` / `text-transform`; the setter
+   * rebuilds the children as text nodes separated by `<br>`. */
+  innerText: string;
   /** WHATWG `HTMLElement.dataset` (T39): a live `DOMStringMap` over the element's `data-*` attributes (camelCase keys ↔ kebab-case attribute names). */
   readonly dataset: DOMStringMap;
   /** WHATWG `HTMLStyleElement.sheet` (T44): the `CSSStyleSheet` parsed from this `<style>` element's `textContent` (re-parsed when the text changes), or `null` when the element is not a connected `<style>` element. */
@@ -1255,8 +1363,16 @@ export interface HTMLElement extends Element {
   readonly content: DocumentFragment;
   /** Serializes a template's contents (T40). */
   getInnerHTML(): string;
-  /** Serializes a template's contents (T40). */
-  getHTML(): string;
+  /** Serializes the element's children (happy-dom `Element.getHTML` parity,
+   * T40): honors the `serializableShadowRoots` / `shadowRoots` /
+   * `allShadowRoots` / `excludeShadowRootTags` options; a template serializes
+   * its content fragment. */
+  getHTML(options?: {
+    serializableShadowRoots?: boolean;
+    shadowRoots?: unknown[];
+    allShadowRoots?: boolean;
+    excludeShadowRootTags?: string[];
+  }): string;
   /** The control value (input/select/textarea/button/option, T40). */
   value: string;
   /** The control or form `name` (T40). */
@@ -2556,6 +2672,23 @@ export declare enum BrowserErrorCaptureEnum {
   disabled = "disabled"
 }
 
+/** `goto` / history-navigation options (happy-dom `IGoToOptions` shape). */
+export interface IGoToOptions {
+  referrer?: string;
+  referrerPolicy?: string;
+  hard?: boolean;
+  timeout?: number;
+  headers?: Record<string, string> | Headers;
+  beforeContentCallback?: (window: Window) => void;
+}
+
+/** `reload` options (happy-dom `IReloadOptions` shape). */
+export interface IReloadOptions {
+  hard?: boolean;
+  timeout?: number;
+  headers?: Record<string, string> | Headers;
+}
+
 /** Browser settings (happy-dom shape; accepted and stored). */
 export interface IBrowserSettings {
   disableJavaScriptEvaluation?: boolean;
@@ -2563,6 +2696,7 @@ export interface IBrowserSettings {
   disableJavaScriptFileLoading?: boolean;
   disableCSSFileLoading?: boolean;
   enableImageFileLoading?: boolean;
+  disableIframePageLoading?: boolean;
   disableComputedStyleRendering?: boolean;
   handleDisabledFileLoadingAsSuccess?: boolean;
   suppressCodeGenerationFromStringsWarning?: boolean;
@@ -2576,17 +2710,46 @@ export interface IBrowserSettings {
   fetch?: {
     disableSameOriginPolicy?: boolean;
     disableStrictSSL?: boolean;
+    interceptor?: any;
+    requestHeaders?: any;
+    virtualServers?: Array<{ url: string | RegExp; directory: string }>;
+  };
+  module?: {
+    resolveNodeModules?: any;
+    urlResolver?: any;
+    disableCache?: boolean;
   };
   disableErrorCapturing?: boolean;
   errorCapture?: BrowserErrorCaptureEnum;
+  enableFileSystemHttpRequests?: boolean;
   navigation?: {
     disableMainFrameNavigation?: boolean;
     disableChildFrameNavigation?: boolean;
     disableChildPageNavigation?: boolean;
     disableFallbackToSetURL?: boolean;
     crossOriginPolicy?: string;
+    beforeContentCallback?: any;
+    /** Writable happy-dom parity slot; `window.navigator.userAgent` reads
+     * `navigator.userAgent` below, not this field (baseline behavior). */
+    userAgent?: string;
   };
-  viewport?: { width?: number; height?: number };
+  navigator?: {
+    /** Feeds `window.navigator.userAgent` (default embeds HappyDOM/20.11.11). */
+    userAgent?: string;
+    /** Feeds `window.navigator.maxTouchPoints` (default 0). */
+    maxTouchPoints?: number;
+  };
+  device?: {
+    prefersColorScheme?: string;
+    prefersReducedMotion?: string;
+    mediaType?: string;
+    forcedColors?: string;
+  };
+  debug?: {
+    traceWaitUntilComplete?: number;
+  };
+  viewport?: { width?: number; height?: number; devicePixelRatio?: number };
+  canvasAdapter?: any;
 }
 
 /** A virtual console log level (happy-dom parity). */
@@ -2597,22 +2760,141 @@ export declare enum VirtualConsoleLogLevelEnum {
   error = 3
 }
 
+/** A virtual console log type (happy-dom parity): the `type` of an
+ * `IVirtualConsoleLogEntry`. Exported like the baseline does. */
+export declare enum VirtualConsoleLogTypeEnum {
+  log = "log",
+  table = "table",
+  trace = "trace",
+  dir = "dir",
+  dirxml = "dirxml",
+  group = "group",
+  groupCollapsed = "groupCollapsed",
+  debug = "debug",
+  timeLog = "timeLog",
+  info = "info",
+  count = "count",
+  timeEnd = "timeEnd",
+  warn = "warn",
+  countReset = "countReset",
+  error = "error",
+  assert = "assert"
+}
+
+/** A virtual console log group (happy-dom `IVirtualConsoleLogGroup` shape). */
+export interface IVirtualConsoleLogGroup {
+  id: number;
+  label: string;
+  collapsed: boolean;
+  parent: IVirtualConsoleLogGroup | null;
+}
+
+/** A virtual console log entry (happy-dom `IVirtualConsoleLogEntry` shape;
+ * the browser error path also prints plain-string messages). */
+export interface IVirtualConsoleLogEntry {
+  type?: VirtualConsoleLogTypeEnum | string;
+  level: VirtualConsoleLogLevelEnum | number;
+  message: any[] | string;
+  group?: IVirtualConsoleLogGroup | null;
+  time?: number;
+}
+
 /** The page's virtual console printer: a buffer of log entries with the
  * `print` / `clear` event surface and `read` / `readAsString` consumers. */
 export declare class VirtualConsolePrinter {
   readonly closed: boolean;
-  print(logEntry: { level: number; message: string }): void;
+  print(logEntry: IVirtualConsoleLogEntry): void;
   clear(): void;
   close(): void;
   addEventListener(eventType: "print" | "clear", listener: (event: Event) => void): void;
   removeEventListener(eventType: "print" | "clear", listener: (event: Event) => void): void;
   dispatchEvent(event: { type: "print" | "clear" }): void;
-  read(): Array<{ level: number; message: string }>;
+  read(): IVirtualConsoleLogEntry[];
   readAsString(logLevel?: VirtualConsoleLogLevelEnum): string;
 }
 
+/** The window's virtual console (happy-dom `VirtualConsole` parity): every
+ * console method writes one log entry into the printer. Exported like the
+ * baseline does; `Window.console` reads it. */
+export declare class VirtualConsole {
+  constructor(printer: VirtualConsolePrinter | (() => VirtualConsolePrinter));
+  assert(assertion?: any, message?: any, ...args: any[]): void;
+  clear(): void;
+  count(label?: string): void;
+  countReset(label?: string): void;
+  debug(message?: any, ...args: any[]): void;
+  dir(data?: any): void;
+  dirxml(data?: any): void;
+  error(message?: any, ...args: any[]): void;
+  exception(...args: any[]): void;
+  group(label?: string): void;
+  groupCollapsed(label?: string): void;
+  groupEnd(): void;
+  info(message?: any, ...args: any[]): void;
+  log(message?: any, ...args: any[]): void;
+  profile(): void;
+  profileEnd(): void;
+  table(data?: any): void;
+  time(label?: string): void;
+  timeEnd(label?: string): void;
+  timeLog(label?: string, ...args: any[]): void;
+  timeStamp(): void;
+  trace(message?: any, ...args: any[]): void;
+  warn(message?: any, ...args: any[]): void;
+}
+
+/** A cookie `SameSite` attribute value (happy-dom parity). */
+export declare enum CookieSameSiteEnum {
+  strict = "Strict",
+  lax = "Lax",
+  none = "None"
+}
+
+/** A cookie (happy-dom `ICookie` shape). */
+export interface ICookie {
+  key: string;
+  originURL: string | URL;
+  value: string | null;
+  domain: string;
+  path: string;
+  expires: Date | null;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: CookieSameSiteEnum;
+}
+
+/** A cookie to add, with every field but `key` / `originURL` optional
+ * (happy-dom `IOptionalCookie` shape; the container merges its own defaults). */
+export interface IOptionalCookie {
+  key: string;
+  originURL: string | URL;
+  value?: string | null;
+  domain?: string;
+  path?: string;
+  expires?: Date | null;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: CookieSameSiteEnum;
+}
+
+/** The `addCookies` rollup (happy-dom `ICookieContainerChangedCookies`). */
+export interface ICookieContainerChangedCookies {
+  changed: ICookie[];
+  deleted: ICookie[];
+}
+
+/** The cookie store a `BrowserContext` carries (happy-dom `CookieContainer`
+ * parity): `addCookies` replaces cookies by key/origin/path/value-type,
+ * `getCookies(url, clientSide)` filters expired / `httpOnly` (when
+ * `clientSide`) / non-matching cookies, `clearCookies` empties the store. */
+export declare class CookieContainer {
+  addCookies(cookies: IOptionalCookie[]): ICookieContainerChangedCookies;
+  getCookies(url?: string | URL | null, clientSide?: boolean): ICookie[];
+  clearCookies(): void;
+}
+
 /** The top-level frame of a browser page: owns the Window facade and performs
- * server-side navigation (`goto`). */
+ * server-side navigation (`goto`) with session history. */
 export declare class BrowserFrame {
   readonly page: BrowserPage;
   readonly window: Window;
@@ -2622,12 +2904,16 @@ export declare class BrowserFrame {
   readonly closed: boolean;
   url: string;
   content: string;
-  goto(url: string): Promise<Response | null>;
+  goto(url: string, options?: IGoToOptions): Promise<Response | null>;
+  goBack(options?: IGoToOptions): Promise<Response | null>;
+  goForward(options?: IGoToOptions): Promise<Response | null>;
+  goSteps(steps: number, options?: IGoToOptions): Promise<Response | null>;
+  reload(options?: IReloadOptions): Promise<Response | null>;
   waitUntilComplete(): Promise<void>;
   waitForNavigation(): Promise<void>;
   abort(): Promise<void>;
   close(): Promise<void>;
-  evaluate(script: string): any;
+  evaluate(script: string | { runInContext(context: unknown): unknown }): any;
 }
 
 /** A browser page (tab) with exactly one main frame. */
@@ -2636,24 +2922,31 @@ export declare class BrowserPage {
   readonly mainFrame: BrowserFrame;
   readonly frames: BrowserFrame[];
   readonly context: BrowserContext;
-  readonly viewport: { width: number; height: number };
+  readonly viewport: { width: number; height: number; devicePixelRatio: number };
   readonly closed: boolean;
   url: string;
   content: string;
-  goto(url: string): Promise<Response | null>;
+  goto(url: string, options?: IGoToOptions): Promise<Response | null>;
+  goBack(options?: IGoToOptions): Promise<Response | null>;
+  goForward(options?: IGoToOptions): Promise<Response | null>;
+  goSteps(steps: number, options?: IGoToOptions): Promise<Response | null>;
+  reload(options?: IReloadOptions): Promise<Response | null>;
   waitUntilComplete(): Promise<void>;
   waitForNavigation(): Promise<void>;
   abort(): Promise<void>;
   close(): Promise<void>;
-  evaluate(script: string): any;
-  setViewport(viewport: { width?: number; height?: number }): void;
+  evaluate(script: string | { runInContext(context: unknown): unknown }): any;
+  setViewport(viewport: { width?: number; height?: number; devicePixelRatio?: number }): void;
 }
 
-/** A browser context: the page list and lifecycle of one context. */
+/** A browser context: the page list, the cookie container and the lifecycle
+ * of one context. */
 export declare class BrowserContext {
   readonly pages: BrowserPage[];
   readonly browser: Browser;
   readonly closed: boolean;
+  /** The context's cookie store (happy-dom parity; cleared by `close`). */
+  readonly cookieContainer: CookieContainer;
   newPage(): BrowserPage;
   close(): Promise<void>;
   waitUntilComplete(): Promise<void>;

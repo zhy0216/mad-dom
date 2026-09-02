@@ -159,6 +159,8 @@ const ctx = Object.freeze({
   registerWrap,
   windowFacadeOfDocument,
   windowSettings,
+  windowOptions,
+  setWindowViewport,
 });
 
 // --- `Window` facade -------------------------------------------------------
@@ -191,6 +193,14 @@ const WINDOW_VIEWPORTS = new WeakMap();
 // window is created through a browser frame.
 const WINDOW_SETTINGS = new WeakMap();
 
+// The raw happy-dom constructor options object per window (`new Window(options)`
+// hands a plain object literal; the native-handle path keeps an empty object).
+// Extension surfaces resolve their constructor-time inputs lazily through
+// `ctx.windowOptions` — the `console` option (window-platform.js) and the
+// `settings` merged into `window.happyDOM.settings` live here, so the facade
+// classes never re-read the options object themselves.
+const WINDOW_OPTIONS = new WeakMap();
+
 function computeWindowSettings(options) {
   const given = options?.settings ?? {};
   return {
@@ -201,6 +211,12 @@ function computeWindowSettings(options) {
       forcedColors: given.device?.forcedColors ?? "none",
     },
     disableComputedStyleRendering: given.disableComputedStyleRendering ?? false,
+    // The fetch settings a detached window carries for the browser surface: a
+    // `window.open` child navigation resolves its virtual servers against the
+    // opening window's settings (happy-dom WindowPageOpenUtility parity).
+    fetch: {
+      virtualServers: given.fetch?.virtualServers ?? null,
+    },
   };
 }
 
@@ -211,6 +227,14 @@ function computeWindowSettings(options) {
 // is pinned by the T22B export test.
 function windowSettings(windowFacade) {
   return WINDOW_SETTINGS.get(windowFacade) ?? computeWindowSettings({});
+}
+
+// Per-window constructor options accessor exposed through the facade `ctx` for
+// the extension installers (the `console` / `settings` options). Returns the
+// exact options object the window was constructed with, or an empty object for
+// the native-handle construction path.
+function windowOptions(windowFacade) {
+  return WINDOW_OPTIONS.get(windowFacade) ?? {};
 }
 
 function computeViewport(options) {
@@ -275,6 +299,7 @@ export class Window {
       );
     }
     WIN_HANDLES.set(this, nativeHandle);
+    WINDOW_OPTIONS.set(this, options ?? {});
     WINDOW_VIEWPORTS.set(this, computeViewport(options));
     WINDOW_SETTINGS.set(this, computeWindowSettings(options));
     // happy-dom constructor options: honor `url` by simulating the initial
@@ -302,6 +327,22 @@ defineAccessor(Window.prototype, "document", function getDocument() {
 function windowViewport(windowFacade) {
   const viewport = WINDOW_VIEWPORTS.get(windowFacade);
   return viewport ?? { width: 1024, height: 768, devicePixelRatio: 1 };
+}
+
+// Updates the per-window viewport state in place (happy-dom
+// `BrowserPage.setViewport` parity: `Object.assign(this.viewport, viewport)`).
+// The viewport dimensions, the device pixel ratio and every media-query
+// evaluation read through `windowViewport`, so a single in-place mutation keeps
+// the whole window surface consistent. Exposed through the facade `ctx` for
+// the `window.happyDOM` detached-window API (window-platform.js); the public
+// `window.js` export shape is pinned by the T22B export test.
+function setWindowViewport(windowFacade, viewport) {
+  let current = WINDOW_VIEWPORTS.get(windowFacade);
+  if (current === undefined) {
+    current = { width: 1024, height: 768, devicePixelRatio: 1 };
+    WINDOW_VIEWPORTS.set(windowFacade, current);
+  }
+  Object.assign(current, viewport);
 }
 
 defineAccessor(Window.prototype, "innerWidth", function innerWidth() {

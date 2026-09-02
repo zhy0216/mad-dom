@@ -104,6 +104,12 @@ function ensureAsyncState(windowFacade) {
       intervals: new Set(),
       rafs: new Set(),
       listeners: new Map(),
+      // Timer id → resolver of the promise registered with
+      // `window.happyDOM.registerPending` for that timer. `waitUntilComplete`
+      // drains those promises, so a timer keeps the window "busy" until it
+      // fires or is cancelled (happy-dom AsyncTaskManager start/endTimer
+      // parity).
+      pendingResolvers: new Map(),
       finalized: false,
     };
     WINDOW_ASYNC.set(docHandle, state);
@@ -125,10 +131,43 @@ const windowCleanup = new FinalizationRegistry((state) => {
   for (const id of state.timeouts) globalThis.clearTimeout(id);
   for (const id of state.intervals) globalThis.clearInterval(id);
   for (const id of state.rafs) globalThis.clearImmediate(id);
+  for (const resolvePending of state.pendingResolvers.values()) resolvePending();
   state.timeouts.clear();
   state.intervals.clear();
   state.rafs.clear();
+  state.pendingResolvers.clear();
 });
+
+// Registers a timer's completion promise with the owning window's
+// `happyDOM.waitUntilComplete` drain loop (the non-enumerable `registerPending`
+// seam). Defensive: a window facade without the happyDOM surface (the
+// structural mock-ctx re-install path) simply schedules without tracking.
+function registerPendingOnWindow(windowFacade, promise) {
+  const happyDOM = windowFacade.happyDOM;
+  if (happyDOM !== null && happyDOM !== undefined && typeof happyDOM.registerPending === "function") {
+    happyDOM.registerPending(promise);
+  }
+}
+
+// Mints the promise a scheduled timer registers with `waitUntilComplete` and
+// records its resolver so firing / cancellation settles it.
+function trackPending(state, id) {
+  let resolvePending;
+  const pending = new Promise((resolve) => {
+    resolvePending = resolve;
+  });
+  state.pendingResolvers.set(id, resolvePending);
+  return pending;
+}
+
+// Settles and drops the pending promise of a timer that fired or was cancelled.
+function settlePending(state, id) {
+  const resolvePending = state.pendingResolvers.get(id);
+  if (resolvePending !== undefined) {
+    state.pendingResolvers.delete(id);
+    resolvePending();
+  }
+}
 
 // --- error propagation -------------------------------------------------------
 
@@ -205,11 +244,16 @@ function scheduleTimeout(windowFacade, callback, delay, args) {
   const windowRef = new WeakRef(windowFacade);
   const id = globalThis.setTimeout(() => {
     state.timeouts.delete(id);
+    // Settle before the callback so a synchronously rescheduling callback can
+    // register fresh pending work before the drain loop's next iteration reads
+    // the pending queue.
+    settlePending(state, id);
     const current = windowRef.deref();
     if (current === undefined) return;
     invokeWrapped(current, callback, args);
   }, delay);
   state.timeouts.add(id);
+  registerPendingOnWindow(windowFacade, trackPending(state, id));
   return id;
 }
 
@@ -222,6 +266,7 @@ function scheduleInterval(windowFacade, callback, delay, args) {
     if (current === undefined) {
       globalThis.clearInterval(id);
       state.intervals.delete(id);
+      settlePending(state, id);
       return;
     }
     let result;
@@ -230,6 +275,7 @@ function scheduleInterval(windowFacade, callback, delay, args) {
     } catch (error) {
       globalThis.clearInterval(id);
       state.intervals.delete(id);
+      settlePending(state, id);
       dispatchWindowError(current, error);
       return;
     }
@@ -237,11 +283,16 @@ function scheduleInterval(windowFacade, callback, delay, args) {
       result.catch((error) => {
         globalThis.clearInterval(id);
         state.intervals.delete(id);
+        settlePending(state, id);
         dispatchWindowError(current, error);
       });
     }
   }, delay);
   state.intervals.add(id);
+  // An interval stays pending until it is cleared (happy-dom keeps a running
+  // interval as an active async task, so `waitUntilComplete` does not resolve
+  // while it runs — the documented "may get stuck" behavior).
+  registerPendingOnWindow(windowFacade, trackPending(state, id));
   return id;
 }
 
@@ -251,11 +302,13 @@ function scheduleAnimationFrame(windowFacade, callback) {
   let id;
   id = globalThis.setImmediate(() => {
     state.rafs.delete(id);
+    settlePending(state, id);
     const current = windowRef.deref();
     if (current === undefined) return;
     invokeWrapped(current, callback, [globalThis.performance.now()]);
   });
   state.rafs.add(id);
+  registerPendingOnWindow(windowFacade, trackPending(state, id));
   return id;
 }
 
@@ -312,6 +365,29 @@ function contextGlobalDescriptor(windowFacade, name, descriptor) {
     enumerable: true,
     configurable: true,
   };
+}
+
+/**
+ * The per-window `node:vm` eval entry, minted on first use (T47 export, used
+ * by the Browser facade's `BrowserFrame.evaluate` to run a pre-compiled
+ * `node:vm` `Script` against the frame window's own script context — the
+ * happy-dom `script.runInContext(frame.window)` parity). Returns the entry's
+ * `evaluate` (string evaluator), `context` (the `node:vm` context object) and
+ * `contextError` (that context's own `Error` intrinsic).
+ */
+export function ensureWindowEval(windowFacade) {
+  const docHandle = ctx.documentContext.handleOf(windowFacade.document);
+  let entry = WINDOW_EVAL.get(docHandle);
+  if (entry === undefined) {
+    const built = createWindowEval(windowFacade);
+    entry = {
+      evaluate: built.evaluate,
+      context: built.context,
+      contextError: runInContext("Error", built.context),
+    };
+    WINDOW_EVAL.set(docHandle, entry);
+  }
+  return entry;
 }
 
 function createWindowEval(windowFacade) {
@@ -371,6 +447,7 @@ export function install(extensionCtx) {
     const docHandle = ctx.documentContext.handleOf(this.document);
     const state = WINDOW_ASYNC.get(docHandle);
     state?.timeouts.delete(id);
+    if (state !== undefined) settlePending(state, id);
     globalThis.clearTimeout(id);
   });
 
@@ -382,6 +459,7 @@ export function install(extensionCtx) {
     const docHandle = ctx.documentContext.handleOf(this.document);
     const state = WINDOW_ASYNC.get(docHandle);
     state?.intervals.delete(id);
+    if (state !== undefined) settlePending(state, id);
     globalThis.clearInterval(id);
   });
 
@@ -393,6 +471,7 @@ export function install(extensionCtx) {
     const docHandle = ctx.documentContext.handleOf(this.document);
     const state = WINDOW_ASYNC.get(docHandle);
     state?.rafs.delete(id);
+    if (state !== undefined) settlePending(state, id);
     globalThis.clearImmediate(id);
   });
 
@@ -407,14 +486,7 @@ export function install(extensionCtx) {
 
   // Script evaluation with the owning window's surface as globals.
   const evalMethod = { ["eval"](code) {
-    const docHandle = ctx.documentContext.handleOf(this.document);
-    let entry = WINDOW_EVAL.get(docHandle);
-    if (entry === undefined) {
-      const built = createWindowEval(this);
-      entry = { evaluate: built.evaluate, context: built.context, contextError: runInContext("Error", built.context) };
-      WINDOW_EVAL.set(docHandle, entry);
-    }
-    return entry.evaluate(code);
+    return ensureWindowEval(this).evaluate(code);
   } }.eval;
   installCtx.defineMethod(Window.prototype, "eval", evalMethod);
 
@@ -462,8 +534,14 @@ export function install(extensionCtx) {
     if (state === undefined) return true;
     const entries = state.listeners.get(event.type);
     if (entries === undefined || entries.length === 0) return true;
-    event.target = this;
-    event.currentTarget = this;
+    try {
+      event.target = this;
+      event.currentTarget = this;
+    } catch {
+      // Event facade instances expose read-only `target` / `currentTarget`
+      // (native-backed accessors); the listeners still fire, and the event
+      // keeps its construction-time target shape.
+    }
     for (const entry of [...entries]) {
       if (entry.once) {
         const index = entries.indexOf(entry);

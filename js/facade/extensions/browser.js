@@ -6,7 +6,8 @@
 //   - `BrowserErrorCaptureEnum` — the error-capture policy values;
 //   - `Browser` — settings, a default context, `newPage()` and the lifecycle
 //     (`close` / `waitUntilComplete` / `abort`);
-//   - `BrowserContext` — the page list of a browser context;
+//   - `BrowserContext` — the page list and the cookie container of a browser
+//     context;
 //   - `BrowserPage` — a tab: `mainFrame`, the `virtualConsolePrinter`, `goto`
 //     and the navigation wait surface (`waitUntilComplete` /
 //     `waitForNavigation`);
@@ -27,6 +28,32 @@
 // settings parity and only governs `document.write` script evaluation through
 // the existing T47 window `eval` surface.
 //
+// # Session history (happy-dom BrowserFrameNavigator parity)
+//
+// Every frame owns a `HistoryItemList` seeded with the `about:blank` entry,
+// exactly like happy-dom's frame history: `goto` pushes an entry, `goBack` /
+// `goForward` / `goSteps` move the current item and — unless the target entry
+// is a same-origin pop-state entry — re-navigate (re-fetch) to its URL with
+// history recording disabled; `reload` re-navigates the current entry. On a
+// fresh page (empty history beyond the `about:blank` seed) all four resolve
+// without throwing: back / forward / steps resolve `null` after one animation
+// frame (and flush the navigation waiters), `reload` re-navigates the
+// `about:blank` entry, which writes an empty document and resolves `null`
+// without touching the network. `about:` targets never fetch — the document
+// resets to the empty skeleton; `javascript:` targets are a no-op (no script
+// evaluation on navigation).
+//
+// # Virtual servers (happy-dom VirtualServerUtility parity)
+//
+// A browser whose `settings.fetch.virtualServers` lists `{ url, directory }`
+// entries serves matching navigations from the local filesystem instead of
+// the network: a string `url` matches by prefix, a `RegExp` by match; the
+// remainder of the request URL maps under `directory` (`/` resolves to
+// `index.html`, a directory path appends `index.html`), and a missing file
+// answers happy-dom's 404 page. `window.open` on a detached window carries
+// the window's own virtual-server settings into the ad-hoc browser minted for
+// the child page, so the child navigation resolves the same way.
+//
 // # Error capture (`errorCapture: processLevel`)
 //
 // Like happy-dom's `BrowserExceptionObserver`, a browser with process-level
@@ -44,19 +71,37 @@
 //
 // # Boundaries
 //
-//   - No iframes / child frames / popups: every page has exactly one frame.
+//   - No iframes / child frames: every page has exactly one frame. Popups
+//     (`window.open`) create a sibling page in the same context (or an ad-hoc
+//     browser for a detached window) and return the child window —
+//     cross-origin opens return a `CrossOriginBrowserWindow` shim.
 //   - No script evaluation on navigation, no subresource loading, no viewport
-//     rendering, no cookie/response caches, no `evaluateModule`.
-//   - The `timer` / `fetch` / `module` / `device` settings are accepted and
-//     stored for shape parity but do not alter behavior.
+//     rendering (the viewport dimensions are propagated to the frame window
+//     for `innerWidth` / `innerHeight` / `devicePixelRatio` reads), no
+//     response caches, no `evaluateModule`. Every context carries a cookie
+//     container (`cookieContainer`, happy-dom shape) for the cookie store
+//     surface; navigation and fetch do not read or write it.
+//   - The `timer` / `fetch` (except `virtualServers`) / `module` / `device`
+//     settings are accepted and stored for shape parity but do not alter
+//     behavior.
 //
 // The module is picked up by the facade registry (extensions/index.js) purely
 // by exporting `install(ctx)`.
 
+import { promises as FS } from "node:fs";
+import { join as pathJoin, resolve as pathResolve, sep as pathSep } from "node:path";
+
+import { CookieContainer } from "./cookie.js";
 import { HTMLAnchorElement } from "./html-element.js";
-import { MouseEvent } from "./events.js";
-import { dispatchWindowError, evalContextOf } from "./timers.js";
+import { Event, MouseEvent } from "./events.js";
+import { dispatchWindowError, ensureWindowEval, evalContextOf } from "./timers.js";
+import { VirtualConsoleLogLevelEnum, VirtualConsolePrinter } from "./virtual-console.js";
 import { Window } from "../window.js";
+
+// The virtual console surface is shared with the Window side
+// (js/facade/extensions/virtual-console.js); re-exported here so the package
+// entry keeps its existing import path and class identity.
+export { VirtualConsoleLogLevelEnum, VirtualConsolePrinter };
 
 export const seam = Object.freeze({
   id: "facade/extensions/browser",
@@ -83,159 +128,6 @@ export const BrowserErrorCaptureEnum = Object.freeze({
   /** Error capturing is disabled. */
   disabled: "disabled",
 });
-
-// --- VirtualConsoleLogLevelEnum / VirtualConsolePrinter -----------------------
-
-export const VirtualConsoleLogLevelEnum = Object.freeze({
-  log: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-});
-
-/**
- * The page's virtual console printer (happy-dom parity): a growing buffer of
- * log entries with the `print` / `clear` event surface and `read` /
- * `readAsString` consumers.
- */
-export class VirtualConsolePrinter {
-  #logEntries = [];
-  #listeners = { print: [], clear: [] };
-  #closed = false;
-
-  get closed() {
-    return this.#closed;
-  }
-
-  print(logEntry) {
-    if (this.#closed) return;
-    this.#logEntries.push(logEntry);
-    this.#dispatch({ type: "print" });
-  }
-
-  clear() {
-    if (this.#closed) return;
-    this.#logEntries = [];
-    this.#dispatch({ type: "clear" });
-  }
-
-  close() {
-    if (this.#closed) return;
-    this.#logEntries = [];
-    this.#listeners = { print: [], clear: [] };
-    this.#closed = true;
-  }
-
-  addEventListener(eventType, listener) {
-    if (this.#closed) return;
-    if (!this.#listeners[eventType]) {
-      throw new Error(`Event type "${eventType}" is not supported.`);
-    }
-    this.#listeners[eventType].push(listener);
-  }
-
-  removeEventListener(eventType, listener) {
-    if (this.#closed) return;
-    if (!this.#listeners[eventType]) {
-      throw new Error(`Event type "${eventType}" is not supported.`);
-    }
-    const index = this.#listeners[eventType].indexOf(listener);
-    if (index !== -1) {
-      this.#listeners[eventType].splice(index, 1);
-    }
-  }
-
-  dispatchEvent(event) {
-    if (this.#closed) return;
-    if (event.type !== "print" && event.type !== "clear") {
-      throw new Error(`Event type "${event.type}" is not supported.`);
-    }
-    this.#dispatch(event);
-  }
-
-  #dispatch(event) {
-    for (const listener of this.#listeners[event.type]) {
-      listener(event);
-    }
-  }
-
-  read() {
-    const logEntries = this.#logEntries;
-    this.#logEntries = [];
-    return logEntries;
-  }
-
-  readAsString(logLevel = VirtualConsoleLogLevelEnum.log) {
-    const logEntries = this.read();
-    let output = "";
-    for (const logEntry of logEntries) {
-      if (logEntry.level >= logLevel) {
-        output += stringifyLogEntry(logEntry);
-      }
-    }
-    return output;
-  }
-}
-
-const LOG_TYPE_ICON = {
-  group: "▼ ",
-  groupCollapsed: "▶ ",
-};
-
-function isLogEntryCollapsed(logEntry) {
-  let group =
-    logEntry.type === "group" || logEntry.type === "groupCollapsed"
-      ? logEntry.group?.parent
-      : logEntry.group;
-  while (group) {
-    if (group.collapsed) return true;
-    group = group.parent;
-  }
-  return false;
-}
-
-function logEntryGroupTabbing(logEntry) {
-  let tabs = "";
-  let group =
-    logEntry.type === "group" || logEntry.type === "groupCollapsed"
-      ? logEntry.group?.parent
-      : logEntry.group;
-  while (group) {
-    tabs += "  ";
-    group = group.parent;
-  }
-  return tabs;
-}
-
-/**
- * happy-dom `VirtualConsoleLogEntryStringifier.toString` parity: groups are
- * indented, plain objects / arrays JSON-stringified, `Error`-like parts keep
- * their stack, collapsed groups are skipped, and `group` / `groupCollapsed`
- * entries get the icon prefix. String messages (the browser error path) are
- * passed through verbatim.
- */
-function stringifyLogEntry(logEntry) {
-  if (typeof logEntry.message === "string") return logEntry.message;
-  if (isLogEntryCollapsed(logEntry)) return "";
-  const tabbing = logEntryGroupTabbing(logEntry);
-  let output = tabbing;
-  for (const part of logEntry.message) {
-    output += output !== "" && output !== tabbing ? " " : "";
-    if (typeof part === "object" && (part === null || part.constructor.name === "Object" || Array.isArray(part))) {
-      try {
-        output += JSON.stringify(part);
-      } catch {
-        output += new Error("Failed to JSON stringify object in log entry.")
-          .stack.replace(/\n    at/gm, "\n    " + tabbing + "at");
-      }
-    } else if (typeof part === "object" && part["message"] && part["stack"]) {
-      output += part["stack"].replace(/\n    at/gm, "\n    " + tabbing + "at");
-    } else {
-      output += (LOG_TYPE_ICON[logEntry.type] ?? "") + String(part);
-    }
-  }
-  return output + "\n";
-}
 
 // --- BrowserExceptionObserver -------------------------------------------------
 
@@ -295,23 +187,7 @@ class BrowserExceptionObserver {
   }
 }
 
-// --- HTML title extraction ----------------------------------------------------
-
-const TITLE_PATTERN = /<title[^>]*>([\s\S]*?)<\/title>/i;
-
-const HTML_ENTITIES = {
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&apos;": "'",
-  "&#39;": "'",
-  "&nbsp;": " ",
-};
-
-function decodeEntities(text) {
-  return text.replace(/&(?:amp|lt|gt|quot|apos|#39|nbsp);/g, (match) => HTML_ENTITIES[match]);
-}
+// --- virtual console error formatting ----------------------------------------
 
 // The console entry a dispatched window error is printed as. The vendored
 // observer test pins the happy-dom VM stack prefix, so the entry carries the
@@ -350,11 +226,146 @@ function frameOfNode(node) {
   return undefined;
 }
 
+// Window facade → the BrowserFrame owning that window (the `window.open`
+// lookup). A detached window (no browser page) has no entry, so `open` on it
+// mints an ad-hoc browser for the child page.
+const WINDOW_TO_FRAME = new WeakMap();
+
+// --- session history (mirrors happy-dom HistoryItemList) ---------------------
+
+/**
+ * The frame session history (happy-dom `HistoryItemList` parity): an item
+ * list seeded with the `about:blank` entry; `push` truncates any forward
+ * branch before appending, `replace` swaps the current item in place.
+ */
+class HistoryItemList {
+  constructor() {
+    this.currentItem = {
+      title: "",
+      href: "about:blank",
+      state: null,
+      popState: false,
+      scrollRestoration: "auto",
+      method: "GET",
+      formData: null,
+    };
+    this.items = [this.currentItem];
+  }
+
+  push(historyItem) {
+    const index = this.items.indexOf(this.currentItem);
+    // If the current item is not the last one, remove all items after it.
+    if (index !== this.items.length - 1) {
+      this.items.length = index + 1;
+    }
+    this.items.push(historyItem);
+    this.currentItem = historyItem;
+  }
+
+  replace(historyItem) {
+    const index = this.items.indexOf(this.currentItem);
+    if (index !== this.items.length - 1) {
+      this.items.length = index + 1;
+    }
+    if (index === -1) {
+      throw new Error("Current history item not found");
+    }
+    this.currentItem = historyItem;
+    this.items[index] = historyItem;
+  }
+}
+
+// --- relative URL resolution (mirrors happy-dom BrowserFrameURL) -------------
+
+function resolveFrameURL(currentHref, url) {
+  url = url ? String(url) : "about:blank";
+  if (url.startsWith("about:") || url.startsWith("javascript:")) {
+    return new URL(url);
+  }
+  try {
+    return new URL(url, currentHref);
+  } catch {
+    return new URL("about:blank");
+  }
+}
+
+// --- virtual servers (mirrors happy-dom VirtualServerUtility) -----------------
+
+// The happy-dom virtual-server 404 page (byte-identical `NOT_FOUND_HTML`).
+const VIRTUAL_SERVER_NOT_FOUND_HTML =
+  '<html><head><title>Happy DOM Virtual Server - 404 Not Found</title></head><body><h1>Happy DOM Virtual Server - 404 Not Found</h1></body></html>';
+
+// The filesystem path a request URL maps to under a matching virtual server
+// (happy-dom `VirtualServerUtility.getFilepath` parity): a string `url`
+// matches by prefix (trailing slash stripped), a `RegExp` by match; the
+// remainder of the request URL — query / fragment stripped — is joined under
+// the resolved directory.
+function virtualServerFilepath(virtualServers, requestURL, locationOrigin) {
+  for (const virtualServer of virtualServers) {
+    let baseURL = null;
+    if (typeof virtualServer.url === "string") {
+      const url = new URL(
+        virtualServer.url[virtualServer.url.length - 1] === "/"
+          ? virtualServer.url.slice(0, -1)
+          : virtualServer.url,
+        locationOrigin !== "null" ? locationOrigin : undefined,
+      );
+      if (requestURL.startsWith(url.href)) {
+        baseURL = url;
+      }
+    } else if (virtualServer.url instanceof RegExp) {
+      const match = requestURL.match(virtualServer.url);
+      if (match) {
+        // Bun validates the base even for an absolute input (Node ignores it),
+        // so an `about:blank` origin ("null") is dropped like in the string
+        // case above.
+        baseURL = new URL(
+          match[0][match[0].length - 1] === "/" ? match[0].slice(0, -1) : match[0],
+          locationOrigin !== "null" ? locationOrigin : undefined,
+        );
+      }
+    }
+    if (baseURL !== null) {
+      const path = requestURL.slice(baseURL.href.length).split("?")[0].split("#")[0];
+      return pathJoin(pathResolve(virtualServer.directory), path.replaceAll("/", pathSep));
+    }
+  }
+  return null;
+}
+
+// The `Response` a virtual-server request resolves to (happy-dom
+// `Fetch.getVirtualServerResponse` parity): a directory serves its
+// `index.html`, a missing file serves the 404 page, and `url` is always the
+// request URL. Returns `null` when no virtual server matches.
+async function virtualServerResponse(virtualServers, requestURL, locationOrigin) {
+  if (!virtualServers) return null;
+  const filePath = virtualServerFilepath(virtualServers, requestURL, locationOrigin);
+  if (filePath === null) return null;
+  let buffer;
+  try {
+    const stat = await FS.stat(filePath);
+    const resolvedPath = stat.isDirectory() ? pathJoin(filePath, "index.html") : filePath;
+    buffer = await FS.readFile(resolvedPath);
+  } catch {
+    const notFound = new Response(VIRTUAL_SERVER_NOT_FOUND_HTML, {
+      status: 404,
+      statusText: "Not Found",
+      headers: { "Content-Type": "text/html" },
+    });
+    Object.defineProperty(notFound, "url", { value: requestURL, enumerable: true });
+    return notFound;
+  }
+  const response = new Response(buffer);
+  Object.defineProperty(response, "url", { value: requestURL, enumerable: true });
+  return response;
+}
+
 // --- BrowserFrame -------------------------------------------------------------
 
 /**
  * The top-level frame of a browser page (happy-dom `BrowserFrame` surface):
- * owns a full `Window` facade and performs server-side navigation.
+ * owns a full `Window` facade and performs server-side navigation with
+ * session history (`goto` / `goBack` / `goForward` / `goSteps` / `reload`).
  */
 export class BrowserFrame {
   #page = null;
@@ -365,20 +376,32 @@ export class BrowserFrame {
   #navCompletionResolve = null;
   #navCompletionPromise = null;
   #navWaiters = [];
+  #history = new HistoryItemList();
+  #openerFrame = null;
 
   constructor(page) {
     this.#page = page;
     this.#window = new Window();
+    WINDOW_TO_FRAME.set(this.#window, this);
     // Register the stable per-document node handles for the anchor default
     // action lookup (see FRAME_OF_NODE); held strongly so the native weak
     // wrapper cache keeps the same JS objects alive for the walk-up match.
+    this.#registeredNodes = this.#registerDocumentNodes();
+  }
+
+  // Registers the document / documentElement / head / body handles for the
+  // anchor default-action lookup and returns the registered wrappers. A
+  // navigation re-parses the whole document (new element handles), so every
+  // navigation re-registers.
+  #registerDocumentNodes() {
     const document = this.#window.document;
-    this.#registeredNodes = [document, document.documentElement, document.head, document.body];
-    for (const wrapper of this.#registeredNodes) {
+    const wrappers = [document, document.documentElement, document.head, document.body];
+    for (const wrapper of wrappers) {
       if (wrapper !== null && wrapper !== undefined) {
         FRAME_OF_NODE.set(ctx.documentContext.handleOf(wrapper), this);
       }
     }
+    return wrappers;
   }
 
   get page() {
@@ -421,46 +444,303 @@ export class BrowserFrame {
     this.#writeHTML(String(html));
   }
 
-  goto(url) {
-    return this.#navigate(url);
+  goto(url, options) {
+    return this.#navigate(url, { goToOptions: options });
   }
 
-  async #navigate(url) {
-    const absolute = (() => {
-      try {
-        return new URL(String(url ?? ""), this.url).href;
-      } catch {
-        return null;
+  /**
+   * Navigates back in history (happy-dom `BrowserFrameNavigator.navigateBack`
+   * parity): with no earlier entry the promise resolves `null` after one
+   * animation frame; otherwise the current item moves back and — unless the
+   * target is a same-origin pop-state entry — the frame re-navigates (re-fetches)
+   * to its URL.
+   */
+  goBack(options) {
+    const history = this.#history;
+    const historyItem = history.items[history.items.indexOf(history.currentItem) - 1];
+    if (historyItem === undefined) {
+      return this.#noOpNavigation();
+    }
+    const fromOrigin = new URL(history.currentItem.href).origin;
+    const toOrigin = new URL(historyItem.href).origin;
+    history.currentItem = historyItem;
+    if (!historyItem.popState || fromOrigin !== toOrigin) {
+      return this.#navigate(historyItem.href, {
+        goToOptions: { ...options, referrer: this.url },
+        disableHistory: true,
+        method: historyItem.method,
+        formData: historyItem.formData,
+      });
+    }
+    this.#setURL(historyItem.href);
+    this.#dispatchPopState(historyItem);
+    return Promise.resolve(null);
+  }
+
+  /**
+   * Navigates forward in history (happy-dom
+   * `BrowserFrameNavigator.navigateForward` parity): the mirror of `goBack`
+   * for the entry after the current one.
+   */
+  goForward(options) {
+    const history = this.#history;
+    const historyItem = history.items[history.items.indexOf(history.currentItem) + 1];
+    if (historyItem === undefined) {
+      return this.#noOpNavigation();
+    }
+    const fromOrigin = new URL(history.currentItem.href).origin;
+    const toOrigin = new URL(historyItem.href).origin;
+    history.currentItem = historyItem;
+    if (!historyItem.popState || fromOrigin !== toOrigin) {
+      return this.#navigate(historyItem.href, {
+        goToOptions: { ...options, referrer: this.url },
+        disableHistory: true,
+        method: historyItem.method,
+        formData: historyItem.formData,
+      });
+    }
+    this.#setURL(historyItem.href);
+    this.#dispatchPopState(historyItem);
+    return Promise.resolve(null);
+  }
+
+  /**
+   * Navigates a delta in history (happy-dom
+   * `BrowserFrameNavigator.navigateSteps` parity): `0` reloads; an
+   * out-of-range target resolves `null` after one animation frame; otherwise
+   * the frame re-navigates to the target entry unless every stepped entry is a
+   * same-origin pop-state entry.
+   */
+  goSteps(steps, options) {
+    if (!steps) {
+      return this.reload(options);
+    }
+    const history = this.#history;
+    const fromIndex = history.items.indexOf(history.currentItem);
+    const toIndex = fromIndex + steps;
+    const historyItem = history.items[toIndex];
+    if (historyItem === undefined) {
+      return this.#noOpNavigation();
+    }
+    const fromOrigin = new URL(history.currentItem.href).origin;
+    let isPopState = true;
+    if (steps < 0) {
+      for (let i = fromIndex; i > toIndex; i--) {
+        if (!history.items[i].popState || fromOrigin !== new URL(history.items[i].href).origin) {
+          isPopState = false;
+          break;
+        }
       }
-    })();
-    if (absolute === null) return null;
-    let protocol;
-    try {
-      protocol = new URL(absolute).protocol;
-    } catch {
+    } else {
+      for (let i = fromIndex; i < toIndex; i++) {
+        if (!history.items[i].popState || fromOrigin !== new URL(history.items[i].href).origin) {
+          isPopState = false;
+          break;
+        }
+      }
+    }
+    history.currentItem = historyItem;
+    if (!isPopState) {
+      return this.#navigate(historyItem.href, {
+        goToOptions: { ...options, referrer: this.url },
+        disableHistory: true,
+        method: historyItem.method,
+        formData: historyItem.formData,
+      });
+    }
+    this.#setURL(historyItem.href);
+    this.#dispatchPopState(historyItem);
+    return Promise.resolve(null);
+  }
+
+  /**
+   * Reloads the current history item (happy-dom
+   * `BrowserFrameNavigator.reload` parity): re-navigates the current entry's
+   * URL without recording a new history entry. On a fresh page the current
+   * entry is `about:blank`, so the reload writes the empty document and
+   * resolves `null` without touching the network. Non-object options (the
+   * wiki's `page.reload(url, options)` shape) are tolerated exactly like
+   * happy-dom tolerates them.
+   */
+  reload(options) {
+    const current = this.#history.currentItem;
+    return this.#navigate(current.href, {
+      goToOptions: { ...options, referrer: this.url },
+      disableHistory: true,
+      method: current.method,
+      formData: current.formData,
+    });
+  }
+
+  // The pop-state path of goBack / goForward / goSteps: the URL changes
+  // without a fetch and the window sees a `popstate` event carrying the
+  // entry's state (happy-dom dispatches a `PopStateEvent`).
+  #dispatchPopState(historyItem) {
+    const event = new Event("popstate");
+    event.state = historyItem.state;
+    this.#window.dispatchEvent(event);
+  }
+
+  // The empty-history path of goBack / goForward / goSteps (happy-dom
+  // parity): nothing to navigate — resolve `null` after one animation frame,
+  // flushing any navigation waiters on the way.
+  #noOpNavigation() {
+    return new Promise((resolve) => {
+      this.#window.requestAnimationFrame(() => {
+        this.#flushNavWaiters();
+        resolve(null);
+      });
+    });
+  }
+
+  async #navigate(url, options = {}) {
+    const { goToOptions = null, disableHistory = false, method = "GET", formData = null } = options;
+    const targetURL = resolveFrameURL(this.url, url);
+
+    // Hash navigation: same document, only the fragment changes — record a
+    // pop-state entry, update the URL, no fetch (happy-dom parity).
+    const targetURLWithoutHash = targetURL.href.split("#")[0];
+    const currentURLWithoutHash = this.url.split("#")[0];
+    if (
+      targetURLWithoutHash === currentURLWithoutHash &&
+      targetURL.hash &&
+      targetURL.hash !== this.#window.location.hash
+    ) {
+      if (!disableHistory) {
+        this.#history.currentItem.popState = true;
+        this.#pushHistory({
+          title: "",
+          href: targetURL.href,
+          state: null,
+          popState: true,
+          scrollRestoration: "manual",
+          method,
+          formData,
+        });
+      }
+      this.#setURL(targetURL.href);
+      this.#flushNavWaiters();
       return null;
     }
-    if (protocol !== "http:" && protocol !== "https:") return null;
+
+    // JavaScript protocol: happy-dom evaluates the code when JavaScript
+    // evaluation is enabled; mad-dom does not evaluate navigation scripts, so
+    // the navigation is a no-op (no URL change, no history entry — the same
+    // early exit happy-dom takes before history management).
+    if (targetURL.protocol === "javascript:") {
+      return null;
+    }
+
+    // History management: every real navigation records its entry.
+    if (!disableHistory) {
+      this.#pushHistory({
+        title: "",
+        href: targetURL.href,
+        state: null,
+        popState: false,
+        scrollRestoration: "auto",
+        method,
+        formData,
+      });
+    }
+
+    // About protocol: no fetch — the document resets to the empty skeleton
+    // (happy-dom replaces the window with a fresh empty one).
+    if (targetURL.protocol === "about:") {
+      this.#writeHTML("");
+      this.#setURL(targetURL.href);
+      this.#flushNavWaiters();
+      return null;
+    }
+
+    // Only http(s) navigations reach the fetch path (the historical mad-dom
+    // boundary for other protocols).
+    if (targetURL.protocol !== "http:" && targetURL.protocol !== "https:") {
+      return null;
+    }
+
     this.#pendingNav++;
     this.#navCompletionPromise = new Promise((resolve) => {
       this.#navCompletionResolve = resolve;
     });
     try {
-      const response = await globalThis.fetch(absolute, { redirect: "follow" });
+      const response = await this.#fetchTopLevel(targetURL.href, goToOptions);
+      this.#setURL(response.url || targetURL.href);
       const html = await response.text();
       this.#writeHTML(html);
-      this.url = response.url || absolute;
       return response;
     } finally {
       this.#pendingNav--;
-      const resolve = this.#navCompletionResolve;
-      this.#navCompletionResolve = null;
-      this.#navCompletionPromise = null;
-      if (resolve) resolve();
-      for (const waiter of this.#navWaiters.splice(0)) {
-        waiter();
+      this.#flushNavWaiters();
+    }
+  }
+
+  // The top-level fetch: virtual servers first (the local filesystem serves
+  // the response), then the host fetch with the happy-dom `goto` option
+  // semantics (`hard` sends `Cache-Control: no-cache`, `timeout` — default
+  // 30s — aborts with a `TimeoutError` DOMException).
+  async #fetchTopLevel(requestURL, goToOptions) {
+    const virtual = await virtualServerResponse(
+      this.#virtualServers(),
+      requestURL,
+      this.#window.location.origin,
+    );
+    if (virtual !== null) return virtual;
+
+    const headers = {};
+    if (goToOptions?.headers != null) {
+      const source = goToOptions.headers;
+      if (typeof source.forEach === "function") {
+        source.forEach((value, key) => {
+          headers[key] = value;
+        });
+      } else if (typeof source === "object") {
+        Object.assign(headers, source);
       }
     }
+    if (goToOptions?.hard) {
+      headers["Cache-Control"] = "no-cache";
+    }
+
+    const timeout = goToOptions?.timeout ?? 30000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort(new DOMException("The operation was aborted. Request timed out.", "TimeoutError"));
+    }, timeout);
+    try {
+      return await globalThis.fetch(requestURL, {
+        redirect: "follow",
+        headers,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  #virtualServers() {
+    return this.#page?.context?.browser?.settings?.fetch?.virtualServers ?? null;
+  }
+
+  // Records a history entry on the frame history and keeps the frame window's
+  // `window.history` length in step (happy-dom shares one list between the
+  // two; the facade keeps the frame list authoritative and mirrors pushes).
+  #pushHistory(item) {
+    this.#history.push(item);
+    const windowHistory = this.#window.history;
+    if (windowHistory !== null && windowHistory !== undefined) {
+      try {
+        windowHistory.push({ ...item });
+      } catch {
+        // The window history mirror is parity-only; never fail a navigation.
+      }
+    }
+  }
+
+  // The single URL mutation point for navigations: updates the location state
+  // without a second history push (the frame history is already recorded).
+  #setURL(href) {
+    this.#window.location._setURL(href);
   }
 
   // The default `<a>` action: server-side navigation to the resolved href.
@@ -471,17 +751,27 @@ export class BrowserFrame {
     void this.#navigate(raw);
   }
 
+  // Writes a fetched / set document through the native full-document parser
+  // (happy-dom replaces the window's document on every navigation; mad-dom
+  // re-parses the one document in place) and re-registers the structural
+  // handles the anchor default-action lookup walks.
   #writeHTML(html) {
     const document = this.#window.document;
-    const titleMatch = TITLE_PATTERN.exec(html);
-    if (titleMatch !== null) {
-      document.title = decodeEntities(titleMatch[1].trim());
+    for (const wrapper of this.#registeredNodes) {
+      FRAME_OF_NODE.delete(ctx.documentContext.handleOf(wrapper));
     }
-    const body = document.body;
-    body.innerHTML = "";
-    const fragment = document.createDocumentFragment();
-    fragment.innerHTML = html;
-    body.appendChild(fragment);
+    document.parseHtml(String(html));
+    this.#registeredNodes = this.#registerDocumentNodes();
+  }
+
+  #flushNavWaiters() {
+    const resolve = this.#navCompletionResolve;
+    this.#navCompletionResolve = null;
+    this.#navCompletionPromise = null;
+    if (resolve) resolve();
+    for (const waiter of this.#navWaiters.splice(0)) {
+      waiter();
+    }
   }
 
   waitUntilComplete() {
@@ -507,10 +797,21 @@ export class BrowserFrame {
       FRAME_OF_NODE.delete(ctx.documentContext.handleOf(wrapper));
     }
     this.#registeredNodes = [];
+    WINDOW_TO_FRAME.delete(this.#window);
   }
 
+  /**
+   * Evaluates code or a pre-compiled `node:vm` `Script` in the frame window's
+   * script context (happy-dom `BrowserFrameScriptEvaluator.evaluate` parity):
+   * a string runs through the window `eval` surface; anything else (a `vm`
+   * `Script`) runs through `runInContext` against the window's own context.
+   */
   evaluate(script) {
-    return this.#window.eval(String(script));
+    if (typeof script === "string") {
+      return this.#window.eval(script);
+    }
+    const entry = ensureWindowEval(this.#window);
+    return script.runInContext(entry.context);
   }
 }
 
@@ -518,18 +819,57 @@ export class BrowserFrame {
 
 /**
  * A browser page (tab) with exactly one main frame (happy-dom `BrowserPage`
- * surface without child frames / popups).
+ * surface without child frames). The page viewport is the single source for
+ * the frame window's viewport dimensions: `setViewport` updates it (and
+ * dispatches the window `resize` event on a change), and the frame window's
+ * `innerWidth` / `innerHeight` / `outerWidth` / `outerHeight` /
+ * `devicePixelRatio` read through it — the happy-dom parity where
+ * `BrowserWindow.innerWidth` resolves to `page.viewport.width`.
  */
 export class BrowserPage {
   #context = null;
   #mainFrame = null;
   #closed = false;
-  #viewport = { width: 1024, height: 768 };
+  #viewport = null;
 
   constructor(context) {
     this.#context = context;
     this.#mainFrame = new BrowserFrame(this);
     this.virtualConsolePrinter = new VirtualConsolePrinter();
+    const settingsViewport = context.browser.settings.viewport ?? {};
+    this.#viewport = {
+      width: settingsViewport.width ?? 1024,
+      height: settingsViewport.height ?? 768,
+      devicePixelRatio: settingsViewport.devicePixelRatio ?? 1,
+    };
+    // The frame window viewport reads through the page viewport (instance
+    // accessors shadow the Window prototype's constructor-viewport ones).
+    const windowFacade = this.#mainFrame.window;
+    const viewport = this.#viewport;
+    for (const [property, key] of [
+      ["innerWidth", "width"],
+      ["innerHeight", "height"],
+      ["outerWidth", "width"],
+      ["outerHeight", "height"],
+      ["devicePixelRatio", "devicePixelRatio"],
+    ]) {
+      Object.defineProperty(windowFacade, property, {
+        get: () => viewport[key],
+        set: (value) => {
+          viewport[key] = value;
+        },
+        enumerable: true,
+        configurable: true,
+      });
+    }
+    // happy-dom routes a frame window through its page / browser: the
+    // window's `happyDOM.settings` IS the browser's settings object
+    // (DetachedWindowAPI.settings) and the frame console writes into the
+    // page's printer. Wiring both here keeps the frame window's
+    // `document.write` script gating and its console surface on the browser's
+    // state.
+    this.#mainFrame.window.happyDOM.settings = context.browser.settings;
+    this.#mainFrame.window.happyDOM.virtualConsolePrinter = this.virtualConsolePrinter;
     // The single print path: every window `error` event (process-level capture
     // and contained timer/script errors alike) lands in the virtual console.
     this.#mainFrame.window.addEventListener("error", (event) => {
@@ -576,8 +916,24 @@ export class BrowserPage {
     this.#mainFrame.content = html;
   }
 
-  goto(url) {
-    return this.#mainFrame.goto(url);
+  goto(url, options) {
+    return this.#mainFrame.goto(url, options);
+  }
+
+  goBack(options) {
+    return this.#mainFrame.goBack(options);
+  }
+
+  goForward(options) {
+    return this.#mainFrame.goForward(options);
+  }
+
+  goSteps(steps, options) {
+    return this.#mainFrame.goSteps(steps, options);
+  }
+
+  reload(options) {
+    return this.#mainFrame.reload(options);
   }
 
   waitUntilComplete() {
@@ -592,10 +948,25 @@ export class BrowserPage {
     return this.#mainFrame.evaluate(script);
   }
 
+  /**
+   * Sets the viewport (happy-dom parity): merges the given values into the
+   * page viewport and — when `width` / `height` / `devicePixelRatio`
+   * changed — dispatches a `resize` event on the main frame window. The
+   * frame window's viewport accessors read through the page viewport, so the
+   * new dimensions are immediately observable on `window.innerWidth` and
+   * friends.
+   */
   setViewport(viewport) {
     if (viewport === null || viewport === undefined) return;
-    if (typeof viewport.width === "number") this.#viewport.width = viewport.width;
-    if (typeof viewport.height === "number") this.#viewport.height = viewport.height;
+    const previous = { ...this.#viewport };
+    Object.assign(this.#viewport, viewport);
+    if (
+      previous.width !== this.#viewport.width ||
+      previous.height !== this.#viewport.height ||
+      previous.devicePixelRatio !== this.#viewport.devicePixelRatio
+    ) {
+      this.#mainFrame.window.dispatchEvent(new Event("resize"));
+    }
   }
 
   async abort() {}
@@ -614,8 +985,8 @@ export class BrowserPage {
 // --- BrowserContext -----------------------------------------------------------
 
 /**
- * A browser context: the page list and lifecycle of one context (happy-dom
- * `BrowserContext` surface; no cookie / response caches).
+ * A browser context: the page list, the cookie container and the lifecycle of
+ * one context (happy-dom `BrowserContext` surface; no response caches).
  */
 export class BrowserContext {
   #browser = null;
@@ -624,6 +995,9 @@ export class BrowserContext {
   constructor(browser) {
     this.#browser = browser;
     this.pages = [];
+    // The context's cookie store (happy-dom parity: every context mints its
+    // own `CookieContainer`; `close` clears it).
+    this.cookieContainer = new CookieContainer();
   }
 
   get browser() {
@@ -647,6 +1021,8 @@ export class BrowserContext {
     for (const page of [...this.pages]) {
       await page.close();
     }
+    // happy-dom parity: closing a context clears its cookie store.
+    this.cookieContainer.clearCookies();
   }
 
   async waitUntilComplete() {
@@ -704,7 +1080,7 @@ const DEFAULT_SETTINGS = Object.freeze({
     forcedColors: "",
   }),
   debug: Object.freeze({ traceWaitUntilComplete: false }),
-  viewport: Object.freeze({ width: 1024, height: 768 }),
+  viewport: Object.freeze({ width: 1024, height: 768, devicePixelRatio: 1 }),
   canvasAdapter: null,
 });
 
@@ -792,12 +1168,206 @@ export class Browser {
   async abort() {}
 }
 
+// --- window.open (mirrors happy-dom WindowPageOpenUtility) -------------------
+
+/**
+ * The restricted window facade happy-dom hands back for a cross-origin
+ * `window.open`: only the cross-origin-safe surface (`self` / `top` /
+ * `parent` / `opener` / `closed` / `blur` / `focus` / `close` /
+ * `postMessage`) — every `location` access throws the SecurityError
+ * DOMException.
+ */
+export class CrossOriginBrowserWindow {
+  #targetWindow = null;
+  #parent = null;
+
+  constructor(target, parent) {
+    this.#targetWindow = target;
+    this.#parent = parent ?? this;
+    this.window = this;
+    this.location = new Proxy(
+      {},
+      {
+        get: () => {
+          throw new DOMException(
+            `Blocked a frame with origin "${this.#parent.location?.origin}" from accessing a cross-origin frame.`,
+            "SecurityError",
+          );
+        },
+        set: () => {
+          throw new DOMException(
+            `Blocked a frame with origin "${this.#parent.location?.origin}" from accessing a cross-origin frame.`,
+            "SecurityError",
+          );
+        },
+      },
+    );
+  }
+
+  get self() {
+    return this;
+  }
+
+  get top() {
+    return this.#parent;
+  }
+
+  get parent() {
+    return this.#parent;
+  }
+
+  get opener() {
+    return this.#targetWindow.opener;
+  }
+
+  get closed() {
+    return this.#targetWindow.closed;
+  }
+
+  blur() {
+    this.#targetWindow.blur?.();
+  }
+
+  focus() {
+    this.#targetWindow.focus?.();
+  }
+
+  close() {
+    this.#targetWindow.close?.();
+  }
+
+  postMessage(message, targetOrigin = "*", transfer) {
+    this.#targetWindow.postMessage?.(message, targetOrigin, transfer);
+  }
+}
+
+// The `window.open` features string parser (happy-dom
+// `WindowPageOpenUtility.getWindowFeatures` parity).
+function getWindowFeatures(features) {
+  const parts = features.split(",");
+  const result = {
+    popup: false,
+    width: 0,
+    height: 0,
+    left: 0,
+    top: 0,
+    noopener: false,
+    noreferrer: false,
+  };
+  for (const part of parts) {
+    const [key, value] = part.split("=");
+    switch (key) {
+      case "popup":
+        result.popup = !value || value === "yes" || value === "1" || value === "true";
+        break;
+      case "width":
+      case "innerWidth":
+        result.width = parseInt(value, 10);
+        break;
+      case "height":
+      case "innerHeight":
+        result.height = parseInt(value, 10);
+        break;
+      case "left":
+      case "screenX":
+        result.left = parseInt(value, 10);
+        break;
+      case "top":
+      case "screenY":
+        result.top = parseInt(value, 10);
+        break;
+      case "noopener":
+        result.noopener = true;
+        break;
+      case "noreferrer":
+        result.noreferrer = true;
+        break;
+    }
+  }
+  return result;
+}
+
+// Detached window → the ad-hoc browser minted for its `window.open` child
+// pages. The browser carries the opening window's virtual-server settings, so
+// the child navigation resolves the same local files happy-dom would serve
+// (a detached window in happy-dom owns a DetachedBrowser the same way).
+const DETACHED_BROWSERS = new WeakMap();
+
+function detachedBrowserOf(windowFacade) {
+  let browser = DETACHED_BROWSERS.get(windowFacade);
+  if (browser === undefined) {
+    const settings = ctx.windowSettings(windowFacade);
+    browser = new Browser({
+      settings: {
+        fetch: { virtualServers: settings.fetch?.virtualServers ?? null },
+      },
+    });
+    DETACHED_BROWSERS.set(windowFacade, browser);
+  }
+  return browser;
+}
+
+/**
+ * `window.open` (happy-dom `WindowPageOpenUtility.openPage` parity): opens a
+ * new page in the owning frame's context (or an ad-hoc browser for a
+ * detached window), navigates it to the resolved URL (virtual-server-aware,
+ * same fetch interception as `goto`), registers the navigation with the
+ * opener's `happyDOM.waitUntilComplete` surface, and returns the child
+ * window — a `CrossOriginBrowserWindow` for a cross-origin target, `null`
+ * with `noopener` / `noreferrer`.
+ */
+function openPage(windowFacade, options) {
+  const features = getWindowFeatures(options?.features || "");
+  const target = options?.target !== undefined ? String(options.target) : null;
+  const parentFrame = WINDOW_TO_FRAME.get(windowFacade) ?? null;
+  const targetURL = resolveFrameURL(windowFacade.location.href, options?.url);
+  let targetFrame;
+  if (target === "_self" && parentFrame !== null) {
+    targetFrame = parentFrame;
+  } else if (target === "_top" && parentFrame !== null) {
+    targetFrame = parentFrame.page.mainFrame;
+  } else if (target === "_parent" && parentFrame !== null) {
+    targetFrame = parentFrame.parentFrame ?? parentFrame;
+  } else {
+    const context =
+      parentFrame !== null
+        ? parentFrame.page.context
+        : detachedBrowserOf(windowFacade).defaultContext;
+    targetFrame = context.newPage().mainFrame;
+  }
+  const navigation = targetFrame.goto(targetURL.href, {
+    referrer: features.noreferrer ? undefined : windowFacade.location.origin,
+  });
+  navigation.catch(() => {
+    // happy-dom routes the error to the page console; the facade has no
+    // stdout console here — a failed open never surfaces as a rejection.
+  });
+  // The opener's `happyDOM.waitUntilComplete` must cover the child
+  // navigation (happy-dom's shared async-task registry parity).
+  windowFacade.happyDOM.registerPending?.(navigation);
+  if (targetURL.protocol === "javascript:") {
+    return targetFrame.window;
+  }
+  if (features.noopener || features.noreferrer) {
+    return null;
+  }
+  const isCORS =
+    targetURL.protocol !== "about:" &&
+    targetURL.protocol !== "javascript:" &&
+    new URL(windowFacade.location.href).origin !== targetURL.origin;
+  if (isCORS) {
+    return new CrossOriginBrowserWindow(targetFrame.window, windowFacade);
+  }
+  return targetFrame.window;
+}
+
 // --- install ------------------------------------------------------------------
 
 /**
  * Installs the browser surface: the anchor default-action `click` (server-side
- * navigation inside a browser frame) — the rest of the surface is plain module
- * exports driven from the package entry.
+ * navigation inside a browser frame) and the `window.open` popup surface —
+ * the rest of the surface is plain module exports driven from the package
+ * entry.
  */
 export function install(extensionCtx) {
   if (ctx === null) ctx = extensionCtx;
@@ -814,4 +1384,12 @@ export function install(extensionCtx) {
     if (frame === undefined) return;
     frame.navigateFromClick(this.getAttribute("href"));
   });
+
+  // `window.open` (happy-dom `BrowserWindow.open` parity): opens a child page
+  // through the WindowPageOpenUtility mirror above. `writable: true` matches
+  // happy-dom's class-method descriptor so an instance assignment can shadow
+  // it.
+  installCtx.defineMethod(Window.prototype, "open", function open(url, target, features) {
+    return openPage(this, { url, target, features });
+  }, { writable: true });
 }

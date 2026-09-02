@@ -265,4 +265,40 @@ describe.skipIf(!nativeAvailable)("T43 Shadow DOM", () => {
     expect(clone.outerHTML).toBe("<div><i></i></div>");
     expect(root.innerHTML).toBe("<span></span>");
   });
+
+  test("attachShadow({ serializable }) stamps the root and getHTML serializes it", () => {
+    const win = freshWindow();
+    const document = win.document;
+
+    // Default: not serializable.
+    const plainHost = document.createElement("div");
+    const plainRoot = plainHost.attachShadow({ mode: "open" });
+    expect(plainRoot.serializable).toBe(false);
+
+    // `serializable: true` reads back on the root (also through a re-read of
+    // `host.shadowRoot`, which wraps the same native root).
+    const host = document.createElement("div");
+    const root = host.attachShadow({ mode: "open", serializable: true });
+    expect(root.serializable).toBe(true);
+    expect(host.shadowRoot.serializable).toBe(true);
+    root.innerHTML = "<span>shadow</span>";
+
+    // `getHTML({ serializableShadowRoots })` emits a marked child's root as a
+    // declarative shadow root template (happy-dom HTMLSerializer shape): like
+    // the baseline, `getHTML` serializes the element's children, so the host
+    // must be a child of the serialized element.
+    const parent = document.createElement("section");
+    parent.appendChild(host);
+    parent.appendChild(plainHost);
+    expect(parent.getHTML({ serializableShadowRoots: true })).toBe(
+      '<div><template shadowrootmode="open" shadowrootserializable=""><span>shadow</span></template></div><div></div>',
+    );
+    // Without the option the shadow tree is never serialized.
+    expect(parent.getHTML()).toBe("<div></div><div></div>");
+
+    // A truthy non-boolean coerces like the baseline (`!!init.serializable`).
+    const coerced = document.createElement("div");
+    expect(coerced.attachShadow({ mode: "open", serializable: 1 }).serializable).toBe(true);
+    expect(document.createElement("div").attachShadow({ mode: "closed", serializable: true }).serializable).toBe(true);
+  });
 });

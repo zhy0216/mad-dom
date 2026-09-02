@@ -2,10 +2,11 @@
 // extension (T43).
 //
 // Installs the WHATWG Shadow DOM surface on the single `Node` facade class:
-// `Element.attachShadow({ mode })`, `Element.shadowRoot` (the open root, or
-// `null` for a closed root or a host without one), the `ShadowRoot` facade
-// class (`host` / `mode` / `innerHTML`), the `slot` attribute reflection and
-// the basic `HTMLSlotElement.assignedNodes` / `assignedElements` reads.
+// `Element.attachShadow({ mode, serializable })`, `Element.shadowRoot` (the
+// open root, or `null` for a closed root or a host without one), the
+// `ShadowRoot` facade class (`host` / `mode` / `serializable` /
+// `innerHTML`), the `slot` attribute reflection and the basic
+// `HTMLSlotElement.assignedNodes` / `assignedElements` reads.
 // Everything delegates verbatim to the native T43 contract
 // (crates/mad-dom-bun/src/extensions/shadow_dom_api.rs) and through it to the
 // Core ownership / mode / slot model (`mad_dom_core::dom::shadow_root`).
@@ -88,10 +89,23 @@ function facadeNodeHandle(ctx, value, role) {
  * identity stays the per-document weak cache) and then re-parents the wrapper
  * onto `ShadowRoot.prototype`; `null` passes through unchanged.
  */
+// The `serializable` flag `attachShadow({ serializable })` sets (happy-dom
+// keeps it on the shadow root itself): native only stores the open/closed
+// mode, so the facade tracks the flag per native shadow-root handle. Weak on
+// the handle, so a collected shadow root drops its entry with the tree — the
+// same lifetime the facade wrapper identity itself is keyed on (T20 weak
+// wrapper cache). `wrapShadowRoot` additionally stamps the current flag onto
+// every wrapper it re-parents, so a re-wrapped shadow root keeps reading the
+// value it was minted with.
+const SHADOW_ROOT_SERIALIZABLE = new WeakMap();
+const SERIALIZABLE_STAMP = Symbol("mad-dom shadow root serializable");
+
 function wrapShadowRoot(ctx, handle) {
   if (handle === null || handle === undefined) return handle;
   const wrapped = ctx.wrap(handle);
   Object.setPrototypeOf(wrapped, ShadowRoot.prototype);
+  const serializable = SHADOW_ROOT_SERIALIZABLE.get(handle);
+  if (serializable !== undefined) wrapped[SERIALIZABLE_STAMP] = serializable;
   return wrapped;
 }
 
@@ -138,7 +152,12 @@ export function install(ctx) {
           `The provided value '${mode}' is not a valid enum value of type ShadowRootMode.`,
       );
     }
-    return wrapShadowRoot(ctx, handle.attachShadow(mode === "closed" ? 1 : 0));
+    const shadowHandle = handle.attachShadow(mode === "closed" ? 1 : 0);
+    // happy-dom parity: `attachShadow({ serializable })` stamps the coerced
+    // flag on the minted root (`getHTML({ serializableShadowRoots })` reads
+    // it back to decide declarative-shadow-root serialization).
+    SHADOW_ROOT_SERIALIZABLE.set(shadowHandle, Boolean(init && init.serializable));
+    return wrapShadowRoot(ctx, shadowHandle);
   });
 
   // `Element.shadowRoot` — the open shadow root, or `null` (a closed root and
@@ -157,6 +176,15 @@ export function install(ctx) {
     if (mode === 0) return "open";
     if (mode === 1) return "closed";
     return undefined;
+  }, undefined);
+
+  // `ShadowRoot.serializable` — the coerced `serializable` init flag the
+  // `attachShadow` mint recorded (happy-dom parity: `false` by default;
+  // `getHTML({ serializableShadowRoots })` only emits declarative shadow
+  // roots for roots marked serializable).
+  ctx.defineAccessor(ShadowRoot.prototype, "serializable", function serializable() {
+    if (this[SERIALIZABLE_STAMP] !== undefined) return this[SERIALIZABLE_STAMP];
+    return SHADOW_ROOT_SERIALIZABLE.get(facadeNodeHandle(ctx, this, "serializable")) ?? false;
   }, undefined);
 
   // `Element.slot` — the `slot` attribute, two-way reflected (`""` when

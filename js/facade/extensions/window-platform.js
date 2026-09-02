@@ -73,8 +73,10 @@ import { fileURLToPath } from "node:url";
 
 import { Document } from "../document.js";
 import { Window } from "../window.js";
+import { Event } from "./events.js";
 import { Clipboard, Permissions, URL as FacadeURL } from "./lightweight.js";
 import { disconnectAllObservers } from "./mutation-observer.js";
+import { VirtualConsole, VirtualConsolePrinter } from "./virtual-console.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/window-platform",
@@ -106,24 +108,239 @@ const LIST = Symbol("mad-dom-history-list");
 // embeds it so the observable value matches the baseline byte for byte.
 const HAPPY_DOM_VERSION = "20.11.11";
 
+// --- detached-window browser settings (happy-dom DefaultBrowserSettings) -------
+
+// The default browser settings happy-dom gives a detached window
+// (`BrowserSettingsFactory.createSettings` over `DefaultBrowserSettings`),
+// calibrated field for field against the locked baseline — including the
+// `navigator.userAgent` default that embeds the platform / arch / version and
+// the `timer` / `debug` `-1` sentinel defaults.
+function defaultBrowserSettings() {
+  return {
+    disableJavaScriptEvaluation: false,
+    enableJavaScriptEvaluation: false,
+    disableJavaScriptFileLoading: false,
+    disableCSSFileLoading: false,
+    enableImageFileLoading: false,
+    disableIframePageLoading: false,
+    disableComputedStyleRendering: false,
+    handleDisabledFileLoadingAsSuccess: false,
+    disableErrorCapturing: false,
+    errorCapture: "tryAndCatch",
+    enableFileSystemHttpRequests: false,
+    suppressCodeGenerationFromStringsWarning: false,
+    suppressInsecureJavaScriptEnvironmentWarning: false,
+    timer: {
+      maxTimeout: -1,
+      maxIntervalTime: -1,
+      maxIntervalIterations: -1,
+      preventTimerLoops: false,
+    },
+    fetch: {
+      disableSameOriginPolicy: false,
+      disableStrictSSL: false,
+      interceptor: null,
+      requestHeaders: null,
+      virtualServers: null,
+    },
+    module: {
+      resolveNodeModules: null,
+      urlResolver: null,
+      disableCache: false,
+    },
+    navigation: {
+      disableMainFrameNavigation: false,
+      disableChildFrameNavigation: false,
+      disableChildPageNavigation: false,
+      disableFallbackToSetURL: false,
+      crossOriginPolicy: "anyOrigin",
+      beforeContentCallback: null,
+    },
+    navigator: {
+      userAgent: defaultUserAgent(),
+      maxTouchPoints: 0,
+    },
+    device: {
+      prefersColorScheme: "light",
+      prefersReducedMotion: "no-preference",
+      mediaType: "screen",
+      forcedColors: "none",
+    },
+    debug: {
+      traceWaitUntilComplete: -1,
+    },
+    viewport: {
+      width: 1024,
+      height: 768,
+      devicePixelRatio: 1,
+    },
+    canvasAdapter: null,
+  };
+}
+
+// happy-dom `BrowserSettingsFactory.validate` parity: unknown keys and
+// wrong-typed scalar values throw with the baseline messages.
+function validateBrowserSettings(target, source, parentNamespace) {
+  for (const key of Object.keys(source)) {
+    if (target[key] === undefined) {
+      const namespace = parentNamespace ? parentNamespace + "." + key : key;
+      throw new Error(`Unknown browser setting "${namespace}"`);
+    }
+    if (typeof target[key] === "object" && !Array.isArray(target[key]) && target[key] !== null) {
+      const namespace = parentNamespace ? parentNamespace + "." + key : key;
+      if (typeof source[key] !== "object" || Array.isArray(source[key]) || source[key] === null) {
+        throw new Error(`Browser setting "${namespace}" cannot be null`);
+      }
+      validateBrowserSettings(target[key], source[key], namespace);
+    } else {
+      if (
+        (typeof target[key] === "boolean" ||
+          typeof target[key] === "number" ||
+          typeof target[key] === "string") &&
+        typeof source[key] !== typeof target[key]
+      ) {
+        const isValidPreventTimerLoops =
+          key === "preventTimerLoops" && typeof source[key] === "object" && source[key] !== null;
+        if (!isValidPreventTimerLoops) {
+          const namespace = parentNamespace ? parentNamespace + "." + key : key;
+          throw new Error(`Browser setting "${namespace}" must be of type "${typeof target[key]}"`);
+        }
+      }
+    }
+  }
+}
+
+// happy-dom `BrowserSettingsFactory.createSettings` parity: the defaults merged
+// with the given settings, section by section.
+function createBrowserSettings(settings) {
+  const defaults = defaultBrowserSettings();
+  if (settings) {
+    validateBrowserSettings(defaults, settings);
+  }
+  return {
+    ...defaults,
+    ...settings,
+    navigation: { ...defaults.navigation, ...settings?.navigation },
+    navigator: { ...defaults.navigator, ...settings?.navigator },
+    timer: { ...defaults.timer, ...settings?.timer },
+    fetch: { ...defaults.fetch, ...settings?.fetch },
+    module: { ...defaults.module, ...settings?.module },
+    device: { ...defaults.device, ...settings?.device },
+    debug: { ...defaults.debug, ...settings?.debug },
+    viewport: { ...defaults.viewport, ...settings?.viewport },
+    canvasAdapter: settings?.canvasAdapter ?? defaults.canvasAdapter,
+  };
+}
+
 // The `window.happyDOM` detached-window API (T48 closure): the happy-dom
 // surface for test-driving a window from the outside. `waitUntilComplete`
-// resolves after the current microtask checkpoint; `setURL` / `abort` /
-// `cancelAsync` / `close` are the happy-dom-shaped no-op / lifecycle stubs the
-// facade surface requires.
-const HAPPY_DOM_API = Object.freeze({
-  waitUntilComplete() {
-    return Promise.resolve();
-  },
-  whenAsyncComplete() {
-    return this.waitUntilComplete();
-  },
-  async abort() {},
-  async cancelAsync() {},
-  async close() {
-    disconnectAllObservers();
-  },
-});
+// drains every pending task registered through the internal `registerPending`
+// seam (navigation promises opened by `window.open`, timer work, …) and
+// resolves once no new work appears; `setURL` / `abort` / `cancelAsync` /
+// `close` are the happy-dom-shaped no-op / lifecycle stubs the facade surface
+// requires. Each window gets its own (non-frozen) instance so extension
+// modules can attach the DetachedWindowAPI surface (`settings`,
+// `virtualConsolePrinter`, `setViewport`) and register pending work.
+const HAPPY_DOM_PENDING = Symbol("mad-dom-happydom-pending");
+
+// Creates the per-window `window.happyDOM` detached-window API (the happy-dom
+// `DetachedWindowAPI` surface). `settings` exposes the per-window happy-dom
+// browser settings through `settingsAccess` (the same object the `Navigator`
+// reads `navigator.userAgent` / `maxTouchPoints` from; a browser page may
+// replace it with the browser's own settings through the setter);
+// `virtualConsolePrinter` is the per-window printer the default `window.console`
+// writes into — exposed through a getter/setter so a browser page can repoint
+// its frame window's printer at the page's printer; `setViewport` mutates the
+// window's viewport state in place through the facade `ctx` viewport seam
+// (happy-dom `BrowserPage.setViewport` parity, including the `resize` event on
+// an actual size change).
+function createHappyDOMApi(ctx, windowFacade, settingsAccess) {
+  const api = {
+    async waitUntilComplete() {
+      for (;;) {
+        const pending = api[HAPPY_DOM_PENDING].splice(0);
+        if (pending.length === 0) return;
+        await Promise.allSettled(pending);
+      }
+    },
+    whenAsyncComplete() {
+      return this.waitUntilComplete();
+    },
+    async abort() {},
+    async cancelAsync() {},
+    async close() {
+      disconnectAllObservers();
+    },
+    setURL(url) {
+      windowFacade.location.href = String(url);
+    },
+    setViewport(viewport) {
+      if (viewport === null || viewport === undefined) return;
+      const previousWidth = windowFacade.innerWidth;
+      const previousHeight = windowFacade.innerHeight;
+      const previousRatio = windowFacade.devicePixelRatio;
+      ctx.setWindowViewport(windowFacade, viewport);
+      if (
+        previousWidth !== windowFacade.innerWidth ||
+        previousHeight !== windowFacade.innerHeight ||
+        previousRatio !== windowFacade.devicePixelRatio
+      ) {
+        windowFacade.dispatchEvent(new Event("resize"));
+      }
+    },
+    // Deprecated happy-dom aliases of `setViewport`.
+    setWindowSize(sizeOptions) {
+      this.setViewport({ width: sizeOptions?.width, height: sizeOptions?.height });
+    },
+    setInnerWidth(width) {
+      this.setViewport({ width });
+    },
+    setInnerHeight(height) {
+      this.setViewport({ height });
+    },
+    registerPending(promise) {
+      api[HAPPY_DOM_PENDING].push(Promise.resolve(promise));
+    },
+  };
+  Object.defineProperty(api, HAPPY_DOM_PENDING, {
+    value: [],
+    enumerable: false,
+    configurable: true,
+  });
+  Object.defineProperty(api, "registerPending", {
+    enumerable: false,
+    configurable: true,
+  });
+  // The per-window virtual console printer, created lazily on first read. The
+  // setter lets a browser page make its frame window's printer BE the page's
+  // printer (happy-dom routes every frame console entry through the page
+  // printer), so the window console resolves it lazily on every print.
+  let virtualConsolePrinter = null;
+  Object.defineProperty(api, "virtualConsolePrinter", {
+    get() {
+      virtualConsolePrinter ??= new VirtualConsolePrinter();
+      return virtualConsolePrinter;
+    },
+    set(printer) {
+      virtualConsolePrinter = printer;
+    },
+    enumerable: true,
+    configurable: true,
+  });
+  // The happy-dom browser settings of the owning window (DetachedWindowAPI
+  // exposes the frame's browser settings; a detached window owns its own).
+  Object.defineProperty(api, "settings", {
+    get() {
+      return settingsAccess.get();
+    },
+    set(settings) {
+      settingsAccess.set(settings);
+    },
+    enumerable: true,
+    configurable: true,
+  });
+  return api;
+}
 
 // --- Location / History shared state ----------------------------------------
 
@@ -136,10 +353,23 @@ function createPlatformState() {
     navigator: null,
     localStorage: null,
     sessionStorage: null,
+    // The happy-dom browser settings of the owning window, created lazily from
+    // the Window constructor options on first read (the same object
+    // `window.happyDOM.settings` exposes and the `Navigator` reads).
+    settings: null,
   };
   state.history = new History(state);
   state.location = new Location(state);
   return state;
+}
+
+// The per-window happy-dom browser settings (lazily merged from the Window
+// constructor options through the facade `ctx`). One object per platform state:
+// `window.happyDOM.settings` exposes it, a browser page may replace it with the
+// browser's own settings, and `navigator.userAgent` / `maxTouchPoints` read it.
+function ensureWindowSettings(ctx, state, windowFacade) {
+  state.settings ??= createBrowserSettings(ctx.windowOptions(windowFacade)?.settings);
+  return state.settings;
 }
 
 function platformOfDocument(nativeDocumentHandle) {
@@ -578,14 +808,23 @@ class PluginArray {
  * `window.navigator` facade (T45).
  *
  * The fixed mock values happy-dom exposes (calibrated 1:1 against the locked
- * baseline). `mimeTypes` / `plugins` are empty list stubs; `sendBeacon`
- * returns `true` without issuing a real fetch (T45 boundary); `permissions`
- * and `clipboard` are `null` placeholders for the Permissions / Clipboard
- * APIs, which are outside T45 and land with a later network-surface task.
+ * baseline). `userAgent` / `maxTouchPoints` read the owning window's happy-dom
+ * browser settings (`settings.navigator.userAgent` /
+ * `settings.navigator.maxTouchPoints` — happy-dom resolves them through the
+ * frame's browser settings, so writing `window.happyDOM.settings.navigator
+ * .userAgent` changes what `navigator.userAgent` reads); writing the unrelated
+ * `settings.navigation.userAgent` has no effect on them (baseline behavior).
+ * `mimeTypes` / `plugins` are empty list stubs; `sendBeacon` returns `true`
+ * without issuing a real fetch (T45 boundary); `permissions` and `clipboard`
+ * are the lightweight Permissions / Clipboard stubs.
  */
 export class Navigator {
   #permissions = null;
   #clipboard = null;
+
+  constructor(state) {
+    this[STATE] = state;
+  }
 
   get cookieEnabled() {
     return true;
@@ -612,7 +851,7 @@ export class Navigator {
   }
 
   get maxTouchPoints() {
-    return 0;
+    return this[STATE]?.settings?.navigator?.maxTouchPoints || 0;
   }
 
   get hardwareConcurrency() {
@@ -657,7 +896,7 @@ export class Navigator {
   }
 
   get userAgent() {
-    return defaultUserAgent();
+    return this[STATE]?.settings?.navigator?.userAgent || defaultUserAgent();
   }
 
   get onLine() {
@@ -1000,7 +1239,8 @@ export function install(ctx) {
   ctx.defineAccessor(Window.prototype, "navigator", function getNavigator() {
     const state = platformOfDocument(nativeDocumentOfWindow(ctx, this));
     if (state === null) return null;
-    state.navigator ??= new Navigator();
+    ensureWindowSettings(ctx, state, this);
+    state.navigator ??= new Navigator(state);
     return state.navigator;
   }, undefined);
 
@@ -1032,29 +1272,59 @@ export function install(ctx) {
   }, undefined);
 
   // `window.happyDOM` (T48 closure): the detached-window API surface happy-dom
-  // exposes for test-driving a window. `waitUntilComplete()` resolves after the
-  // current microtask checkpoint, so a caller awaiting it observes the DOM
-  // effects scheduled synchronously and through `queueMicrotask` / `Promise`.
-  // The per-window instance adds happy-dom's `setURL` (a simulated initial
-  // navigation), which the URL-reflecting element accessors (`cite` / `href` /
-  // `src`) resolve against; `close()` (on the shared `HAPPY_DOM_API`) disconnects
-  // the window's MutationObservers (happy-dom closes a window's observers when
-  // it is closed), then keeps the window usable.
+  // exposes for test-driving a window. `waitUntilComplete()` drains pending
+  // tasks registered through `registerPending` (and then resolves after the
+  // final microtask checkpoint), so a caller awaiting it observes the DOM
+  // effects of navigation and timer work. The per-window instance adds
+  // happy-dom's `setURL` (a simulated initial navigation), which the
+  // URL-reflecting element accessors (`cite` / `href` / `src`) resolve
+  // against; `close()` disconnects the window's MutationObservers (happy-dom
+  // closes a window's observers when it is closed), then keeps the window
+  // usable.
   const HAPPY_DOM_PER_WINDOW = new WeakMap();
   ctx.defineAccessor(Window.prototype, "happyDOM", function getHappyDOM() {
     const windowFacade = this;
     let api = HAPPY_DOM_PER_WINDOW.get(windowFacade);
     if (api === undefined) {
-      api = {
-        ...HAPPY_DOM_API,
-        setURL(url) {
-          windowFacade.location.href = String(url);
+      const state = platformOfDocument(nativeDocumentOfWindow(ctx, windowFacade));
+      // The settings object shared with the `Navigator`: the platform state's
+      // slot when the window has one, a local slot otherwise (a window facade
+      // without a reachable native document never reaches the Navigator).
+      let fallbackSettings = null;
+      const settingsAccess = {
+        get() {
+          if (state !== null) return ensureWindowSettings(ctx, state, windowFacade);
+          fallbackSettings ??= createBrowserSettings(ctx.windowOptions(windowFacade)?.settings);
+          return fallbackSettings;
+        },
+        set(settings) {
+          if (state !== null) state.settings = settings;
+          else fallbackSettings = settings;
         },
       };
-      Object.freeze(api);
+      api = createHappyDOMApi(ctx, windowFacade, settingsAccess);
       HAPPY_DOM_PER_WINDOW.set(windowFacade, api);
     }
     return api;
+  }, undefined);
+
+  // `window.console` (happy-dom parity): the constructor `console` option used
+  // directly when given (`browser.console ?? new VirtualConsole(printer)`),
+  // otherwise a per-window virtual console writing into the printer its
+  // `window.happyDOM.virtualConsolePrinter` currently holds — resolved lazily
+  // on every print, never cached, so a browser page that repoints the frame
+  // window's printer receives every subsequent entry.
+  const WINDOW_CONSOLES = new WeakMap();
+  ctx.defineAccessor(Window.prototype, "console", function getConsole() {
+    const windowFacade = this;
+    const given = ctx.windowOptions(windowFacade)?.console;
+    if (given !== undefined && given !== null) return given;
+    let consoleFacade = WINDOW_CONSOLES.get(windowFacade);
+    if (consoleFacade === undefined) {
+      consoleFacade = new VirtualConsole(() => windowFacade.happyDOM.virtualConsolePrinter);
+      WINDOW_CONSOLES.set(windowFacade, consoleFacade);
+    }
+    return consoleFacade;
   }, undefined);
 
   // happy-dom's `window.close()` (BrowserWindow.close) only destroys a window

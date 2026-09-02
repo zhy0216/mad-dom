@@ -393,4 +393,80 @@ runtimeDescribe("custom elements", () => {
     element.setAttribute("data-y", "2");
     expect(order).toEqual(["data-x:1", "data-y:2"]);
   });
+
+  test("define-after-connect runs the user constructor on the replacement (happy-dom #404)", () => {
+    const { window, document } = makeWindow();
+    const order = [];
+    class Shadowed extends window.HTMLElement {
+      constructor() {
+        super();
+        order.push("ctor");
+        this.attachShadow({ mode: "open", serializable: true });
+      }
+      connectedCallback() {
+        order.push(`connected:${this.shadowRoot !== null}`);
+        this.shadowRoot.innerHTML = "<span>shadow</span>";
+      }
+    }
+    const element = document.createElement("ctor-upgrade");
+    document.body.appendChild(element);
+    order.length = 0;
+    window.customElements.define("ctor-upgrade", Shadowed);
+    // The constructor runs during define, before connectedCallback, and the
+    // upgraded element in the tree carries the constructor's shadow root.
+    expect(order).toEqual(["ctor", "connected:true"]);
+    const upgraded = document.body.querySelector("ctor-upgrade");
+    expect(upgraded).toBeInstanceOf(Shadowed);
+    expect(upgraded.shadowRoot).not.toBe(null);
+    expect(upgraded.shadowRoot.innerHTML).toBe("<span>shadow</span>");
+    // The old reference stays a plain element without the shadow root.
+    expect(element).not.toBeInstanceOf(Shadowed);
+    expect(element.shadowRoot).toBe(null);
+    // The declarative shadow root serializes through getHTML (a child-side
+    // read, like the baseline — `getHTML` serializes the element's children).
+    expect(document.body.getHTML({ serializableShadowRoots: true })).toBe(
+      '<ctor-upgrade><template shadowrootmode="open" shadowrootserializable=""><span>shadow</span></template></ctor-upgrade>',
+    );
+  });
+
+  test("define-after-connect upgrades connected candidates in reverse document order", () => {
+    const { window, document } = makeWindow();
+    const order = [];
+    class Ordered extends window.HTMLElement {
+      constructor() {
+        super();
+        order.push("ctor");
+      }
+      connectedCallback() {
+        order.push(`connected:${this.parentNode.id}`);
+      }
+    }
+    document.body.innerHTML = '<div id="a"><ordered-el></ordered-el></div><div id="b"><ordered-el></ordered-el></div>';
+    window.customElements.define("ordered-el", Ordered);
+    // happy-dom serves its per-name define callbacks LIFO (each connected
+    // candidate unshifts itself), so parse-connected candidates upgrade in
+    // reverse document order: b before a.
+    expect(order).toEqual(["ctor", "connected:b", "ctor", "connected:a"]);
+  });
+
+  test("the innerHTML parse path runs the user constructor before connecting", () => {
+    const { window, document } = makeWindow();
+    const order = [];
+    class Parsed extends window.HTMLElement {
+      constructor() {
+        super();
+        order.push("ctor");
+        this.attachShadow({ mode: "open" });
+      }
+      connectedCallback() {
+        order.push(`connected:${this.shadowRoot !== null}`);
+      }
+    }
+    window.customElements.define("parsed-ctor", Parsed);
+    document.body.innerHTML = "<parsed-ctor></parsed-ctor>";
+    expect(order).toEqual(["ctor", "connected:true"]);
+    const element = document.body.querySelector("parsed-ctor");
+    expect(element).toBeInstanceOf(Parsed);
+    expect(element.shadowRoot).not.toBe(null);
+  });
 });

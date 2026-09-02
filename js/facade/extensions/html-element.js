@@ -500,6 +500,72 @@ export function install(ctx) {
     return false;
   }, undefined);
 
+  // `innerText` (happy-dom HTMLElement parity): the getter renders the text the
+  // way happy-dom does — a disconnected element reads its `textContent`, while a
+  // connected one walks the children, skipping `<script>` / `<style>` / `<svg>`,
+  // honoring the computed `display` / `text-transform`, and joining block / flex
+  // runs with newlines. The setter clears the children and rebuilds them as text
+  // nodes separated by `<br>` for every `\n` / `\r`.
+  ctx.defineAccessor(HTMLElement.prototype, "innerText", function innerText() {
+    const handle = facadeNodeHandle(ctx, this, "innerText");
+    if (!handle.isConnected()) {
+      return this.textContent;
+    }
+    const documentFacade = ctx.wrap(handle.ownerDocument());
+    const windowFacade = ctx.windowFacadeOfDocument(documentFacade);
+    let result = "";
+    for (const childNode of this.childNodes) {
+      const childHandle = ctx.documentContext.handleOf(childNode);
+      const childNodeType = childHandle.nodeType();
+      if (childNodeType === 1) {
+        const tagName = childNode.tagName;
+        if (tagName !== "SCRIPT" && tagName !== "STYLE" && tagName !== "svg") {
+          const computedStyle = windowFacade ? windowFacade.getComputedStyle(childNode) : null;
+          const display = computedStyle ? computedStyle.display : "";
+          if (display !== "none") {
+            const textTransform = computedStyle ? computedStyle.textTransform : "";
+            const childInnerText = childNode.innerText;
+            // Only add newline if it's a block/flex element and there's more
+            // content coming after.
+            if ((display === "block" || display === "flex") && result && childInnerText) {
+              result += "\n";
+            }
+            let text = childInnerText;
+            switch (textTransform) {
+              case "uppercase":
+                text = text.toUpperCase();
+                break;
+              case "lowercase":
+                text = text.toLowerCase();
+                break;
+              case "capitalize":
+                text = text.replace(/(^|\s)\S/g, (l) => l.toUpperCase());
+                break;
+            }
+            result += text;
+          }
+        }
+      } else if (childNodeType === 3) {
+        result += childNode.textContent.replace(/[\n\r]/, "");
+      }
+    }
+    return result;
+  }, function innerText(text) {
+    const handle = facadeNodeHandle(ctx, this, "innerText");
+    const childNodes = this.childNodes;
+    while (childNodes.length) {
+      this.removeChild(childNodes[0]);
+    }
+    const texts = String(text).split(/[\n\r]/);
+    const ownerDocument = ctx.wrap(handle.ownerDocument());
+    for (let i = 0, max = texts.length; i < max; i++) {
+      if (i !== 0) {
+        this.appendChild(ownerDocument.createElement("br"));
+      }
+      this.appendChild(ownerDocument.createTextNode(texts[i]));
+    }
+  });
+
   // dataset: the live DOMStringMap over `data-*` attributes.
   ctx.defineAccessor(HTMLElement.prototype, "dataset", function dataset() {
     return datasetFor(ctx, this);

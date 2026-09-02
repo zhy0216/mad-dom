@@ -47,19 +47,26 @@
 // callback that re-enters the API runs its own nested flush, so nested
 // reactions fire after their trigger exactly like happy-dom.
 //
-// # Two-phase upgrade on define and the apply path
+// # Constructor-faithful upgrade on define and the apply path
 //
 // `define` and the innerHTML/outerHTML/load_html apply path both mark new
-// elements custom *and* queue their reactions inside one native call. The
-// wrapper prototypes must be set before the callbacks fire, so:
-//
-// * `defineCustomElement` returns the replacement handles (the fresh elements
-//   Core swapped in for the connected candidates); this module sets each
-//   replacement wrapper's prototype and only then flushes the `Connected`
-//   reactions;
-// * the apply path marks the parsed elements during the native call and the
-//   facade walks them afterwards with `listCustomElementCandidates` (the
-//   elements Core upgraded during the parse), sets the prototypes and flushes.
+// elements custom *and* queue their reactions inside one native call. Core
+// mints those replacements natively, so the user constructor never runs on
+// them — happy-dom instead re-creates them through `new elementClass()` (the
+// #404 replacement for define-after-connect, `document.createElement` for the
+// parse path). The facade therefore transplants each Core-minted candidate
+// into an element minted through the user constructor
+// (`transplantReplacement`): the constructor runs (`attachShadow` and all),
+// the candidate's attributes and children move onto the new element, the new
+// element swaps into the candidate's position and its `replaceChild` flush
+// fires `connectedCallback`. The candidate's wrapper never receives the
+// custom prototype, so its queued reactions are skipped by the dispatch guard
+// and the old reference stays a plain `HTMLElement` — the happy-dom
+// observable. `define` serves the replacements in reverse document order
+// (happy-dom's LIFO define-callback order); the apply path serves them in
+// parse order, with parsed observed attributes firing their
+// `attributeChangedCallback` before `connectedCallback` (happy-dom parse
+// order).
 //
 // # Per-window registry, keyed by the document root node
 //
@@ -189,20 +196,96 @@ export function upgradeElementPrototype(ctx, element, docHandle) {
 }
 
 /**
- * Sets the wrapper prototypes of every element the apply path (innerHTML /
- * outerHTML / load_html) just upgraded during its parse.
+ * Upgrades every element the apply path (innerHTML / outerHTML / load_html)
+ * just upgraded during its parse by re-minting it through the user constructor
+ * (the happy-dom parse order: `document.createElement` of a defined name runs
+ * `new elementClass()`, so the constructor — `attachShadow` and all — executes
+ * before `connectedCallback`).
  *
  * Runs after the native apply call (which queued the elements' reactions) and
- * before the flush, so the callbacks never see a wrapper whose prototype is
- * not yet the custom class.
+ * before the flush: each Core-minted candidate is replaced in place by a
+ * constructor-minted element (see `transplantReplacement`), whose own
+ * mutations flush the callbacks synchronously in parse order.
  */
 export function upgradeParsedCandidates(ctx, nodeHandle) {
   const registry = registryForNode(ctx, nodeHandle);
   if (registry === null) return;
   const candidates = loadNative().listCustomElementCandidates(nodeHandle);
   for (const handle of candidates) {
-    registry.upgradePrototype(ctx.wrap(handle));
+    const element = ctx.wrap(handle);
+    // Definitions are keyed by the lowercased local name; `nodeName` is the
+    // uppercased tag since T48, so the lookup uses `localName`.
+    const definition =
+      registry.definitions.get(element.localName ?? element.nodeName.toLowerCase());
+    if (definition === undefined) {
+      registry.upgradePrototype(element);
+      continue;
+    }
+    // happy-dom parses attributes through `setAttribute` before the element
+    // connects, so parsed observed attributes DO fire their
+    // `attributeChangedCallback` (the apply path keeps them live).
+    transplantReplacement(ctx, definition, handle, definition.elementClass, false);
   }
+}
+
+/**
+ * Replaces one Core-minted upgrade candidate with an element minted through
+ * the user constructor, in place (the happy-dom #404 replacement shape).
+ *
+ * Core's upgrade machinery mints the replacement element natively, so the user
+ * constructor never runs on it; happy-dom instead re-creates the replacement
+ * through `document.createElement` → `new elementClass()`. This transplant
+ * closes the gap: it mints `new elementClass()` (the constructor runs —
+ * `attachShadow`, property init, everything), transfers the candidate's
+ * attributes and children onto it and swaps it into the candidate's position.
+ * The candidate's wrapper never receives the custom prototype, so its queued
+ * reactions are skipped by the dispatch guard and the old reference stays a
+ * plain `HTMLElement` — exactly the happy-dom replacement observable.
+ *
+ * `suppressAttributeReactions` selects the reaction semantics of the path:
+ * the define-after-connect replacement moves pre-definition attributes
+ * silently (happy-dom fires no `attributeChangedCallback` for them), while the
+ * parse path keeps them live (happy-dom parses attributes through
+ * `setAttribute`, firing the callback before the element connects). The
+ * candidate's own definition's `connectedCallback` / `disconnectedCallback`
+ * are suppressed for the child move on both paths (happy-dom reparents the
+ * children without firing their lifecycle), and re-instated before the final
+ * `replaceChild`, whose synchronous flush fires `connectedCallback` on the
+ * constructor-minted replacement.
+ */
+function transplantReplacement(ctx, definition, oldHandle, elementClass, suppressAttributeReactions) {
+  const oldElement = ctx.wrap(oldHandle);
+  const parent = oldElement.parentNode;
+  if (parent === null || parent === undefined) return;
+
+  const replacement = new elementClass();
+
+  const savedAttributeChanged = definition.attributeChangedCallback;
+  if (suppressAttributeReactions) definition.attributeChangedCallback = undefined;
+  try {
+    for (const attribute of [...oldElement.attributes]) {
+      replacement.setAttribute(attribute.name, attribute.value);
+    }
+  } finally {
+    definition.attributeChangedCallback = savedAttributeChanged;
+  }
+
+  const savedConnected = definition.connectedCallback;
+  const savedDisconnected = definition.disconnectedCallback;
+  definition.connectedCallback = undefined;
+  definition.disconnectedCallback = undefined;
+  try {
+    let child = oldElement.firstChild;
+    while (child !== null && child !== undefined) {
+      replacement.appendChild(child);
+      child = oldElement.firstChild;
+    }
+  } finally {
+    definition.connectedCallback = savedConnected;
+    definition.disconnectedCallback = savedDisconnected;
+  }
+
+  parent.replaceChild(replacement, oldElement);
 }
 
 /**
@@ -375,16 +458,21 @@ export function install(ctx) {
 
     // Core registers the definition, physically replaces the connected
     // matching elements with fresh custom elements and queues their
-    // `Connected` reaction; the replacement wrapper prototypes are set before
-    // the flush so the callbacks run on the upgraded (replacement) elements.
+    // `Connected` reaction. The Core-minted replacements never ran the user
+    // constructor, so each is transplanted into an element minted through
+    // `new elementClass()` (the happy-dom #404 shape: the constructor —
+    // `attachShadow` and all — runs, then `connectedCallback`). Pre-definition
+    // attributes move silently (happy-dom fires no `attributeChangedCallback`
+    // for them on this path).
     const upgraded = this.native.defineCustomElement(this.docHandle, name, observed);
-    this.definitions.set(name, new CustomElementDefinition(elementClass));
+    const definition = new CustomElementDefinition(elementClass);
+    this.definitions.set(name, definition);
     this.classToName.set(elementClass, name);
-    for (const handle of upgraded) {
-      const element = ctx.wrap(handle);
-      if (Object.getPrototypeOf(element) !== elementClass.prototype) {
-        Object.setPrototypeOf(element, elementClass.prototype);
-      }
+    // happy-dom serves its per-name define callbacks LIFO (each connected
+    // candidate unshifts itself), which for parse-connected candidates is
+    // reverse document order — the replacements upgrade in the same order.
+    for (const handle of [...upgraded].reverse()) {
+      transplantReplacement(ctx, definition, handle, elementClass, true);
     }
     if (upgraded.length > 0) {
       flushCustomElementReactions(ctx, upgraded[0]);

@@ -17,7 +17,11 @@
 // implementations, and the registry installs their window accessors). The
 // low-level native bindings (T19) stay behind the shared lazy native loader
 // (js/native-loader.js, wired by T49 per ADR-0005 §6/§8/§9); `project` is the
-// frozen package metadata.
+// frozen package metadata. The happy-dom surface additions keep the entry in
+// lockstep with the baseline: `GlobalWindow` (the host-global-context window
+// flavor), `CookieSameSiteEnum` (the browser context cookie store surface)
+// and `VirtualConsole` / `VirtualConsoleLogTypeEnum` (the virtual console
+// surface shared with the window side).
 // index.d.ts is the single source for the type surface and must be kept in
 // lockstep with the exports below.
 
@@ -64,6 +68,9 @@ import {
   VirtualConsoleLogLevelEnum,
   VirtualConsolePrinter,
 } from "./facade/extensions/browser.js";
+import { CookieSameSiteEnum } from "./facade/extensions/cookie.js";
+import { GlobalWindow } from "./facade/extensions/global-window.js";
+import { VirtualConsole, VirtualConsoleLogTypeEnum } from "./facade/extensions/virtual-console.js";
 
 export const project = Object.freeze({
   name: "mad-dom",
@@ -90,4 +97,4 @@ export function liveDocumentCount() {
   return loadNative().liveDocumentCount();
 }
 
-export { Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum, CSSStyleDeclaration, CSSRule, CSSStyleSheet, CSSStyleRule, CSSMediaRule, CSSKeyframesRule, CSSKeyframeRule, CSSFontFaceRule, CSSSupportsRule, CSSGroupingRule, CSSConditionRule, CSSContainerRule, CSSScopeRule, CSSStyleValue, CSSKeywordValue, MediaList, MediaQueryListEvent, Browser, BrowserContext, BrowserErrorCaptureEnum, BrowserFrame, BrowserPage, VirtualConsoleLogLevelEnum, VirtualConsolePrinter };
+export { Window, Document, Event, CustomEvent, UIEvent, MouseEvent, KeyboardEvent, FocusEvent, WheelEvent, InputEvent, EventPhaseEnum, CSSStyleDeclaration, CSSRule, CSSStyleSheet, CSSStyleRule, CSSMediaRule, CSSKeyframesRule, CSSKeyframeRule, CSSFontFaceRule, CSSSupportsRule, CSSGroupingRule, CSSConditionRule, CSSContainerRule, CSSScopeRule, CSSStyleValue, CSSKeywordValue, MediaList, MediaQueryListEvent, Browser, BrowserContext, BrowserErrorCaptureEnum, BrowserFrame, BrowserPage, CookieSameSiteEnum, GlobalWindow, VirtualConsole, VirtualConsoleLogLevelEnum, VirtualConsoleLogTypeEnum, VirtualConsolePrinter };
