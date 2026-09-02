@@ -555,20 +555,21 @@ function runSelfTest(fixtureKeys) {
     run: () =>
       withFreshCopy((harnessDir, tempRoot) => {
         // A member the happy-dom Window surface declares but the mad-dom type
-        // surface does not (`window.console`): the happy-dom target typechecks
+        // surface does not (`window.screen`): the happy-dom target typechecks
         // cleanly, the mad-dom target reports TS2339, and no ledger entry
-        // covers it, so the hard gate must fail the run.
+        // covers it, so the hard gate must fail the run. If mad-dom ever
+        // grows a `Window.screen` surface, pick another hd-only member here.
         writeFileSync(
           join(harnessDir, "fixtures", "positive", "hd-only-member.ts"),
           [
-            "// Self-test fixture (temp copy only): `window.console` exists on the",
+            "// Self-test fixture (temp copy only): `window.screen` exists on the",
             "// happy-dom Window surface but not on the mad-dom index.d.ts surface,",
             "// so the mad-dom target reports an uncovered diagnostic and the hard",
             "// gate must trip.",
             'import { Window } from "dom-under-test";',
             "const window = new Window();",
-            "const consoleValue = window.console;",
-            "export const exported = { consoleValue };",
+            "const screenValue = window.screen;",
+            "export const exported = { screenValue };",
             "",
           ].join("\n"),
         );

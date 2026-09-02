@@ -32,7 +32,7 @@
   },
   "scripts": {
     "check": "bun --check index.js",
-    "test": "bun test tests/bun",
+    "test": "bun test tests/bun tests/compat tests/wpt",
     "validate": "npm run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run compat:types && npm run test && npm run compat:ledger && npm run compat:hdunit:validate && npm run wpt:test",
     "dev:build": "bash crates/mad-dom-bun/build.sh",
     "test:native": "bun test tests/bun/native.test.js",

@@ -309,10 +309,12 @@ describe("real differential (happy-dom vs mad-dom)", () => {
   let run;
   let report;
 
+  // The full real-pair report run takes ~20s; without an explicit timeout the
+  // 5s bun default kills the spawned runner mid-flight and stdout truncates.
   beforeAll(() => {
     run = runRunner(["--report", "--json"]);
     report = JSON.parse(run.stdout);
-  });
+  }, 120_000);
 
   test("report mode exits 0: self-test gate clean, real gaps reported non-fatally", () => {
     if (run.status !== 0) {

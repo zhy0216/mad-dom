@@ -521,7 +521,8 @@ describe.skipIf(!nativeAvailable)("window fetch surface (T46)", () => {
       server.stop(true);
       win.destroy();
     }
-  });
+    // Real loopback I/O: the 5s default is too tight under load.
+  }, 15_000);
 
   test("Request/Response blob() returns a per-window Blob with the Content-Type and flips bodyUsed (W3 parity)", async () => {
     const win = new Window();
