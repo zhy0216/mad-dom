@@ -69,36 +69,52 @@ jobs:
           - platform: linux-arm64-musl
             triple: aarch64-unknown-linux-musl
             runner: ubuntu-24.04-arm
-    if: |
-      !(inputs.stage == 'alpha' &&
-        (matrix.platform == 'win32-x64' || contains(matrix.platform, 'musl')))
     steps:
+      # "jobs.<id>.if" cannot see the matrix context, so gate per-variant here:
+      # alpha ships darwin/linux-gnu only (ADR-0005 §2).
+      - name: Gate alpha platform set
+        id: gate
+        shell: bash
+        run: |
+          p="${{ matrix.platform }}"
+          if [ "${{ inputs.stage }}" = "alpha" ] && { [ "$p" = "win32-x64" ] || [[ "$p" == *musl* ]]; }; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check out repository
+        if: steps.gate.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Install pinned Rust toolchain
+        if: steps.gate.outputs.skip != 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.93.1
 
       - name: Add musl cross toolchain
-        if: contains(matrix.platform, 'musl')
+        if: steps.gate.outputs.skip != 'true' && contains(matrix.platform, 'musl')
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.triple }}
 
       - name: Install pinned Bun version
+        if: steps.gate.outputs.skip != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
 
       - name: Install pinned dependencies
+        if: steps.gate.outputs.skip != 'true'
         run: npm ci
 
       - name: Build the platform package
+        if: steps.gate.outputs.skip != 'true'
         run: bun scripts/build-platform-package.mjs --triple ${{ matrix.triple }}
 
       - name: Pack the platform package tarball
+        if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
           pkg_dir="build/platform/@mad-dom/platform-${{ matrix.platform }}"
@@ -106,12 +122,14 @@ jobs:
           npm pack "$pkg_dir" --pack-destination build/smoke --json
 
       - name: Run install smoke on the native runner
+        if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
           tgz="build/smoke/mad-dom-platform-${{ matrix.platform }}-$(node -p "require('./package.json').version").tgz"
           bun scripts/install-smoke.mjs --platform-tgz "$tgz"
 
       - name: Upload platform package
+        if: steps.gate.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: platform-${{ matrix.platform }}
