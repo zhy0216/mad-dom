@@ -576,7 +576,12 @@ export class PermissionStatus {
 
 export class Permissions {
   constructor() {
-    this._statuses = new Map();
+    Object.defineProperty(this, "_statuses", {
+      value: new Map(),
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    });
   }
   async query(permissionDesc) {
     const name = permissionDesc.name;
@@ -626,5 +631,9 @@ export function install(ctx) {
 
   ctx.defineAccessor(Window.prototype, "Permissions", function getPermissions() {
     return Permissions;
+  }, undefined);
+
+  ctx.defineAccessor(Window.prototype, "PermissionStatus", function getPermissionStatus() {
+    return PermissionStatus;
   }, undefined);
 }

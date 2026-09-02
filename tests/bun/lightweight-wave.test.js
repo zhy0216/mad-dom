@@ -163,3 +163,20 @@ describe.skipIf(!nativeAvailable)("T08 Clipboard facade", () => {
     }
   });
 });
+
+describe.skipIf(!nativeAvailable)("T08 Permissions facade", () => {
+  test("navigator.permissions exposes a query() surface with no enumerable internals", async () => {
+    const window = new Window();
+    try {
+      const permissions = window.navigator.permissions;
+      expect(permissions).toBeInstanceOf(window.Permissions);
+      expect(Object.keys(permissions)).toEqual([]);
+      const status = await permissions.query({ name: "geolocation" });
+      expect(status).toBeInstanceOf(window.PermissionStatus);
+      expect(status.state).toBe("granted");
+      expect(await permissions.query({ name: "geolocation" })).toBe(status);
+    } finally {
+      window.destroy();
+    }
+  });
+});

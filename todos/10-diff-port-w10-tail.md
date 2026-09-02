@@ -1,6 +1,6 @@
 # 10 差分移植波次 W10：尾部杂项子系统
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P1
 - 里程碑：W10
 - 条目 ID：`D10`
@@ -35,7 +35,7 @@
 
 ## 条目
 
-- [ ] **D10 — W10 尾部杂项差分移植**
+- [x] **D10 — W10 尾部杂项差分移植**
   - 实现：
     - 逐文件核实运行时导入；enum/type-only 排除（triage 不动，commit body 列明）；其余三问 A/B 判定，B 档 reason `internal-only-no-public-surface (哪一问: 简述)`。
     - 编译器（JavaScriptCompiler、ECMAScriptModuleCompiler）、解析器内部（HTMLParser、XMLParser）、容器内部（CookieContainer）大概率无公开等价面 → B 档是预期结果；`index.test.ts` 若能经 `entry.Window` 公开面重述核心断言则可 A 档（id `index-index`），否则 B 档。

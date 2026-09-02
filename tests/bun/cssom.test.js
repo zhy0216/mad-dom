@@ -47,6 +47,12 @@ function freshWindow() {
   return win;
 }
 
+function freshWindowWith(options) {
+  const win = new Window(options);
+  createdWindows.push(win);
+  return win;
+}
+
 afterAll(() => {
   for (const win of createdWindows) win.destroy();
 });
@@ -393,6 +399,47 @@ describe("matchMedia / MediaQueryList (T44)", () => {
     expect(win.matchMedia("screen").matches).toBe(true);
     expect(win.matchMedia("print").matches).toBe(false);
     expect(win.matchMedia("(orientation: landscape)").matches).toBe(true);
+  });
+
+  test("matches honors the settings.device mediaType / prefers-* options", () => {
+    const printWin = freshWindowWith({ width: 1024, height: 768, settings: { device: { mediaType: "print" } } });
+    expect(printWin.matchMedia("print").matches).toBe(true);
+    expect(printWin.matchMedia("print and (min-width: 1024px)").matches).toBe(true);
+    expect(printWin.matchMedia("screen").matches).toBe(false);
+
+    const darkWin = freshWindowWith({ width: 1024, height: 768, settings: { device: { prefersColorScheme: "dark" } } });
+    expect(darkWin.matchMedia("(prefers-color-scheme: dark)").matches).toBe(true);
+    expect(darkWin.matchMedia("(prefers-color-scheme: light)").matches).toBe(false);
+
+    const reduceWin = freshWindowWith({ width: 1024, height: 768, settings: { device: { prefersReducedMotion: "reduce" } } });
+    expect(reduceWin.matchMedia("(prefers-reduced-motion)").matches).toBe(true);
+    expect(reduceWin.matchMedia("(prefers-reduced-motion: reduce)").matches).toBe(true);
+    expect(reduceWin.matchMedia("(prefers-reduced-motion: no-preference)").matches).toBe(false);
+
+    const forcedWin = freshWindowWith({ settings: { device: { forcedColors: "active" } } });
+    expect(forcedWin.matchMedia("(forced-colors)").matches).toBe(true);
+    expect(forcedWin.matchMedia("(forced-colors: active)").matches).toBe(true);
+    expect(forcedWin.matchMedia("(forced-colors: none)").matches).toBe(false);
+  });
+
+  test("percentage media values never match", () => {
+    const win = freshWindow();
+    expect(win.matchMedia("(min-width: 0%)").matches).toBe(false);
+    expect(win.matchMedia("(min-height: 0%)").matches).toBe(false);
+  });
+
+  test("rem/em media values follow the root font-size and disableComputedStyleRendering", () => {
+    const win = freshWindow();
+    win.document.documentElement.style.fontSize = "10px";
+    expect(win.matchMedia(`(min-width: ${1024 / 10}rem)`).matches).toBe(true);
+    expect(win.matchMedia(`(min-width: ${1025 / 10}rem)`).matches).toBe(false);
+    expect(win.matchMedia(`(min-width: ${1024 / 10}em)`).matches).toBe(true);
+    expect(win.matchMedia(`(max-width: ${1023 / 10}rem)`).matches).toBe(false);
+    expect(win.matchMedia(`(max-width: ${1024 / 10}rem)`).matches).toBe(true);
+
+    const noCssWin = freshWindowWith({ width: 1024, height: 768, settings: { disableComputedStyleRendering: true } });
+    expect(noCssWin.matchMedia(`(max-width: ${1023 / 16}rem)`).matches).toBe(false);
+    expect(noCssWin.matchMedia(`(max-width: ${1024 / 16}rem)`).matches).toBe(true);
   });
 
   test("addEventListener / dispatchEvent and onchange", () => {

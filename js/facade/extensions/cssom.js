@@ -2917,6 +2917,7 @@ const RESOLUTION_REGEXP = /(?:([0-9]+[a-z]+) *(<|<=|>|>=)){0,1} *(width|height) 
 class MediaQueryItem {
   constructor(options) {
     this.window = options.window;
+    this.settings = options.settings || null;
     this.rootFontSize = options.rootFontSize || null;
     this.mediaTypes = options.mediaTypes || [];
     this.not = options.not || false;
@@ -2940,7 +2941,7 @@ class MediaQueryItem {
     if (!!this.mediaTypes.length) {
       let isMediaTypeMatch = false;
       for (const mediaType of this.mediaTypes) {
-        if (mediaType === "all" || mediaType === "screen") {
+        if (this.matchesMediaType(mediaType)) {
           isMediaTypeMatch = true;
           break;
         }
@@ -2954,6 +2955,11 @@ class MediaQueryItem {
       if (!this.matchesRange(range)) return false;
     }
     return true;
+  }
+
+  matchesMediaType(mediaType) {
+    if (mediaType === "all") return true;
+    return mediaType === this.settings.device.mediaType;
   }
 
   matchesRange(range) {
@@ -2998,6 +3004,7 @@ class MediaQueryItem {
   }
 
   matchesRule(rule) {
+    const device = this.settings.device;
     if (!rule.value) {
       switch (rule.name) {
         case "min-width":
@@ -3018,43 +3025,46 @@ class MediaQueryItem {
         case "aspect-ratio":
           return true;
         case "prefers-reduced-motion":
-          return false;
+          return device.prefersReducedMotion === "reduce";
         case "forced-colors":
-          return false;
+          return device.forcedColors === "active";
       }
       return false;
     }
     switch (rule.name) {
       case "min-width":
-        return this.window.innerWidth >= this.toPixels(rule.value);
+        return this.toPixels(rule.value) !== null && this.window.innerWidth >= this.toPixels(rule.value);
       case "max-width":
-        return this.window.innerWidth <= this.toPixels(rule.value);
+        return this.toPixels(rule.value) !== null && this.window.innerWidth <= this.toPixels(rule.value);
       case "min-height":
-        return this.window.innerHeight >= this.toPixels(rule.value);
+        return this.toPixels(rule.value) !== null && this.window.innerHeight >= this.toPixels(rule.value);
       case "max-height":
-        return this.window.innerHeight <= this.toPixels(rule.value);
+        return this.toPixels(rule.value) !== null && this.window.innerHeight <= this.toPixels(rule.value);
       case "width":
-        return this.window.innerWidth === this.toPixels(rule.value);
+        return this.toPixels(rule.value) !== null && this.window.innerWidth === this.toPixels(rule.value);
       case "height":
-        return this.window.innerHeight === this.toPixels(rule.value);
+        return this.toPixels(rule.value) !== null && this.window.innerHeight === this.toPixels(rule.value);
       case "orientation":
         return rule.value === "landscape" ? this.window.innerWidth > this.window.innerHeight : this.window.innerWidth < this.window.innerHeight;
       case "prefers-color-scheme":
-        return rule.value === "light";
+        return rule.value === device.prefersColorScheme;
       case "prefers-reduced-motion":
-        return rule.value === "no-preference";
+        return rule.value === device.prefersReducedMotion;
       case "forced-colors":
-        return rule.value === "none";
+        return (
+          (rule.value === "none" || rule.value === "active") &&
+          rule.value === device.forcedColors
+        );
       case "hover":
       case "any-hover":
-        if (rule.value === "none") return false;
-        if (rule.value === "hover") return true;
+        if (rule.value === "none") return this.window.navigator.maxTouchPoints > 0;
+        if (rule.value === "hover") return this.window.navigator.maxTouchPoints === 0;
         return false;
       case "pointer":
       case "any-pointer":
         if (rule.value === "none") return false;
-        if (rule.value === "coarse") return false;
-        if (rule.value === "fine") return true;
+        if (rule.value === "coarse") return this.window.navigator.maxTouchPoints > 0;
+        if (rule.value === "fine") return this.window.navigator.maxTouchPoints === 0;
         return false;
       case "display-mode":
         return rule.value === "browser";
@@ -3079,6 +3089,21 @@ class MediaQueryItem {
     const parsed = parseFloat(value);
     const unit = value.replace(parsed.toString(), "");
     if (isNaN(parsed)) return null;
+    if (
+      (unit === "rem" || unit === "em") &&
+      !this.settings.disableComputedStyleRendering
+    ) {
+      let rootFontSize = 16;
+      try {
+        const computed = this.window.getComputedStyle(this.window.document.documentElement);
+        const fontSize = computed.fontSize ?? computed.getPropertyValue?.("font-size");
+        const parsedSize = parseFloat(fontSize);
+        if (!isNaN(parsedSize)) rootFontSize = parsedSize;
+      } catch {
+        // Fall back to the 16px default when the computed style is unavailable.
+      }
+      return Math.round(parsed * rootFontSize * 10000) / 10000;
+    }
     switch (unit) {
       case "px": return parsed;
       case "rem": return Math.round(parsed * 16 * 10000) / 10000;
@@ -3155,6 +3180,7 @@ export class MediaQueryList extends EventTargetLike {
     this[MQL_STATE] = {
       window: options.window,
       media: options.media,
+      settings: options.settings,
       rootFontSize: options.rootFontSize || null,
       items: null,
     };
@@ -3162,13 +3188,13 @@ export class MediaQueryList extends EventTargetLike {
 
   get media() {
     const state = this[MQL_STATE];
-    state.items = state.items || parseMediaQuery(state.window, state.media, state.rootFontSize);
+    state.items = state.items || parseMediaQuery(state.window, state.media, state.settings, state.rootFontSize);
     return state.items.map((item) => item.toString()).join(", ");
   }
 
   get matches() {
     const state = this[MQL_STATE];
-    state.items = state.items || parseMediaQuery(state.window, state.media, state.rootFontSize);
+    state.items = state.items || parseMediaQuery(state.window, state.media, state.settings, state.rootFontSize);
     for (const item of state.items) {
       if (!item.matches()) return false;
     }
@@ -3186,14 +3212,14 @@ export class MediaQueryList extends EventTargetLike {
 
 const MQL_STATE = Symbol("mad-dom-mql-state");
 
-function parseMediaQuery(window, mediaQuery, rootFontSize) {
-  let currentMediaQueryItem = new MediaQueryItem({ window, rootFontSize });
+function parseMediaQuery(window, mediaQuery, settings, rootFontSize) {
+  let currentMediaQueryItem = new MediaQueryItem({ window, settings, rootFontSize });
   const mediaQueryItems = [currentMediaQueryItem];
   const regexp = new RegExp(MEDIA_QUERY_REGEXP);
   let match = null;
   while ((match = regexp.exec(mediaQuery.toLowerCase()))) {
     if (match[4] === "," || match[5] === "or") {
-      currentMediaQueryItem = new MediaQueryItem({ window, rootFontSize });
+      currentMediaQueryItem = new MediaQueryItem({ window, settings, rootFontSize });
       mediaQueryItems.push(currentMediaQueryItem);
     } else if (match[1] === "all" || match[1] === "screen" || match[1] === "print") {
       currentMediaQueryItem.mediaTypes.push(match[1]);
@@ -3211,7 +3237,7 @@ function parseMediaQuery(window, mediaQuery, rootFontSize) {
         const [name, value] = match[2].split(":");
         const trimmedValue = value ? value.trim() : null;
         if (!trimmedValue && !match[3]) {
-          return [new MediaQueryItem({ window, rootFontSize, not: true, mediaTypes: ["all"] })];
+          return [new MediaQueryItem({ window, settings, rootFontSize, not: true, mediaTypes: ["all"] })];
         }
         currentMediaQueryItem.rules.push({ name: name.trim(), value: trimmedValue });
       }
@@ -3690,7 +3716,11 @@ export function install(ctx) {
   }, undefined);
 
   ctx.defineMethod(Window.prototype, "matchMedia", function matchMedia(mediaQueryString) {
-    return new MediaQueryList({ window: this, media: mediaQueryString });
+    return new MediaQueryList({
+      window: this,
+      media: mediaQueryString,
+      settings: ctx.windowSettings(this),
+    });
   });
 
   ctx.defineMethod(Window.prototype, "getComputedStyle", function getComputedStyle(element) {

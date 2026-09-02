@@ -158,6 +158,7 @@ const ctx = Object.freeze({
   registerHandleType,
   registerWrap,
   windowFacadeOfDocument,
+  windowSettings,
 });
 
 // --- `Window` facade -------------------------------------------------------
@@ -182,6 +183,35 @@ const WIN_HANDLES = new WeakMap();
 // by the Window facade so the `innerWidth` / `outerWidth` / `devicePixelRatio`
 // accessors and the media-query evaluation all read one consistent value.
 const WINDOW_VIEWPORTS = new WeakMap();
+
+// Per-window happy-dom settings kept by the Window facade for the surfaces
+// that need them at runtime (`matchMedia` device settings and computed-style
+// rendering toggle). Only the fields consumed by the facade are kept; the rest
+// of the happy-dom settings surface is handled by the `Browser` settings when a
+// window is created through a browser frame.
+const WINDOW_SETTINGS = new WeakMap();
+
+function computeWindowSettings(options) {
+  const given = options?.settings ?? {};
+  return {
+    device: {
+      prefersColorScheme: given.device?.prefersColorScheme ?? "light",
+      prefersReducedMotion: given.device?.prefersReducedMotion ?? "no-preference",
+      mediaType: given.device?.mediaType ?? "screen",
+      forcedColors: given.device?.forcedColors ?? "none",
+    },
+    disableComputedStyleRendering: given.disableComputedStyleRendering ?? false,
+  };
+}
+
+// Per-window settings accessor exposed through the facade `ctx` for the
+// extension installers (the happy-dom device defaults: prefers-color-scheme
+// light, prefers-reduced-motion no-preference, media type screen, forced-colors
+// none). Not part of the module export surface — the public `window.js` shape
+// is pinned by the T22B export test.
+function windowSettings(windowFacade) {
+  return WINDOW_SETTINGS.get(windowFacade) ?? computeWindowSettings({});
+}
 
 function computeViewport(options) {
   const viewportSetting = options?.settings?.viewport ?? {};
@@ -246,6 +276,7 @@ export class Window {
     }
     WIN_HANDLES.set(this, nativeHandle);
     WINDOW_VIEWPORTS.set(this, computeViewport(options));
+    WINDOW_SETTINGS.set(this, computeWindowSettings(options));
     // happy-dom constructor options: honor `url` by simulating the initial
     // navigation (the T45 simulated location), so `new Window({ url })`
     // matches `new Window()` plus a synchronous navigation to that URL.
