@@ -226,6 +226,16 @@ describe.skipIf(!nativeAvailable)("T48 window.happyDOM", () => {
     expect(order).toEqual(["sync", "microtask", "after"]);
     window.destroy();
   });
+
+  test("window.close is the happy-dom no-op for a detached window", () => {
+    const window = new Window();
+    expect(typeof window.close).toBe("function");
+    expect(window.close()).toBeUndefined();
+    // happy-dom keeps a detached window fully usable after close().
+    window.document.body.innerHTML = '<div class="container"></div>';
+    expect(window.document.querySelector(".container")).not.toBeNull();
+    window.destroy();
+  });
 });
 
 describe.skipIf(!nativeAvailable)("T48 Window constructibility", () => {

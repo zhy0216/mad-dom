@@ -1057,6 +1057,13 @@ export function install(ctx) {
     return api;
   }, undefined);
 
+  // happy-dom's `window.close()` (BrowserWindow.close) only destroys a window
+  // that a script opened (`window.open`) and that is its page's main frame; for
+  // a detached `new Window()` the `openerWindow` check fails and the call is a
+  // plain no-op. Every mad-dom window is detached, so the parity method does
+  // nothing and the window stays fully usable afterwards.
+  ctx.defineMethod(Window.prototype, "close", function close() {});
+
   // Document surface.
   ctx.defineAccessor(Document.prototype, "URL", function getURL() {
     return platformOfDocument(ctx.documentContext.handleOf(this))?.url.href ?? "about:blank";

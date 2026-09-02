@@ -267,6 +267,9 @@ export declare class Window {
   readonly innerWidth: number;
   /** WHATWG `window.innerHeight` (T44): the default viewport height (768; no layout engine). */
   readonly innerHeight: number;
+  /** WHATWG `window.close` (happy-dom parity): a no-op — happy-dom only closes
+   * script-opened windows (`window.open`), and every mad-dom window is detached. */
+  close(): void;
   /** Eagerly destroys the window's document; idempotent. */
   destroy(): void;
 }
