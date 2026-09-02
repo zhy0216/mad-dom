@@ -36,12 +36,27 @@
 //      Class instances, Dates, Maps, Sets, host objects etc. are excluded.
 //   7. Cyclic or otherwise unstable values are excluded, never truncated
 //      mid-structure, so the output always stays deterministic.
+//   8. Host-dependent strings are normalized onto fixed tokens: the host
+//      platform label ("<host-os>", e.g. embedded in happy-dom's default
+//      navigator.userAgent) and absolute paths into this repository
+//      ("<repo>", e.g. embedded in DOMException sourceURL/stack captured at
+//      construction), so the snapshot is byte-stable across machines and OSes.
 import { writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const COLLECTOR_SCHEMA = "mad-dom-public-api-collector/1";
 
 const MAX_SERIALIZATION_DEPTH = 4;
 const MAX_ARRAY_LENGTH = 256;
+
+// Host-dependent string anchors (rule 8): values that embed the host platform
+// label (e.g. happy-dom's default navigator.userAgent) or absolute paths into
+// this repository (e.g. DOMException sourceURL/stack captured at construction)
+// are rewritten onto fixed tokens so the snapshot stays byte-stable across
+// machines and operating systems.
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const HOST_PLATFORM_LABEL = `${process.platform.charAt(0).toUpperCase()}${process.platform.slice(1)} ${process.arch}`;
 
 main();
 
@@ -430,12 +445,26 @@ function sortObjectKeys(object) {
   return result;
 }
 
+function normalizeHostDependentString(value) {
+  let normalized = value;
+  if (normalized.includes(REPO_ROOT)) {
+    normalized = normalized.split(REPO_ROOT).join("<repo>");
+  }
+  if (normalized.includes(HOST_PLATFORM_LABEL)) {
+    normalized = normalized.split(HOST_PLATFORM_LABEL).join("<host-os>");
+  }
+  return normalized;
+}
+
 function serializeValue(value, depth = MAX_SERIALIZATION_DEPTH) {
   if (value === null) {
     return { ok: true, value: null };
   }
   const typeOf = typeof value;
-  if (typeOf === "string" || typeOf === "boolean") {
+  if (typeOf === "string") {
+    return { ok: true, value: normalizeHostDependentString(value) };
+  }
+  if (typeOf === "boolean") {
     return { ok: true, value };
   }
   if (typeOf === "number") {

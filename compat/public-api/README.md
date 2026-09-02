@@ -26,7 +26,7 @@
 3. **描述符归约为形状**：不比较值引用，只比较 `writable`/`enumerable`/`configurable`/get、set 存在性/数据属性值的 `typeof`。
 4. **值序列化白名单**：原始值（`NaN`/`±Infinity`/`-0`/`bigint`/`undefined` 以 `~` 前缀标签保真）与受限深度的纯对象/稠密数组才序列化；类实例、Date、Map、Set、宿主对象、循环引用一律排除（键名保留在 `instanceNonSerializableKeys`）。
 5. **symbol 仅 informational**（ADR-0002 第 2 节）：所有 symbol 键（含 `PropertySymbol` 的 417 个键）按 `String(symbol)` 排序记录描述符形状，记录存在性但不作硬性门禁；同描述符号碰撞时加 ` #n` 后缀。
-6. **全部键排序**、无时间戳/pid/随机值；`meta` 只有生成器版本、基线引用与 schema 版本。
+6. **全部键排序**、无时间戳/pid/随机值；`meta` 只有生成器版本、基线引用与 schema 版本。宿主相关字符串归一化为固定 token：宿主平台标签（如 happy-dom 默认 `navigator.userAgent` 内嵌的 `Linux arm64`/`Darwin arm64`）→ `<host-os>`，仓库绝对路径（如构造期捕获的 `DOMException` `sourceURL`/`stack`）→ `<repo>`，保证跨机器、跨操作系统逐字节稳定。
 7. **分类规则**：函数当且仅当自有 `prototype` 不可写不可配置且 `prototype.constructor` 回指自身时归为 class（不调用函数即可判定）；自有字符串键值全为原始值的对象按导出名是否以 enum 结尾（大小写不敏感）归为 `enum`/`constant-object`；自有值全为 symbol 的对象归为 `symbol-object`。
 8. 静态/原型成员只记录名称与描述符形状，不记录静态值——常量值以独立导出（枚举/常量对象）形式入快照。
 
