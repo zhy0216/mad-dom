@@ -1,6 +1,6 @@
 # 计划 0002：hdunit 内部耦合 skip 文件 1:1 移植为公开 API 差分场景
 
-- 状态：执行中
+- 状态：已完成
 - 对应 ADR：[ADR-0001 §6（上游用例移植）](../adr/0001-basic-technical-architecture.md)、[ADR-0002（兼容基线与差分协议）](../adr/0002-happy-dom-compatibility-baseline-and-differential-protocol.md)、[ADR-0006（hdunit 套件与 triage 门禁）](../adr/0006-happy-dom-unit-suite-hdunit.md)
 - 计划日期：2026-09-01
 - 用户决策（2026-09-01）：产物放差分赛道（hc-diff）；粒度 1:1 逐文件移植；本计划先行
@@ -197,3 +197,44 @@ W1（css，17 文件）已完成并合入，四个机制点全部实测通过：
 **结论对后续波次的影响**：四机制点全部按计划 §5/§11 的假定成立，W2–W10 可按
 共用协议照常推进；css 子系统的 facade 差距集中在 cssom.js 单文件，nodes/svg 波次
 预计以 core（Rust）修复为主、结构不同，系数不直接外推，W5 后再复核是否按文件数重排。
+
+## 13. 验证点结论（D11 收尾，2026-09-02）
+
+D01–D10 全部合入，收尾核对（条目 D11）完成，本计划**已完成**。终态数字如下。
+
+### A/B/enum-only 分布（原 `unmapped-internal-import` 196 文件）
+
+- **A 档 `ported-to-diff (hc-diff-<id>)`：147**，按波次 W1 14 / W2 6 / W3 4 / W4 3 /
+  W5 8 / W6 16 / W7 36 / W8 33 / W9 25 / W10 2。
+- **B 档 `internal-only-no-public-surface`：38**，子系统分布 cookie 2 / xml-serializer 1 /
+  html-parser 2 / history 1 / dom 1 / fetch 5 / javascript 1 / css 2 / utilities 1 /
+  module 2 / web-socket 1 / window 2 / index 1 / browser 7 / nodes 9；三问逐项理由已落在
+  triage reason（哪一问不满足、为何不可构造/不可观测/不可差分）。
+- **enum-only 排除（triage 原样保留，T12 机械路线）：11**，permissions 1 / canvas 2 /
+  cookie-store 1 / range 1 / custom-element 1 / svg 1（`SVGUnitTypes`，W9 判定为纯常量
+  持有类）/ xml-parser 1 / css 1 / nodes 2；§1/§2 的「约 175」是范围初估，实际共 196 个。
+- 三项之和 = **196**，与 `tests/happy-dom/COVERAGE.md` 的 `unmapped-internal-import`
+  计数一致，与 `tests/happy-dom/triage/*.json` 逐一机械可核对（validate-triage 确认
+  298 个文件全部有终态，无「未 triage」遗留）。
+
+### 场景总数
+
+- 差分套件 `tests/compat/scenarios/dom/` = **180 个真实对拍场景**（含既有 33 个，
+  波次新增 147 个）；`compat/ledger.json` 180 条 diff 条目全部 `pass`，与场景文件
+  一一对应（`npm run compat:ledger` 交叉核对强制，0 stale / 0 regression）。
+
+### 时长基线（D11 实测，§8 性能项复核）
+
+- 全量对拍 180 场景 = 360 子进程（串行 `spawnSync`）：热跑稳定 **~20.2–20.6s**
+  （三次实测 20.25s / 20.36s / 20.58s），单场景平均 ~113ms、单子进程平均 ~57ms。
+- 与 §8/§12 预算对比：W1 预估终态 ~18s，实测 ~20.4s，处于同一量级，未超典型 CI 预算；
+  **runner 并发化不立项**（README 用户决策点 2 未触发）。
+
+### 口径与报告
+
+- `tests/happy-dom/COVERAGE.md` 已按 §8 更新口径：`ported-to-diff` 文件在 hdunit 仍是
+  `skip`（vendored 文件不可运行），但理由从「内部耦合不可覆盖」改为「已由差分场景覆盖」；
+  B 档文件口径为「公开面无等价构造/观测，已豁免」。
+- `npm run compat:hdunit:report` 计数口径与 D01 基线一致：enabled 68 / expected-fail 22 /
+  skip 208，delta 全 0；`npm run compat:hdunit:validate`、`npm run compat:ledger`、
+  `npm run validate` 全绿。

@@ -1,6 +1,6 @@
 # 11 差分移植收尾：口径、文档与性能验收
 
-- 状态：待办
+- 状态：待复核
 - 优先级：P2
 - 里程碑：收尾
 - 条目 ID：`D11`
@@ -13,7 +13,7 @@ D01–D10 全部合入后收口：更新覆盖口径文档、核对计划验收�
 
 ## 条目
 
-- [ ] **D11 — 收尾**
+- [x] **D11 — 收尾**
   - 实现：
     - **口径文档**：更新 `tests/happy-dom/COVERAGE.md`——ported 文件在 hdunit 仍是 skip（vendored 文件不可运行），理由从「内部耦合不可覆盖」改为「已由差分场景覆盖」（`ported-to-diff (hc-diff-<id>)`）；B 档文件口径为「公开面无等价构造/观测，已豁免」（`internal-only-no-public-surface`）；report 的 skip 计数口径保持原状。
     - **验收核对**：核对计划 §8——`unmapped-internal-import` 文件全部有终态判定（ported-to-diff / internal-only-no-public-surface / enum-only 排除三项之和覆盖全部 196 个）；ledger diff 条目与场景文件一一对应（`npm run compat:ledger` 交叉核对强制）；diff 套件场景数（含既有 33 个）≈ 180+；`npm run compat:hdunit:report` 计数口径与 D01 基线一致。

@@ -1,10 +1,12 @@
-# hdunit 覆盖总结（T11 收尾基线）
+# hdunit 覆盖总结（差分移植收尾基线）
 
-本文件记录 hdunit 队列（T01–T12）收尾时的**最终通过率总结**，作为下一轮波次的起点
-基线。所有数字由 `npm run compat:hdunit:report --json`（纯离线聚合，triage 分片为真相源）
-直接生成，**不美化**；与 `report-baseline.json` 记录的口径一致（本次 delta 全 0）。
+本文件记录 hdunit 队列（T01–T12）收尾时的**最终通过率总结**，并在差分移植
+（[计划 0002](../../plans/0002-hdunit-internal-to-differential-port.md) D01–D10）完成后
+更新覆盖口径。所有数字由 `npm run compat:hdunit:report --json`（纯离线聚合，triage
+分片为真相源）直接生成，**不美化**；与 `report-baseline.json` 记录的口径一致
+（本次 delta 全 0）。
 
-- 记录日期：2026-09-01
+- 记录日期：2026-09-01（T11 基线）；2026-09-02（D11 差分移植收尾口径更新）
 - 基线文件：`tests/happy-dom/report-baseline.json`（`compat:hdunit:report:baseline` 写入）
 - 口径：文件数 = `rewrite-report.json` 的 `test-source` 文件数；通过率 = `enabled / total`（四舍五入取整）
 
@@ -84,7 +86,9 @@ T02 未映射 `src/…` 路径或独立 facade 面，见下。
 
 | 类别 | 文件数 | 说明 |
 | --- | ---: | --- |
-| `unmapped-internal-import`（T02 未映射 `src/…` 路径，shim 不可覆盖） | 196 | 依赖内部实现模块（`internal-class` / `internal-parser` / `internal-enum` / `internal-utility` / `internal-config` / `internal-type` / `internal-other`），T04 shim 只覆盖 `src/index.ts` 公开导出面；这是最大的已知缺口类别 |
+| `ported-to-diff (hc-diff-<id>)` | 147 | 原 `unmapped-internal-import` 文件（A 档三问全满足）已 1:1 移植为差分场景（计划 0002 D01–D10，见 `tests/compat/scenarios/dom/` 与 `compat/ledger.json` 的 `hc-diff-*` 条目）；vendored 文件不可运行，hdunit 仍 `skip`，但理由从「内部耦合不可覆盖」改为「已由差分场景覆盖」——由 runner 对 happy-dom 当 oracle 机械对拍 |
+| `internal-only-no-public-surface` | 38 | B 档（三问任一问不满足，计划 0002 §3）：公开面无等价构造/观测，已豁免；哪一问不满足、为何不可构造/不可观测/不可差分的理由逐项落在 triage reason |
+| `unmapped-internal-import`（enum-only 排除，T12 机械路线） | 11 | 仅含 enum/type-only 内部导入（`internal-enum` / `internal-config`，含 `svg/SVGUnitTypes` 常量持有类），无内部实现模块运行时构造，**不属于本计划**（计划 0002 §2）；triage 原样保留、继续 `skip`，由 T12 机械路线启用 |
 | facade-gap（缺 facade 绑定面） | 18 | 大表面：HTMLSerializer/DOMParser/XMLSerializer、Screen/ScreenDetails、DOMImplementation（HTMLDocument/XMLDocument）、browser 页面/iframe、表单/表格集合等 |
 | PropertySymbol internal-slot（内部槽位在 facade 上不可表达） | 8 | T12 shim 已让 `PropertySymbol` 可解析，但 `element[PropertySymbol.buffer]` 这类内部槽位读写与 `new HTMLCollection(illegalConstructor, …)` 回调整体在 facade 上不可表达 |
 | HTML 解析器空白节点保真差异 | 2 | `document.write` 输出与上游空白文本节点不一致（解析器保真度，T06/T09 边界） |
@@ -97,12 +101,18 @@ T02 未映射 `src/…` 路径或独立 facade 面，见下。
 `expected-fail`（22 个）全部带 reason 声明失败面且不得长期滞留；波次收尾必须收敛为
 `enabled` / `skip`。
 
-## 下一轮波次的起点
+**skip 计数口径保持原状**：`ported-to-diff` 与 `internal-only-no-public-surface` 文件
+在 hdunit report 中仍计入 `skip`（vendored 文件不可运行），`skip` 计数与 D01 基线一致
+（208，delta 全 0）；差分移植后的实际覆盖见 `tests/compat/scenarios/dom/`（180 个真实
+对拍场景，`npm run compat:ledger` 强制 ledger diff 条目与场景文件一一对应）。
 
+## 差分移植后的状态
+
+- 计划 0002 差分移植（D01–D10）已完成：196 个原 `unmapped-internal-import` 文件全部有
+  终态判定（`ported-to-diff` 147 / `internal-only-no-public-surface` 38 / enum-only 排除
+  11），分布见上文 known-gap 表，与 `tests/happy-dom/triage/*.json` 逐一机械可核对。
 - 基线点：本文件的数字就是 `report-baseline.json`（delta 全 0）。
-- 下一波启用文件后：更新分片 + ledger 计数 + upstream-map，跑
+- 复现本表：`bun tests/happy-dom/report.mjs --json`（数字不得与上表任何一行冲突）。
+- 变更纪律：启用/重排 triage 后更新分片 + ledger 计数 + upstream-map，跑
   `npm run compat:hdunit:validate`（exit 0）与 `npm run compat:ledger`，再
   `npm run compat:hdunit:report:baseline` 记录新基线并把新数字同步回本文件。
-- 建议增益路径：`nodes` 剩余 `skip`（约 104，多为 SVG 元素类 `unmapped-internal-import`，
-  可先补 facade 绑定面）→ `css` / `fetch` 已启动的子系统。
-- 复现本表：`bun tests/happy-dom/report.mjs --json`（数字不得与上表任何一行冲突）。
