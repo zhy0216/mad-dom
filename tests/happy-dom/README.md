@@ -12,7 +12,7 @@
 | `vendor/` | 上游 `packages/happy-dom/test/` 逐字节原样拷贝 + `UPSTREAM.md` provenance | T01 输入 |
 | `vendor-src-enums/` | 上游纯 enum/常量 `src/` 模块（带 provenance 头，供 shim 原样消费） | T01 输入 |
 | `vendor-scan.json` / `vendor-scan.summary.md` | 模块清单：每个 vendored 文件的 import 分类（`src-runtime` / `src-type` / `local-helper` / `vitest-api` / `external`）与 `shimPath` 映射（T01/T02/T03/T04 的接口契约） | T01 产物 |
-| `rewritten/` | 机械重写后的镜像：`src/…` 内部导入重指向 `shim/src/…`，vitest → `bun:test` + adapter | T02 产物 |
+| `rewritten/` | 机械重写后的镜像：`src/…` 内部导入重指向 `shim/src/…`，vitest → `bun:test` + adapter。生成产物，不入库（`compat:hdunit:test` 缺失时自动重建） | T02 产物 |
 | `rewrite-report.json` | 重写报告：文件清单、`fileKind`（`test-source` 等）、import 映射统计 | T02 产物 |
 | `rewrite-selftest/` | 重写管线的自测（`rewrite-selftest.test.ts`） | T02 |
 | `shim/src/` | re-export shim 层：每个可映射 `src/` 模块在 `shim/src/<srcPath>` 生成 re-export，指向 `mad-dom` 公开入口或本地 shim | T04 产物 |

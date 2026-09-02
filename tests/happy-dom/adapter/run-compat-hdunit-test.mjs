@@ -9,6 +9,7 @@
 // in which case the sample alone is run.
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -32,6 +33,14 @@ function findTestFiles(dir) {
 	return entries;
 }
 
+// rewritten/ is generated, not committed: build it on demand.
+if (!existsSync(REWRITTEN)) {
+	const gen = spawnSync('bun', ['scripts/rewrite-happy-dom-tests.mjs'], { stdio: 'inherit', cwd: REPO_ROOT });
+	if (gen.status !== 0) {
+		console.error('compat:hdunit:test: rewrite generation failed; falling back to the smoke sample');
+	}
+}
+
 const hasRewrittenTests =
 	existsSync(REWRITTEN) &&
 	statSync(REWRITTEN).isDirectory() &&
@@ -45,7 +54,6 @@ if (hasRewrittenTests) {
 }
 testArgs.push('--preload', PRELOAD, '--timeout', '500');
 
-const { spawnSync } = await import('node:child_process');
 const result = spawnSync('bun', testArgs, { stdio: 'inherit', cwd: REPO_ROOT });
 
 if (result.error) {

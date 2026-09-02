@@ -37,15 +37,12 @@
 // snapshots, type declarations) are byte-copied without a header because their
 // byte content is behavior (line numbers / exact module source are asserted).
 //
-// Generation is deterministic and idempotent:
+// rewritten/ is a generated artifact and is not committed; run this script to
+// (re)build it. Generation is deterministic and idempotent:
 //   bun scripts/rewrite-happy-dom-tests.mjs                # generate
-//   bun scripts/rewrite-happy-dom-tests.mjs --verify       # regenerate to a
-//                                                          # temp dir and
-//                                                          # byte-compare
 // Exit codes: 0 = ok, 1 = failure, 2 = usage error.
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -984,70 +981,10 @@ function loadScan() {
 
 function main() {
 	const args = process.argv.slice(2);
-	if (args.includes("--verify")) {
-		const scan = loadScan();
-		const built = build(scan);
-
-		const workRoot = mkdtempSync(join(tmpdir(), "hdunit-rewrite-"));
-		const problems = [];
-		try {
-			// Write outputs into the temp dir by temporarily relocating the
-			// REWRITTEN_DIR / REPORT_PATH constants — simpler: regenerate into a
-			// scratch copy of the output via a small adapter.
-			const scratch = join(workRoot, "rewritten");
-			mkdirSync(dirname(scratch), { recursive: true });
-			const sourceFiles = new Set(scan.files.filter((f) => isRewriteSource(f)).map((f) => f.vendorPath));
-			for (const scanFile of scan.files) {
-				if (skipReasonFor(scanFile)) continue;
-				const abs = join(VENDOR_DIR, scanFile.vendorPath);
-				const target = join(scratch, scanFile.vendorPath);
-				mkdirSync(dirname(target), { recursive: true });
-				if (sourceFiles.has(scanFile.vendorPath)) {
-					const { output } = rewriteSource({
-						vendorPath: scanFile.vendorPath,
-						source: readFileSync(abs, "utf8"),
-						scanImports: scanFile.imports,
-						upstream: scan.upstream,
-						srcModuleReason: makeSrcModuleReason(scan),
-					});
-					writeFileSync(target, provenanceHeader(scan.upstream, scanFile.vendorPath) + output);
-				} else {
-					writeFileSync(target, readFileSync(abs));
-				}
-			}
-			writeFileSync(join(workRoot, "rewrite-report.json"), JSON.stringify(makeReport(scan, built), null, 2) + "\n");
-
-			const committed = walk(REWRITTEN_DIR).filter((p) => statSync(p).isFile()).map((p) => relative(REWRITTEN_DIR, p)).sort();
-			const staged = walk(scratch).filter((p) => statSync(p).isFile()).map((p) => relative(scratch, p)).sort();
-			if (JSON.stringify(committed) !== JSON.stringify(staged)) {
-				problems.push("rewritten/ file set differs from a fresh regeneration");
-			} else {
-				for (const rel of committed) {
-					const a = readFileSync(join(REWRITTEN_DIR, rel), "utf8");
-					const b = readFileSync(join(scratch, rel), "utf8");
-					if (a !== b) problems.push(`byte mismatch: ${rel}`);
-				}
-			}
-			const committedReport = readFileSync(REPORT_PATH, "utf8");
-			const freshReport = readFileSync(join(workRoot, "rewrite-report.json"), "utf8");
-			if (committedReport !== freshReport) problems.push("rewrite-report.json differs from a fresh generation");
-		} finally {
-			rmSync(workRoot, { recursive: true, force: true });
-		}
-
-		const cross = validateCrossConsistency(scan, built);
-		if (problems.length === 0 && cross.length === 0) {
-			printStats(built, scan);
-			console.log("\nVERIFY OK — rewritten/, rewrite-report.json are reproducible and cross-consistent with vendor-scan.");
-			return;
-		}
-		console.error("\nVERIFY FAILED:");
-		for (const p of problems) console.error(`  - ${p}`);
-		for (const p of cross) console.error(`  - ${p}`);
-		process.exitCode = 1;
-		return;
+	if (args.length > 0) {
+		console.error("usage: bun scripts/rewrite-happy-dom-tests.mjs  (no flags; rewritten/ is generated, not committed)");
+		process.exit(2);
 	}
-
 	const scan = loadScan();
 	const built = build(scan);
 	writeOutputs(scan, built);
@@ -1065,7 +1002,7 @@ function main() {
 	printStats(built, scan);
 	console.log(`\n[rewrite] wrote ${built.stats.rewritten} rewritten files, ${built.stats.byteCopied} byte-copied files to tests/happy-dom/rewritten/`);
 	console.log(`[rewrite] wrote tests/happy-dom/rewrite-report.json`);
-	console.log(`[rewrite] done. Re-run with --verify to confirm reproducibility; re-running in place is idempotent.`);
+	console.log(`[rewrite] done. Re-running in place is idempotent.`);
 }
 
 if (import.meta.main) {
