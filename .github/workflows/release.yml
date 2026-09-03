@@ -107,7 +107,7 @@ jobs:
 
       - name: Install pinned dependencies
         if: steps.gate.outputs.skip != 'true'
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build the platform package
         if: steps.gate.outputs.skip != 'true'
@@ -150,7 +150,7 @@ jobs:
           bun-version-file: .bun-version
 
       - name: Install pinned dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Download platform packages
         uses: actions/download-artifact@v4

@@ -25,7 +25,7 @@ jobs:
           bun-version-file: .bun-version
 
       - name: Install pinned dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Check JavaScript entry
         run: bun --check index.js
@@ -40,7 +40,7 @@ jobs:
         run: cargo test --workspace
 
       - name: Build native binding (dev artifact)
-        run: npm run dev:build
+        run: bun run dev:build
 
       - name: Run Bun tests (including native binding smoke tests)
         run: bun test tests/bun
@@ -51,13 +51,13 @@ jobs:
         run: bun scripts/rewrite-happy-dom-tests.mjs
 
       - name: Validate compatibility ledger (regression gate)
-        run: npm run compat:ledger
+        run: bun run compat:ledger
 
       - name: Validate hdunit suite (vendor/rewrite idempotency + triage gate)
         run: |
           git clone --quiet --depth 1 --branch v20.11.11 https://github.com/capricorn86/happy-dom /tmp/happy-dom-upstream
           HAPPY_DOM_UPSTREAM_DIR=/tmp/happy-dom-upstream bun scripts/vendor-happy-dom-tests.mjs --verify
-          npm run compat:hdunit:validate
+          bun run compat:hdunit:validate
 
       - name: Smoke test package packing
         run: npm pack --dry-run
@@ -80,7 +80,7 @@ jobs:
           bun-version-file: .bun-version
 
       - name: Install pinned dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build the host platform package
         run: bun scripts/build-platform-package.mjs
@@ -146,17 +146,17 @@ jobs:
           bun-version-file: .bun-version
 
       - name: Install pinned dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build native binding (dev artifact)
-        run: npm run dev:build
+        run: bun run dev:build
 
       - name: Install mad-dom integration-test dependencies
         run: bun install --frozen-lockfile
         working-directory: benchmark/mad-dom-integration-test
 
       - name: Run the benchmark mad-dom integration suite
-        run: npm run test:integration
+        run: bun run test:integration
 
   bench:
     name: Performance gate (benchmark vs baseline)
@@ -176,10 +176,10 @@ jobs:
           bun-version-file: .bun-version
 
       - name: Install pinned dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build native binding (dev artifact)
-        run: npm run dev:build
+        run: bun run dev:build
 
       - name: Run the performance gate against the recorded baseline
-        run: npm run bench:check
+        run: bun run bench:check
