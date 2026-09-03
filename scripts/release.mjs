@@ -194,6 +194,10 @@ function printPlan(args, platformTarballs, shipped, tgzDir) {
   console.log(plan.join("\n"));
 }
 
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 function verifyRegistry(platformTarballs, version, dryRun) {
   if (dryRun) {
     console.log(`release: [dry-run] registry integrity verification for ${platformTarballs.length} platform package(s) skipped`);
@@ -201,8 +205,14 @@ function verifyRegistry(platformTarballs, version, dryRun) {
   }
   for (const { pkgName, tgz } of platformTarballs) {
     const local = `sha512-${sha512Base64(tgz)}`;
-    const proc = run("npm", ["view", `${pkgName}@${version}`, "dist.integrity"], { silent: true });
-    const remote = proc.stdout.trim();
+    let remote = "";
+    // npmjs.org metadata can lag a fresh publish by minutes; retry before
+    // declaring a mismatch (a mismatch aborts before the main package ships).
+    for (let attempt = 0; attempt < 10 && remote !== local; attempt++) {
+      if (attempt > 0) sleepSync(20_000);
+      const proc = run("npm", ["view", `${pkgName}@${version}`, "dist.integrity"], { silent: true });
+      remote = proc.stdout.trim();
+    }
     if (remote !== local) {
       throw new Error(
         `registry integrity mismatch for ${pkgName}@${version}: local ${local}, registry ${remote || "(missing)"}. ` +
@@ -232,7 +242,7 @@ function main() {
 
   const shipped = stagePlatformNames(args.stage);
   const platformTarballs = buildPlatforms(args.stage, args.version, outDir, args.noBuild);
-  stageMainPackage(args.stage, args.version, outDir, shipped);
+  const { tgz: mainTgz } = stageMainPackage(args.stage, args.version, outDir, shipped);
 
   const tgzDir = join(outDir, "tgz");
   run("bun", ["scripts/checksums.mjs", "generate", tgzDir, "--out", join(outDir, "SHASUMS256.txt")]);
