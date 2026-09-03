@@ -123,3 +123,24 @@ dead-link 检查开启，页面必须先存在）：
 - **示例 API 保真**：examples.md 的代码块必须从 `examples/` 或 `index.d.ts`
   取材，不得凭印象写 happy-dom API。
 - **自动部署**：合并进 main 后 docs.yml 会自动重建 Pages 站点，无需额外操作。
+
+## 执行结果
+
+四组任务全部合入 `main`（滑动窗口：01/02/03 并行 → 串行 rebase/合并 → 04）：
+
+| Commit | Todo |
+| --- | --- |
+| `abd284e` docs(site): add platforms page with support matrix and install troubleshooting | 03-platforms-page |
+| `8dbe508` docs(site): add performance page (1.6x speed, benchmark method, regression gate) | 02-performance-page |
+| `59590b9` docs(site): add examples API tour page | 01-examples-page |
+| `3410998` docs(site): rewrite index/quick-start/compat-report and rebuild docs nav | 04-core-pages-nav |
+
+四个 todo 均归档至 `todos/done/`，`todos/README.md` 状态已更新。无 blocked / deferred 项。
+
+仓库级校验（合并后 main）：`bun install --frozen-lockfile` 通过；`bun run docs:build` 成功（dead-link 检查开启），`docs/.vitepress/dist/index.html` 存在；用户六页 grep -ri adr 零命中；`release.md` / `stable-gate-report.md` 未动（孤儿页，预期内）。
+
+事实基准修正（按"仓库文件为准"规则，已在 3410998 commit message 注明）：
+
+- 兼容契约非 43/43：`compat/ledger.json` 现为 448/448 pass（diff 180 + types 10 + up 147 + hdunit 111），0 known-gap；compat-report 页按差分 180/180 + 全量 448/448 表述。
+- WPT 非 39.8%（37/56）：`bun run wpt:json` 实测 38/55/93 = 40.9%，页面按实测值。
+- hdunit 298 / 68(23%) / 22 / 208 与 `tests/happy-dom/COVERAGE.md` 一致，未变。
