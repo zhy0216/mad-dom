@@ -6,7 +6,7 @@ hand-written; every number is reproducible with the commands shown.
 
 - Baseline: happy-dom `20.11.11` @ commit `64e2c774…` on Bun `1.4.0`
   (ADR-0002 §1, recorded in `compat/happy-dom-baseline.json`).
-- Gate: `npm run validate` runs `compat:types` (type harness), `compat:ledger`
+- Gate: `bun run validate` runs `compat:types` (type harness), `compat:ledger`
   (schema + cross-checks + live differential regression) and `wpt:test`
   (separate WPT measurement track).
 
@@ -17,8 +17,8 @@ The happy-dom compatibility contract is owned by the differential runner
 ADR-0002 §7). Reproduce:
 
 ```sh
-npm run compat:differential     # live black-box differential over every scenario
-npm run compat:ledger           # schema + cross-check + pass-regression gate
+bun run compat:differential     # live black-box differential over every scenario
+bun run compat:ledger           # schema + cross-check + pass-regression gate
 bun compat/ledger-report.js --json   # offline summary
 ```
 
@@ -50,8 +50,8 @@ track** (ADR-0002 §8): its pass rate is reported independently and never
 changes the happy-dom compatibility conclusions above.
 
 ```sh
-npm run wpt:test    # human report
-npm run wpt:json    # machine-readable
+bun run wpt:test    # human report
+bun run wpt:json    # machine-readable
 ```
 
 Result (regenerated for this report): 3 cases, 37 pass / 56 fail / 0 error,

@@ -6,9 +6,11 @@ MAD DOM is an early-stage native, memory-arena DOM implementation designed speci
 
 ## Status
 
-The project is currently pre-alpha. This initial release establishes the package and public API direction; the DOM implementation is not available yet.
+The project is in alpha. The native DOM implementation is available and
+verified against a locked happy-dom baseline (see Compatibility below);
+surfaces beyond that contract are still incomplete.
 
-The intended architecture includes:
+The architecture:
 
 - a Rust-native HTML parser and retained DOM tree;
 - generational node handles backed by a memory arena;
@@ -27,8 +29,8 @@ contract, and the ledger currently reports **100% pass** (43/43 entries, zero
 known-gap / not-applicable) on the stable-gate verification:
 
 ```sh
-npm run compat:differential     # live black-box differential over every scenario
-npm run compat:ledger           # schema + cross-check + pass-regression gate
+bun run compat:differential     # live black-box differential over every scenario
+bun run compat:ledger           # schema + cross-check + pass-regression gate
 ```
 
 A separate [web-platform-tests](https://github.com/web-platform-tests/wpt)
@@ -111,7 +113,7 @@ The DOM Core runs in Rust; JavaScript reaches it through the Node-API binding
 in `crates/mad-dom-bun`. To build the local development artifact:
 
 ```sh
-npm run dev:build
+bun run dev:build
 ```
 
 This compiles the binding for your local triple and writes the git-ignored
@@ -122,28 +124,31 @@ built artifact the native-backed entry points fail fast with a
 exists:
 
 ```sh
-npm run test:native
+bun run test:native
 ```
 
 The repository-level validation gate is:
 
 ```sh
-npm run validate
+bun run validate
 ```
 
-It runs, in order: the JavaScript entry check, `cargo fmt --check`, Clippy, `cargo test --workspace`, and the Bun tests.
+It runs, in order: the JavaScript entry check, `cargo fmt --check`, Clippy,
+`cargo test --workspace`, the type harness (`compat:types`), the Bun test
+suite (`tests/bun`, `tests/compat`, `tests/wpt`), the ledger gate
+(`compat:ledger`), the hdunit rewrite + triage validation, and the WPT subset.
 
 ### Safety and performance gates (T50+)
 
-The stable-gate hardening adds two dedicated suites alongside `npm run validate`:
+The stable-gate hardening adds two dedicated suites alongside `bun run validate`:
 
 ```sh
 scripts/check-core-safety.sh scan   # unsafe/FFI inventory (Core must stay zero)
 scripts/check-core-safety.sh miri   # Miri representative subset (nightly)
 scripts/check-core-safety.sh asan   # AddressSanitizer smoke (nightly host target)
 
-npm run bench:record                # run benchmarks, write bench/baseline.json
-npm run bench:check                 # performance/memory regression gate (CI)
+bun run bench:record                # run benchmarks, write bench/baseline.json
+bun run bench:check                 # performance/memory regression gate (CI)
 ```
 
 The Core carries `#![forbid(unsafe_code)]`; all handwritten `unsafe` lives in
@@ -158,9 +163,9 @@ Individual commands:
 - `cargo fmt --check` — Rust formatting check;
 - `cargo clippy --workspace --all-targets -- -D warnings` — Rust lint;
 - `cargo test --workspace` — Rust tests;
-- `bun test tests/bun` — Bun tests (native smoke tests skip when the dev artifact is absent);
-- `npm run dev:build` — build the local native artifact (`build/mad-dom.node`);
-- `npm run test:native` — native binding smoke tests;
+- `bun run test` — Bun tests over `tests/bun`, `tests/compat` and `tests/wpt` (native smoke tests skip when the dev artifact is absent);
+- `bun run dev:build` — build the local native artifact (`build/mad-dom.node`);
+- `bun run test:native` — native binding smoke tests;
 - `npm pack --dry-run` — package smoke test.
 
 ### Native packaging and release (T49+)
@@ -173,12 +178,12 @@ repository-local dev artifact. It runs an ABI probe after every successful
 load. Local commands:
 
 ```sh
-npm run platform:build     # build the host platform package (build/platform/)
-npm run smoke:install      # no-Cargo install smoke against the packed tarballs
-npm run release:draft -- --stage alpha    # rehearsal: pack + checksums + ordered publish plan
-npm run release:draft -- --stage beta
-npm run release:draft -- --stage stable
-npm run release:rollback -- --tag next --last-healthy <v>
+bun run platform:build     # build the host platform package (build/platform/)
+bun run smoke:install      # no-Cargo install smoke against the packed tarballs
+bun run release:draft -- --stage alpha    # rehearsal: pack + checksums + ordered publish plan
+bun run release:draft -- --stage beta
+bun run release:draft -- --stage stable
+bun run release:rollback -- --tag next --last-healthy <v>
 ```
 
 The release workflow (`.github/workflows/release.yml`) builds the platform
@@ -198,8 +203,8 @@ independently and never changes the happy-dom compatibility contract
 The subset is a measurement, not a gate:
 
 ```sh
-npm run wpt:test    # run the subset and print the pass-rate report
-npm run wpt:json    # machine-readable report (mad-dom-wpt-report/1)
+bun run wpt:test    # run the subset and print the pass-rate report
+bun run wpt:json    # machine-readable report (mad-dom-wpt-report/1)
 ```
 
 See `tests/wpt/README.md` for the manifest and how to update the subset.

@@ -25,7 +25,7 @@
   核验：`scripts/check-core-safety.sh miri`。
 - **AddressSanitizer 通过**：`scripts/check-core-safety.sh asan` 对
   `mad-dom-core` 全套测试以 nightly host target 运行，全绿。
-- **无崩溃/数据损坏**：`npm run validate` 全绿（含 Rust 测试、Bun 603 测试、
+- **无崩溃/数据损坏**：`bun run validate` 全绿（含 Rust 测试、Bun 603 测试、
   属性/压力套件、GC 生命周期测试）；CI 新增 `safety` job 固化上述检查。
 - 结论：满足"无已知崩溃、use-after-free、数据损坏或未说明 unsafe 风险"。
 
@@ -35,7 +35,7 @@
   0 `known-gap`、0 `not-applicable`（types 10 + diff 33；快照为整体表面比较，
   无按场景条目）。`compat:ledger` 活体差分零回归。完整数据见
   `docs/compat-report.md`。
-- **宿主平台安装验证通过**：`npm run smoke:install` 四项断言全绿
+- **宿主平台安装验证通过**：`bun run smoke:install` 四项断言全绿
   （happy path / missing-platform / unsupported-platform / ABI mismatch），
   无 Cargo 环境的干净 `bun add` 流程。
 - **跨平台安装验证（blocker，依赖 CI）**：非宿主平台（darwin-x64、
@@ -50,7 +50,7 @@
 - **性能/内存基线已建立并提交**：`bench/baseline.json` 覆盖 arena、
   mutation、parser、serializer、selector、FFI、GC 共 19 项指标
   （`scripts/bench.mjs` 合并 Core bench `crates/mad-dom-core/examples/bench.rs`
-  与 FFI/GC bench `scripts/bench-ffi-gc.mjs`）。`npm run bench:check` 按
+  与 FFI/GC bench `scripts/bench-ffi-gc.mjs`）。`bun run bench:check` 按
   每指标阈值门禁：吞吐类低于基线 0.5× 判失败，内存增长超 2× 判失败，
   身份/释放命中率必须恒为 1.0。
 - **门禁可重复**：固定工作负载 + 提交的基线，同 host 上 `git checkout` +
@@ -59,30 +59,30 @@
 - **文档与实际包内容一致**：`npm pack --dry-run` 37 文件，含
   `index.js`/`index.d.ts`/`js/`/`README.md`/`LICENSE`，无 `.node`；平台包
   元数据与支持矩阵一致（ADR-0005 §5）。README 支持矩阵与
-  `scripts/platform-matrix.mjs` 一致。`npm run release:draft -- --stage alpha`
+  `scripts/platform-matrix.mjs` 一致。`bun run release:draft -- --stage alpha`
   演练通过且不触碰 registry。
 
 ### 4. 最终工作区和发布候选可由独立 checkout 复现
 
 - 固定工具链：Rust `1.93.1`（`rust-toolchain.toml`）、Bun `1.4.0`
-  （`.bun-version`）；`npm ci` 锁定依赖。
+  （`.bun-version`）；`bun install --frozen-lockfile` 锁定依赖。
 - 独立复现路径（干净 checkout）：
-  `npm ci` → `npm run dev:build` → `npm run validate` → `scripts/check-core-safety.sh {scan,miri,asan}`
-  → `npm run bench:check` → `npm run smoke:install` → `npm run release:draft -- --stage alpha`。
+  `bun install --frozen-lockfile` → `bun run dev:build` → `bun run validate` → `scripts/check-core-safety.sh {scan,miri,asan}`
+  → `bun run bench:check` → `bun run smoke:install` → `bun run release:draft -- --stage alpha`。
 - 本报告所有命令均在该路径下实际运行通过（见下方"专属校验结果"）。
 
 ## 专属校验结果
 
 | 校验 | 命令 | 结果 |
 | --- | --- | --- |
-| 完整统一校验 | `npm run validate` | 通过（603 bun tests / 0 fail；cargo fmt/clippy/test、compat:types、compat:ledger、wpt 全绿） |
+| 完整统一校验 | `bun run validate` | 通过（603 bun tests / 0 fail；cargo fmt/clippy/test、compat:types、compat:ledger、wpt 全绿） |
 | `git diff --check` | — | 通过 |
 | unsafe 清单 | `scripts/check-core-safety.sh scan` | Core 零 unsafe；bun 4 处文档化 cast |
 | Miri 子集 | `scripts/check-core-safety.sh miri` | 3 代表测试 ok |
 | ASan | `scripts/check-core-safety.sh asan` | 全套 ok（host nightly target） |
-| 兼容/WPT 报告 | `npm run compat:differential`、`npm run compat:ledger`、`bun compat/ledger-report.js --json`、`npm run wpt:json` | ledger 43/43 pass；WPT 39.8%（独立统计） |
-| 性能/内存回归 | `npm run bench:record` + `npm run bench:check` | 19 指标全 pass（基线已提交） |
-| 全平台安装 smoke | `npm run smoke:install` | 宿主平台全绿；其余平台待 CI 矩阵 |
+| 兼容/WPT 报告 | `bun run compat:differential`、`bun run compat:ledger`、`bun compat/ledger-report.js --json`、`bun run wpt:json` | ledger 43/43 pass；WPT 39.8%（独立统计） |
+| 性能/内存回归 | `bun run bench:record` + `bun run bench:check` | 19 指标全 pass（基线已提交） |
+| 全平台安装 smoke | `bun run smoke:install` | 宿主平台全绿；其余平台待 CI 矩阵 |
 
 ## Blockers / 剩余风险
 

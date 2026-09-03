@@ -24,7 +24,7 @@ install smoke) is in [docs/stable-gate-report.md](./stable-gate-report.md).
 Local (single platform):
 
 ```sh
-npm ci
+bun install --frozen-lockfile
 bun scripts/build-platform-package.mjs            # host triple
 bun scripts/build-platform-package.mjs --triple aarch64-apple-darwin
 ```
