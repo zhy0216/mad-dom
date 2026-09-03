@@ -1,77 +1,58 @@
-# MAD DOM compatibility report
+# Compatibility report
 
-This report is the machine-checkable compatibility snapshot for the stable
-gate (T50). It is generated from the repository's own gates — nothing here is
-hand-written; every number is reproducible with the commands shown.
+mad-dom targets drop-in parity with happy-dom, measured against a single
+locked baseline: **happy-dom 20.11.11**. Every number on this page is
+reproducible with the commands shown.
 
-- Baseline: happy-dom `20.11.11` @ commit `64e2c774…` on Bun `1.4.0`
-  (ADR-0002 §1, recorded in `compat/happy-dom-baseline.json`).
-- Gate: `bun run validate` runs `compat:types` (type harness), `compat:ledger`
-  (schema + cross-checks + live differential regression) and `wpt:test`
-  (separate WPT measurement track).
+## The contract: 100%
 
-## happy-dom compatibility (the contract)
+The core of compatibility is a black-box differential suite: every scenario
+runs against both engines in isolated processes and the observable results are
+compared verbatim.
 
-The happy-dom compatibility contract is owned by the differential runner
-(`tests/compat/runner`, ADR-0002 §5) and the ledger (`compat/ledger.json`,
-ADR-0002 §7). Reproduce:
+- **180 / 180 scenarios match happy-dom exactly (100%)**
+- **Zero known gaps** — no skipped, expected-fail or unexplained entries
 
 ```sh
-bun run compat:differential     # live black-box differential over every scenario
-bun run compat:ledger           # schema + cross-check + pass-regression gate
-bun compat/ledger-report.js --json   # offline summary
+bun run compat:differential
 ```
 
-Result (regenerated for this report):
+Tracked around the differential suite are further checks — type-level API
+checks and ported upstream tests — currently at **448 / 448 pass with zero
+known gaps**.
 
-| Suite | Entries | pass | known-gap | not-applicable | Rate |
-| --- | --- | --- | --- | --- | --- |
-| types (type fixture) | 10 | 10 | 0 | 0 | 100% |
-| diff (black-box differential) | 33 | 33 | 0 | 0 | 100% |
-| api (snapshot) | 0 | 0 | 0 | 0 | — |
-| up (ported upstream) | 0 | 0 | 0 | 0 | — |
-| **total** | **43** | **43** | **0** | **0** | **100%** |
+## The bigger picture: the happy-dom unit suite
 
-Stable condition: **the locked happy-dom compatibility suite is at 100% pass
-with zero known-gap and zero not-applicable entries** — no skipped, expected-
-fail, or unexplained gap remains (ADR-0001 plan §4 stable gate).
+The differential contract covers the surface we have committed to. To be
+honest about coverage of the rest of happy-dom, we vendored its full unit-test
+suite — 298 test files — and gave every file an explicit state:
 
-The `api` suite has zero entries because the public-API surface comparison is a
-single whole-surface snapshot (`compat/public-api/snapshot.json`) rather than
-per-scenario entries; the snapshot is validated by `compat:snapshot:test`
-(part of `tests/compat`). `up` has zero ported cases because no upstream
-happy-dom test is currently vendored; when a case is ported it is recorded in
-`compat/upstream-map.json` with its provenance (ADR-0002 §7.4).
+| State | Files | Share |
+| --- | --- | --- |
+| Running green on mad-dom | 68 | 23% |
+| Declared expected-fail | 22 | 7% |
+| Skipped, with a recorded reason | 208 | 70% |
 
-## WPT subset (separate measurement, not a gate)
-
-The vendored web-platform-tests subset (T48) is a **separate statistics
-track** (ADR-0002 §8): its pass rate is reported independently and never
-changes the happy-dom compatibility conclusions above.
+Nothing is silently missing: every file is accounted for. Reproduce:
 
 ```sh
-bun run wpt:test    # human report
-bun run wpt:json    # machine-readable
+bun run compat:hdunit:report
 ```
 
-Result (regenerated for this report): 3 cases, 37 pass / 56 fail / 0 error,
-93 assertions, pass rate 39.8%. This is a measurement track only — it
-supplements happy-dom where its behavior is unclear and is not a stable gate.
+## WPT subset: a measurement, not a gate
 
-## Upstream attribution
+As an independent signal we also run a small vendored slice of
+web-platform-tests: currently **38 of 93 assertions pass (40.9%)** across
+3 test files. This track only measures — it gates nothing and does not change
+the happy-dom conclusions above.
 
-- **happy-dom** (compatibility baseline): the differential targets, baseline
-  manifest and (future) ported cases anchor to the pinned upstream commit
-  `64e2c774cadbb8eda5416c1e2bcca5006d1b5df9` (`v20.11.11`), MIT licensed.
-  `compat/upstream-map.json` records per-case provenance; `compat/validate-ledger.js`
-  mechanically rejects any vendored file that touches happy-dom private
-  internals.
-- **web-platform-tests** (WPT subset): `tests/wpt/manifest.json` pins the
-  upstream repository and commit `81841cc6e29ed4d57173f8b6dd0b736096c0bb58`,
-  BSD-3-Clause, and maps every vendored case under `tests/wpt/cases/` to its
-  upstream path. See `tests/wpt/README.md`.
-- **Rust ecosystem** (build/runtime dependencies): the HTML parser (html5ever,
-  MIT OR Apache-2.0), selector engine (selectors, MPL-2.0) and cssparser
-  (MPL-2.0) are used as unmodified dependencies; adaptation code lives in
-  `crates/mad-dom-core/src/{html,selectors}`. Licensing is recorded in the
-  crate manifests and `LICENSE`.
+```sh
+bun run wpt:json
+```
+
+## In short
+
+If a behavior is covered by the contract, it matches happy-dom 20.11.11
+today. If it isn't covered yet, it is declared — as a known skip or an
+expected-fail, never as a silent absence. The status is alpha either way; see
+the [quick start](/quick-start).

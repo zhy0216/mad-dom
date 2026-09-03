@@ -5,23 +5,20 @@ export default {
   themeConfig: {
     nav: [
       { text: 'Quick start', link: '/quick-start' },
+      { text: 'Examples', link: '/examples' },
+      { text: 'Performance', link: '/performance' },
       { text: 'Compatibility', link: '/compat-report' },
-      { text: 'Release', link: '/release' },
-      { text: 'Stable gate', link: '/stable-gate-report' },
+      { text: 'Platforms', link: '/platforms' },
     ],
     sidebar: [
       {
         text: 'Guide',
         items: [
           { text: 'Quick start', link: '/quick-start' },
-        ],
-      },
-      {
-        text: 'Reports',
-        items: [
+          { text: 'Examples', link: '/examples' },
+          { text: 'Performance', link: '/performance' },
           { text: 'Compatibility report', link: '/compat-report' },
-          { text: 'Stable gate report', link: '/stable-gate-report' },
-          { text: 'Release manual', link: '/release' },
+          { text: 'Platforms', link: '/platforms' },
         ],
       },
     ],
