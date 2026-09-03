@@ -51,13 +51,13 @@ ADR-0005 §2 makes the glibc floor a recorded, evidence-based value: the
 compatibility floor is whatever the build host's glibc is. The floor must be
 recorded here from the first linux-gnu CI run:
 
-> **glibc floor (measured, first linux CI release build, run 33728552831,
-> 2026-09-03):** the floor is **glibc 2.39** — `ubuntu-latest`
-> (`Ubuntu GLIBC 2.39-0ubuntu8.8`) built `@mad-dom/platform-linux-x64-gnu`;
-> the `ubuntu-24.04-arm` runner behind `@mad-dom/platform-linux-arm64-gnu` is
-> the same Ubuntu 24.04 image (floor recorded from its own logs by the same
-> workflow step). Consumers on glibc older than 2.39 are not covered by an
-> evidence-based claim until measured.
+> **glibc floor (measured, first linux CI release builds, run 33728552831 /
+> 33728981596, 2026-09-03):** the floor is **glibc 2.39** — both linux-gnu
+> platform packages were built on Ubuntu 24.04 runners reporting
+> `ldd (Ubuntu GLIBC 2.39-0ubuntu8.8) 2.39` (`ubuntu-latest` →
+> `@mad-dom/platform-linux-x64-gnu`, `ubuntu-24.04-arm` →
+> `@mad-dom/platform-linux-arm64-gnu`). Consumers on glibc older than 2.39 are
+> not covered by an evidence-based claim until measured.
 
 ### Bun installer `libc` trimming
 
