@@ -139,7 +139,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: platform-${{ matrix.platform }}
-          path: build/platform/@mad-dom
+          path: build/platform # keeps the @mad-dom/ scope level the release script expects
           if-no-files-found: error
 
   verify:
