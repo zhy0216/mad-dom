@@ -124,3 +124,21 @@ GitHub Actions workflow）。这是一个基建任务：不改动业务代码，
 - **假设**：`zhy0216` 账号对仓库有管理员权限（开 Pages 需要），`gh` 已登录
   （已验证 `gh api user` = zhy0216）。
 - **假设**：站点语言用英文（与现有文档一致）。
+
+## 执行结果
+
+- **01-vitepress-scaffold**（todo 已归档 `todos/done/`）：commit `e00fbb9`
+  `docs(site): scaffold VitePress docs site with landing page and quick start`。
+  vitepress@1.6.4 进 devDependencies，docs:dev/build/preview scripts，
+  config.mjs（base `/mad-dom/`、nav/sidebar、不开 ignoreDeadLinks），
+  index.md hero + quick-start.md，release.md 跨站死链改绝对 GitHub URL。
+  校验：`bun install --frozen-lockfile` OK、`bun run docs:build` OK、
+  dist/index.html 存在、worktree git status 干净。已 ff 合入 main。
+- **02-pages-workflow**（todo 已归档 `todos/done/`）：commit `b18ba61`
+  `ci(docs): build and deploy the VitePress site to GitHub Pages`（仅新增
+  `.github/workflows/docs.yml`，YAML 校验通过），已 ff 合入并 push。
+  `gh api -X POST /repos/zhy0216/mad-dom/pages -f build_type=workflow` 配置成功；
+  首次 docs.yml run `33766398558`（Build+Deploy）成功；站点
+  `https://zhy0216.github.io/mad-dom/` 返回 200，资源走 `/mad-dom/assets/`，
+  base 路径正确。
+- 无 blocked / deferred 项。plan.md 未收录 adr/、benchmark/ 等非目标保持不变。
