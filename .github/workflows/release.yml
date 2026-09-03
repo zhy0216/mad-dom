@@ -92,6 +92,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.93.1
+          targets: ${{ matrix.triple }} # macos-latest is arm64, so darwin-x64 is a real cross-target
+
+      - name: Record the runner glibc floor (docs/release.md TBD backfill)
+        if: steps.gate.outputs.skip != 'true' && matrix.triple == 'x86_64-unknown-linux-gnu'
+        shell: bash
+        run: ldd --version | head -n 1
 
       - name: Add musl cross toolchain
         if: steps.gate.outputs.skip != 'true' && contains(matrix.platform, 'musl')
