@@ -33,6 +33,9 @@
   "scripts": {
     "check": "bun --check index.js",
     "test": "bun test tests/bun tests/compat tests/wpt",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "validate": "bun run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && bun run compat:types && bun run test && bun run compat:ledger && bun run compat:hdunit:rewrite && bun run compat:hdunit:validate && bun run wpt:test",
     "dev:build": "bash crates/mad-dom-bun/build.sh",
     "test:native": "bun test tests/bun/native.test.js",
@@ -86,6 +89,7 @@
   "devDependencies": {
     "express": "^4.20.0",
     "happy-dom": "20.11.11",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitepress": "^1.6.4"
   }
 }

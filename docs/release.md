@@ -2,15 +2,15 @@
 
 This document is the build / publish / rollback manual for the native
 platform packages (`@mad-dom/platform-*`) and the `mad-dom` main package, per
-[ADR-0005](../adr/0005-native-build-and-release-architecture.md). The support
-matrix and the runtime error contract live in the [README](../README.md#support-matrix)
+[ADR-0005](https://github.com/zhy0216/mad-dom/blob/main/adr/0005-native-build-and-release-architecture.md). The support
+matrix and the runtime error contract live in the [README](https://github.com/zhy0216/mad-dom/blob/main/README.md#support-matrix)
 ("Support matrix" section, which the loader error messages anchor to). The
 stable-gate verification evidence (compat rate, safety suite, benchmarks,
 install smoke) is in [docs/stable-gate-report.md](./stable-gate-report.md).
 
 ## Toolchain pins
 
-- Rust: `1.93.1` ([rust-toolchain.toml](../rust-toolchain.toml)); Bun:
+- Rust: `1.93.1` ([rust-toolchain.toml](https://github.com/zhy0216/mad-dom/blob/main/rust-toolchain.toml)); Bun:
   `1.4.0` (`.bun-version`).
 - Every release build starts from a clean checkout with these pins and the
   `release` profile (ADR-0005 §1, §3). Never reuse a local `target/` artifact
