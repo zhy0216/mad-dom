@@ -46,6 +46,41 @@ deterministic cases plus the exception observer; the full suite including the
 live-network cases stays available via the package `test` script or
 `bun test test`.
 
+## DOM-intensive benchmark (dom-bench)
+
+`benchmark/run.mjs`（上文）测的是小型集成套件的 wall-clock，其中进程启动、模块
+加载、网络等固定成本占大头。`benchmark/dom-bench/` 则直接压 DOM 引擎本身：
+
+```sh
+bun benchmark/dom-bench/run.mjs            # 对比表
+bun benchmark/dom-bench/run.mjs --json     # JSON
+bun benchmark/dom-bench/run.mjs --runs 7   # 每阶段计量轮数（默认 5）
+```
+
+worker（`dom-bench/worker.mjs`）对两个引擎跑同一份确定性负载，共五个阶段，各自
+独立计量（warmup 不计，取中位数）：
+
+| 阶段 | 负载 |
+| --- | --- |
+| `parse` | `document.write` 一份生成的 ~10k 元素 / ~320 KB 页面（每次全新 window） |
+| `build` | 20k 节点的 `createElement` + `setAttribute` + `appendChild` 建树 |
+| `query` | `querySelectorAll` 类 / 复合选择器 + `querySelector` id + `getElementsByTagName` |
+| `serialize` | `body.innerHTML` 全量读取 |
+| `traverse` | `firstChild` / `nextSibling` 全树遍历 |
+
+方法学要点：
+
+- 两引擎跑在各自独立的 `bun` 子进程，负载与断言值（元素数、查询命中数、序列化
+  字节数、遍历节点数）完全一致后才视为有效对比（worker 输出 `sink` 供核对）。
+- 每个计量轮之间强制 `Bun.gc(true)` + 排空事件循环（在计量窗口之外，两引擎同样
+  付出）。这是必需的：Bun 把 Node-API finalizer 推迟到下一事件循环轮，若不排空，
+  mad-dom 的弱 wrapper 缓存在同步 churn 下会累积"已回收未 finalize"的陈旧条目，
+  后续节点读取会返回 `undefined` 或在数组转换时报 `InvalidArg`
+  （见 `crates/mad-dom-bun/src/handle.rs` 的 "transient gap" 注释）。
+- 出于同一原因，`build` 阶段用 JS 计数器而不是 `root.childNodes.length` 收尾：
+  对数千子节点的 `childNodes` 快照读取在该缺口窗口内会直接崩溃。该缺口是一个
+  独立的正确性问题，不改变本基准的计量公平性。
+
 ## 与 hdunit 的关系
 
 本目录的 integration benchmark 与 hdunit（`tests/happy-dom/`，[ADR-0006](../adr/0006-happy-dom-unit-suite-hdunit.md)）
