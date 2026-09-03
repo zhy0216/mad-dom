@@ -51,11 +51,13 @@ ADR-0005 §2 makes the glibc floor a recorded, evidence-based value: the
 compatibility floor is whatever the build host's glibc is. The floor must be
 recorded here from the first linux-gnu CI run:
 
-> **glibc floor (TBD until the first linux runner completes a release build):**
-> the floor is the glibc version of the `ubuntu-latest` runner that produced
-> `@mad-dom/platform-linux-*-gnu` (read `ldd --version` from the workflow logs
-> and record it here). Consumers on glibc older than the recorded value are not
-> covered by an evidence-based claim until measured.
+> **glibc floor (measured, first linux CI release build, run 33728552831,
+> 2026-09-03):** the floor is **glibc 2.39** — `ubuntu-latest`
+> (`Ubuntu GLIBC 2.39-0ubuntu8.8`) built `@mad-dom/platform-linux-x64-gnu`;
+> the `ubuntu-24.04-arm` runner behind `@mad-dom/platform-linux-arm64-gnu` is
+> the same Ubuntu 24.04 image (floor recorded from its own logs by the same
+> workflow step). Consumers on glibc older than 2.39 are not covered by an
+> evidence-based claim until measured.
 
 ### Bun installer `libc` trimming
 
@@ -68,10 +70,14 @@ right binary. Observed behavior is recorded here:
 > **Bun 1.4 libc trimming (observed on macOS arm64):** the os/cpu fields are
 > honored (a `darwin`/`arm64` package installs on this host; unrelated os/cpu
 > optional packages are skipped). The linux-only `libc` field cannot be
-> exercised from a macOS host; it is verified on the linux CI runner during the
-> first release build and recorded here. If Bun (or older npm) installs both
-> gnu and musl packages, installation size grows but loading stays correct via
-> the dual-variant fallback.
+> exercised from a macOS host. It still needs measuring: the alpha CI smokes
+> install the host's platform tarball directly (nothing libc-paired is on the
+> registry yet), so the gnu-vs-musl trim can only be observed once beta ships
+> both variants — `bun add mad-dom@<beta>` on a linux runner must install the
+> matching-libc package and skip the other. Either way the loader stays
+> correct (detected-libc-first dual-variant fallback); if Bun (or older npm)
+> installs both gnu and musl packages, installation size grows but loading
+> stays correct.
 
 ## Checksums and provenance
 
@@ -153,9 +159,10 @@ dry-run by default; execution requires `--no-dry-run` + `MAD_DOM_ALLOW_PUBLISH=1
   dry-run builds only the host triple (`aarch64-apple-darwin` on the
   development machine). The remaining platforms are built and install-smoked
   by the CI matrix on native runners; the rehearsal skips them with a notice.
-- The glibc floor and Bun `libc`-trimming values above are recorded only after
-  the first linux CI release build; both are marked TBD until then (see the
-  measured verification points section).
+- The glibc floor is measured (2.39, first linux CI release build, 2026-09-03);
+  the Bun `libc`-trimming observation is deferred to beta, when both gnu and
+  musl variants are on the registry at once (see the measured verification
+  points section).
 - The stable gate (T50) verifies the happy-dom compatibility suite at 100%
   pass and the host install smoke on the development machine; non-host
   platform verification is delegated to the `release.yml` matrix and is the

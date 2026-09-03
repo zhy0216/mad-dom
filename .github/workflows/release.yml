@@ -95,7 +95,7 @@ jobs:
           targets: ${{ matrix.triple }} # macos-latest is arm64, so darwin-x64 is a real cross-target
 
       - name: Record the runner glibc floor (docs/release.md TBD backfill)
-        if: steps.gate.outputs.skip != 'true' && matrix.triple == 'x86_64-unknown-linux-gnu'
+        if: steps.gate.outputs.skip != 'true' && contains(matrix.platform, '-gnu')
         shell: bash
         run: ldd --version | head -n 1
 
