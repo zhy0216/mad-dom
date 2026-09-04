@@ -2064,6 +2064,10 @@ export interface DocumentHandle {
   getElementsByTagName(tagName: string): NodeHandle[];
   /** T32 native `getElementsByClassName`: every descendant element whose `class` attribute contains every whitespace token of the argument, in document order. */
   getElementsByClassName(className: string): NodeHandle[];
+  /** T32 native live tag-query count used by `HTMLCollection.length`; does not materialize result node handles. */
+  countElementsByTagName?(tagName: string): number;
+  /** T32 native live class-query count used by `HTMLCollection.length`; does not materialize result node handles. */
+  countElementsByClassName?(className: string): number;
   /** T33 native `createProcessingInstruction`: a detached ProcessingInstruction node. */
   createProcessingInstruction(target: string, data: string): NodeHandle;
   /** T33 native `importNode`: a copy of `node` (subtree when `deep`) in this document; the source is never modified. */
@@ -2092,6 +2096,8 @@ export interface NodeHandle {
   lastChild(): NodeHandle | null;
   previousSibling(): NodeHandle | null;
   nextSibling(): NodeHandle | null;
+  /** Optional bounded navigation prefetch: at most 32 following siblings, with a trailing null only when the native walk reached the chain end. */
+  nextSiblingChunk?(): Array<NodeHandle | null>;
   childNodes(): NodeHandle[];
   /** T25E native attribute read (`getAttribute`), `null` when absent. */
   getAttribute(name: string): string | null;
@@ -2125,6 +2131,10 @@ export interface NodeHandle {
   getElementsByTagName(tagName: string): NodeHandle[];
   /** T32 native `getElementsByClassName`: the descendant elements whose `class` attribute contains every whitespace token of the argument, in document order. */
   getElementsByClassName(className: string): NodeHandle[];
+  /** T32 native scoped live tag-query count used by `HTMLCollection.length`; does not materialize result node handles. */
+  countElementsByTagName?(tagName: string): number;
+  /** T32 native scoped live class-query count used by `HTMLCollection.length`; does not materialize result node handles. */
+  countElementsByClassName?(className: string): number;
   /** T33 native `data`: the character data of a Text/Comment/ProcessingInstruction node, or `null` for other kinds. */
   data(): string | null;
   /** T33 native `data` write. */

@@ -4,10 +4,11 @@
 // Implements the WHATWG live `HTMLCollection` surface without keeping any
 // second DOM state: a collection is bound to one native scope handle (the
 // document, or the element it was created on) plus the query key, and re-reads
-// Core on every access — length, item, namedItem, indexed reads, iteration and
-// the named getter all re-run the native `getElementsByTagName` /
-// `getElementsByClassName` read, so an existing collection reflects any tree or
-// attribute change immediately (the "live" acceptance).
+// Core on every access — length uses the native result-allocation-free count
+// companion when available, while item, namedItem, indexed reads, iteration
+// and the named getter re-run the native `getElementsByTagName` /
+// `getElementsByClassName` node read. An existing collection therefore
+// reflects any tree or attribute change immediately (the "live" acceptance).
 //
 // # Frozen contract (T32)
 //
@@ -115,7 +116,7 @@ export class HTMLCollection {
     const proxy = new Proxy(this, {
       get(target, property, receiver) {
         if (property === "length") {
-          return readItems(target).length;
+          return readLength(target);
         }
         if (property in target || typeof property === "symbol") {
           return Reflect.get(target, property, receiver);
@@ -187,6 +188,24 @@ function readItems(collection) {
   return handles.map((handle) => windowCtx.wrap(handle));
 }
 
+/**
+ * Re-counts the live query without materializing matched node wrappers when
+ * the native binding provides the count companion. The fallback preserves
+ * compatibility with older platform packages carrying only the original T32
+ * node-producing methods.
+ */
+function readLength(collection) {
+  const { scopeHandle, kind, key } = COLLECTION_STATE.get(collection);
+  const count =
+    kind === "tag"
+      ? scopeHandle.countElementsByTagName
+      : scopeHandle.countElementsByClassName;
+  if (typeof count === "function") {
+    return count.call(scopeHandle, key);
+  }
+  return readItems(collection).length;
+}
+
 // The `ctx` captured at install time (the unique conversion entry). Module
 // state lives in `readItems`, so this only bridges the install closure to the
 // prototype methods.
@@ -232,7 +251,7 @@ export function install(ctx) {
 
   // HTMLCollection prototype surface (happy-dom-observable shape).
   ctx.defineAccessor(HTMLCollection.prototype, "length", function length() {
-    return readItems(this).length;
+    return readLength(this);
   }, undefined);
 
   ctx.defineMethod(HTMLCollection.prototype, "item", function item(index) {
@@ -264,17 +283,16 @@ export function install(ctx) {
 /**
  * Mints a live `HTMLCollection` bound to the scope behind `receiver`.
  *
- * The scope is validated eagerly with one native read: a non-`ParentNode`
- * scope (`getElementsByTagName` on a `Text` node) and a destroyed document
- * fail at method invocation, exactly like the T31 selector queries, while the
- * collection itself stays lazy — it re-reads Core on every access.
+ * The scope is validated eagerly with the native empty-class query. Core
+ * performs the same affinity, lifecycle and `ParentNode` checks for both live
+ * collection kinds, then returns immediately for an empty class-token list.
+ * This keeps invocation-time errors (and Document's implied-skeleton setup)
+ * without traversing and wrapping the requested result once here and again on
+ * the first collection read. The collection itself stays lazy and re-reads
+ * the requested query from Core on every access.
  */
 function liveCollection(ctx, receiver, kind, key) {
   const scopeHandle = facadeScopeHandle(ctx, receiver, kind === "tag" ? "getElementsByTagName" : "getElementsByClassName");
-  if (kind === "tag") {
-    scopeHandle.getElementsByTagName(key);
-  } else {
-    scopeHandle.getElementsByClassName(key);
-  }
+  scopeHandle.getElementsByClassName("");
   return new HTMLCollection(scopeHandle, kind, key);
 }

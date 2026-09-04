@@ -157,10 +157,10 @@ navigation-memo.test.js` 锁定失效语义、跨 gc 身份与 epoch/印章的 n
 cold/warm 拆分生效的证据）。query 同理拆为 `queryHot` / `queryCold`。
 
 结论：build 族（旧五相位口径下约占总耗时八成；现 `buildMixed` 仍是单相位最重的
-成本中心，且 create/attr/append/text 全线落后于 happy-dom）与 cold 路径铸造
-成本是引擎下一个热点；`getByTag` 的 live-collection 双原生查询
-（`live-collections.js` 先急切作用域校验一次、`.length` 再查一次）为已知计量
-事实——以上作为引擎侧后续优化输入（roadmap，不在本 plan 实施）。
+成本中心，且 create/attr/append/text 仍落后于 happy-dom）与 cold 路径铸造
+成本是引擎接下来的热点。`getByTag` 暴露出的 live-collection 双查询和无用 wrapper
+构造已经在产品侧消除：创建时只做常量时间的作用域校验，`.length` 走不物化结果
+节点的 native count；节点索引、迭代等读取仍保持逐次 live 查询。
 
 注：`buildBulk`（单次 innerHTML 解析）mad-dom 约 3× 快于 happy-dom；
 `queryHot` / `serialize` / `parse` 保持数倍领先。

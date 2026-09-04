@@ -2,10 +2,11 @@
 //!
 //! Implements the Core half of `querySelector` / `querySelectorAll`,
 //! `Element.matches` / `Element.closest` and `Document.getElementById` on top
-//! of the T30 parser and arena matcher. A selector string is parsed exactly
-//! once (with [`parse_selector_list`](super::parser::parse_selector_list)) and
-//! the arena tree is walked in document (pre) order, matching every element
-//! against the pre-parsed selector list through
+//! of the T30 parser and arena matcher. General selector strings are parsed
+//! exactly once (with [`parse_selector_list`](super::parser::parse_selector_list));
+//! the common document-scoped plain `#id` subset goes straight to
+//! `getElementById`. The arena tree is walked in document (pre) order,
+//! matching elements against the pre-parsed selector list through
 //! [`match_selector_list`](super::matcher::match_selector_list) — the same
 //! "no mirror tree" contract the matcher already follows.
 //!
@@ -14,9 +15,9 @@
 //! [`Document::query_selector_all`] collects its matches into a plain
 //! `Vec<NodeId>` during one traversal, so the result is a *static snapshot*:
 //! a later mutation of the tree never changes an already-returned result (the
-//! WHATWG static `NodeList` semantics). Live collections and id/class/tag
-//! indexes are deliberately out of scope (T32) — every query re-walks the
-//! arena, so no second state can drift out of sync with the tree.
+//! WHATWG static `NodeList` semantics). General selector matching does not use
+//! the T32 live-collection index; only document-scoped plain `#id` reads reuse
+//! `getElementById` and its optional, mutation-maintained id index.
 //!
 //! # Scopes and receivers
 //!
@@ -50,6 +51,23 @@ fn is_query_scope(node_type: NodeType) -> bool {
     )
 }
 
+/// Extracts the id from the common, unescaped ASCII `#id` selector subset.
+///
+/// Keeping this deliberately narrower than the full CSS identifier grammar
+/// makes the fast path self-validating. Escapes, non-ASCII identifiers and
+/// selector lists continue through the standards parser below.
+fn simple_ascii_id_selector(selector: &str) -> Option<&str> {
+    let id = selector.strip_prefix('#')?;
+    let mut bytes = id.bytes();
+    let first = bytes.next()?;
+    if !first.is_ascii_alphabetic() && first != b'_' {
+        return None;
+    }
+    bytes
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+        .then_some(id)
+}
+
 impl Document {
     /// Returns the first descendant element of `scope`, in document order,
     /// that matches `selector`, or `None` when there is none.
@@ -68,6 +86,16 @@ impl Document {
         scope: NodeId,
         selector: &str,
     ) -> Result<Option<NodeId>, CoreError> {
+        // A document-scoped plain id selector is exactly getElementById. This
+        // avoids both selector parsing/matching and a full-result allocation;
+        // scoped queries still use the matcher because duplicate ids outside
+        // the scope must not hide an in-scope match.
+        if let Some(id) = simple_ascii_id_selector(selector) {
+            self.expect_query_scope(scope)?;
+            if self.cached_document_root() == Some(scope) {
+                return self.get_element_by_id(id);
+            }
+        }
         let list = parse_selector_list(selector)?;
         self.query_selector_parsed(scope, &list)
     }
@@ -139,7 +167,10 @@ impl Document {
     /// propagates it rather than panicking.
     pub fn get_element_by_id(&self, id: &str) -> Result<Option<NodeId>, CoreError> {
         if self.query_index.is_enabled() {
-            return Ok(self.query_index.first_for_id(id));
+            let Some(root) = self.cached_document_root() else {
+                return Ok(None);
+            };
+            return self.indexed_element_by_id(root, id);
         }
         let Some(root) = self.cached_document_root() else {
             return Ok(None);
@@ -168,10 +199,23 @@ impl Document {
         scope: NodeId,
         list: &SelectorList<DomSelectorImpl>,
     ) -> Result<Option<NodeId>, CoreError> {
-        Ok(self
-            .query_selector_all_parsed(scope, list)?
-            .into_iter()
-            .next())
+        self.expect_query_scope(scope)?;
+        let mut found = None;
+        self.walk_descendants(scope, |doc, candidate| {
+            if doc.node_type(candidate)? != NodeType::Element {
+                return Ok(true);
+            }
+            // `querySelector` only needs the first document-order match.  Do
+            // not build the complete `querySelectorAll` snapshot: stopping
+            // the arena walk here is especially important for hot ID probes
+            // against large documents.
+            if match_selector_list_with_scope(list, doc, candidate, Some(scope))? {
+                found = Some(candidate);
+                return Ok(false);
+            }
+            Ok(true)
+        })?;
+        Ok(found)
     }
 
     /// The parsed-list variant of [`Document::query_selector_all`].

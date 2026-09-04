@@ -26,7 +26,7 @@
 //!   scopes / non-`Element` receivers fail with [`CoreError::Hierarchy`].
 
 use mad_dom_core::arena::{ArenaError, NodeId};
-use mad_dom_core::dom::{Document, NodeType};
+use mad_dom_core::dom::{Document, NodeType, ShadowRootMode};
 use mad_dom_core::error::CoreError;
 use mad_dom_core::html::parse_html_document;
 
@@ -208,6 +208,94 @@ fn element_scope_matches_descendants_only() {
     assert_eq!(
         id_of(&doc, &doc.query_selector_all(frag, "div").unwrap()),
         ["frag-inner"]
+    );
+}
+
+#[test]
+fn simple_id_fast_path_stays_document_scoped() {
+    let mut doc = Document::new();
+    doc.ensure_html_skeleton().unwrap();
+    let document_root = doc.document_root();
+    let body = doc.document_body().unwrap().unwrap();
+
+    let outside = doc.create_element("p").unwrap();
+    doc.set_attribute(outside, "id", "duplicate").unwrap();
+    doc.append_child(body, outside).unwrap();
+
+    let scope = doc.create_element("section").unwrap();
+    let inside = doc.create_element("p").unwrap();
+    doc.set_attribute(inside, "id", "duplicate").unwrap();
+    doc.append_child(scope, inside).unwrap();
+    doc.append_child(body, scope).unwrap();
+
+    assert_eq!(
+        doc.query_selector(document_root, "#duplicate").unwrap(),
+        Some(outside),
+        "document #id uses the first duplicate in document order"
+    );
+    assert_eq!(
+        doc.query_selector(scope, "#duplicate").unwrap(),
+        Some(inside),
+        "a scoped #id query must not be hidden by an earlier global duplicate"
+    );
+}
+
+#[test]
+fn indexed_simple_id_ignores_detached_and_shadow_tree_matches() {
+    let mut doc = Document::new();
+    doc.ensure_html_skeleton().unwrap();
+    doc.set_query_index_enabled(true).unwrap();
+    let document_root = doc.document_root();
+    let body = doc.document_body().unwrap().unwrap();
+
+    // Indexed mode falls back to traversal for disconnected fragments and
+    // shadow roots. Their entries must not leak into the light-document index
+    // or hide a later document getElementById / plain-#id match.
+    let fragment = doc.create_document_fragment().unwrap();
+    let detached = doc.create_element("p").unwrap();
+    doc.set_attribute(detached, "id", "duplicate").unwrap();
+    doc.append_child(fragment, detached).unwrap();
+
+    let host = doc.create_element("div").unwrap();
+    let shadow = doc.attach_shadow(host, ShadowRootMode::Open).unwrap();
+    let shadow_match = doc.create_element("p").unwrap();
+    doc.set_attribute(shadow_match, "id", "duplicate").unwrap();
+    doc.append_child(shadow, shadow_match).unwrap();
+    doc.append_child(body, host).unwrap();
+
+    let light_match = doc.create_element("p").unwrap();
+    doc.set_attribute(light_match, "id", "duplicate").unwrap();
+    doc.append_child(body, light_match).unwrap();
+
+    // Keep a tail after the first light-DOM match, then insert a second match
+    // before it. This exercises non-append index insertion; document lookup
+    // must still choose `light_match`.
+    let tail = doc.create_element("footer").unwrap();
+    doc.append_child(body, tail).unwrap();
+    let later_light_match = doc.create_element("p").unwrap();
+    doc.set_attribute(later_light_match, "id", "duplicate")
+        .unwrap();
+    doc.insert_before(body, later_light_match, tail).unwrap();
+
+    assert_eq!(
+        doc.get_element_by_id("duplicate").unwrap(),
+        Some(light_match)
+    );
+    assert_eq!(
+        doc.query_selector(document_root, "#duplicate").unwrap(),
+        Some(light_match)
+    );
+    assert_eq!(
+        doc.query_selector_all(document_root, "#duplicate").unwrap(),
+        vec![light_match, later_light_match]
+    );
+    assert_eq!(
+        doc.query_selector(fragment, "#duplicate").unwrap(),
+        Some(detached)
+    );
+    assert_eq!(
+        doc.query_selector(shadow, "#duplicate").unwrap(),
+        Some(shadow_match)
     );
 }
 

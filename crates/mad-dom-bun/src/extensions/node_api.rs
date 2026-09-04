@@ -44,6 +44,14 @@
 //! | `nextSibling` | `() → Option<Reference<NodeHandle>>` | `null` at the tail of the sibling chain |
 //! | `childNodes` | `() → Vec<Reference<NodeHandle>>` | ordered children; an empty array for a leaf node (the live `childNodes` *facade* is T25D's) |
 //!
+//! ## Optional bounded navigation prefetch
+//!
+//! `nextSiblingChunk()` is a post-T23 performance companion implemented in
+//! `handle.rs`. It returns at most 32 following wrappers and appends a `null`
+//! end marker only when native reached the chain tail. The facade
+//! feature-detects it; older platform packages continue through the frozen
+//! one-node `nextSibling()` contract above.
+//!
 //! # Identity, ownership and delegation
 //!
 //! * **Stable wrapper identity** — every wrapper-producing path (creation,
@@ -117,6 +125,12 @@ pub(crate) const NODE_NAVIGATION_CONTRACT: &[&str] = &[
     "childNodes",
 ];
 
+/// Optional post-T23 performance companion. It stays separate from
+/// [`NODE_NAVIGATION_CONTRACT`] because support must remain feature-detectable
+/// when the JavaScript facade is paired with an older native package.
+#[allow(dead_code)]
+pub(crate) const NODE_NAVIGATION_PREFETCH_CONTRACT: &[&str] = &["nextSiblingChunk"];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -149,6 +163,11 @@ mod tests {
                 "childNodes",
             ],
             "native navigation contract must stay exactly the T19/T20 handle surface"
+        );
+        assert_eq!(
+            NODE_NAVIGATION_PREFETCH_CONTRACT,
+            &["nextSiblingChunk"],
+            "the optional prefetch method must stay feature-detectable"
         );
     }
 

@@ -93,6 +93,9 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     expect(methods).toHaveProperty("previousSibling");
     expect(methods).toHaveProperty("nextSibling");
     expect(methods).toHaveProperty("childNodes");
+    expect(contract.optionalPerformance.NodeHandle).toHaveProperty(
+      "nextSiblingChunk",
+    );
 
     expect(contract.identity.rule).toContain("wrap_node");
     expect(contract.documentContext.documentAccess).toContain("with_document");
@@ -109,6 +112,9 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
 
     const nodeProto = native.NodeHandle.prototype;
     for (const name of Object.keys(contract.classes.NodeHandle.methods)) {
+      expect(typeof nodeProto[name], `${name} must exist on NodeHandle`).toBe("function");
+    }
+    for (const name of Object.keys(contract.optionalPerformance.NodeHandle)) {
       expect(typeof nodeProto[name], `${name} must exist on NodeHandle`).toBe("function");
     }
 
@@ -242,6 +248,27 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     expect(b.lastChild()).toBeNull();
     expect(b.childNodes()).toEqual([]);
 
+    doc.destroy();
+  });
+
+  test("nextSiblingChunk is bounded and marks only a proven chain end", () => {
+    const doc = native.createDocument();
+    const parent = doc.createElement("div");
+    const children = Array.from({ length: 40 }, () => doc.createElement("i"));
+    for (const child of children) doc.appendChild(parent, child);
+
+    const first = children[0].nextSiblingChunk();
+    expect(first).toHaveLength(32);
+    expect(first[0]).toBe(children[1]);
+    expect(first[31]).toBe(children[32]);
+    expect(first.includes(null)).toBe(false);
+
+    const final = children[32].nextSiblingChunk();
+    expect(final).toHaveLength(8);
+    expect(final.slice(0, -1)).toEqual(children.slice(33));
+    expect(final.at(-1)).toBeNull();
+
+    expect(children[39].nextSiblingChunk()).toEqual([null]);
     doc.destroy();
   });
 

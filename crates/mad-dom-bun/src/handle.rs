@@ -242,7 +242,8 @@ fn raw_value_if_live<T: 'static>(
 /// FFI crossing per minted wrapper dominated DOM-churn workloads (tree walks,
 /// bulk creation). All three values are immutable per node, so minting them
 /// onto the object lets the facade classify with plain property reads.
-/// Confined `unsafe` island: three Node-API value creations + property sets.
+/// Confined `unsafe` island: up to three Node-API value creations plus one
+/// descriptor definition.
 fn stamp_wrapper_kind(
     env: Env,
     value: napi::sys::napi_value,
@@ -251,14 +252,12 @@ fn stamp_wrapper_kind(
     namespace: Option<&str>,
 ) -> napi::Result<()> {
     let raw_env = env.raw();
-    let set_u32 = |name: &std::ffi::CStr, number: u32| {
+    let create_u32 = |number: u32| {
         let mut created = std::ptr::null_mut();
         check_status!(unsafe { napi::sys::napi_create_uint32(raw_env, number, &mut created) })?;
-        check_status!(unsafe {
-            napi::sys::napi_set_named_property(raw_env, value, name.as_ptr(), created)
-        })
+        Ok::<_, napi::Error>(created)
     };
-    let set_str = |name: &std::ffi::CStr, text: &str| {
+    let create_str = |text: &str| {
         let mut created = std::ptr::null_mut();
         check_status!(unsafe {
             napi::sys::napi_create_string_utf8(
@@ -268,15 +267,39 @@ fn stamp_wrapper_kind(
                 &mut created,
             )
         })?;
-        check_status!(unsafe {
-            napi::sys::napi_set_named_property(raw_env, value, name.as_ptr(), created)
-        })
+        Ok::<_, napi::Error>(created)
     };
-    set_u32(c"madDomType", kind)?;
-    if kind == 1 {
-        set_str(c"madDomName", name)?;
-        set_str(c"madDomNamespace", namespace.unwrap_or(""))?;
-    }
+
+    // Classification is an immutable internal stamp, not mutable DOM state.
+    // Default Node-API descriptor flags make each property non-writable,
+    // non-enumerable and non-configurable. Besides keeping the fast facade
+    // reads trustworthy, defining the whole element bundle in one call avoids
+    // three separate property-definition round trips while minting wrappers.
+    let empty = napi::sys::napi_property_descriptor {
+        utf8name: std::ptr::null(),
+        name: std::ptr::null_mut(),
+        method: None,
+        getter: None,
+        setter: None,
+        value: std::ptr::null_mut(),
+        attributes: napi::sys::PropertyAttributes::default,
+        data: std::ptr::null_mut(),
+    };
+    let mut properties = [empty; 3];
+    properties[0].utf8name = c"madDomType".as_ptr();
+    properties[0].value = create_u32(kind)?;
+    let count = if kind == 1 {
+        properties[1].utf8name = c"madDomName".as_ptr();
+        properties[1].value = create_str(name)?;
+        properties[2].utf8name = c"madDomNamespace".as_ptr();
+        properties[2].value = create_str(namespace.unwrap_or(""))?;
+        3
+    } else {
+        1
+    };
+    check_status!(unsafe {
+        napi::sys::napi_define_properties(raw_env, value, count, properties.as_ptr())
+    })?;
     Ok(())
 }
 
@@ -298,6 +321,12 @@ fn null_unknown(env: Env) -> napi::Result<Unknown<'static>> {
 }
 
 impl SharedDocument {
+    /// Sentinel written to the JavaScript-visible epoch slot when the
+    /// document is destroyed. Structural generations only increment from
+    /// zero, so this value lets facade metadata reads distinguish destruction
+    /// from an ordinary mutation without another native call.
+    pub(crate) const DESTROYED_EPOCH: i32 = i32::MIN;
+
     /// Bumps the JavaScript-visible structural epoch, when registered.
     ///
     /// Called by [`with_document`] when a call changed Core's
@@ -312,6 +341,21 @@ impl SharedDocument {
             // SAFETY: see above — immortal slot memory, single-threaded
             // writer/reader pair.
             unsafe { (*slot).fetch_add(1, Ordering::SeqCst) };
+        }
+    }
+
+    /// Marks a registered JavaScript epoch view as destroyed.
+    ///
+    /// Unlike a normal structural change, destruction is terminal. Facade
+    /// reads may use immutable wrapper stamps while the epoch is live, but on
+    /// this sentinel they must re-enter native so the frozen
+    /// `ERR_MAD_DOM_DOCUMENT_DESTROYED` error is preserved.
+    fn mark_epoch_destroyed(&self) {
+        let slot = self.epoch.load(Ordering::Relaxed);
+        if !slot.is_null() {
+            // SAFETY: the epoch slot is deliberately immortal and all access
+            // happens on the document's affinity thread (see `bump_epoch`).
+            unsafe { (*slot).store(Self::DESTROYED_EPOCH, Ordering::SeqCst) };
         }
     }
 
@@ -412,6 +456,28 @@ impl SharedDocument {
         // A live node of a live document always classifies; the error arm is
         // the destroyed-document guard (`with_document` rejects before Core).
         .map_err(|err| napi::Error::new(Status::GenericFailure, format!("{err:?}")))?;
+        self.mint_node_value(env, id, kind.0, &kind.1, kind.2.as_deref())
+    }
+
+    /// Mints and caches the JS wrapper for a node whose immutable
+    /// classification is already known.
+    ///
+    /// Fresh-node creation uses this directly: the returned [`NodeId`] cannot
+    /// already have a wrapper, and the creating entry already knows its node
+    /// kind, name and namespace. Skipping the cache probe and second document
+    /// lock avoids repeating fixed work for every `createElement` /
+    /// `createText` call while keeping all [`NodeHandle`] construction in this
+    /// single helper. Existing-node paths continue through
+    /// [`SharedDocument::wrap_node_value`] and its identity/liveness probe.
+    fn mint_node_value(
+        self: &Arc<Self>,
+        env: Env,
+        id: NodeId,
+        kind: u32,
+        name: &str,
+        namespace: Option<&str>,
+    ) -> napi::Result<napi::sys::napi_value> {
+        let raw_env = env.raw();
         let stamp = self.stamps.fetch_add(1, Ordering::Relaxed);
         let reference = NodeHandle {
             shared: Arc::clone(self),
@@ -423,12 +489,26 @@ impl SharedDocument {
         // Consumes the reference: the value is extracted, then the reference's
         // drop releases its refcount back to the weak cache entry's level.
         let value = unsafe { ToNapiValue::to_napi_value(raw_env, reference)? };
-        stamp_wrapper_kind(env, value, kind.0, &kind.1, kind.2.as_deref())?;
+        stamp_wrapper_kind(env, value, kind, name, namespace)?;
         self.wrappers
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .insert(id, (weak, stamp));
         Ok(value)
+    }
+
+    /// Type-erased return variant of [`SharedDocument::mint_node_value`] for
+    /// native creation entries, where the node is guaranteed fresh.
+    fn mint_node_unknown(
+        self: &Arc<Self>,
+        env: Env,
+        id: NodeId,
+        kind: u32,
+        name: &str,
+        namespace: Option<&str>,
+    ) -> napi::Result<Unknown<'_>> {
+        let value = self.mint_node_value(env, id, kind, name, namespace)?;
+        unsafe { unknown_of(env, value) }
     }
 
     /// [`wrap_node_value`] convenience for `#[napi]` entries that return the
@@ -755,11 +835,11 @@ impl DocumentHandle {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .clear();
         // Structural epoch: destroy is the one state change that never runs
-        // through `with_document` (the document is already gone), so bump the
-        // epoch here — a facade navigation memo cached before the destroy
-        // must miss and re-enter the native path, which reports
+        // through `with_document` (the document is already gone), so mark the
+        // epoch terminal here — a facade navigation memo cached before the
+        // destroy must miss and re-enter the native path, which reports
         // `ERR_MAD_DOM_DOCUMENT_DESTROYED` instead of serving stale nodes.
-        self.shared.bump_epoch();
+        self.shared.mark_epoch_destroyed();
     }
 }
 
@@ -776,7 +856,13 @@ impl DocumentHandle {
         let id = self
             .create_element_inner(&name)
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node_unknown(env, id)
+        self.shared.mint_node_unknown(
+            env,
+            id,
+            node_type_value(NodeType::Element),
+            &name,
+            Some(mad_dom_core::dom::HTML_NAMESPACE),
+        )
     }
 
     /// Creates an element in the given namespace (the read behind
@@ -793,7 +879,13 @@ impl DocumentHandle {
         let id = self
             .create_element_ns_inner(&namespace, &name)
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node_unknown(env, id)
+        self.shared.mint_node_unknown(
+            env,
+            id,
+            node_type_value(NodeType::Element),
+            &name,
+            Some(&namespace),
+        )
     }
 
     #[napi(catch_unwind)]
@@ -802,7 +894,8 @@ impl DocumentHandle {
         let id = self
             .create_text_inner(&data)
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node_unknown(env, id)
+        self.shared
+            .mint_node_unknown(env, id, node_type_value(NodeType::Text), "", None)
     }
 
     #[napi(catch_unwind)]
@@ -811,7 +904,8 @@ impl DocumentHandle {
         let id = self
             .create_comment_inner(&data)
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node_unknown(env, id)
+        self.shared
+            .mint_node_unknown(env, id, node_type_value(NodeType::Comment), "", None)
     }
 
     #[napi(catch_unwind)]
@@ -820,7 +914,13 @@ impl DocumentHandle {
         let id = self
             .create_document_fragment_inner()
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node_unknown(env, id)
+        self.shared.mint_node_unknown(
+            env,
+            id,
+            node_type_value(NodeType::DocumentFragment),
+            "",
+            None,
+        )
     }
 
     /// Returns the document-root node (`#document`) as a `NodeHandle`.
@@ -969,6 +1069,12 @@ pub struct NodeHandle {
     stamp: u64,
 }
 
+/// Maximum number of wrappers returned by one navigation prefetch.  The
+/// facade deliberately batches a bounded window rather than materializing a
+/// parent's complete child list: reading a handful of siblings must stay
+/// constant-space even when the parent has millions of children.
+const NEXT_SIBLING_CHUNK_SIZE: usize = 32;
+
 impl Drop for NodeHandle {
     /// Evicts this wrapper's cache entry.
     ///
@@ -1081,6 +1187,32 @@ impl NodeHandle {
         self.run(|doc| doc.next_sibling(self.id).map_err(BindingError::Core))
     }
 
+    /// Returns at most [`NEXT_SIBLING_CHUNK_SIZE`] following siblings plus a
+    /// flag saying whether that window reached the end of the chain.
+    ///
+    /// The one-node lookahead used to compute the flag remains a `NodeId` and
+    /// is not wrapped.  This keeps the JavaScript-visible allocation strictly
+    /// bounded while still allowing the facade to memoize a terminal `null`
+    /// only when native has proved that the chain ended.
+    fn next_sibling_chunk_inner(&self) -> std::result::Result<(Vec<NodeId>, bool), BindingError> {
+        self.run(|doc| {
+            let Some(first) = doc.next_sibling(self.id).map_err(BindingError::Core)? else {
+                // The common short-chain terminal check needs no heap storage.
+                return Ok((Vec::new(), true));
+            };
+            let mut ids = Vec::with_capacity(NEXT_SIBLING_CHUNK_SIZE);
+            let mut current = Some(first);
+            while let Some(id) = current {
+                if ids.len() == NEXT_SIBLING_CHUNK_SIZE {
+                    return Ok((ids, false));
+                }
+                ids.push(id);
+                current = doc.next_sibling(id).map_err(BindingError::Core)?;
+            }
+            Ok((ids, true))
+        })
+    }
+
     pub(crate) fn child_nodes_inner(&self) -> std::result::Result<Vec<NodeId>, BindingError> {
         self.run(|doc| doc.children(self.id).map_err(BindingError::Core))
     }
@@ -1187,6 +1319,26 @@ impl NodeHandle {
             None => null_unknown(env),
             Some(id) => self.shared.wrap_node_unknown(env, id),
         }
+    }
+
+    /// Returns a bounded window of following siblings for the facade's
+    /// sequential-axis memo.  A trailing JavaScript `null` is an end marker;
+    /// its absence means more siblings may follow.  At most 32 node wrappers
+    /// are materialized by one call.
+    #[napi(catch_unwind)]
+    pub fn next_sibling_chunk(&self, env: Env) -> napi::Result<Vec<Unknown<'_>>> {
+        check_affinity(&self.shared, &env)?;
+        let (ids, reached_end) = self
+            .next_sibling_chunk_inner()
+            .map_err(|err| err.into_napi(&env))?;
+        let mut values = Vec::with_capacity(ids.len() + usize::from(reached_end));
+        for id in ids {
+            values.push(self.shared.wrap_node_unknown(env, id)?);
+        }
+        if reached_end {
+            values.push(null_unknown(env)?);
+        }
+        Ok(values)
     }
 
     #[napi(catch_unwind)]

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { Window, isNativeAvailable } from "../../index.js";
+import { DOC_STATE_SLOT } from "../../js/facade/extensions/classes.js";
 
 // Navigation-memo + wrapper-stability tests.
 //
@@ -115,6 +116,73 @@ describe.skipIf(!nativeAvailable)("navigation memo correctness", () => {
     }
   });
 
+  test("long sibling walks keep every seeded relation correct and invalidate on mutation", () => {
+    const window = new Window();
+    try {
+      const { document } = window;
+      document.body.innerHTML =
+        '<ul><li id="a"></li><li id="b"></li><li id="c"></li>' +
+        '<li id="d"></li><li id="e"></li></ul>';
+      const ul = document.body.firstChild;
+      const a = ul.firstChild;
+      const b = a.nextSibling;
+      const c = b.nextSibling;
+
+      // Reaching the third sibling activates the axis-prefetch path. Every
+      // relation it seeds must retain normal Node identity and parentage.
+      const d = c.nextSibling;
+      const e = d.nextSibling;
+      expect(e.nextSibling).toBeNull();
+      expect(d.previousSibling).toBe(c);
+      expect(e.previousSibling).toBe(d);
+      expect(a.parentNode).toBe(ul);
+      expect(c.parentNode).toBe(ul);
+      expect(e.parentNode).toBe(ul);
+      expect(ul.lastChild).toBe(e);
+
+      // One structural mutation invalidates the entire prefetched axis.
+      ul.insertBefore(e, a);
+      expect(ul.firstChild).toBe(e);
+      expect(e.previousSibling).toBeNull();
+      expect(e.nextSibling).toBe(a);
+      expect(d.nextSibling).toBeNull();
+      expect(a.previousSibling).toBe(e);
+    } finally {
+      window.destroy();
+    }
+  });
+
+  test("sibling prefetch stays bounded on an ultra-wide parent", () => {
+    const window = new Window();
+    try {
+      const { document } = window;
+      document.body.innerHTML = `<div>${"<i></i>".repeat(1000)}</div>`;
+      const parent = document.body.firstChild;
+      const first = parent.firstChild;
+      const second = first.nextSibling;
+      const third = second.nextSibling;
+      const state = third[DOC_STATE_SLOT];
+      const pinnedBeforeChunk = state.pinned.size;
+
+      // The third nextSibling read activates prefetch. It may pin one bounded
+      // window, never all 1,000 siblings merely because four were inspected.
+      const fourth = third.nextSibling;
+      expect(fourth.previousSibling).toBe(third);
+      expect(state.pinned.size - pinnedBeforeChunk).toBeLessThanOrEqual(32);
+
+      // Crossing multiple chunk boundaries still yields every node exactly
+      // once, and only the native chunk that reaches the tail seeds `null`.
+      let count = 4;
+      let cursor = fourth;
+      while ((cursor = cursor.nextSibling) !== null) count += 1;
+      expect(count).toBe(1000);
+      expect(cursor).toBeNull();
+      expect(parent.lastChild.nextSibling).toBeNull();
+    } finally {
+      window.destroy();
+    }
+  });
+
   test("wrappers stay identity-stable across GC while the document is held", async () => {
     const window = new Window();
     try {
@@ -218,11 +286,29 @@ describe.skipIf(!nativeAvailable)("navigation memo never masks lifecycle errors"
     const { document } = window;
     document.body.innerHTML = "<div><span>x</span></div>";
     const div = document.body.firstChild;
+    const text = div.firstChild.firstChild;
     // Warm the memo, then destroy: the cached answer must not be served.
     expect(div.firstChild).toBe(div.firstChild);
+    expect(text.firstChild).toBeNull();
     window.destroy();
     expect(() => div.firstChild).toThrow();
     expect(() => div.parentNode).toThrow();
+    expect(() => text.firstChild).toThrow();
     expect(() => document.body.firstChild).toThrow();
+  });
+
+  test("a childless fast read revalidates an adoption-stale wrapper", () => {
+    const sourceWindow = new Window();
+    const targetWindow = new Window();
+    try {
+      const text = sourceWindow.document.createTextNode("x");
+      expect(text.firstChild).toBeNull();
+      targetWindow.document.adoptNode(text);
+      expect(() => text.firstChild).toThrow(/ERR_MAD_DOM_STALE_HANDLE/);
+      expect(() => text.lastChild).toThrow(/ERR_MAD_DOM_STALE_HANDLE/);
+    } finally {
+      sourceWindow.destroy();
+      targetWindow.destroy();
+    }
   });
 });

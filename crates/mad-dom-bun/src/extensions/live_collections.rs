@@ -5,11 +5,12 @@
 //! This module is the M6 native extension that exposes the Core live element
 //! collections to JavaScript: `getElementsByTagName` and
 //! `getElementsByClassName` on the native [`DocumentHandle`] and the native
-//! [`NodeHandle`]. Like the M5 `html_api` (T29) and M6 `query_api` (T31)
-//! extensions it adds *new* native symbols to the existing classes through
-//! second `#[napi] impl` blocks — napi merges class properties registered for
-//! the same Rust type, so the classes keep their audited surfaces with no
-//! duplicate export and no touch to the shared `handle.rs`.
+//! [`NodeHandle`], plus result-allocation-free count companions used only by
+//! `HTMLCollection.length`. Like the M5 `html_api` (T29) and M6 `query_api`
+//! (T31) extensions it adds *new* native symbols to the existing classes
+//! through second `#[napi] impl` blocks — napi merges class properties
+//! registered for the same Rust type, so the classes keep their audited
+//! surfaces with no duplicate export and no touch to the shared `handle.rs`.
 //!
 //! # Frozen native contract (consumed by the T32 facade)
 //!
@@ -27,6 +28,8 @@
 //! | --- | --- | --- | --- |
 //! | `document.getElementsByTagName` | `getElementsByTagName` | `(tagName: String) → Vec<NodeHandle>` | every descendant element matching the tag (ASCII case-insensitive, `"*"` matches all), in document order |
 //! | `document.getElementsByClassName` | `getElementsByClassName` | `(className: String) → Vec<NodeHandle>` | every descendant element whose `class` attribute contains every whitespace token of the argument, in document order |
+//! | `HTMLCollection.length` (tag) | `countElementsByTagName` | `(tagName: String) → u32` | the same live tag-query cardinality without allocating/wrapping result nodes |
+//! | `HTMLCollection.length` (class) | `countElementsByClassName` | `(className: String) → u32` | the same live class-query cardinality without allocating/wrapping result nodes |
 //!
 //! The document entries build the implied HTML skeleton first
 //! (`ensure_html_skeleton`), so a fresh window's `getElementsByTagName("html")`
@@ -38,6 +41,8 @@
 //! | --- | --- | --- | --- |
 //! | `el.getElementsByTagName` | `getElementsByTagName` | `(tagName: String) → Vec<NodeHandle>` | the node's descendant elements matching the tag, in document order |
 //! | `el.getElementsByClassName` | `getElementsByClassName` | `(className: String) → Vec<NodeHandle>` | the node's descendant elements matching every class token, in document order |
+//! | tag collection `.length` | `countElementsByTagName` | `(tagName: String) → u32` | the same scoped tag-query cardinality without allocating/wrapping result nodes |
+//! | class collection `.length` | `countElementsByClassName` | `(className: String) → u32` | the same scoped class-query cardinality without allocating/wrapping result nodes |
 //!
 //! The facade owns the WebIDL `DOMString` conversion of the arguments
 //! (`el.getElementsByTagName(42)` becomes `getElementsByTagName("42")` before
@@ -109,8 +114,12 @@ pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
 /// [`DocumentHandle`](crate::handle::DocumentHandle) and
 /// [`NodeHandle`](crate::handle::NodeHandle).
 #[allow(dead_code)]
-pub(crate) const LIVE_COLLECTION_CONTRACT: &[&str] =
-    &["getElementsByTagName", "getElementsByClassName"];
+pub(crate) const LIVE_COLLECTION_CONTRACT: &[&str] = &[
+    "getElementsByTagName",
+    "getElementsByClassName",
+    "countElementsByTagName",
+    "countElementsByClassName",
+];
 
 /// Wraps every `NodeId` Core returned into a JS node wrapper through the
 /// single per-document weak cache.
@@ -168,6 +177,36 @@ impl DocumentHandle {
         .map_err(|err| err.into_napi(&env))?;
         wrap_all(env, self.shared(), ids)
     }
+
+    /// Returns the live tag-query cardinality without creating NodeHandle
+    /// wrappers. This is the fast path behind `HTMLCollection.length`.
+    #[napi(catch_unwind)]
+    pub fn count_elements_by_tag_name(&self, env: Env, tag_name: String) -> napi::Result<u32> {
+        check_affinity(self.shared(), &env)?;
+        with_document(self.shared(), |doc| {
+            doc.ensure_html_skeleton()
+                .map_err(crate::error::BindingError::Core)?;
+            let root = doc.document_root();
+            doc.count_elements_by_tag_name(root, &tag_name)
+                .map_err(crate::error::BindingError::Core)
+        })
+        .map_err(|err| err.into_napi(&env))
+    }
+
+    /// Returns the live class-query cardinality without creating NodeHandle
+    /// wrappers. This is the fast path behind `HTMLCollection.length`.
+    #[napi(catch_unwind)]
+    pub fn count_elements_by_class_name(&self, env: Env, class_name: String) -> napi::Result<u32> {
+        check_affinity(self.shared(), &env)?;
+        with_document(self.shared(), |doc| {
+            doc.ensure_html_skeleton()
+                .map_err(crate::error::BindingError::Core)?;
+            let root = doc.document_root();
+            doc.count_elements_by_class_name(root, &class_name)
+                .map_err(crate::error::BindingError::Core)
+        })
+        .map_err(|err| err.into_napi(&env))
+    }
 }
 
 #[napi]
@@ -208,21 +247,50 @@ impl NodeHandle {
         .map_err(|err| err.into_napi(&env))?;
         wrap_all(env, self.shared(), ids)
     }
+
+    /// Returns the scoped live tag-query cardinality without creating
+    /// NodeHandle wrappers.
+    #[napi(catch_unwind)]
+    pub fn count_elements_by_tag_name(&self, env: Env, tag_name: String) -> napi::Result<u32> {
+        check_affinity(self.shared(), &env)?;
+        with_document(self.shared(), |doc| {
+            doc.count_elements_by_tag_name(self.id(), &tag_name)
+                .map_err(crate::error::BindingError::Core)
+        })
+        .map_err(|err| err.into_napi(&env))
+    }
+
+    /// Returns the scoped live class-query cardinality without creating
+    /// NodeHandle wrappers.
+    #[napi(catch_unwind)]
+    pub fn count_elements_by_class_name(&self, env: Env, class_name: String) -> napi::Result<u32> {
+        check_affinity(self.shared(), &env)?;
+        with_document(self.shared(), |doc| {
+            doc.count_elements_by_class_name(self.id(), &class_name)
+                .map_err(crate::error::BindingError::Core)
+        })
+        .map_err(|err| err.into_napi(&env))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// The frozen live-collection surface is exactly the two entries this
+    /// The frozen live-collection surface is exactly the four entries this
     /// module adds to each handle class. This is the Rust-side regression pin;
     /// `tests/bun/live-collections.test.js` re-checks the same names against
     /// the live module.
     #[test]
-    fn frozen_live_collection_surface_is_exactly_the_two_entries() {
+    fn frozen_live_collection_surface_is_exactly_the_four_entries() {
         assert_eq!(
             LIVE_COLLECTION_CONTRACT,
-            &["getElementsByTagName", "getElementsByClassName"],
+            &[
+                "getElementsByTagName",
+                "getElementsByClassName",
+                "countElementsByTagName",
+                "countElementsByClassName",
+            ],
             "native live collection contract must stay exactly the T32 surface"
         );
     }

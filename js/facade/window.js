@@ -44,7 +44,7 @@
 import { loadNative } from "../native-loader.js";
 
 import { Document } from "./document.js";
-import { DOC_STATE_SLOT } from "./extensions/classes.js";
+import { DOC_STATE_SLOT, VALID_EPOCH_SLOT } from "./extensions/classes.js";
 import { installExtensions } from "./extensions/index.js";
 
 export const seam = Object.freeze({
@@ -127,6 +127,7 @@ function docStateOf(docHandle) {
 function pinWrapper(nativeHandle, wrapper, docState) {
   const state = docState ?? docStateOf(nativeHandle.ownerDocument());
   wrapper[DOC_STATE_SLOT] = state;
+  wrapper[VALID_EPOCH_SLOT] = state.epoch === null ? null : state.epoch[0];
   state.pinned.set(nativeHandle, wrapper);
 }
 

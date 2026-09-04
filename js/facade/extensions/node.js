@@ -40,6 +40,7 @@ import {
   ELEMENT_MINT_SYMBOL,
   DOC_STATE_SLOT,
   MEMO_SLOT,
+  VALID_EPOCH_SLOT,
   nodeHandleOf,
   registerElementClass,
   setElementFallbackClasses,
@@ -72,6 +73,32 @@ export const seam = Object.freeze({
 // `nodeName` / `tagName` report the tag name uppercased only for elements in
 // this namespace, matching happy-dom.
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+
+// Native writes this terminal value into the shared Int32 epoch view before
+// releasing a document. Treat it as invalid unconditionally: an ordinary
+// wrapping generation can eventually reach the same bit pattern, and cached
+// metadata/navigation must still never mask a destroyed-document error.
+const DESTROYED_EPOCH = -2147483648;
+
+// Returns the immutable native type stamp when this wrapper was proven live
+// at the document's current structural epoch. A structural mutation (including
+// cross-document adoption, the only path that stales live NodeIds) or destroy
+// changes the epoch first; the miss validates through native `nodeType()` and
+// refreshes the proof only after that succeeds. Older bindings without an
+// epoch or classification stamp always retain the native path.
+function validatedNodeType(wrapper, handle) {
+  const state = wrapper[DOC_STATE_SLOT];
+  const stamped = handle.madDomType;
+  if (state === undefined || state.epoch === null || stamped === undefined) {
+    return handle.nodeType();
+  }
+  const epoch = state.epoch[0];
+  if (epoch === DESTROYED_EPOCH) return handle.nodeType();
+  if (wrapper[VALID_EPOCH_SLOT] === epoch) return stamped;
+  const nodeType = handle.nodeType();
+  wrapper[VALID_EPOCH_SLOT] = state.epoch[0];
+  return nodeType;
+}
 
 /**
  * Installs the node creation and navigation surface onto the facade.
@@ -138,19 +165,31 @@ export function install(ctx) {
   // one and the same facade object (strict equality), mirroring the native
   // per-document weak wrapper cache. `null` results pass through unchanged.
   ctx.defineAccessor(Node.prototype, "nodeType", function nodeType() {
-    return nodeHandleOf(this).nodeType();
+    const handle = nodeHandleOf(this);
+    return validatedNodeType(this, handle);
   }, undefined);
 
   // WHATWG nodeName: an element in the HTML namespace reports its tag name in
   // uppercase ("DIV"), matching happy-dom; SVG/MathML and every other node kind
   // report the Core value verbatim (`#text`, `#document-fragment`, the SVG
-  // lowercased tag, ...). The serializers and selectors keep using the Core
-  // lowercased local name, so this case change is only the observable accessor.
+  // lowercased tag, ...). Fresh native wrappers carry immutable name/namespace
+  // stamps for the facade's class selection. Reuse them while the wrapper's
+  // validity epoch matches; on a miss `validatedNodeType` first proves through
+  // native that adoption/destruction did not stale the handle. Older bindings
+  // without stamps retain the original native-read path. The serializers and
+  // selectors keep using the Core lowercased local name, so this case change
+  // is only the observable accessor.
   ctx.defineAccessor(Node.prototype, "nodeName", function nodeName() {
     const handle = nodeHandleOf(this);
     if (handle === undefined) return undefined;
-    const name = handle.nodeName();
-    if (handle.nodeType() === 1 && handle.namespaceUri() === HTML_NAMESPACE) {
+    const nodeType = validatedNodeType(this, handle);
+    if (nodeType !== 1) return handle.nodeName();
+    const stampedName = handle.madDomName;
+    const stampedNamespace = handle.madDomNamespace;
+    const name = typeof stampedName === "string" ? stampedName : handle.nodeName();
+    const namespace =
+      typeof stampedNamespace === "string" ? stampedNamespace : handle.namespaceUri();
+    if (namespace === HTML_NAMESPACE) {
       return name.toUpperCase();
     }
     return name;
@@ -163,8 +202,9 @@ export function install(ctx) {
   ctx.defineAccessor(Element.prototype, "localName", function localName() {
     const handle = nodeHandleOf(this);
     if (handle === undefined) return undefined;
-    if (handle.nodeType() !== 1) return undefined;
-    return handle.nodeName();
+    if (validatedNodeType(this, handle) !== 1) return undefined;
+    const stampedName = handle.madDomName;
+    return typeof stampedName === "string" ? stampedName : handle.nodeName();
   }, undefined);
 
   // WHATWG Element.tagName: equal to `nodeName` for elements (uppercase for
@@ -172,9 +212,13 @@ export function install(ctx) {
   ctx.defineAccessor(Element.prototype, "tagName", function tagName() {
     const handle = nodeHandleOf(this);
     if (handle === undefined) return undefined;
-    if (handle.nodeType() !== 1) return undefined;
-    const name = handle.nodeName();
-    if (handle.namespaceUri() === HTML_NAMESPACE) {
+    if (validatedNodeType(this, handle) !== 1) return undefined;
+    const stampedName = handle.madDomName;
+    const stampedNamespace = handle.madDomNamespace;
+    const name = typeof stampedName === "string" ? stampedName : handle.nodeName();
+    const namespace =
+      typeof stampedNamespace === "string" ? stampedNamespace : handle.namespaceUri();
+    if (namespace === HTML_NAMESPACE) {
       return name.toUpperCase();
     }
     return name;
@@ -199,28 +243,142 @@ export function install(ctx) {
   // plain native delegation, exactly the pre-memo behaviour.
   const UNSET = {};
 
-  function navRead(wrapper, field, nativeName) {
+  function memoFor(wrapper, epoch) {
+    const memo = wrapper[MEMO_SLOT];
+    if (memo !== undefined) {
+      if (memo.e !== epoch) {
+        memo.e = epoch;
+        memo.fc = memo.lc = memo.ns = memo.ps = memo.pn = UNSET;
+      }
+      return memo;
+    }
+    return (wrapper[MEMO_SLOT] = {
+      e: epoch, fc: UNSET, lc: UNSET, ns: UNSET, ps: UNSET, pn: UNSET,
+    });
+  }
+
+  function navRead(wrapper, field, nativeName, childAxis = false) {
     const state = wrapper[DOC_STATE_SLOT];
     if (state === undefined || state.epoch === null) {
       return ctx.wrap(nodeHandleOf(wrapper)[nativeName]());
     }
     const epoch = state.epoch[0];
+    if (epoch === DESTROYED_EPOCH) {
+      return ctx.wrap(nodeHandleOf(wrapper)[nativeName](), state);
+    }
     const memo = wrapper[MEMO_SLOT];
     if (memo !== undefined && memo.e === epoch) {
       const value = memo[field];
       if (value !== UNSET) return value;
     }
-    const result = ctx.wrap(nodeHandleOf(wrapper)[nativeName](), state);
+    const handle = nodeHandleOf(wrapper);
+    const stampedType =
+      childAxis && wrapper[VALID_EPOCH_SLOT] === epoch
+        ? handle.madDomType
+        : undefined;
+    // Character-data, processing-instruction and doctype nodes can never
+    // acquire children. A freshly returned wrapper is already proven live at
+    // this epoch (`pinWrapper` records that proof), so their cold first/last
+    // child miss can be answered without crossing native. If adoption,
+    // mutation or destroy changed the epoch, the proof misses and the normal
+    // native read preserves the stale/lifecycle error contract.
+    const childless =
+      childAxis &&
+      (stampedType === 3 || stampedType === 4 || stampedType === 7 ||
+        stampedType === 8 || stampedType === 10);
+    const result = childless ? null : ctx.wrap(handle[nativeName](), state);
     const current = state.epoch[0];
-    const live = memo ?? (wrapper[MEMO_SLOT] = {
-      e: current, fc: UNSET, lc: UNSET, ns: UNSET, ps: UNSET, pn: UNSET,
-    });
-    if (live.e !== current) {
-      live.e = current;
-      live.fc = live.lc = live.ns = live.ps = live.pn = UNSET;
-    }
+    if (!childless) wrapper[VALID_EPOCH_SLOT] = current;
+    const live = memoFor(wrapper, current);
     live[field] = result;
+    if (result !== null && result !== undefined) {
+      const related = memoFor(result, current);
+      if (field === "fc") {
+        related.pn = wrapper;
+        related.ps = null;
+      } else if (field === "lc") {
+        related.pn = wrapper;
+        related.ns = null;
+      } else if (field === "ns") {
+        related.ps = wrapper;
+        if (live.pn !== UNSET) related.pn = live.pn;
+      } else if (field === "ps") {
+        related.ns = wrapper;
+        if (live.pn !== UNSET) related.pn = live.pn;
+      }
+    }
     return result;
+  }
+
+  function siblingAxisRead(wrapper) {
+    const state = wrapper[DOC_STATE_SLOT];
+    if (state === undefined || state.epoch === null) {
+      return navRead(wrapper, "ns", "nextSibling");
+    }
+    const epoch = state.epoch[0];
+    if (epoch === DESTROYED_EPOCH) {
+      return navRead(wrapper, "ns", "nextSibling");
+    }
+    const memo = wrapper[MEMO_SLOT];
+    if (memo !== undefined && memo.e === epoch && memo.ns !== UNSET) {
+      return memo.ns;
+    }
+
+    // Once a caller has already followed two links in the same sibling chain,
+    // it is probably traversing the axis rather than making an isolated
+    // `nextSibling` read. Fetch a bounded native window (at most 32 following
+    // nodes) and seed its epoch-guarded relation memos. The bound is important:
+    // reading four children of an ultra-wide parent must not eagerly wrap and
+    // pin the complete sibling axis. Older native bindings have no chunk read
+    // and retain the lazy single-node path.
+    const previous = memo?.e === epoch ? memo.ps : UNSET;
+    const previousMemo = previous?.[MEMO_SLOT];
+    const parent = memo?.e === epoch ? memo.pn : UNSET;
+    if (
+      previous === UNSET || previous === null ||
+      previousMemo === undefined || previousMemo.e !== epoch ||
+      previousMemo.ps === UNSET || previousMemo.ps === null ||
+      parent === UNSET || parent === null
+    ) {
+      return navRead(wrapper, "ns", "nextSibling");
+    }
+
+    const handle = nodeHandleOf(wrapper);
+    const readChunk = handle.nextSiblingChunk;
+    if (typeof readChunk !== "function") {
+      return navRead(wrapper, "ns", "nextSibling");
+    }
+
+    const nativeChunk = readChunk.call(handle);
+    const reachedEnd = nativeChunk[nativeChunk.length - 1] === null;
+    const length = nativeChunk.length - (reachedEnd ? 1 : 0);
+    const children = new Array(length);
+    for (let i = 0; i < length; i += 1) {
+      children[i] = ctx.wrap(nativeChunk[i], state);
+    }
+    const current = state.epoch[0];
+    wrapper[VALID_EPOCH_SLOT] = current;
+    const parentMemo = memoFor(parent, current);
+    let preceding = wrapper;
+    for (let i = 0; i < children.length; i += 1) {
+      const childMemo = memoFor(children[i], current);
+      childMemo.pn = parent;
+      childMemo.ps = preceding;
+      children[i][VALID_EPOCH_SLOT] = current;
+      memoFor(preceding, current).ns = children[i];
+      preceding = children[i];
+    }
+    // A short final chunk carries an explicit native end marker. Only then is
+    // it correct to cache `null`; a full chunk deliberately leaves the last
+    // node's next-sibling memo unset so the following read fetches one more
+    // bounded window.
+    if (reachedEnd) {
+      memoFor(preceding, current).ns = null;
+      parentMemo.lc = preceding;
+    }
+    const refreshed = memoFor(wrapper, current);
+    if (refreshed.ns !== UNSET) return refreshed.ns;
+    return navRead(wrapper, "ns", "nextSibling");
   }
 
   ctx.defineAccessor(Node.prototype, "parentNode", function parentNode() {
@@ -228,11 +386,11 @@ export function install(ctx) {
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "firstChild", function firstChild() {
-    return navRead(this, "fc", "firstChild");
+    return navRead(this, "fc", "firstChild", true);
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "lastChild", function lastChild() {
-    return navRead(this, "lc", "lastChild");
+    return navRead(this, "lc", "lastChild", true);
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "previousSibling", function previousSibling() {
@@ -240,7 +398,7 @@ export function install(ctx) {
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "nextSibling", function nextSibling() {
-    return navRead(this, "ns", "nextSibling");
+    return siblingAxisRead(this);
   }, undefined);
 
   // Ordered children as the T25D *live* `NodeList` bound to this parent. Every

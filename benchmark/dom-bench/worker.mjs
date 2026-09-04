@@ -337,9 +337,11 @@ function runGetById(document, totalLi) {
   return { ms: performance.now() - t0, acc: hits, hits };
 }
 
-// 20x live-collection length read: each `.length` pays the eager scope check
-// plus a second native query, kept separate so that cost is visible instead
-// of polluting the selector batch.
+// 20x live-collection length read, kept separate so that collection creation,
+// eager scope validation and the engine's length implementation stay visible
+// instead of polluting the selector batch. mad-dom can answer length through
+// its count-only native path; node-producing collection reads keep their
+// normal live-query path.
 function runGetByTag(document) {
   const t0 = performance.now();
   let acc = 0;

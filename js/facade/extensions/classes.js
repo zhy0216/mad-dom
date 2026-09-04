@@ -42,9 +42,15 @@
 //   MEMO_SLOT      — the navigation memo (`{ e, fc, lc, ns, ps, pn }`):
 //                    epoch-guarded last answers of the five navigation reads
 //                    (see js/facade/extensions/node.js).
+//   VALID_EPOCH_SLOT — structural epoch at which the native handle was last
+//                    proven live. Immutable wrapper metadata may be served
+//                    without FFI only while it matches the document epoch;
+//                    adoption/destruction invalidate it before a stale stamp
+//                    can mask the native lifecycle error.
 export const HANDLE_SLOT = Symbol("mad-dom native handle");
 export const DOC_STATE_SLOT = Symbol("mad-dom document state");
 export const MEMO_SLOT = Symbol("mad-dom navigation memo");
+export const VALID_EPOCH_SLOT = Symbol("mad-dom native handle valid epoch");
 
 function isNodeHandle(handle) {
   return (

@@ -64,6 +64,16 @@
       }
     }
   },
+  "optionalPerformance": {
+    "NodeHandle": {
+      "nextSiblingChunk": {
+        "returns": "Array<NodeHandle | null>",
+        "identity": "stable per element",
+        "behavior": "returns at most 32 following siblings; a trailing null proves the chain ended, while no null means another bounded chunk may follow",
+        "fallback": "the facade feature-detects this method and uses nextSibling when paired with an older native package"
+      }
+    }
+  },
   "identity": {
     "rule": "every wrapper-producing path funnels through crate::handle::SharedDocument::wrap_node (the per-document weak wrapper cache, T20): while a node wrapper is alive, repeated reads of the same node hand back one and the same JS object (strict equality)",
     "distinct": "each createElement / createText call mints a fresh, distinct node"

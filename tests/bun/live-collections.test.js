@@ -3,6 +3,7 @@ import { Window, isNativeAvailable } from "../../index.js";
 import { Document } from "../../js/facade/document.js";
 import { HTMLCollection } from "../../js/facade/extensions/live-collections.js";
 import { Node } from "../../js/facade/extensions/node.js";
+import { loadNative } from "../../js/native-loader.js";
 
 // T32 live collection integration tests.
 //
@@ -82,9 +83,87 @@ describe("T32 live collection surface shape", () => {
     expect(typeof tagDescriptor.get).toBe("function");
     expect(typeof HTMLCollection.prototype[Symbol.iterator]).toBe("function");
   });
+
+  test("length falls back to the node-producing query for an older native handle", () => {
+    const tagReads = [];
+    const legacyHandle = {
+      getElementsByTagName(name) {
+        tagReads.push(name);
+        return [];
+      },
+      getElementsByClassName() {
+        return [];
+      },
+    };
+    const collection = new HTMLCollection(legacyHandle, "tag", "li");
+
+    expect(collection.length).toBe(0);
+    expect(tagReads).toEqual(["li"]);
+  });
 });
 
 describe.skipIf(!nativeAvailable)("getElementsByTagName (T32)", () => {
+  test("validates cheaply and counts length without materializing result nodes", () => {
+    const nativeWindow = loadNative().createWindow();
+    const nativeDocument = nativeWindow.document();
+    const getByTag = nativeDocument.getElementsByTagName.bind(nativeDocument);
+    const getByClass = nativeDocument.getElementsByClassName.bind(nativeDocument);
+    const countByTag = nativeDocument.countElementsByTagName.bind(nativeDocument);
+    const countByClass = nativeDocument.countElementsByClassName.bind(nativeDocument);
+    const tagReads = [];
+    const classReads = [];
+    const tagCounts = [];
+    const classCounts = [];
+    nativeDocument.getElementsByTagName = (name) => {
+      tagReads.push(name);
+      return getByTag(name);
+    };
+    nativeDocument.getElementsByClassName = (name) => {
+      classReads.push(name);
+      return getByClass(name);
+    };
+    nativeDocument.countElementsByTagName = (name) => {
+      tagCounts.push(name);
+      return countByTag(name);
+    };
+    nativeDocument.countElementsByClassName = (name) => {
+      classCounts.push(name);
+      return countByClass(name);
+    };
+
+    const win = new Window(nativeWindow);
+    try {
+      const doc = build(win);
+      tagReads.length = 0;
+      classReads.length = 0;
+
+      const lis = doc.getElementsByTagName("li");
+      expect(tagReads).toEqual([]);
+      expect(classReads).toEqual([""]);
+
+      expect(lis.length).toBe(3);
+      expect(tagCounts).toEqual(["li"]);
+      expect(tagReads).toEqual([]);
+      expect(classReads).toEqual([""]);
+
+      // Node-producing reads keep using the full query and wrapper path.
+      expect(lis[0].nodeName).toBe("LI");
+      expect(tagReads).toEqual(["li"]);
+
+      tagReads.length = 0;
+      classReads.length = 0;
+      tagCounts.length = 0;
+      classCounts.length = 0;
+      const items = doc.getElementsByClassName("item");
+      expect(classReads).toEqual([""]);
+      expect(items.length).toBe(3);
+      expect(classCounts).toEqual(["item"]);
+      expect(classReads).toEqual([""]);
+    } finally {
+      win.destroy();
+    }
+  });
+
   test("returns a live HTMLCollection in document order with case-insensitive tags", () => {
     const win = new Window();
     try {

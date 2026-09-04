@@ -28,7 +28,7 @@
 //! observable equivalence the facade relies on.
 
 use mad_dom_core::arena::{ArenaError, NodeId};
-use mad_dom_core::dom::{Document, NodeType};
+use mad_dom_core::dom::{Document, NodeType, ShadowRootMode};
 use mad_dom_core::error::CoreError;
 use mad_dom_core::html::parse_html_document;
 
@@ -234,6 +234,140 @@ fn element_scope_matches_descendants_only() {
     );
 }
 
+#[test]
+fn count_fast_paths_match_node_queries_without_result_allocation() {
+    for indexed in [false, true] {
+        let (mut doc, root) = load(CORPUS);
+        doc.set_query_index_enabled(indexed).unwrap();
+        let section = doc.get_element_by_id("sec").unwrap().unwrap();
+
+        for scope in [root, section] {
+            for name in ["li", "LI", "*", "table", ""] {
+                assert_eq!(
+                    doc.count_elements_by_tag_name(scope, name).unwrap(),
+                    doc.get_elements_by_tag_name(scope, name).unwrap().len() as u32,
+                    "tag count drifted for indexed={indexed}, scope={scope:?}, name={name:?}",
+                );
+            }
+            for name in [
+                "x",
+                "item",
+                "x y",
+                "  x   y ",
+                "x x",
+                "x y a b c d e f g h i j",
+                "missing",
+                "",
+            ] {
+                assert_eq!(
+                    doc.count_elements_by_class_name(scope, name).unwrap(),
+                    doc.get_elements_by_class_name(scope, name).unwrap().len() as u32,
+                    "class count drifted for indexed={indexed}, scope={scope:?}, name={name:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn duplicate_class_attribute_tokens_never_duplicate_index_results() {
+    for indexed in [false, true] {
+        let mut doc = Document::new();
+        doc.ensure_html_skeleton().unwrap();
+        doc.set_query_index_enabled(indexed).unwrap();
+        let root = doc.document_root();
+        let body = doc.document_body().unwrap().unwrap();
+        let element = doc.create_element("div").unwrap();
+        doc.set_attribute(element, "class", "foo foo bar foo bar")
+            .unwrap();
+        doc.append_child(body, element).unwrap();
+
+        for name in ["foo", "bar", "foo bar", "foo foo"] {
+            assert_eq!(
+                doc.get_elements_by_class_name(root, name).unwrap(),
+                vec![element],
+                "node query duplicated a match for indexed={indexed}, name={name:?}",
+            );
+            assert_eq!(
+                doc.count_elements_by_class_name(root, name).unwrap(),
+                1,
+                "count duplicated a match for indexed={indexed}, name={name:?}",
+            );
+        }
+
+        // Exercise the already-attached attribute-maintenance path too.
+        doc.set_attribute(element, "class", "baz baz foo baz")
+            .unwrap();
+        assert_eq!(
+            doc.get_elements_by_class_name(root, "baz").unwrap(),
+            vec![element]
+        );
+        assert_eq!(doc.count_elements_by_class_name(root, "baz").unwrap(), 1);
+    }
+}
+
+#[test]
+fn indexed_mode_traverses_detached_and_shadow_scopes_without_polluting_document_order() {
+    let mut doc = Document::new();
+    doc.ensure_html_skeleton().unwrap();
+    let root = doc.document_root();
+    let body = doc.document_body().unwrap().unwrap();
+
+    // Build valid non-document roots before enabling the index. Rebuild only
+    // covers the light document tree, so these scopes must transparently use
+    // traversal instead of returning an empty indexed result.
+    let fragment_before = doc.create_document_fragment().unwrap();
+    let before = doc.create_element("div").unwrap();
+    doc.set_attribute(before, "class", "outside").unwrap();
+    doc.append_child(fragment_before, before).unwrap();
+
+    let host = doc.create_element("section").unwrap();
+    let shadow = doc.attach_shadow(host, ShadowRootMode::Open).unwrap();
+    let shadow_child = doc.create_element("div").unwrap();
+    doc.set_attribute(shadow_child, "class", "outside").unwrap();
+    doc.append_child(shadow, shadow_child).unwrap();
+    doc.append_child(body, host).unwrap();
+
+    doc.set_query_index_enabled(true).unwrap();
+
+    // Exercise the maintenance path too: attaching beneath a disconnected
+    // root after index enablement must not insert it into document-wide lists.
+    let fragment_after = doc.create_document_fragment().unwrap();
+    let after = doc.create_element("div").unwrap();
+    doc.set_attribute(after, "class", "outside").unwrap();
+    doc.append_child(fragment_after, after).unwrap();
+
+    for (scope, expected) in [
+        (fragment_before, before),
+        (shadow, shadow_child),
+        (fragment_after, after),
+    ] {
+        assert_eq!(
+            doc.get_elements_by_tag_name(scope, "div").unwrap(),
+            vec![expected]
+        );
+        assert_eq!(doc.count_elements_by_tag_name(scope, "div").unwrap(), 1);
+        assert_eq!(
+            doc.get_elements_by_class_name(scope, "outside").unwrap(),
+            vec![expected]
+        );
+        assert_eq!(
+            doc.count_elements_by_class_name(scope, "outside").unwrap(),
+            1
+        );
+    }
+
+    assert_eq!(
+        doc.get_elements_by_class_name(root, "outside").unwrap(),
+        Vec::<NodeId>::new(),
+        "detached and shadow descendants must not leak into document queries"
+    );
+    assert_eq!(
+        doc.count_elements_by_class_name(root, "outside").unwrap(),
+        0
+    );
+}
+
 // ---- live semantics: every call re-reads the arena ---------------------------
 
 #[test]
@@ -320,6 +454,14 @@ fn collection_apis_validate_the_scope_boundary() {
         doc.get_elements_by_class_name(text, "x"),
         Err(CoreError::Hierarchy { .. })
     ));
+    assert!(matches!(
+        doc.count_elements_by_tag_name(text, "p"),
+        Err(CoreError::Hierarchy { .. })
+    ));
+    assert!(matches!(
+        doc.count_elements_by_class_name(text, "x"),
+        Err(CoreError::Hierarchy { .. })
+    ));
 
     // A foreign scope fails with WrongDocument.
     let mut other = Document::new();
@@ -332,6 +474,14 @@ fn collection_apis_validate_the_scope_boundary() {
         doc.get_elements_by_class_name(foreign, "x"),
         Err(CoreError::WrongDocument { .. })
     ));
+    assert!(matches!(
+        doc.count_elements_by_tag_name(foreign, "p"),
+        Err(CoreError::WrongDocument { .. })
+    ));
+    assert!(matches!(
+        doc.count_elements_by_class_name(foreign, "x"),
+        Err(CoreError::WrongDocument { .. })
+    ));
 
     // A stale scope fails with Arena: the id was adopted into `doc`, so the
     // *source* document recognises the handle but its slot is gone.
@@ -340,6 +490,14 @@ fn collection_apis_validate_the_scope_boundary() {
     doc.adopt_node(&mut source, moved).unwrap();
     assert!(matches!(
         source.get_elements_by_tag_name(moved, "p"),
+        Err(CoreError::Arena(ArenaError::EmptySlot { .. }))
+    ));
+    assert!(matches!(
+        source.count_elements_by_tag_name(moved, "p"),
+        Err(CoreError::Arena(ArenaError::EmptySlot { .. }))
+    ));
+    assert!(matches!(
+        source.count_elements_by_class_name(moved, "x"),
         Err(CoreError::Arena(ArenaError::EmptySlot { .. }))
     ));
 }

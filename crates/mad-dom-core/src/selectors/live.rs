@@ -9,8 +9,11 @@
 //!
 //! # The optional query index
 //!
-//! The same queries can be served from a per-document [`QueryIndex`] of
-//! `id` / `class` / `tag` keys instead of a fresh traversal. The index is
+//! Queries rooted in the light document tree can be served from a
+//! per-document [`QueryIndex`] of `id` / `class` / `tag` keys instead of a
+//! fresh traversal. Detached and shadow-tree scopes fall back to traversal so
+//! one document-wide index never has to impose an order across disconnected
+//! roots. The index is
 //! **opt-in and benchmark-driven** (the T32 boundary: no index without
 //! measurement): it is off by default and enabled per document with
 //! [`Document::set_query_index_enabled`]. Every write that can change a query
@@ -77,7 +80,7 @@ fn hierarchy(message: impl Into<String>) -> CoreError {
 /// ASCII case-insensitively like the WHATWG HTML-document rule).
 #[derive(Debug, Default)]
 pub(crate) struct QueryIndex {
-    /// Whether queries are served from the index instead of a traversal.
+    /// Whether light-document-tree queries are served from the index.
     enabled: bool,
     /// `id` attribute value → matching elements, in document order.
     by_id: HashMap<String, Vec<NodeId>>,
@@ -95,14 +98,11 @@ impl QueryIndex {
         self.enabled
     }
 
-    /// The first element matching `id` in document order, if any — the indexed
-    /// `getElementById` read. The key lists are maintained in document order,
-    /// so the first entry is the WHATWG first-document-order match.
-    pub(crate) fn first_for_id(&self, id: &str) -> Option<NodeId> {
-        self.by_id
-            .get(id)
-            .and_then(|matches| matches.first())
-            .copied()
+    /// Every indexed element matching `id`, in its owning tree's order.
+    ///
+    /// Only light-document-tree elements are maintained in this shared index.
+    pub(crate) fn matches_for_id(&self, id: &str) -> Option<&[NodeId]> {
+        self.by_id.get(id).map(Vec::as_slice)
     }
 
     /// Drops all cached entries but keeps the `enabled` flag.
@@ -183,8 +183,9 @@ impl Document {
     /// case-insensitively, the WHATWG HTML-document rule. The result is
     /// recomputed on every call — it is a live read, never a snapshot, so the
     /// facade re-reading this contract on each access sees every mutation
-    /// immediately. With the query index enabled the result is served from the
-    /// index; with it disabled, from a fresh traversal; the two are identical.
+    /// immediately. With the query index enabled, light-document-tree scopes
+    /// are served from it; detached and shadow-tree scopes use the same fresh
+    /// traversal as the disabled mode. The results are identical.
     ///
     /// # Errors
     ///
@@ -197,7 +198,7 @@ impl Document {
         name: &str,
     ) -> Result<Vec<NodeId>, CoreError> {
         self.expect_collection_scope(scope)?;
-        if self.query_index.enabled {
+        if self.query_index.enabled && self.scope_uses_document_index(scope)? {
             let key = name.to_ascii_lowercase();
             let candidates = if name == "*" {
                 self.index_all_in_scope(scope)?
@@ -233,10 +234,67 @@ impl Document {
         if tokens.is_empty() {
             return Ok(Vec::new());
         }
-        if self.query_index.enabled {
+        if self.query_index.enabled && self.scope_uses_document_index(scope)? {
             self.indexed_by_class(scope, &tokens)
         } else {
             self.traverse_by_class(scope, &tokens)
+        }
+    }
+
+    /// Counts the descendants returned by [`Document::get_elements_by_tag_name`]
+    /// without materializing a `Vec<NodeId>`.
+    ///
+    /// This is the read used by the native `HTMLCollection.length` fast path:
+    /// it applies the same scope validation, matching rules and optional-index
+    /// filtering as the node-producing query, but does not allocate a result
+    /// collection that the caller would immediately discard.
+    pub fn count_elements_by_tag_name(&self, scope: NodeId, name: &str) -> Result<u32, CoreError> {
+        self.expect_collection_scope(scope)?;
+        if self.query_index.enabled && self.scope_uses_document_index(scope)? {
+            let mut count = 0_u32;
+            if name == "*" {
+                for &element in &self.query_index.all_elements {
+                    if self.in_scope(element, scope) {
+                        count += 1;
+                    }
+                }
+            } else {
+                let key = name.to_ascii_lowercase();
+                if let Some(elements) = self.query_index.by_tag.get(&key) {
+                    for &element in elements {
+                        if self.in_scope(element, scope) {
+                            count += 1;
+                        }
+                    }
+                }
+            }
+            Ok(count)
+        } else {
+            self.traverse_count_by_tag(scope, name)
+        }
+    }
+
+    /// Counts the descendants returned by
+    /// [`Document::get_elements_by_class_name`] without materializing result
+    /// nodes. The traversal path uses a cheap nested scan for short queries
+    /// and a set for long ones; the indexed path builds membership sets so
+    /// multi-token queries remain linear.
+    ///
+    /// Empty/whitespace-only input and all validation/error semantics are
+    /// identical to the node-producing query.
+    pub fn count_elements_by_class_name(
+        &self,
+        scope: NodeId,
+        name: &str,
+    ) -> Result<u32, CoreError> {
+        self.expect_collection_scope(scope)?;
+        if name.split_ascii_whitespace().next().is_none() {
+            return Ok(0);
+        }
+        if self.query_index.enabled && self.scope_uses_document_index(scope)? {
+            Ok(self.indexed_count_by_class(scope, name))
+        } else {
+            self.traverse_count_by_class(scope, name)
         }
     }
 
@@ -267,6 +325,41 @@ impl Document {
     /// Returns whether the query index is currently enabled.
     pub fn query_index_enabled(&self) -> bool {
         self.query_index.enabled
+    }
+
+    /// Returns the first document-order `id` match below `scope` from the
+    /// optional shared index.
+    ///
+    /// The maintenance layer admits only light-document-tree entries. The
+    /// explicit comparison is kept as a defensive ordering guarantee rather
+    /// than trusting mutation history when duplicate ids exist.
+    pub(crate) fn indexed_element_by_id(
+        &self,
+        scope: NodeId,
+        id: &str,
+    ) -> Result<Option<NodeId>, CoreError> {
+        let mut first = None;
+        if let Some(matches) = self.query_index.matches_for_id(id) {
+            for &candidate in matches {
+                if !self.is_descendant_of(candidate, scope)? {
+                    continue;
+                }
+                if first.is_none_or(|current| self.precedes(candidate, current)) {
+                    first = Some(candidate);
+                }
+            }
+        }
+        Ok(first)
+    }
+
+    /// Whether `scope` belongs to the one light document tree represented by
+    /// the shared index. Other valid query roots (detached elements/fragments
+    /// and shadow roots) deliberately use traversal.
+    fn scope_uses_document_index(&self, scope: NodeId) -> Result<bool, CoreError> {
+        let Some(root) = self.cached_document_root() else {
+            return Ok(false);
+        };
+        Ok(scope == root || self.is_descendant_of(scope, root)?)
     }
 
     // ------------------------------------------------------------------
@@ -303,6 +396,36 @@ impl Document {
             Ok(true)
         })?;
         Ok(out)
+    }
+
+    /// Allocation-free tag counterpart of [`Document::traverse_by_tag`].
+    fn traverse_count_by_tag(&self, scope: NodeId, name: &str) -> Result<u32, CoreError> {
+        let mut count = 0_u32;
+        self.walk_collection_descendants_no_alloc(scope, |doc, node| {
+            if doc.node_type(node)? == NodeType::Element
+                && (name == "*" || doc.node_name(node)?.eq_ignore_ascii_case(name))
+            {
+                count += 1;
+            }
+            Ok(())
+        })?;
+        Ok(count)
+    }
+
+    /// Result-allocation-free class counterpart of
+    /// [`Document::traverse_by_class`].
+    fn traverse_count_by_class(&self, scope: NodeId, name: &str) -> Result<u32, CoreError> {
+        let tokens: Vec<&str> = name.split_ascii_whitespace().collect();
+        let mut count = 0_u32;
+        self.walk_collection_descendants_no_alloc(scope, |doc, node| {
+            if doc.node_type(node)? == NodeType::Element
+                && element_has_all_classes_adaptive(doc, node, &tokens)?
+            {
+                count += 1;
+            }
+            Ok(())
+        })?;
+        Ok(count)
     }
 
     // ------------------------------------------------------------------
@@ -380,6 +503,49 @@ impl Document {
             .collect())
     }
 
+    /// Result-allocation-free count counterpart of
+    /// [`Document::indexed_by_class`].
+    fn indexed_count_by_class(&self, scope: NodeId, name: &str) -> u32 {
+        let tokens: Vec<&str> = name.split_ascii_whitespace().collect();
+        let Some(smallest) = tokens
+            .iter()
+            .copied()
+            .min_by_key(|token| self.query_index.by_class.get(*token).map_or(0, Vec::len))
+        else {
+            return 0;
+        };
+        let Some(candidates) = self.query_index.by_class.get(smallest) else {
+            return 0;
+        };
+
+        // Index vectors are document-ordered, not NodeId-ordered, so binary
+        // search is invalid after a tree reorder. Hash each other token list
+        // once instead of scanning it for every candidate (quadratic for
+        // dense multi-class queries).
+        let other_sets: Vec<HashSet<NodeId>> = tokens
+            .iter()
+            .copied()
+            .filter(|&token| token != smallest)
+            .map(|token| {
+                self.query_index
+                    .by_class
+                    .get(token)
+                    .map(|matches| matches.iter().copied().collect())
+                    .unwrap_or_default()
+            })
+            .collect();
+
+        let mut count = 0_u32;
+        for &element in candidates {
+            if self.in_scope(element, scope)
+                && other_sets.iter().all(|matches| matches.contains(&element))
+            {
+                count += 1;
+            }
+        }
+        count
+    }
+
     /// Whether `node` is a proper descendant of `scope` (so never the scope
     /// itself).
     fn in_scope(&self, node: NodeId, scope: NodeId) -> bool {
@@ -451,7 +617,7 @@ impl Document {
     }
 
     /// Adds `el` to a single key (used when an attribute write introduces a
-    /// new id/class token on an already-attached element).
+    /// new id/class token on an element in the light document tree).
     fn index_insert_into_key(
         &mut self,
         kind: &str,
@@ -490,19 +656,25 @@ impl Document {
             keys.push(("id".to_string(), id.to_string()));
         }
         if let Some(class) = self.get_attribute(el, "class")? {
+            let mut seen = HashSet::new();
             for token in class.split_ascii_whitespace() {
-                keys.push(("class".to_string(), token.to_string()));
+                if seen.insert(token) {
+                    keys.push(("class".to_string(), token.to_string()));
+                }
             }
         }
         keys.push(("tag".to_string(), self.node_name(el)?.to_ascii_lowercase()));
         Ok(keys)
     }
 
-    /// Whether `node` is attached to the tree (has a parent; the document root
-    /// is a `Document` node, never an element, so elements always have a
-    /// parent when attached).
-    fn is_attached(&self, node: NodeId) -> Result<bool, CoreError> {
-        Ok(self.get(node)?.parent().is_some())
+    /// Whether `node` belongs to the light document tree represented by the
+    /// optional index. A parent alone is insufficient: detached fragments and
+    /// shadow roots own child trees but must not pollute document-order lists.
+    fn is_in_document_tree(&self, node: NodeId) -> Result<bool, CoreError> {
+        let Some(root) = self.cached_document_root() else {
+            return Ok(false);
+        };
+        Ok(node == root || self.is_descendant_of(node, root)?)
     }
 
     /// Whether `node` is the last node of the whole document in pre order.
@@ -523,8 +695,8 @@ impl Document {
     }
 
     /// Whether `a` comes before `b` in document (pre) order. Both must be live
-    /// nodes of this document; disconnected nodes are treated as `false` (the
-    /// index only ever holds attached elements).
+    /// nodes in this document's light tree (the index never holds disconnected
+    /// or shadow-tree elements).
     fn precedes(&self, a: NodeId, b: NodeId) -> bool {
         if a == b {
             return false;
@@ -595,15 +767,19 @@ impl Document {
         Ok(())
     }
 
-    /// Adds the subtrees rooted at `nodes` (already attached, in document
-    /// order) to the index; called from
-    /// [`crate::dom::Document::link_detached_chain_between`]. A no-op when the
-    /// index is disabled.
+    /// Adds the subtrees rooted at `nodes` when they have just entered the
+    /// light document tree; called from
+    /// [`crate::dom::Document::link_detached_chain_between`]. Attachments under
+    /// disconnected/shadow roots and calls while the index is disabled are
+    /// no-ops.
     pub(crate) fn index_subtree_attached(&mut self, nodes: &[NodeId]) -> Result<(), CoreError> {
         if !self.query_index.enabled {
             return Ok(());
         }
         for &root in nodes {
+            if !self.is_in_document_tree(root)? {
+                continue;
+            }
             let mut stack: Vec<NodeId> = vec![root];
             while let Some(cur) = stack.pop() {
                 if self.node_type(cur)? == NodeType::Element {
@@ -617,9 +793,9 @@ impl Document {
         Ok(())
     }
 
-    /// Adds a single already-attached element to the index without touching its
-    /// subtree, whose entries were already maintained by the mutation that
-    /// moved the subtree (a no-op when the index is disabled).
+    /// Adds a single light-document-tree element to the index without touching
+    /// its subtree, whose entries were already maintained by the mutation that
+    /// moved the subtree (a no-op outside that tree or when disabled).
     ///
     /// Used by the T42 define-after-connect replacement: it reparents a
     /// connected candidate's children onto a fresh replacement element (their
@@ -628,6 +804,9 @@ impl Document {
     /// replacement itself.
     pub(crate) fn index_element_attached(&mut self, el: NodeId) -> Result<(), CoreError> {
         if !self.query_index.enabled {
+            return Ok(());
+        }
+        if !self.is_in_document_tree(el)? {
             return Ok(());
         }
         self.index_insert_element(el)
@@ -653,7 +832,7 @@ impl Document {
                     self.query_index.remove_key("id", old, id);
                 }
                 if let Some(new) = new {
-                    if self.is_attached(id)? {
+                    if self.is_in_document_tree(id)? {
                         self.index_insert_into_key("id", new, id)?;
                     }
                 }
@@ -664,10 +843,13 @@ impl Document {
                         self.query_index.remove_key("class", token, id);
                     }
                 }
-                if self.is_attached(id)? {
+                if self.is_in_document_tree(id)? {
                     if let Some(new) = new {
+                        let mut seen = HashSet::new();
                         for token in new.split_ascii_whitespace() {
-                            self.index_insert_into_key("class", token, id)?;
+                            if seen.insert(token) {
+                                self.index_insert_into_key("class", token, id)?;
+                            }
                         }
                     }
                 }
@@ -711,6 +893,41 @@ impl Document {
         }
         Ok(())
     }
+
+    /// Visits every descendant without allocating the explicit stack used by
+    /// the node-producing query. Parent/first-child/next-sibling links are
+    /// sufficient to advance in document pre-order while staying below
+    /// `root`.
+    fn walk_collection_descendants_no_alloc(
+        &self,
+        root: NodeId,
+        mut visit: impl FnMut(&Document, NodeId) -> Result<(), CoreError>,
+    ) -> Result<(), CoreError> {
+        let mut current = self.first_child(root)?;
+        while let Some(node) = current {
+            visit(self, node)?;
+            if let Some(child) = self.first_child(node)? {
+                current = Some(child);
+                continue;
+            }
+
+            let mut cursor = node;
+            loop {
+                if let Some(sibling) = self.next_sibling(cursor)? {
+                    current = Some(sibling);
+                    break;
+                }
+                let Some(parent) = self.parent(cursor)? else {
+                    return Ok(());
+                };
+                if parent == root {
+                    return Ok(());
+                }
+                cursor = parent;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Whether the element `el`'s `class` attribute contains every token of
@@ -721,6 +938,27 @@ fn element_has_all_classes(doc: &Document, el: NodeId, tokens: &[&str]) -> Resul
     };
     let set: HashSet<&str> = class.split_ascii_whitespace().collect();
     Ok(tokens.iter().all(|token| set.contains(token)))
+}
+
+/// Count-path matcher: short class queries avoid a per-element `HashSet`, while
+/// longer queries use the set-based matcher rather than degrading to a
+/// required-token × present-token scan.
+fn element_has_all_classes_adaptive(
+    doc: &Document,
+    el: NodeId,
+    tokens: &[&str],
+) -> Result<bool, CoreError> {
+    if tokens.len() > 8 {
+        return element_has_all_classes(doc, el, tokens);
+    }
+    let Some(class) = doc.get_attribute(el, "class")? else {
+        return Ok(false);
+    };
+    Ok(tokens.iter().all(|required| {
+        class
+            .split_ascii_whitespace()
+            .any(|present| present == *required)
+    }))
 }
 
 #[cfg(test)]
