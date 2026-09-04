@@ -41,31 +41,45 @@
 // phase accumulates into a JS counter instead).
 //
 // Usage:
-//   bun worker.mjs --engine mad-dom [--runs 5] [--json]
+//   bun worker.mjs --engine mad-dom [--runs 5] [--sizes 1] [--json]
 
 const ENGINE_LOADERS = {
   "mad-dom": () => import("../../index.js"),
   "happy-dom": () => import("happy-dom"),
 };
 
-const USAGE = "usage: bun benchmark/dom-bench/worker.mjs --engine <mad-dom|happy-dom> [--runs <n>] [--json]";
+const USAGE = "usage: bun benchmark/dom-bench/worker.mjs --engine <mad-dom|happy-dom> [--runs <n>] [--sizes <s1,s2,...>] [--json]";
 
 const ARGS = parseArgs(process.argv.slice(2));
 
 // --- Workload sizes ----------------------------------------------------------
 
-const SECTIONS = 100;
-const ITEMS_PER_SECTION = 25; // ~10.3k elements total
-const BUILD_NODES = 20_000;
+// Base (size 1x) workload. Per-size scaling: SECTIONS scales linearly with the
+// size multiplier (structure per section unchanged); BUILD/READ/MUTATION node
+// counts scale linearly too (rounded, min 100).
+const SECTIONS_BASE = 100;
+const ITEMS_PER_SECTION_BASE = 25; // ~10.3k elements total at 1x
+const BUILD_NODES_BASE = 20_000;
+const READ_NODES_BASE = 5000;
+const MUTATION_NODES_BASE = 2000;
+
+function workloadForSize(size) {
+  const sections = Math.max(1, Math.round(SECTIONS_BASE * size));
+  const itemsPerSection = ITEMS_PER_SECTION_BASE;
+  const buildNodes = Math.max(100, Math.round(BUILD_NODES_BASE * size));
+  const readNodes = Math.max(100, Math.round(READ_NODES_BASE * size));
+  const mutationNodes = Math.max(100, Math.round(MUTATION_NODES_BASE * size));
+  return { size, sections, itemsPerSection, buildNodes, readNodes, mutationNodes };
+}
 
 // --- Deterministic HTML generation (identical input for both engines) --------
 
-function generateHtml() {
+function generateHtml(sections, itemsPerSection) {
   const parts = ['<!DOCTYPE html><html><head><title>dom-bench</title></head><body>'];
   let nodeId = 0;
-  for (let s = 0; s < SECTIONS; s++) {
+  for (let s = 0; s < sections; s++) {
     parts.push(`<section class="section section-${s % 5}" id="section-${s}"><h2>Section ${s}</h2><ul>`);
-    for (let i = 0; i < ITEMS_PER_SECTION; i++) {
+    for (let i = 0; i < itemsPerSection; i++) {
       parts.push(
         `<li id="node-${nodeId}" class="item-${nodeId % 7}"><div class="item-body"><h3>Title ${nodeId}</h3>` +
           `<p>Paragraph text ${nodeId} lorem ipsum ${nodeId % 13}</p></div></li>`,
@@ -78,18 +92,12 @@ function generateHtml() {
   return parts.join("\n");
 }
 
-const HTML = generateHtml();
-
-// Bulk fragment: 20k small elements parsed in one innerHTML assignment by the
-// buildBulk phase. Decomposition ids use the nb-<phase>-<i> prefix so they can
-// never collide with buildMixed's node-<i> ids.
-const BULK_HTML = Array.from(
-  { length: BUILD_NODES },
-  (_, i) => `<span id="nb-bulk-${i}" class="item-${i % 7}">text-${i}</span>`,
-).join("");
-
-const READ_NODES = 5000;
-const MUTATION_NODES = 2000;
+function generateBulkHtml(buildNodes) {
+  return Array.from(
+    { length: buildNodes },
+    (_, i) => `<span id="nb-bulk-${i}" class="item-${i % 7}">text-${i}</span>`,
+  ).join("");
+}
 
 // --- Helpers ------------------------------------------------------------------
 
@@ -102,11 +110,26 @@ function parseRuns(raw) {
   return runs;
 }
 
+function parseSizes(raw) {
+  const parts = String(raw ?? "").split(",");
+  const sizes = parts.map((p) => Number(p.trim()));
+  if (
+    sizes.length === 0 ||
+    parts.some((p) => p.trim() === "") ||
+    sizes.some((s) => !Number.isFinite(s) || s <= 0)
+  ) {
+    console.error(USAGE);
+    process.exit(2);
+  }
+  return sizes;
+}
+
 function parseArgs(argv) {
-  const args = { engine: null, runs: 5, json: false };
+  const args = { engine: null, runs: 5, sizes: [1], json: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--engine") args.engine = argv[++i];
     else if (argv[i] === "--runs") args.runs = parseRuns(argv[++i]);
+    else if (argv[i] === "--sizes") args.sizes = parseSizes(argv[++i]);
     else if (argv[i] === "--json") args.json = true;
     else throw new Error(`unknown argument: ${argv[i]}`);
   }
@@ -135,6 +158,11 @@ function summarize(samples) {
   return { samples: [...samples], medianMs, minMs: sorted[0], p90Ms: p90Sorted(sorted), madMs };
 }
 
+// RSS in bytes (Bun exposes process.memoryUsage().rss as a number).
+function rssNow() {
+  return process.memoryUsage().rss;
+}
+
 function drainEventLoop() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -151,15 +179,15 @@ async function collectAndDrain() {
 
 // --- Phases --------------------------------------------------------------------
 
-function runParse(Window) {
+function runParse(Window, html) {
   const window = new Window();
   const t0 = performance.now();
-  window.document.write(HTML);
+  window.document.write(html);
   const ms = performance.now() - t0;
   return { ms, document: window.document };
 }
 
-function runBuildMixed(Window) {
+function runBuildMixed(Window, buildNodes) {
   const window = new Window();
   const document = window.document;
   const t0 = performance.now();
@@ -169,7 +197,7 @@ function runBuildMixed(Window) {
   builtElements++;
   document.body.appendChild(root);
   let parent = root;
-  for (let i = 0; i < BUILD_NODES; i++) {
+  for (let i = 0; i < buildNodes; i++) {
     const el = document.createElement(i % 3 === 0 ? "section" : i % 2 === 0 ? "div" : "span");
     builtElements++;
     el.setAttribute("id", `node-${i}`);
@@ -191,32 +219,32 @@ function runBuildMixed(Window) {
   // right after the build (same transient-gap discipline as above): subtree
   // node count plus spot-probes of known ids.
   const treeNodes = countNodes(root) - 1;
-  const probeIds = ["node-0", "node-9999", "node-19999"].map((id) => (root.querySelector("#" + id) ? 1 : 0)).join("");
+  const probeIds = [`node-0`, `node-${Math.floor((buildNodes - 1) / 2)}`, `node-${buildNodes - 1}`].map((id) => (root.querySelector("#" + id) ? 1 : 0)).join("");
   const probeIdSum = [...probeIds].reduce((sum, c) => sum + Number(c), 0);
   return { ms, acc: treeNodes + probeIdSum, treeNodes, probeIds, builtElements, builtTextNodes, buildRoots };
 }
 
-// Pure createElement cost: 20k elements, no attributes, never mounted. The
+// Pure createElement cost: buildNodes elements, no attributes, never mounted. The
 // array keeps every wrapper alive so the count below proves the work happened.
-function runBuildCreate(Window) {
+function runBuildCreate(Window, buildNodes) {
   const window = new Window();
   const document = window.document;
   const t0 = performance.now();
-  const created = new Array(BUILD_NODES);
-  for (let i = 0; i < BUILD_NODES; i++) {
+  const created = new Array(buildNodes);
+  for (let i = 0; i < buildNodes; i++) {
     created[i] = document.createElement(i % 3 === 0 ? "section" : i % 2 === 0 ? "div" : "span");
   }
   const ms = performance.now() - t0;
-  return { ms, acc: created.length, count: created.length, tag0: created[0].tagName, tagLast: created[BUILD_NODES - 1].tagName };
+  return { ms, acc: created.length, count: created.length, tag0: created[0].tagName, tagLast: created[buildNodes - 1].tagName };
 }
 
 // createElement + one id + one class per node, never mounted: attribute FFI.
-function runBuildAttr(Window) {
+function runBuildAttr(Window, buildNodes) {
   const window = new Window();
   const document = window.document;
   const t0 = performance.now();
-  const created = new Array(BUILD_NODES);
-  for (let i = 0; i < BUILD_NODES; i++) {
+  const created = new Array(buildNodes);
+  for (let i = 0; i < buildNodes; i++) {
     const el = document.createElement(i % 3 === 0 ? "section" : i % 2 === 0 ? "div" : "span");
     el.setAttribute("id", `nb-attr-${i}`);
     el.setAttribute("class", `item-${i % 7}`);
@@ -229,20 +257,20 @@ function runBuildAttr(Window) {
     count: created.length,
     firstId: created[0].getAttribute("id"),
     firstClass: created[0].getAttribute("class"),
-    lastId: created[BUILD_NODES - 1].getAttribute("id"),
-    lastClass: created[BUILD_NODES - 1].getAttribute("class"),
+    lastId: created[buildNodes - 1].getAttribute("id"),
+    lastClass: created[buildNodes - 1].getAttribute("class"),
   };
 }
 
 // Pure append cost: createElement + appendChild into a shallow root, no
 // attributes (id/class live in buildAttr). Verified by walk count + child tags.
-function runBuildAppend(Window) {
+function runBuildAppend(Window, buildNodes) {
   const window = new Window();
   const document = window.document;
   const root = document.createElement("div");
   document.body.appendChild(root);
   const t0 = performance.now();
-  for (let i = 0; i < BUILD_NODES; i++) {
+  for (let i = 0; i < buildNodes; i++) {
     root.appendChild(document.createElement(i % 3 === 0 ? "section" : i % 2 === 0 ? "div" : "span"));
   }
   const ms = performance.now() - t0;
@@ -254,30 +282,30 @@ function runBuildAppend(Window) {
   return { ms, acc: treeNodes, treeNodes, firstTag, lastTag };
 }
 
-// createTextNode 20k, never mounted.
-function runBuildText(Window) {
+// createTextNode buildNodes, never mounted.
+function runBuildText(Window, buildNodes) {
   const window = new Window();
   const document = window.document;
   const t0 = performance.now();
-  const created = new Array(BUILD_NODES);
-  for (let i = 0; i < BUILD_NODES; i++) created[i] = document.createTextNode(`text-${i}`);
+  const created = new Array(buildNodes);
+  for (let i = 0; i < buildNodes; i++) created[i] = document.createTextNode(`text-${i}`);
   const ms = performance.now() - t0;
   const textOf = (node) => String(node.data ?? node.textContent);
-  return { ms, acc: created.length, count: created.length, firstData: textOf(created[0]), lastData: textOf(created[BUILD_NODES - 1]) };
+  return { ms, acc: created.length, count: created.length, firstData: textOf(created[0]), lastData: textOf(created[buildNodes - 1]) };
 }
 
-// One-shot bulk parse: a single innerHTML assignment of the 20k-element
+// One-shot bulk parse: a single innerHTML assignment of the buildNodes-element
 // fragment, then one append of the host. Native-parser path, no per-node FFI.
-function runBuildBulk(Window) {
+function runBuildBulk(Window, bulkHtml, buildNodes) {
   const window = new Window();
   const document = window.document;
   const host = document.createElement("div");
   const t0 = performance.now();
-  host.innerHTML = BULK_HTML;
+  host.innerHTML = bulkHtml;
   document.body.appendChild(host);
   const ms = performance.now() - t0;
   const treeNodes = countNodes(host) - 1;
-  const probeIds = ["nb-bulk-0", `nb-bulk-${BUILD_NODES - 1}`].map((id) => (host.querySelector("#" + id) ? 1 : 0)).join("");
+  const probeIds = ["nb-bulk-0", `nb-bulk-${buildNodes - 1}`].map((id) => (host.querySelector("#" + id) ? 1 : 0)).join("");
   return { ms, acc: treeNodes, treeNodes, probeIds };
 }
 
@@ -292,13 +320,17 @@ function runQueryBatch(document) {
   return { ms: performance.now() - t0, acc, hits: { item3, descendant } };
 }
 
-// 100 distinct ids at uniform stride over node-0..node-2475: the single-id
-// querySelector moved out of the query batch so id-hit cost is timed alone.
-function runGetById(document) {
+// 100 distinct ids at uniform stride over the available node-0.. range: the
+// single-id querySelector moved out of the query batch so id-hit cost is timed
+// alone. Stride covers the full range at any scale (1x: totalLi 2500,
+// stride 25, ids 0..2475 — identical to the old fixed stride).
+function runGetById(document, totalLi) {
+  const stride = Math.max(1, Math.floor(totalLi / 100));
   const t0 = performance.now();
   let hits = 0;
   for (let k = 0; k < 100; k++) {
-    const id = `node-${k * 25}`;
+    const idx = (k * stride) % totalLi;
+    const id = `node-${idx}`;
     const node = document.querySelector(`#${id}`);
     if (node && node.id === id) hits++;
   }
@@ -391,10 +423,10 @@ function runReadHeavy(sample) {
 // replaceChild out-and-back pair (replacements pre-created outside the
 // window so the window measures only mutation calls). Snapshot + replacements
 // are taken in one go, never incrementally (handle.rs transient-gap discipline).
-function runMutationChurn(Window) {
-  const document = parseColdDocument(Window);
+function runMutationChurn(Window, html, mutationNodes) {
+  const document = parseColdDocument(Window, html);
   const list = document.querySelectorAll("li");
-  const n = Math.min(MUTATION_NODES, list.length);
+  const n = Math.min(mutationNodes, list.length);
   const sample = new Array(n);
   for (let i = 0; i < n; i++) sample[i] = list[i];
   const replacements = new Array(n);
@@ -436,9 +468,9 @@ function runMutationChurn(Window) {
 // caches unhit, and the traverseCold walk right after still finds most of
 // the tree uncast (querying first warms only the matched subset; traversing
 // first would warm the queries fully).
-function parseColdDocument(Window) {
+function parseColdDocument(Window, html) {
   const window = new Window();
-  window.document.write(HTML);
+  window.document.write(html);
   return window.document;
 }
 
@@ -447,12 +479,12 @@ function parseColdDocument(Window) {
 async function main() {
   const { Window } = await ENGINE_LOADERS[ARGS.engine]();
 
-  // Round-major loop: each round runs the full pipeline (parse → buildMixed →
-  // queryHot → getById → getByTag → serialize → traverseWarm, then a fresh
-  // cold document for queryCold → traverseCold, then the build decomposition
-  // (each phase its own fresh window), readHeavy on the round's shared
-  // document, and mutationChurn on its own dedicated fresh document) so the
-  // per-round wall time is a real pipeline total instead of a sum of phase
+  // Round-major loop per size: each round runs the full pipeline (parse →
+  // buildMixed → queryHot → getById → getByTag → serialize → traverseWarm,
+  // then a fresh cold document for queryCold → traverseCold, then the build
+  // decomposition (each phase its own fresh window), readHeavy on the round's
+  // shared document, and mutationChurn on its own dedicated fresh document) so
+  // the per-round wall time is a real pipeline total instead of a sum of phase
   // medians. Warmup rounds (count = max of the old per-phase warmups = 2) are
   // fully discarded.
   // Query / serialize run against the round's own freshly parsed shared
@@ -461,199 +493,244 @@ async function main() {
   // plus repeat visits pin wrappers and memo. queryCold / traverseCold run on a
   // second document parsed fresh every round and never elementCounted, so
   // the walk casts cold wrappers and misses memo.
+  // Sizes run sequentially in one process, in the given order; each size has
+  // its own workload (sections/build/read/mutation scaled), HTML, samples,
+  // RSS baseline, and checks. RSS: peak sampled after each phase before
+  // collectAndDrain, after sampled right after the drain; baseline sampled
+  // before the first measured round. Reported perPhase values are the last
+  // measured round's samples (steady-state residency).
   const WARMUP_ROUNDS = 2;
-  const samples = {
-    parse: [],
-    buildMixed: [],
-    queryHot: [],
-    queryCold: [],
-    getById: [],
-    getByTag: [],
-    serialize: [],
-    traverseWarm: [],
-    traverseCold: [],
-    buildCreate: [],
-    buildAttr: [],
-    buildAppend: [],
-    buildText: [],
-    buildBulk: [],
-    readHeavy: [],
-    mutationChurn: [],
-  };
-  const roundTotals = [];
-  const sink = {
-    parse: 0,
-    buildMixed: 0,
-    queryHot: 0,
-    queryCold: 0,
-    getById: 0,
-    getByTag: 0,
-    serialize: 0,
-    traverseWarm: 0,
-    traverseCold: 0,
-    buildCreate: 0,
-    buildAttr: 0,
-    buildAppend: 0,
-    buildText: 0,
-    buildBulk: 0,
-    readHeavy: 0,
-    mutationChurn: 0,
-  };
-  const checksRounds = [];
-  let workloadBuild = null;
+  const PHASE_KEYS = [
+    "parse",
+    "buildMixed",
+    "queryHot",
+    "queryCold",
+    "getById",
+    "getByTag",
+    "serialize",
+    "traverseWarm",
+    "traverseCold",
+    "buildCreate",
+    "buildAttr",
+    "buildAppend",
+    "buildText",
+    "buildBulk",
+    "readHeavy",
+    "mutationChurn",
+  ];
+  const results = [];
 
-  for (let round = 0; round < WARMUP_ROUNDS + ARGS.runs; round++) {
-    const measured = round >= WARMUP_ROUNDS;
-    const tRound0 = performance.now();
+  for (const size of ARGS.sizes) {
+    const wl = workloadForSize(size);
+    const html = generateHtml(wl.sections, wl.itemsPerSection);
+    const bulkHtml = generateBulkHtml(wl.buildNodes);
+    const totalLi = wl.sections * wl.itemsPerSection;
+    const samples = Object.fromEntries(PHASE_KEYS.map((k) => [k, []]));
+    const roundTotals = [];
+    const sink = Object.fromEntries(PHASE_KEYS.map((k) => [k, 0]));
+    const checksRounds = [];
+    let workloadBuild = null;
+    let rssBaseline = 0;
+    const rssPeak = {};
+    const rssAfter = {};
 
-    const { ms: parseMs, document: sharedDocument } = runParse(Window);
-    // Element count is read immediately after parsing, before the build/query
-    // churn: a late `querySelectorAll("*")` over the whole tree hits mad-dom's
-    // wrapper-cache gap under peak GC pressure (tracked separately). Same
-    // transient-gap discipline as the build verification in runBuildMixed (read
-    // once right after the tree exists, never again later).
-    const elementCount = sharedDocument.querySelectorAll("*").length;
-    await collectAndDrain();
+    for (let round = 0; round < WARMUP_ROUNDS + ARGS.runs; round++) {
+      const measured = round >= WARMUP_ROUNDS;
+      if (measured && round === WARMUP_ROUNDS) rssBaseline = rssNow();
+      const tRound0 = performance.now();
 
-    const built = runBuildMixed(Window);
-    await collectAndDrain();
-    const hot = runQueryBatch(sharedDocument);
-    await collectAndDrain();
-    const byId = runGetById(sharedDocument);
-    await collectAndDrain();
-    const byTag = runGetByTag(sharedDocument);
-    await collectAndDrain();
-    const serialized = runSerialize(sharedDocument);
-    await collectAndDrain();
-    const warm = runTraverseWarm(sharedDocument);
-    await collectAndDrain();
-    const coldDocument = parseColdDocument(Window);
-    const cold = runQueryBatch(coldDocument);
-    await collectAndDrain();
-    const traversedCold = runTraverse(coldDocument);
-    await collectAndDrain();
-    const created = runBuildCreate(Window);
-    await collectAndDrain();
-    const attributed = runBuildAttr(Window);
-    await collectAndDrain();
-    const appended = runBuildAppend(Window);
-    await collectAndDrain();
-    const texted = runBuildText(Window);
-    await collectAndDrain();
-    const bulked = runBuildBulk(Window);
-    await collectAndDrain();
-    // readHeavy sampling runs outside the window on the round's shared
-    // (warm, resident) document; mutationChurn parses its own dedicated
-    // document per round inside its phase (same手法 as traverseCold).
-    const readSample = snapshotReadNodes(sharedDocument, READ_NODES);
-    const read = runReadHeavy(readSample);
-    await collectAndDrain();
-    const churned = runMutationChurn(Window);
-    const roundTotal = performance.now() - tRound0;
-    await collectAndDrain();
+      const { ms: parseMs, document: sharedDocument } = runParse(Window, html);
+      // Element count is read immediately after parsing, before the build/query
+      // churn: a late `querySelectorAll("*")` over the whole tree hits mad-dom's
+      // wrapper-cache gap under peak GC pressure (tracked separately). Same
+      // transient-gap discipline as the build verification in runBuildMixed (read
+      // once right after the tree exists, never again later).
+      const elementCount = sharedDocument.querySelectorAll("*").length;
+      if (measured) rssPeak.parse = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.parse = rssNow();
 
-    if (!measured) continue;
-    samples.parse.push(parseMs);
-    samples.buildMixed.push(built.ms);
-    samples.queryHot.push(hot.ms);
-    samples.queryCold.push(cold.ms);
-    samples.getById.push(byId.ms);
-    samples.getByTag.push(byTag.ms);
-    samples.serialize.push(serialized.ms);
-    samples.traverseWarm.push(warm.ms);
-    samples.traverseCold.push(traversedCold.ms);
-    samples.buildCreate.push(created.ms);
-    samples.buildAttr.push(attributed.ms);
-    samples.buildAppend.push(appended.ms);
-    samples.buildText.push(texted.ms);
-    samples.buildBulk.push(bulked.ms);
-    samples.readHeavy.push(read.ms);
-    samples.mutationChurn.push(churned.ms);
-    roundTotals.push(roundTotal);
-    sink.parse += 1;
-    sink.buildMixed += built.acc;
-    sink.queryHot += hot.acc;
-    sink.queryCold += cold.acc;
-    sink.getById += byId.acc;
-    sink.getByTag += byTag.acc;
-    sink.serialize += serialized.acc;
-    sink.traverseWarm += warm.acc;
-    sink.traverseCold += traversedCold.acc;
-    sink.buildCreate += created.acc;
-    sink.buildAttr += attributed.acc;
-    sink.buildAppend += appended.acc;
-    sink.buildText += texted.acc;
-    sink.buildBulk += bulked.acc;
-    sink.readHeavy += read.acc;
-    sink.mutationChurn += churned.acc;
-    workloadBuild = built;
-    checksRounds.push({
-      queryHits: { hot: hot.hits, cold: cold.hits, byId: byId.hits, byTag: byTag.count },
-      buildMixed: { treeNodes: built.treeNodes, probeIds: built.probeIds },
-      buildDecomp: {
-        create: { count: created.count, tag0: created.tag0, tagLast: created.tagLast },
-        attr: { count: attributed.count, firstId: attributed.firstId, firstClass: attributed.firstClass, lastId: attributed.lastId, lastClass: attributed.lastClass },
-        append: { treeNodes: appended.treeNodes, firstTag: appended.firstTag, lastTag: appended.lastTag },
-        text: { count: texted.count, firstData: texted.firstData, lastData: texted.lastData },
-        bulk: { treeNodes: bulked.treeNodes, probeIds: bulked.probeIds },
+      const built = runBuildMixed(Window, wl.buildNodes);
+      if (measured) rssPeak.buildMixed = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.buildMixed = rssNow();
+      const hot = runQueryBatch(sharedDocument);
+      if (measured) rssPeak.queryHot = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.queryHot = rssNow();
+      const byId = runGetById(sharedDocument, totalLi);
+      if (measured) rssPeak.getById = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.getById = rssNow();
+      const byTag = runGetByTag(sharedDocument);
+      if (measured) rssPeak.getByTag = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.getByTag = rssNow();
+      const serialized = runSerialize(sharedDocument);
+      if (measured) rssPeak.serialize = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.serialize = rssNow();
+      const warm = runTraverseWarm(sharedDocument);
+      if (measured) rssPeak.traverseWarm = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.traverseWarm = rssNow();
+      const coldDocument = parseColdDocument(Window, html);
+      const cold = runQueryBatch(coldDocument);
+      if (measured) rssPeak.queryCold = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.queryCold = rssNow();
+      const traversedCold = runTraverse(coldDocument);
+      if (measured) rssPeak.traverseCold = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.traverseCold = rssNow();
+      const created = runBuildCreate(Window, wl.buildNodes);
+      if (measured) rssPeak.buildCreate = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.buildCreate = rssNow();
+      const attributed = runBuildAttr(Window, wl.buildNodes);
+      if (measured) rssPeak.buildAttr = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.buildAttr = rssNow();
+      const appended = runBuildAppend(Window, wl.buildNodes);
+      if (measured) rssPeak.buildAppend = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.buildAppend = rssNow();
+      const texted = runBuildText(Window, wl.buildNodes);
+      if (measured) rssPeak.buildText = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.buildText = rssNow();
+      const bulked = runBuildBulk(Window, bulkHtml, wl.buildNodes);
+      if (measured) rssPeak.buildBulk = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.buildBulk = rssNow();
+      // readHeavy sampling runs outside the window on the round's shared
+      // (warm, resident) document; mutationChurn parses its own dedicated
+      // document per round inside its phase (same手法 as traverseCold).
+      const readSample = snapshotReadNodes(sharedDocument, wl.readNodes);
+      const read = runReadHeavy(readSample);
+      if (measured) rssPeak.readHeavy = rssNow();
+      await collectAndDrain();
+      if (measured) rssAfter.readHeavy = rssNow();
+      const churned = runMutationChurn(Window, html, wl.mutationNodes);
+      if (measured) rssPeak.mutationChurn = rssNow();
+      const roundTotal = performance.now() - tRound0;
+      await collectAndDrain();
+      if (measured) rssAfter.mutationChurn = rssNow();
+
+      if (!measured) continue;
+      samples.parse.push(parseMs);
+      samples.buildMixed.push(built.ms);
+      samples.queryHot.push(hot.ms);
+      samples.queryCold.push(cold.ms);
+      samples.getById.push(byId.ms);
+      samples.getByTag.push(byTag.ms);
+      samples.serialize.push(serialized.ms);
+      samples.traverseWarm.push(warm.ms);
+      samples.traverseCold.push(traversedCold.ms);
+      samples.buildCreate.push(created.ms);
+      samples.buildAttr.push(attributed.ms);
+      samples.buildAppend.push(appended.ms);
+      samples.buildText.push(texted.ms);
+      samples.buildBulk.push(bulked.ms);
+      samples.readHeavy.push(read.ms);
+      samples.mutationChurn.push(churned.ms);
+      roundTotals.push(roundTotal);
+      sink.parse += 1;
+      sink.buildMixed += built.acc;
+      sink.queryHot += hot.acc;
+      sink.queryCold += cold.acc;
+      sink.getById += byId.acc;
+      sink.getByTag += byTag.acc;
+      sink.serialize += serialized.acc;
+      sink.traverseWarm += warm.acc;
+      sink.traverseCold += traversedCold.acc;
+      sink.buildCreate += created.acc;
+      sink.buildAttr += attributed.acc;
+      sink.buildAppend += appended.acc;
+      sink.buildText += texted.acc;
+      sink.buildBulk += bulked.acc;
+      sink.readHeavy += read.acc;
+      sink.mutationChurn += churned.acc;
+      workloadBuild = built;
+      checksRounds.push({
+        queryHits: { hot: hot.hits, cold: cold.hits, byId: byId.hits, byTag: byTag.count },
+        buildMixed: { treeNodes: built.treeNodes, probeIds: built.probeIds },
+        buildDecomp: {
+          create: { count: created.count, tag0: created.tag0, tagLast: created.tagLast },
+          attr: { count: attributed.count, firstId: attributed.firstId, firstClass: attributed.firstClass, lastId: attributed.lastId, lastClass: attributed.lastClass },
+          append: { treeNodes: appended.treeNodes, firstTag: appended.firstTag, lastTag: appended.lastTag },
+          text: { count: texted.count, firstData: texted.firstData, lastData: texted.lastData },
+          bulk: { treeNodes: bulked.treeNodes, probeIds: bulked.probeIds },
+        },
+        readHeavy: { count: read.count, hash: read.hash, textLen: read.textLen },
+        mutation: { ops: churned.ops, fp: churned.fp, fpHash: churned.fpHash },
+        serializeHash: serialized.serializeHash,
+        traverseCount: warm.acc,
+        traverseColdCount: traversedCold.acc,
+        elementCount,
+      });
+    }
+
+    // Deterministic workload: every measured round must see identical checks.
+    const firstChecksJson = JSON.stringify(checksRounds[0]);
+    const roundsIdentical = checksRounds.every((c) => JSON.stringify(c) === firstChecksJson);
+
+    results.push({
+      size,
+      workload: {
+        sections: wl.sections,
+        itemsPerSection: wl.itemsPerSection,
+        htmlBytes: Buffer.byteLength(html, "utf8"),
+        elementCount: checksRounds[0].elementCount,
+        buildNodes: wl.buildNodes,
+        builtElements: workloadBuild.builtElements,
+        builtTextNodes: workloadBuild.builtTextNodes,
+        buildRoots: workloadBuild.buildRoots,
+        readNodes: wl.readNodes,
+        mutationNodes: wl.mutationNodes,
+        runs: ARGS.runs,
       },
-      readHeavy: { count: read.count, hash: read.hash, textLen: read.textLen },
-      mutation: { ops: churned.ops, fp: churned.fp, fpHash: churned.fpHash },
-      serializeHash: serialized.serializeHash,
-      traverseCount: warm.acc,
-      traverseColdCount: traversedCold.acc,
-      elementCount,
+      phases: {
+        parse: summarize(samples.parse),
+        buildMixed: summarize(samples.buildMixed),
+        queryHot: summarize(samples.queryHot),
+        queryCold: summarize(samples.queryCold),
+        getById: summarize(samples.getById),
+        getByTag: summarize(samples.getByTag),
+        serialize: summarize(samples.serialize),
+        traverseWarm: summarize(samples.traverseWarm),
+        traverseCold: summarize(samples.traverseCold),
+        buildCreate: summarize(samples.buildCreate),
+        buildAttr: summarize(samples.buildAttr),
+        buildAppend: summarize(samples.buildAppend),
+        buildText: summarize(samples.buildText),
+        buildBulk: summarize(samples.buildBulk),
+        readHeavy: summarize(samples.readHeavy),
+        mutationChurn: summarize(samples.mutationChurn),
+      },
+      // Per-round pipeline wall time (parse start → traverse end), not a sum of
+      // phase medians.
+      total: summarize(roundTotals),
+      // Acc sinks, reported so a dead-code-elimination surprise is visible.
+      sink,
+      rss: {
+        baseline: rssBaseline,
+        perPhase: Object.fromEntries(PHASE_KEYS.map((k) => [k, { peak: rssPeak[k], after: rssAfter[k] }])),
+      },
+      // Structured validity checks: exact per-selector hits, real built-tree
+      // counts, content hash, and traversal size prove both engines ran the
+      // same correct workload (not a length coincidence).
+      checks: { ...checksRounds[0], roundsIdentical },
     });
   }
 
-  // Deterministic workload: every measured round must see identical checks.
-  const firstChecksJson = JSON.stringify(checksRounds[0]);
-  const roundsIdentical = checksRounds.every((c) => JSON.stringify(c) === firstChecksJson);
-
   const report = {
-    schema: "mad-dom-dom-bench/2",
+    schema: "mad-dom-dom-bench/3",
     engine: ARGS.engine,
     host: { os: process.platform, arch: process.arch, bun: process.versions.bun },
-    workload: {
-      sections: SECTIONS,
-      itemsPerSection: ITEMS_PER_SECTION,
-      htmlBytes: Buffer.byteLength(HTML, "utf8"),
-      elementCount: checksRounds[0].elementCount,
-      buildNodes: BUILD_NODES,
-      builtElements: workloadBuild.builtElements,
-      builtTextNodes: workloadBuild.builtTextNodes,
-      buildRoots: workloadBuild.buildRoots,
-      readNodes: READ_NODES,
-      mutationNodes: MUTATION_NODES,
-      runs: ARGS.runs,
-    },
-    phases: {
-      parse: summarize(samples.parse),
-      buildMixed: summarize(samples.buildMixed),
-      queryHot: summarize(samples.queryHot),
-      queryCold: summarize(samples.queryCold),
-      getById: summarize(samples.getById),
-      getByTag: summarize(samples.getByTag),
-      serialize: summarize(samples.serialize),
-      traverseWarm: summarize(samples.traverseWarm),
-      traverseCold: summarize(samples.traverseCold),
-      buildCreate: summarize(samples.buildCreate),
-      buildAttr: summarize(samples.buildAttr),
-      buildAppend: summarize(samples.buildAppend),
-      buildText: summarize(samples.buildText),
-      buildBulk: summarize(samples.buildBulk),
-      readHeavy: summarize(samples.readHeavy),
-      mutationChurn: summarize(samples.mutationChurn),
-    },
-    // Per-round pipeline wall time (parse start → traverse end), not a sum of
-    // phase medians.
-    total: summarize(roundTotals),
-    // Acc sinks, reported so a dead-code-elimination surprise is visible.
-    sink,
-    // Structured validity checks: exact per-selector hits, real built-tree
-    // counts, content hash, and traversal size prove both engines ran the
-    // same correct workload (not a length coincidence).
-    checks: { ...checksRounds[0], roundsIdentical },
+    sizes: [...ARGS.sizes],
+    runs: ARGS.runs,
+    results,
   };
   console.log(JSON.stringify(report, null, 2));
 }

@@ -18,6 +18,7 @@
 //   bun benchmark/dom-bench/run.mjs                # print comparison
 //   bun benchmark/dom-bench/run.mjs --json         # machine-readable JSON
 //   bun benchmark/dom-bench/run.mjs --runs 7       # measured runs per phase
+//   bun benchmark/dom-bench/run.mjs --sizes 0.1,1,10  # scale curve (1 = base)
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,7 +33,7 @@ const PHASES_MAIN = ["parse", "buildMixed", "queryHot", "queryCold", "getById", 
 const PHASES_BUILD = ["buildCreate", "buildAttr", "buildAppend", "buildText", "buildBulk"];
 const PHASES_READ_MUTATION = ["readHeavy", "mutationChurn"];
 const PHASES = [...PHASES_MAIN, ...PHASES_BUILD, ...PHASES_READ_MUTATION];
-const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--runs <n>] [--json]";
+const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--runs <n>] [--sizes <s1,s2,...>] [--json]";
 
 function parseRuns(raw) {
   const runs = Number(raw);
@@ -44,17 +45,35 @@ function parseRuns(raw) {
 }
 
 function parseArgs(argv) {
-  const args = { json: false, runs: 5 };
+  const args = { json: false, runs: 5, sizes: [1], sizesRaw: "1" };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--json") args.json = true;
     else if (argv[i] === "--runs") args.runs = parseRuns(argv[++i]);
-    else throw new Error(`unknown argument: ${argv[i]}`);
+    else if (argv[i] === "--sizes") {
+      const parsed = parseSizes(argv[++i]);
+      args.sizes = parsed.sizes;
+      args.sizesRaw = parsed.raw;
+    } else throw new Error(`unknown argument: ${argv[i]}`);
   }
   return args;
 }
 
-function runEngine(engine, runs) {
-  const result = spawnSync(process.execPath, [WORKER, "--engine", engine, "--runs", String(runs), "--json"], {
+function parseSizes(raw) {
+  const parts = String(raw ?? "").split(",");
+  const sizes = parts.map((p) => Number(p.trim()));
+  if (
+    sizes.length === 0 ||
+    parts.some((p) => p.trim() === "") ||
+    sizes.some((s) => !Number.isFinite(s) || s <= 0)
+  ) {
+    console.error(USAGE);
+    process.exit(2);
+  }
+  return { sizes, raw: parts.map((p) => p.trim()).join(",") };
+}
+
+function runEngine(engine, runs, sizesRaw) {
+  const result = spawnSync(process.execPath, [WORKER, "--engine", engine, "--runs", String(runs), "--sizes", sizesRaw, "--json"], {
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
@@ -81,7 +100,7 @@ function runEngine(engine, runs) {
     );
     process.exit(1);
   }
-  if (report.schema !== "mad-dom-dom-bench/2" || report.engine !== engine) {
+  if (report.schema !== "mad-dom-dom-bench/3" || report.engine !== engine) {
     console.error(
       `worker for ${engine} returned an unexpected report (schema=${JSON.stringify(report.schema)}, engine=${JSON.stringify(report.engine)})`,
     );
@@ -90,7 +109,9 @@ function runEngine(engine, runs) {
   return report;
 }
 
-function workloadsMatch(mad, happy) {
+function resultMatch(madRes, happyRes) {
+  const mad = { workload: madRes.workload, checks: madRes.checks };
+  const happy = { workload: happyRes.workload, checks: happyRes.checks };
   const decompMatch = (key) => JSON.stringify(mad.checks.buildDecomp[key]) === JSON.stringify(happy.checks.buildDecomp[key]);
   return (
     mad.workload.elementCount === happy.workload.elementCount &&
@@ -112,6 +133,14 @@ function workloadsMatch(mad, happy) {
     mad.checks.traverseCount === happy.checks.traverseCount &&
     mad.checks.traverseColdCount === happy.checks.traverseColdCount
   );
+}
+
+function workloadsMatch(mad, happy) {
+  if (mad.results.length !== happy.results.length) return false;
+  if (mad.sizes.length !== happy.sizes.length) return false;
+  if (!mad.sizes.every((s, i) => s === happy.sizes[i])) return false;
+  if (!mad.results.every((r, i) => r.size === happy.results[i].size)) return false;
+  return mad.results.every((r, i) => resultMatch(r, happy.results[i]));
 }
 
 function checkHosts(mad, happy) {
@@ -138,12 +167,24 @@ function formatCell(s) {
   return `${s.medianMs.toFixed(2)} ms [${s.minMs.toFixed(2)}-${s.p90Ms.toFixed(2)}] MAD ${s.madMs.toFixed(2)}`;
 }
 
-function printReport(reports) {
-  const [mad, happy] = reports;
-  const width = 40;
-  const row = (cells) => cells.map((cell) => String(cell).padEnd(width)).join("");
+function rssAfterMB(result, phase) {
+  const base = result.rss && result.rss.baseline;
+  const entry = result.rss && result.rss.perPhase && result.rss.perPhase[phase];
+  if (typeof base !== "number" || !entry || typeof entry.after !== "number") return "n/a";
+  return `+${((entry.after - base) / 1024 / 1024).toFixed(1)} MB`;
+}
 
-  console.log("dom-intensive benchmark: mad-dom vs happy-dom");
+function printSizeTable(mad, happy, size) {
+  // mad/happy are per-size views: { host, workload, phases, total, rss, checks }.
+  const width = 40;
+  const rssWidth = 14;
+  const row = (cells) =>
+    cells
+      .slice(0, 4)
+      .map((cell) => String(cell).padEnd(width))
+      .join("") + cells.slice(4).map((cell) => String(cell).padEnd(rssWidth)).join("");
+
+  console.log(`size ${size}× · dom-intensive benchmark: mad-dom vs happy-dom`);
   console.log(
     `${bunLabel(mad, happy)} · ${mad.host.os}/${mad.host.arch} · median of ${mad.workload.runs} measured rounds per phase; total = median of ${mad.total.samples.length} per-round pipeline totals`,
   );
@@ -151,11 +192,11 @@ function printReport(reports) {
     `workload: ${mad.workload.elementCount} elements (${Math.round(mad.workload.htmlBytes / 1024)} KB HTML) · ` +
       `${mad.workload.builtElements} elements + ${mad.workload.builtTextNodes} text nodes`,
   );
-  if (!workloadsMatch(mad, happy)) {
-    console.log("WARNING: engines saw different workloads — comparison is invalid");
+  if (!resultMatch(mad, happy)) {
+    console.log(`WARNING: size ${size}× engines saw different workloads — comparison is invalid`);
   }
   console.log("");
-  console.log(row(["phase", "mad-dom", "happy-dom", "mad-dom speedup"]));
+  console.log(row(["phase", "mad-dom", "happy-dom", "mad-dom speedup", "mad rss Δ", "happy rss Δ"]));
   console.log("-".repeat(width * 4));
   for (const phase of PHASES_MAIN) {
     console.log(
@@ -164,6 +205,8 @@ function printReport(reports) {
         formatCell(mad.phases[phase]),
         formatCell(happy.phases[phase]),
         formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
+        rssAfterMB(mad, phase),
+        rssAfterMB(happy, phase),
       ]),
     );
   }
@@ -176,6 +219,8 @@ function printReport(reports) {
         formatCell(mad.phases[phase]),
         formatCell(happy.phases[phase]),
         formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
+        rssAfterMB(mad, phase),
+        rssAfterMB(happy, phase),
       ]),
     );
   }
@@ -188,28 +233,71 @@ function printReport(reports) {
         formatCell(mad.phases[phase]),
         formatCell(happy.phases[phase]),
         formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
+        rssAfterMB(mad, phase),
+        rssAfterMB(happy, phase),
       ]),
     );
   }
-  console.log("-".repeat(width * 4));
+  console.log("-".repeat(width * 4 + rssWidth * 2));
   console.log(
-    row(["total", formatCell(mad.total), formatCell(happy.total), formatRatio(mad.total.medianMs, happy.total.medianMs)]),
+    row([
+      "total",
+      formatCell(mad.total),
+      formatCell(happy.total),
+      formatRatio(mad.total.medianMs, happy.total.medianMs),
+      // Pipeline-end residency: after-drain RSS of the last phase.
+      rssAfterMB(mad, "mutationChurn"),
+      rssAfterMB(happy, "mutationChurn"),
+    ]),
   );
   for (const [name, report] of [["mad-dom", mad], ["happy-dom", happy]]) {
     for (const phase of [...PHASES, "total"]) {
       const s = phase === "total" ? report.total : report.phases[phase];
       if (s.medianMs > 0 && s.madMs > 0.2 * s.medianMs) {
-        console.log(`WARNING: ${name} ${phase} unstable (MAD > 20% of median)`);
+        console.log(`WARNING: ${name} size ${size}× ${phase} unstable (MAD > 20% of median)`);
       }
     }
   }
 }
 
+function printScaleCurve(reports) {
+  // Rows = phases, columns = sizes, cells = mad-dom median ms — eyeball check
+  // for superlinear terms across the scale curve.
+  const [mad] = reports;
+  const sizes = mad.results.map((r) => r.size);
+  const w0 = 16;
+  const w = 14;
+  console.log("");
+  console.log("scale curve (mad-dom median per size)");
+  console.log(`phase${" ".repeat(w0 - 5)}` + sizes.map((s) => `${s}×`.padEnd(w)).join(""));
+  for (const phase of [...PHASES, "total"]) {
+    const cells = mad.results
+      .map((r) => (phase === "total" ? r.total : r.phases[phase]))
+      .map((s) => `${s.medianMs.toFixed(1)} ms`.padEnd(w))
+      .join("");
+    console.log(String(phase).padEnd(w0) + cells);
+  }
+}
+
+function printReport(reports) {
+  const [mad] = reports;
+  for (let i = 0; i < mad.results.length; i++) {
+    if (i > 0) console.log("");
+    printSizeTable(
+      { ...mad.results[i], host: reports[0].host },
+      { ...reports[1].results[i], host: reports[1].host },
+      mad.results[i].size,
+    );
+  }
+  if (mad.results.length > 1) printScaleCurve(reports);
+}
+
 const args = parseArgs(process.argv.slice(2));
-const reports = ENGINES.map((engine) => runEngine(engine, args.runs));
+const reports = ENGINES.map((engine) => runEngine(engine, args.runs, args.sizesRaw));
 checkHosts(reports[0], reports[1]);
 const valid =
-  workloadsMatch(reports[0], reports[1]) && reports.every((r) => r.checks.roundsIdentical !== false);
+  workloadsMatch(reports[0], reports[1]) &&
+  reports.every((r) => r.results.every((res) => res.checks.roundsIdentical !== false));
 
 if (args.json) {
   console.log(
