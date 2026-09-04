@@ -14,7 +14,7 @@
 | 04-cold-warm-split.md | P1 | medium | ✅ traverse/query 拆 cold/warm，getById/getByTag 独立相位 |
 | 05-build-read-mutation-phases.md | P1 | medium | ✅ build 分解、read-heavy、mutation churn 相位 |
 | 06-sizes-rss.md | P1 | medium | ✅ --sizes 规模曲线 + RSS 增量采样 |
-| 07-readme-rewrite.md | P2 | easy | README dom-bench 节重写，修正失真描述 |
+| 07-readme-rewrite.md | P2 | easy | ✅ README dom-bench 节重写，修正失真描述 |
 
 ## 文件
 
