@@ -8,7 +8,9 @@
 // per-phase median timings as JSON. benchmark/dom-bench/run.mjs spawns one
 // worker per engine and prints the comparison.
 //
-// Phases (each measured separately, warmup runs excluded, median reported):
+// Round-major loop: each round runs the full pipeline below (2 warmup rounds
+// discarded); per-phase raw samples plus the per-round pipeline wall time are
+// reported with median/min/p90/MAD summaries.
 //   parse      — document.write of a generated ~10k-element page
 //   build      — createElement/setAttribute/appendChild loop (20k elements)
 //   query      — querySelectorAll / querySelector / getElementsByTagName batch
@@ -96,6 +98,19 @@ function median(values) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+// p90 over an ascending-sorted array (ceil rank; small samples take the top).
+function p90Sorted(sorted) {
+  return sorted[Math.min(sorted.length - 1, Math.ceil(0.9 * sorted.length) - 1)];
+}
+
+// Robust per-phase summary over raw per-round samples. MAD = median(|x-median|).
+function summarize(samples) {
+  const sorted = [...samples].sort((a, b) => a - b);
+  const medianMs = median(sorted);
+  const madMs = median(sorted.map((x) => Math.abs(x - medianMs)));
+  return { samples: [...samples], medianMs, minMs: sorted[0], p90Ms: p90Sorted(sorted), madMs };
+}
+
 function drainEventLoop() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -108,26 +123,6 @@ async function collectAndDrain() {
   if (typeof Bun !== "undefined" && typeof Bun.gc === "function") Bun.gc(true);
   await drainEventLoop();
   await drainEventLoop();
-}
-
-// Runs `fn` (returning { ms, acc? }) `warmups` discarded times, then `runs`
-// measured times; collects + drains after every run (see header). The acc
-// sink keeps engines from discarding the work.
-async function benchPhase(warmups, runs, fn) {
-  let acc = 0;
-  for (let i = 0; i < warmups; i++) {
-    acc += fn().acc ?? 0;
-    await collectAndDrain();
-  }
-  const samples = [];
-  let last = null;
-  for (let i = 0; i < runs; i++) {
-    last = fn();
-    samples.push(last.ms);
-    acc += last.acc ?? 0;
-    await collectAndDrain();
-  }
-  return { medianMs: median(samples), acc, last };
 }
 
 // --- Phases --------------------------------------------------------------------
@@ -216,64 +211,99 @@ function runTraverse(document) {
 async function main() {
   const { Window } = await ENGINE_LOADERS[ARGS.engine]();
 
-  // Parse phase: fresh window per run; the last parsed document feeds the
-  // query / serialize / traverse phases.
-  let sharedDocument = null;
-  const parse = await benchPhase(2, ARGS.runs, () => {
-    const { ms, document } = runParse(Window);
-    sharedDocument = document;
-    return { ms, acc: 1 };
-  });
+  // Round-major loop: each round runs the full pipeline (parse → build →
+  // query → serialize → traverse) so the per-round wall time is a real
+  // pipeline total instead of a sum of phase medians. Warmup rounds (count =
+  // max of the old per-phase warmups = 2) are fully discarded. Query /
+  // serialize / traverse run against the round's own freshly parsed document
+  // (warm semantics, unchanged; cold split is a later step).
+  const WARMUP_ROUNDS = 2;
+  const samples = { parse: [], build: [], query: [], serialize: [], traverse: [] };
+  const roundTotals = [];
+  const sink = { parse: 0, build: 0, query: 0, serialize: 0, traverse: 0 };
+  const checksRounds = [];
+  let workloadBuild = null;
 
-  // Element count is read immediately after parsing, before the build/query
-  // churn: a late `querySelectorAll("*")` over the whole tree hits mad-dom's
-  // wrapper-cache gap under peak GC pressure (tracked separately).
-  await collectAndDrain();
-  const elementCount = sharedDocument.querySelectorAll("*").length;
+  for (let round = 0; round < WARMUP_ROUNDS + ARGS.runs; round++) {
+    const measured = round >= WARMUP_ROUNDS;
+    const tRound0 = performance.now();
 
-  await collectAndDrain();
-  const build = await benchPhase(1, ARGS.runs, () => runBuild(Window));
-  await collectAndDrain();
-  const query = await benchPhase(2, ARGS.runs, () => runQuery(sharedDocument));
-  await collectAndDrain();
-  const serialize = await benchPhase(1, ARGS.runs, () => runSerialize(sharedDocument));
-  await collectAndDrain();
-  const traverse = await benchPhase(1, ARGS.runs, () => runTraverse(sharedDocument));
+    const { ms: parseMs, document: sharedDocument } = runParse(Window);
+    // Element count is read immediately after parsing, before the build/query
+    // churn: a late `querySelectorAll("*")` over the whole tree hits mad-dom's
+    // wrapper-cache gap under peak GC pressure (tracked separately). Same
+    // transient-gap discipline as the build verification in runBuild (read
+    // once right after the tree exists, never again later).
+    const elementCount = sharedDocument.querySelectorAll("*").length;
+    await collectAndDrain();
+
+    const built = runBuild(Window);
+    await collectAndDrain();
+    const queried = runQuery(sharedDocument);
+    await collectAndDrain();
+    const serialized = runSerialize(sharedDocument);
+    await collectAndDrain();
+    const traversed = runTraverse(sharedDocument);
+    const roundTotal = performance.now() - tRound0;
+    await collectAndDrain();
+
+    if (!measured) continue;
+    samples.parse.push(parseMs);
+    samples.build.push(built.ms);
+    samples.query.push(queried.ms);
+    samples.serialize.push(serialized.ms);
+    samples.traverse.push(traversed.ms);
+    roundTotals.push(roundTotal);
+    sink.parse += 1;
+    sink.build += built.acc;
+    sink.query += queried.acc;
+    sink.serialize += serialized.acc;
+    sink.traverse += traversed.acc;
+    workloadBuild = built;
+    checksRounds.push({
+      queryHits: queried.hits,
+      build: { treeNodes: built.treeNodes, probeIds: built.probeIds },
+      serializeHash: serialized.serializeHash,
+      traverseCount: traversed.acc,
+      elementCount,
+    });
+  }
+
+  // Deterministic workload: every measured round must see identical checks.
+  const firstChecksJson = JSON.stringify(checksRounds[0]);
+  const roundsIdentical = checksRounds.every((c) => JSON.stringify(c) === firstChecksJson);
 
   const report = {
-    schema: "mad-dom-dom-bench/1",
+    schema: "mad-dom-dom-bench/2",
     engine: ARGS.engine,
     host: { os: process.platform, arch: process.arch, bun: process.versions.bun },
     workload: {
       sections: SECTIONS,
       itemsPerSection: ITEMS_PER_SECTION,
       htmlBytes: Buffer.byteLength(HTML, "utf8"),
-      elementCount,
+      elementCount: checksRounds[0].elementCount,
       buildNodes: BUILD_NODES,
-      builtElements: build.last.builtElements,
-      builtTextNodes: build.last.builtTextNodes,
-      buildRoots: build.last.buildRoots,
+      builtElements: workloadBuild.builtElements,
+      builtTextNodes: workloadBuild.builtTextNodes,
+      buildRoots: workloadBuild.buildRoots,
       runs: ARGS.runs,
     },
     phases: {
-      parse: parse.medianMs,
-      build: build.medianMs,
-      query: query.medianMs,
-      serialize: serialize.medianMs,
-      traverse: traverse.medianMs,
+      parse: summarize(samples.parse),
+      build: summarize(samples.build),
+      query: summarize(samples.query),
+      serialize: summarize(samples.serialize),
+      traverse: summarize(samples.traverse),
     },
+    // Per-round pipeline wall time (parse start → traverse end), not a sum of
+    // phase medians.
+    total: summarize(roundTotals),
     // Acc sinks, reported so a dead-code-elimination surprise is visible.
-    sink: { parse: parse.acc, build: build.acc, query: query.acc, serialize: serialize.acc, traverse: traverse.acc },
+    sink,
     // Structured validity checks: exact per-selector hits, real built-tree
     // counts, content hash, and traversal size prove both engines ran the
     // same correct workload (not a length coincidence).
-    checks: {
-      queryHits: query.last.hits,
-      build: { treeNodes: build.last.treeNodes, probeIds: build.last.probeIds },
-      serializeHash: serialize.last.serializeHash,
-      traverseCount: traverse.last.acc,
-      elementCount,
-    },
+    checks: { ...checksRounds[0], roundsIdentical },
   };
   console.log(JSON.stringify(report, null, 2));
 }

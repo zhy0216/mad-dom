@@ -1,4 +1,5 @@
 difficulty: hard
+status: done
 
 # 03 · worker 轮主循环重构 + 原始 samples / pipeline total / min-p90-MAD 统计
 

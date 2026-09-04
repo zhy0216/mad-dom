@@ -73,7 +73,7 @@ function runEngine(engine, runs) {
     );
     process.exit(1);
   }
-  if (report.schema !== "mad-dom-dom-bench/1" || report.engine !== engine) {
+  if (report.schema !== "mad-dom-dom-bench/2" || report.engine !== engine) {
     console.error(
       `worker for ${engine} returned an unexpected report (schema=${JSON.stringify(report.schema)}, engine=${JSON.stringify(report.engine)})`,
     );
@@ -116,13 +116,19 @@ function formatRatio(madMs, happyMs) {
   return ratio >= 1 ? `${ratio.toFixed(1)}x` : `${ratio.toFixed(2)}x (mad-dom slower)`;
 }
 
+function formatCell(s) {
+  return `${s.medianMs.toFixed(2)} ms [${s.minMs.toFixed(2)}-${s.p90Ms.toFixed(2)}] MAD ${s.madMs.toFixed(2)}`;
+}
+
 function printReport(reports) {
   const [mad, happy] = reports;
-  const width = 24;
+  const width = 40;
   const row = (cells) => cells.map((cell) => String(cell).padEnd(width)).join("");
 
   console.log("dom-intensive benchmark: mad-dom vs happy-dom");
-  console.log(`${bunLabel(mad, happy)} · ${mad.host.os}/${mad.host.arch} · median of ${mad.workload.runs} measured runs per phase`);
+  console.log(
+    `${bunLabel(mad, happy)} · ${mad.host.os}/${mad.host.arch} · median of ${mad.workload.runs} measured rounds per phase; total = median of ${mad.total.samples.length} per-round pipeline totals`,
+  );
   console.log(
     `workload: ${mad.workload.elementCount} elements (${Math.round(mad.workload.htmlBytes / 1024)} KB HTML) · ` +
       `${mad.workload.builtElements} elements + ${mad.workload.builtTextNodes} text nodes`,
@@ -137,22 +143,31 @@ function printReport(reports) {
     console.log(
       row([
         phase,
-        `${mad.phases[phase].toFixed(2)} ms`,
-        `${happy.phases[phase].toFixed(2)} ms`,
-        formatRatio(mad.phases[phase], happy.phases[phase]),
+        formatCell(mad.phases[phase]),
+        formatCell(happy.phases[phase]),
+        formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
       ]),
     );
   }
   console.log("-".repeat(width * 4));
-  const madTotal = PHASES.reduce((sum, p) => sum + mad.phases[p], 0);
-  const happyTotal = PHASES.reduce((sum, p) => sum + happy.phases[p], 0);
-  console.log(row(["total", `${madTotal.toFixed(2)} ms`, `${happyTotal.toFixed(2)} ms`, formatRatio(madTotal, happyTotal)]));
+  console.log(
+    row(["total", formatCell(mad.total), formatCell(happy.total), formatRatio(mad.total.medianMs, happy.total.medianMs)]),
+  );
+  for (const [name, report] of [["mad-dom", mad], ["happy-dom", happy]]) {
+    for (const phase of [...PHASES, "total"]) {
+      const s = phase === "total" ? report.total : report.phases[phase];
+      if (s.medianMs > 0 && s.madMs > 0.2 * s.medianMs) {
+        console.log(`WARNING: ${name} ${phase} unstable (MAD > 20% of median)`);
+      }
+    }
+  }
 }
 
 const args = parseArgs(process.argv.slice(2));
 const reports = ENGINES.map((engine) => runEngine(engine, args.runs));
 checkHosts(reports[0], reports[1]);
-const valid = workloadsMatch(reports[0], reports[1]);
+const valid =
+  workloadsMatch(reports[0], reports[1]) && reports.every((r) => r.checks.roundsIdentical !== false);
 
 if (args.json) {
   console.log(

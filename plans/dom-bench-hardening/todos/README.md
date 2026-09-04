@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | 01-reliability-patch.md | P0 | easy | ✅ 参数校验、spawn 健壮性、标准 median、UTF-8 字节数 |
 | 02-sink-validation.md | P0 | easy | ✅ 真实 sink：querySelector 命中、build 树计数、serialize 哈希 |
-| 03-round-major-stats.md | P0 | hard | worker 轮主循环重构 + 每轮 pipeline total + min/median/p90/MAD |
+| 03-round-major-stats.md | P0 | hard | ✅ worker 轮主循环重构 + 每轮 pipeline total + min/median/p90/MAD |
 | 04-cold-warm-split.md | P1 | medium | traverse/query 拆 cold/warm，getById/getByTag 独立相位 |
 | 05-new-workloads.md | P1 | medium | build 分解、read-heavy、mutation churn 相位 |
 | 06-sizes-rss.md | P1 | medium | --sizes 规模曲线 + RSS 增量采样 |
