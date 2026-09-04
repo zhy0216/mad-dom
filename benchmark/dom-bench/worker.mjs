@@ -33,6 +33,8 @@ const ENGINE_LOADERS = {
   "happy-dom": () => import("happy-dom"),
 };
 
+const USAGE = "usage: bun benchmark/dom-bench/worker.mjs --engine <mad-dom|happy-dom> [--runs <n>] [--json]";
+
 const ARGS = parseArgs(process.argv.slice(2));
 
 // --- Workload sizes ----------------------------------------------------------
@@ -65,11 +67,20 @@ const HTML = generateHtml();
 
 // --- Helpers ------------------------------------------------------------------
 
+function parseRuns(raw) {
+  const runs = Number(raw);
+  if (!Number.isInteger(runs) || runs < 1) {
+    console.error(USAGE);
+    process.exit(2);
+  }
+  return runs;
+}
+
 function parseArgs(argv) {
   const args = { engine: null, runs: 5, json: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--engine") args.engine = argv[++i];
-    else if (argv[i] === "--runs") args.runs = Number(argv[++i]);
+    else if (argv[i] === "--runs") args.runs = parseRuns(argv[++i]);
     else if (argv[i] === "--json") args.json = true;
     else throw new Error(`unknown argument: ${argv[i]}`);
   }
@@ -81,7 +92,8 @@ function parseArgs(argv) {
 
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 function drainEventLoop() {
@@ -108,13 +120,14 @@ async function benchPhase(warmups, runs, fn) {
     await collectAndDrain();
   }
   const samples = [];
+  let last = null;
   for (let i = 0; i < runs; i++) {
-    const result = fn();
-    samples.push(result.ms);
-    acc += result.acc ?? 0;
+    last = fn();
+    samples.push(last.ms);
+    acc += last.acc ?? 0;
     await collectAndDrain();
   }
-  return { medianMs: median(samples), acc };
+  return { medianMs: median(samples), acc, last };
 }
 
 // --- Phases --------------------------------------------------------------------
@@ -131,21 +144,30 @@ function runBuild(Window) {
   const window = new Window();
   const document = window.document;
   const t0 = performance.now();
+  let builtElements = 0;
+  let builtTextNodes = 0;
   const root = document.createElement("div");
+  builtElements++;
   document.body.appendChild(root);
   let parent = root;
   for (let i = 0; i < BUILD_NODES; i++) {
     const el = document.createElement(i % 3 === 0 ? "section" : i % 2 === 0 ? "div" : "span");
+    builtElements++;
     el.setAttribute("id", `node-${i}`);
     el.setAttribute("class", `item-${i % 7}`);
     parent.appendChild(el);
-    if (i % 5 === 0) el.appendChild(document.createTextNode(`text-${i}`));
+    if (i % 5 === 0) {
+      el.appendChild(document.createTextNode(`text-${i}`));
+      builtTextNodes++;
+    }
     parent = i % 10 === 0 ? root : el;
   }
+  // buildRoots: how many top-level nodes were mounted into body (here just root).
+  const buildRoots = 1;
   // JS counter, not root.childNodes.length: the childNodes snapshot read on a
   // multi-thousand-child node crashes mad-dom in the wrapper-cache "collected
   // but not yet finalized" window (handle.rs transient gap); tracked separately.
-  return { ms: performance.now() - t0, acc: BUILD_NODES };
+  return { ms: performance.now() - t0, acc: BUILD_NODES, builtElements, builtTextNodes, buildRoots };
 }
 
 function runQuery(document) {
@@ -212,9 +234,12 @@ async function main() {
     workload: {
       sections: SECTIONS,
       itemsPerSection: ITEMS_PER_SECTION,
-      htmlBytes: HTML.length,
+      htmlBytes: Buffer.byteLength(HTML, "utf8"),
       elementCount,
       buildNodes: BUILD_NODES,
+      builtElements: build.last.builtElements,
+      builtTextNodes: build.last.builtTextNodes,
+      buildRoots: build.last.buildRoots,
       runs: ARGS.runs,
     },
     phases: {

@@ -24,27 +24,62 @@ const WORKER = join(SCRIPT_DIR, "worker.mjs");
 
 const ENGINES = ["mad-dom", "happy-dom"];
 const PHASES = ["parse", "build", "query", "serialize", "traverse"];
+const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--runs <n>] [--json]";
+
+function parseRuns(raw) {
+  const runs = Number(raw);
+  if (!Number.isInteger(runs) || runs < 1) {
+    console.error(USAGE);
+    process.exit(2);
+  }
+  return runs;
+}
 
 function parseArgs(argv) {
   const args = { json: false, runs: 5 };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--json") args.json = true;
-    else if (argv[i] === "--runs") args.runs = Number(argv[++i]);
+    else if (argv[i] === "--runs") args.runs = parseRuns(argv[++i]);
     else throw new Error(`unknown argument: ${argv[i]}`);
   }
   return args;
 }
 
 function runEngine(engine, runs) {
-  const result = spawnSync("bun", [WORKER, "--engine", engine, "--runs", String(runs), "--json"], {
+  const result = spawnSync(process.execPath, [WORKER, "--engine", engine, "--runs", String(runs), "--json"], {
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
+  if (result.error) {
+    console.error(`failed to spawn worker for ${engine}: ${result.error.message}`);
+    process.exit(1);
+  }
+  if (result.signal) {
+    console.error(`worker for ${engine} was killed by signal ${result.signal}`);
+    process.exit(1);
+  }
   if (result.status !== 0) {
     console.error(`worker for ${engine} failed (exit ${result.status}):\n${result.stderr}`);
     process.exit(1);
   }
-  return JSON.parse(result.stdout);
+  let report;
+  try {
+    report = JSON.parse(result.stdout);
+  } catch {
+    console.error(
+      `worker for ${engine} produced invalid JSON\n` +
+        `stderr: ${String(result.stderr).slice(0, 500)}\n` +
+        `stdout: ${String(result.stdout).slice(0, 500)}`,
+    );
+    process.exit(1);
+  }
+  if (report.schema !== "mad-dom-dom-bench/1" || report.engine !== engine) {
+    console.error(
+      `worker for ${engine} returned an unexpected report (schema=${JSON.stringify(report.schema)}, engine=${JSON.stringify(report.engine)})`,
+    );
+    process.exit(1);
+  }
+  return report;
 }
 
 function formatRatio(madMs, happyMs) {
@@ -61,7 +96,7 @@ function printReport(reports) {
   console.log(`bun ${mad.host.bun} · ${mad.host.os}/${mad.host.arch} · median of ${mad.workload.runs} measured runs per phase`);
   console.log(
     `workload: ${mad.workload.elementCount} elements (${Math.round(mad.workload.htmlBytes / 1024)} KB HTML) · ` +
-      `${mad.workload.buildNodes}-node build`,
+      `${mad.workload.builtElements} elements + ${mad.workload.builtTextNodes} text nodes`,
   );
   if (mad.workload.elementCount !== happy.workload.elementCount || mad.sink.serialize !== happy.sink.serialize) {
     console.log("WARNING: engines saw different workloads — comparison is invalid");
