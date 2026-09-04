@@ -3,8 +3,9 @@
 //
 // Spawns benchmark/dom-bench/worker.mjs once per engine (isolated processes),
 // each running the same deterministic workload through the shared public API
-// shape — parse of a ~10k-element page, 20k-node tree build, selector queries,
-// serialization, full tree walk — and prints the per-phase comparison.
+// shape — parse of a ~10k-element page, 20k-node tree build, hot/cold
+// selector queries, separate getById / getByTag phases, serialization, and
+// warm/cold full tree walks — and prints the per-phase comparison.
 //
 // This complements the integration-test benchmark (benchmark/run.mjs): that
 // one measures wall-clock of a small, fixed-cost-dominated suite; this one
@@ -23,7 +24,7 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(SCRIPT_DIR, "worker.mjs");
 
 const ENGINES = ["mad-dom", "happy-dom"];
-const PHASES = ["parse", "build", "query", "serialize", "traverse"];
+const PHASES = ["parse", "build", "queryHot", "queryCold", "getById", "getByTag", "serialize", "traverseWarm", "traverseCold"];
 const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--runs <n>] [--json]";
 
 function parseRuns(raw) {
@@ -85,14 +86,17 @@ function runEngine(engine, runs) {
 function workloadsMatch(mad, happy) {
   return (
     mad.workload.elementCount === happy.workload.elementCount &&
-    mad.checks.queryHits.item3 === happy.checks.queryHits.item3 &&
-    mad.checks.queryHits.descendant === happy.checks.queryHits.descendant &&
-    mad.checks.queryHits.idHit === happy.checks.queryHits.idHit &&
+    mad.checks.queryHits.hot.item3 === happy.checks.queryHits.hot.item3 &&
+    mad.checks.queryHits.hot.descendant === happy.checks.queryHits.hot.descendant &&
+    mad.checks.queryHits.cold.item3 === happy.checks.queryHits.cold.item3 &&
+    mad.checks.queryHits.cold.descendant === happy.checks.queryHits.cold.descendant &&
+    mad.checks.queryHits.byId === happy.checks.queryHits.byId &&
     mad.checks.queryHits.byTag === happy.checks.queryHits.byTag &&
     mad.checks.build.treeNodes === happy.checks.build.treeNodes &&
     mad.checks.build.probeIds === happy.checks.build.probeIds &&
     mad.checks.serializeHash === happy.checks.serializeHash &&
-    mad.checks.traverseCount === happy.checks.traverseCount
+    mad.checks.traverseCount === happy.checks.traverseCount &&
+    mad.checks.traverseColdCount === happy.checks.traverseColdCount
   );
 }
 

@@ -11,11 +11,15 @@
 // Round-major loop: each round runs the full pipeline below (2 warmup rounds
 // discarded); per-phase raw samples plus the per-round pipeline wall time are
 // reported with median/min/p90/MAD summaries.
-//   parse      — document.write of a generated ~10k-element page
-//   build      — createElement/setAttribute/appendChild loop (20k elements)
-//   query      — querySelectorAll / querySelector / getElementsByTagName batch
-//   serialize  — body.innerHTML read
-//   traverse   — full firstChild/nextSibling walk of the parsed tree
+//   parse        — document.write of a generated ~10k-element page
+//   build        — createElement/setAttribute/appendChild loop (20k elements)
+//   queryHot     — selector batch rerun on the shared (warmed) document
+//   queryCold    — same batch, first run on a freshly parsed document
+//   getById      — 100 distinct-id querySelector hits on the shared document
+//   getByTag     — 20x getElementsByTagName("li").length (live-collection cost)
+//   serialize    — body.innerHTML read
+//   traverseWarm — full firstChild/nextSibling walk of the shared document
+//   traverseCold — same walk, first traversal of a freshly parsed document
 //
 // Between measured runs (and between phases) the worker forces a full GC and
 // drains the event loop, outside the measured window and identical for both
@@ -172,15 +176,42 @@ function runBuild(Window) {
   return { ms, acc: treeNodes + probeIdSum, treeNodes, probeIds, builtElements, builtTextNodes, buildRoots };
 }
 
-function runQuery(document) {
+// Shared selector batch for queryHot (shared document) and queryCold (fresh
+// document). The single-id querySelector and the getElementsByTagName read
+// live in their own getById / getByTag phases now.
+function runQueryBatch(document) {
   const t0 = performance.now();
   const item3 = document.querySelectorAll(".item-3").length;
   const descendant = document.querySelectorAll("section > ul > li").length;
-  const hit = document.querySelector("#node-1234");
-  const idHit = hit && hit.id === "node-1234" ? 1 : 0;
-  const byTag = document.getElementsByTagName("li").length;
-  const acc = item3 + descendant + idHit + byTag;
-  return { ms: performance.now() - t0, acc, hits: { item3, descendant, idHit, byTag } };
+  const acc = item3 + descendant;
+  return { ms: performance.now() - t0, acc, hits: { item3, descendant } };
+}
+
+// 100 distinct ids at uniform stride over node-0..node-2475: the single-id
+// querySelector moved out of the query batch so id-hit cost is timed alone.
+function runGetById(document) {
+  const t0 = performance.now();
+  let hits = 0;
+  for (let k = 0; k < 100; k++) {
+    const id = `node-${k * 25}`;
+    const node = document.querySelector(`#${id}`);
+    if (node && node.id === id) hits++;
+  }
+  return { ms: performance.now() - t0, acc: hits, hits };
+}
+
+// 20x live-collection length read: each `.length` pays the eager scope check
+// plus a second native query, kept separate so that cost is visible instead
+// of polluting the selector batch.
+function runGetByTag(document) {
+  const t0 = performance.now();
+  let acc = 0;
+  let count = 0;
+  for (let k = 0; k < 20; k++) {
+    count = document.getElementsByTagName("li").length;
+    acc += count;
+  }
+  return { ms: performance.now() - t0, acc, count };
 }
 
 function runSerialize(document) {
@@ -200,10 +231,32 @@ function countNodes(node) {
   return count;
 }
 
+// Warm walk: the shared document was already walked once (untimed pass
+// outside the window, residing wrappers + navigation memo), so the timed
+// pass re-reads memoized wrappers instead of casting — the steady-state
+// traversal cost. Same countNodes code path as the cold walk.
+function runTraverseWarm(document) {
+  countNodes(document.body);
+  const t0 = performance.now();
+  const count = countNodes(document.body);
+  return { ms: performance.now() - t0, acc: count };
+}
+
 function runTraverse(document) {
   const t0 = performance.now();
   const count = countNodes(document.body);
   return { ms: performance.now() - t0, acc: count };
+}
+
+// Cold document: parsed fresh every round, outside any timing window, and
+// never elementCounted — so queryCold casts cold wrappers with selector
+// caches unhit, and the traverseCold walk right after still finds most of
+// the tree uncast (querying first warms only the matched subset; traversing
+// first would warm the queries fully).
+function parseColdDocument(Window) {
+  const window = new Window();
+  window.document.write(HTML);
+  return window.document;
 }
 
 // --- Main -----------------------------------------------------------------------
@@ -212,15 +265,40 @@ async function main() {
   const { Window } = await ENGINE_LOADERS[ARGS.engine]();
 
   // Round-major loop: each round runs the full pipeline (parse → build →
-  // query → serialize → traverse) so the per-round wall time is a real
-  // pipeline total instead of a sum of phase medians. Warmup rounds (count =
-  // max of the old per-phase warmups = 2) are fully discarded. Query /
-  // serialize / traverse run against the round's own freshly parsed document
-  // (warm semantics, unchanged; cold split is a later step).
+  // queryHot → getById → getByTag → serialize → traverseWarm, then a fresh
+  // cold document for queryCold → traverseCold) so the per-round wall time is
+  // a real pipeline total instead of a sum of phase medians. Warmup rounds
+  // (count = max of the old per-phase warmups = 2) are fully discarded.
+  // Query / serialize run against the round's own freshly parsed shared
+  // document, and traverseWarm times the second walk of it (an untimed first
+  // pass resides wrappers + navigation memo) — warm semantics: elementCount
+  // plus repeat visits pin wrappers and memo. queryCold / traverseCold run on a
+  // second document parsed fresh every round and never elementCounted, so
+  // the walk casts cold wrappers and misses memo.
   const WARMUP_ROUNDS = 2;
-  const samples = { parse: [], build: [], query: [], serialize: [], traverse: [] };
+  const samples = {
+    parse: [],
+    build: [],
+    queryHot: [],
+    queryCold: [],
+    getById: [],
+    getByTag: [],
+    serialize: [],
+    traverseWarm: [],
+    traverseCold: [],
+  };
   const roundTotals = [];
-  const sink = { parse: 0, build: 0, query: 0, serialize: 0, traverse: 0 };
+  const sink = {
+    parse: 0,
+    build: 0,
+    queryHot: 0,
+    queryCold: 0,
+    getById: 0,
+    getByTag: 0,
+    serialize: 0,
+    traverseWarm: 0,
+    traverseCold: 0,
+  };
   const checksRounds = [];
   let workloadBuild = null;
 
@@ -239,32 +317,50 @@ async function main() {
 
     const built = runBuild(Window);
     await collectAndDrain();
-    const queried = runQuery(sharedDocument);
+    const hot = runQueryBatch(sharedDocument);
+    await collectAndDrain();
+    const byId = runGetById(sharedDocument);
+    await collectAndDrain();
+    const byTag = runGetByTag(sharedDocument);
     await collectAndDrain();
     const serialized = runSerialize(sharedDocument);
     await collectAndDrain();
-    const traversed = runTraverse(sharedDocument);
+    const warm = runTraverseWarm(sharedDocument);
+    await collectAndDrain();
+    const coldDocument = parseColdDocument(Window);
+    const cold = runQueryBatch(coldDocument);
+    await collectAndDrain();
+    const traversedCold = runTraverse(coldDocument);
     const roundTotal = performance.now() - tRound0;
     await collectAndDrain();
 
     if (!measured) continue;
     samples.parse.push(parseMs);
     samples.build.push(built.ms);
-    samples.query.push(queried.ms);
+    samples.queryHot.push(hot.ms);
+    samples.queryCold.push(cold.ms);
+    samples.getById.push(byId.ms);
+    samples.getByTag.push(byTag.ms);
     samples.serialize.push(serialized.ms);
-    samples.traverse.push(traversed.ms);
+    samples.traverseWarm.push(warm.ms);
+    samples.traverseCold.push(traversedCold.ms);
     roundTotals.push(roundTotal);
     sink.parse += 1;
     sink.build += built.acc;
-    sink.query += queried.acc;
+    sink.queryHot += hot.acc;
+    sink.queryCold += cold.acc;
+    sink.getById += byId.acc;
+    sink.getByTag += byTag.acc;
     sink.serialize += serialized.acc;
-    sink.traverse += traversed.acc;
+    sink.traverseWarm += warm.acc;
+    sink.traverseCold += traversedCold.acc;
     workloadBuild = built;
     checksRounds.push({
-      queryHits: queried.hits,
+      queryHits: { hot: hot.hits, cold: cold.hits, byId: byId.hits, byTag: byTag.count },
       build: { treeNodes: built.treeNodes, probeIds: built.probeIds },
       serializeHash: serialized.serializeHash,
-      traverseCount: traversed.acc,
+      traverseCount: warm.acc,
+      traverseColdCount: traversedCold.acc,
       elementCount,
     });
   }
@@ -291,9 +387,13 @@ async function main() {
     phases: {
       parse: summarize(samples.parse),
       build: summarize(samples.build),
-      query: summarize(samples.query),
+      queryHot: summarize(samples.queryHot),
+      queryCold: summarize(samples.queryCold),
+      getById: summarize(samples.getById),
+      getByTag: summarize(samples.getByTag),
       serialize: summarize(samples.serialize),
-      traverse: summarize(samples.traverse),
+      traverseWarm: summarize(samples.traverseWarm),
+      traverseCold: summarize(samples.traverseCold),
     },
     // Per-round pipeline wall time (parse start → traverse end), not a sum of
     // phase medians.
