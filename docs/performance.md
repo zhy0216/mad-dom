@@ -24,8 +24,17 @@ bun benchmark/run.mjs
 
 The DOM doesn't live in JS objects. Nodes are stored in a Rust memory arena,
 HTML is parsed natively, and selector matching runs natively — JS reaches all
-of it through a thin Node-API binding. No per-node JS wrapper tax on the hot
-path.
+of it through a thin Node-API binding. Bulk work is where that pays: parsing,
+serializing (`innerHTML`) and selector queries are single native operations
+and run 1.8–4.5× ahead of happy-dom in the per-phase dom benchmark
+(`bun benchmark/dom-bench/run.mjs`).
+
+The trade-off is the other direction: every individual node property read
+crosses the binding, and each node gets a lazily-minted JS wrapper. A raw
+`firstChild`/`nextSibling` tree walk over ~18k nodes is the one workload shape
+where happy-dom's plain JS objects win (~3 ms vs ~20 ms). The practical rule:
+keep bulk operations native (`parseHtml`, `querySelectorAll`, `innerHTML`) and
+touch individual nodes from JS only where you actually need them.
 
 ## Regression gate
 

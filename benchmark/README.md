@@ -81,6 +81,40 @@ worker（`dom-bench/worker.mjs`）对两个引擎跑同一份确定性负载，�
   对数千子节点的 `childNodes` 快照读取在该缺口窗口内会直接崩溃。该缺口是一个
   独立的正确性问题，不改变本基准的计量公平性。
 
+### traverse 阶段剖析
+
+traverse 是 mad-dom 唯一显著落后的阶段（~21 ms vs happy-dom ~2.8 ms）。
+2026-09-04 用同负载（18,102 节点，~36k 次边读取）做了分层测量：
+
+| 场景 | 耗时 |
+| --- | --- |
+| facade 全树 `firstChild`/`nextSibling` 遍历（冷，每轮 gc+排空） | ~20.5 ms |
+| 同一负载的 `TreeWalker.nextNode` 遍历（冷，正确驱逐后） | ~18–20 ms |
+| 仅 native handle 遍历（绕过 facade，冷） | ~15.1 ms |
+| facade 遍历，所有 wrapper 被 JS 侧持有（纯缓存命中） | ~8.3 ms |
+| 仅 native handle 遍历，wrapper 全部持有（纯缓存命中） | ~6.5 ms |
+
+结论：**瓶颈是每个节点的 wrapper 铸造，不是遍历写法，也不是 Rust 树链查询。**
+
+- 缓存命中时每条边 ≈ 0.2 µs（N-API 往返 + 一次引用探测的下限），36k 条边
+  ≈ 6.5–8.3 ms——这已经是 happy-dom 全阶段（2.8 ms，纯 JS 属性读取）的
+  ~2.8 倍。朴素 getter 遍历对任何 native-backed DOM 都是结构性劣势。
+- 冷路径每个节点额外 ~1 µs：native 侧 `napi_new_instance` + wrap +
+  create_reference（~0.5 µs），facade 侧再付一次 `wrapperKind()` FFI
+  （含 nodeName/namespace 两个 JS 字符串分配，0.30 µs；对比单读
+  `nodeType()` 只要 0.12 µs）+ facade wrapper 对象与两级 WeakMap 登记。
+  createElement 密集的 build 阶段为同一原因偏慢（20k 次 mint）。
+- **测量坑**：若在 `Bun.gc(true)` 后不排空事件循环就直接测，Bun 推迟执行的
+  finalizer 会让缓存里留下"已回收未 finalize"条目、堆也没清扫，此时
+  TreeWalker 会虚快到 ~5 ms，容易得出"换 TreeWalker 就能省 4 倍"的错误结论。
+  正确驱逐后递归/迭代/TreeWalker 三种写法的成本一致。dom-bench 的
+  collectAndDrain 正是为了避开这个 artifact。
+
+未来若要压缩这个阶段，起点是上面的分层数字：可动的杠杆是让节点分类信息
+（nodeType/nodeName/namespace）随 mint 一并产出、省掉 facade 侧逐节点的
+分类 FFI，上限约 15–25%；再往下就是弱缓存身份语义（T20）与 N-API 往返本身，
+属于会改变 benchmark 含义的架构改动。
+
 ## 与 hdunit 的关系
 
 本目录的 integration benchmark 与 hdunit（`tests/happy-dom/`，[ADR-0006](../adr/0006-happy-dom-unit-suite-hdunit.md)）
