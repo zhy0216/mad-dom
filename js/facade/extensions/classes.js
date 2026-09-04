@@ -197,15 +197,13 @@ export function nodeHandleOf(wrapper) {
 }
 
 /**
- * Returns the per-tag element class for a native element handle, following the
- * happy-dom selection: an SVG-namespace element resolves against the SVG
+ * Returns the per-tag element class for a tag name and namespace, following
+ * the happy-dom selection: an SVG-namespace element resolves against the SVG
  * registry (falling back to `SVGElement` for an unknown SVG tag), a registered
  * HTML common tag uses its class, an undefined hyphenated HTML name uses
  * `HTMLElement` and any other undefined HTML name uses `HTMLUnknownElement`.
  */
-export function elementClassFor(handle) {
-  const tag = String(handle.nodeName());
-  const namespace = handle.namespaceUri();
+export function elementClassForName(tag, namespace) {
   if (namespace === SVG_NAMESPACE) {
     const svgClass = SVG_ELEMENT_CLASSES.get(tag);
     return svgClass ?? (fallbackSvgElementClass ?? Element);
@@ -222,16 +220,25 @@ export function elementClassFor(handle) {
   return fallback ?? Element;
 }
 
+/** The `elementClassForName` convenience for a live native element handle. */
+export function elementClassFor(handle) {
+  return elementClassForName(String(handle.nodeName()), handle.namespaceUri());
+}
+
 /**
  * The `NodeHandle` wrapper factory: selects the direct prototype per node kind
  * — per-tag classes for elements (T48A), the `DocumentFragment` class for
  * fragments, `Text` / `Comment` / `CharacterData` for character-data nodes and
  * the base `Node` for everything else.
+ *
+ * Classification is read with the single native `wrapperKind()` crossing
+ * (`[nodeType, nodeName, namespaceUri]`) — three separate reads here would
+ * triple the per-wrapper FFI cost, which dominates DOM-churn workloads.
  */
 export function createNodeWrapper(handle) {
-  const nodeType = handle.nodeType();
+  const [nodeType, name, namespace] = handle.wrapperKind();
   if (nodeType === 1) {
-    return new (elementClassFor(handle))(handle);
+    return new (elementClassForName(name, namespace))(handle);
   }
   if (nodeType === 11) {
     return new DocumentFragment(handle);

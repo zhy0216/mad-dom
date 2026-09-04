@@ -334,7 +334,11 @@ pub struct EventHandle {
 fn now_ms() -> f64 {
     static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     let start = *START.get_or_init(std::time::Instant::now);
-    start.elapsed().as_nanos() as f64 / 1_000_000.0
+    // `.max(1)`: the first event in a process initializes `START` and measures
+    // the elapsed span in the same call, which can land on a zero tick and
+    // would mint `timeStamp === 0` — WHATWG timestamps are always positive
+    // (a real page's navigation start always precedes its first event).
+    start.elapsed().as_nanos().max(1) as f64 / 1_000_000.0
 }
 
 /// Creates a new event with the given WebIDL init values and returns the

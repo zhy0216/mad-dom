@@ -124,6 +124,42 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
     doc.destroy();
   });
 
+  test("reads in the collected-but-not-yet-finalized window re-mint instead of returning undefined", () => {
+    // Bun defers napi finalizers to the next event-loop turn, so right after
+    // a synchronous GC a collected wrapper's cache entry is still present but
+    // stale ("collected but not yet finalized"). wrap_node must detect the
+    // dead reference and mint a fresh wrapper instead of handing JavaScript
+    // `undefined` (the pre-fix behaviour, which truncated tree walks and
+    // crashed chained reads).
+    const doc = createDocument();
+    let parent = null;
+    let wr = null;
+    const spawn = () => {
+      const p = doc.createElement("ul");
+      const child = doc.createElement("li");
+      doc.appendChild(p, child);
+      expect(p.firstChild()).toBe(child); // caches the child wrapper
+      parent = p;
+      wr = new WeakRef(child);
+    };
+    spawn();
+
+    // Collect WITHOUT draining the event loop: the wrapper is collected but
+    // its finalizer has not run yet, so the cache entry is stale.
+    Bun.gc(true);
+    expect(wr.deref()).toBeUndefined();
+
+    const read = (p) => p.firstChild();
+    const fresh = read(parent);
+    expect(fresh).not.toBeUndefined();
+    expect(fresh).not.toBeNull();
+    expect(fresh.nodeName()).toBe("li");
+    // The re-minted wrapper has stable identity for subsequent reads.
+    expect(read(parent)).toBe(fresh);
+
+    doc.destroy();
+  });
+
   test("a lone child wrapper keeps its document arena alive", async () => {
     // Settle lingering documents from earlier tests so the baseline is clean
     // and the deltas below are precise.

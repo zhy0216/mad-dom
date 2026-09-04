@@ -22,11 +22,12 @@
 //! the same node hand JavaScript one and the same object (strict equality).
 //! The cache is *weak*: entries never keep a wrapper alive. When JavaScript
 //! collects a wrapper, its finalizer drops the Rust [`NodeHandle`], whose
-//! [`Drop`] evicts the cache entry. One transient gap — see
-//! [`SharedDocument::wrap_node`]: between a wrapper's collection and its
-//! finalizer, a cache hit hands JavaScript `undefined` instead of an object.
-//! This keeps the cache bounded without pinning wrapper objects — no
-//! strong cache that would let every wrapper live forever.
+//! [`Drop`] evicts the cache entry. Between a wrapper's collection and its
+//! finalizer ("collected but not yet finalized") an entry still upgrades, so
+//! every cache hit probes the upgraded reference for liveness and mints a
+//! fresh wrapper when the value reads back empty — see
+//! [`SharedDocument::wrap_node`]. This keeps the cache bounded without pinning
+//! wrapper objects — no strong cache that would let every wrapper live forever.
 //!
 //! # Ownership chain
 //!
@@ -88,8 +89,11 @@
 //!   point where wrapper identity is minted — at most one live JS wrapper per
 //!   document and node.
 //!
-//! No `unsafe` is written in this module; FFI/unsafe is confined to the `napi`
-//! crates.
+//! FFI/unsafe is otherwise confined to the `napi` crates; the single exception
+//! is the liveness probe in [`SharedDocument::wrap_node`] /
+//! [`SharedDocument::wrap_document`], which peeks at the raw reference value
+//! through `napi`'s `ToNapiValue` (one confined `unsafe` call, documented
+//! there).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -97,7 +101,7 @@ use std::sync::{Arc, Mutex};
 
 use mad_dom_core::arena::NodeId;
 use mad_dom_core::dom::{Document, NodeType};
-use napi::bindgen_prelude::{JavaScriptClassExt, Reference, WeakReference};
+use napi::bindgen_prelude::{JavaScriptClassExt, Reference, ToNapiValue, WeakReference};
 use napi::{Env, Error as NapiError, Status};
 use napi_derive::napi;
 
@@ -139,7 +143,12 @@ impl Drop for LiveDocument {
 /// the "collected but not yet finalized" window semantics.
 pub(crate) struct SharedDocument {
     document: Mutex<Option<LiveDocument>>,
-    wrappers: Mutex<HashMap<NodeId, WeakReference<NodeHandle>>>,
+    /// Each entry pairs the weak wrapper reference with the mint stamp of the
+    /// [`NodeHandle`] value that owns it. A stale value finalized *after* its
+    /// cache entry was replaced by a re-mint (the "collected but not yet
+    /// finalized" window) must only evict its own entry — [`Drop for
+    /// NodeHandle`] compares stamps before removing.
+    wrappers: Mutex<HashMap<NodeId, (WeakReference<NodeHandle>, u64)>>,
     /// The single JS `DocumentHandle` wrapper minted for this document, held
     /// weakly. `window.document()` and `NodeHandle.owner_document()` both
     /// resolve through [`SharedDocument::wrap_document`], so every route hands
@@ -153,6 +162,38 @@ pub(crate) struct SharedDocument {
     /// `ERR_MAD_DOM_AFFINITY_*` error instead of racing (first phase: no
     /// cross-thread DOM).
     affinity: AffinityToken,
+    /// Monotonic mint stamp counter for the wrapper caches (see `wrappers`).
+    stamps: AtomicU64,
+}
+
+/// Probes a wrapper-cache entry for the "collected but not yet finalized"
+/// window, upgrading it to a live [`Reference`] when the JS object is still
+/// alive.
+///
+/// A [`WeakReference`] survives JS-side collection until the Node-API
+/// finalizer runs, yet the reference value already reads back empty at that
+/// point. This probe reads the raw value — the module's only `unsafe` island,
+/// one plain Node-API read through the `napi` conversion trait: a null value
+/// (measured on Bun 1.4.0 for a collected object) or a finalized entry marks
+/// the wrapper dead and the caller mints a replacement; a live value takes the
+/// regular [`WeakReference::upgrade`] path, so the return machinery hands back
+/// the same JS object (identity preserved).
+fn reference_value_if_live<T: 'static>(
+    env: Env,
+    weak: WeakReference<T>,
+) -> napi::Result<Option<Reference<T>>> {
+    let raw_env = env.raw();
+    let probe = weak.clone();
+    let value = match unsafe { ToNapiValue::to_napi_value(raw_env, probe) } {
+        Ok(value) => value,
+        // The finalizer already ran and dropped the entry's value: dead.
+        Err(_) => return Ok(None),
+    };
+    if value.is_null() {
+        // Collected but not yet finalized: the value reads back empty.
+        return Ok(None);
+    }
+    weak.upgrade(env)
 }
 
 impl SharedDocument {
@@ -165,16 +206,17 @@ impl SharedDocument {
     /// evicts the entry and the next miss mints a fresh wrapper (overwriting
     /// any residual entry).
     ///
-    /// Known transient gap: in the "collected but not yet finalized" window,
-    /// `upgrade` still succeeds — it probes the finalize-callback `Arc`, not
-    /// object liveness — and returning that entry hands JavaScript `undefined`
-    /// (measured on Bun 1.4.0: `napi_get_reference_value` yields an empty
-    /// handle for a collected object). The finalizer turn evicts the entry and
-    /// normal behavior resumes. This is a correctness gap, not a memory-safety
-    /// issue; production code re-reading a node right after a GC in the same
-    /// event-loop turn may observe it, and a later milestone can harden it
-    /// (e.g. re-mint on an empty reference value). The Bun GC tests drain
-    /// finalizers before asserting, so they never observe the window.
+    /// "Collected but not yet finalized" window: Bun defers Node-API
+    /// finalizers to a later event-loop turn, so between a wrapper's GC and
+    /// its finalizer a cache entry still upgrades — but the reference value
+    /// reads back empty (measured on Bun 1.4.0: `napi_get_reference_value`
+    /// yields an empty handle for a collected object). Returning such an entry
+    /// would hand JavaScript `undefined` instead of a node. Every cache hit
+    /// therefore probes the raw reference value ([`reference_value_if_live`])
+    /// and falls through to a fresh mint when it is empty. The re-mint
+    /// overwrites the stale entry; the stale value's delayed [`Drop`] compares
+    /// mint stamps and only evicts its own entry, so the replacement's
+    /// identity survives.
     ///
     /// Construction of the [`NodeHandle`] value lives here (the uniqueness
     /// invariant): the value is immediately boxed into the new JS object by
@@ -191,20 +233,22 @@ impl SharedDocument {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .get(&id)
             .cloned();
-        if let Some(weak) = cached {
-            if let Some(reference) = weak.upgrade(env)? {
+        if let Some((weak, _)) = cached {
+            if let Some(reference) = reference_value_if_live(env, weak)? {
                 return Ok(reference);
             }
         }
+        let stamp = self.stamps.fetch_add(1, Ordering::Relaxed);
         let reference = NodeHandle {
             shared: Arc::clone(self),
             id,
+            stamp,
         }
         .into_reference(env)?;
         self.wrappers
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(id, reference.downgrade());
+            .insert(id, (reference.downgrade(), stamp));
         Ok(reference)
     }
 
@@ -215,18 +259,21 @@ impl SharedDocument {
     /// (`WindowHandle.document`) and any node (`NodeHandle.owner_document`) —
     /// goes through this point, so the same native handle object is returned
     /// on every read while it stays alive. Like `wrap_node`, the cache is
-    /// weak: once the wrapper's finalizer runs, the next miss mints a fresh
-    /// wrapper.
+    /// weak and probes for the "collected but not yet finalized" window before
+    /// handing back a cached entry. No stamp is needed here: `DocumentHandle`
+    /// has no evicting [`Drop`], so a re-mint simply overwrites the entry and
+    /// no late drop can clobber the replacement.
     pub(crate) fn wrap_document(
         self: &Arc<Self>,
         env: Env,
     ) -> napi::Result<Reference<DocumentHandle>> {
-        let mut guard = self
+        let cached = self
             .document_wrapper
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if let Some(weak) = guard.as_ref() {
-            if let Some(reference) = weak.upgrade(env)? {
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        if let Some(weak) = cached {
+            if let Some(reference) = reference_value_if_live(env, weak)? {
                 return Ok(reference);
             }
         }
@@ -234,7 +281,10 @@ impl SharedDocument {
             shared: Arc::clone(self),
         }
         .into_reference(env)?;
-        *guard = Some(reference.downgrade());
+        *self
+            .document_wrapper
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(reference.downgrade());
         Ok(reference)
     }
 }
@@ -332,6 +382,7 @@ impl DocumentHandle {
                 wrappers: Mutex::new(HashMap::new()),
                 document_wrapper: Mutex::new(None),
                 affinity: AffinityToken::create(),
+                stamps: AtomicU64::new(0),
             }),
         }
     }
@@ -666,6 +717,9 @@ impl DocumentHandle {
 pub struct NodeHandle {
     shared: Arc<SharedDocument>,
     id: NodeId,
+    /// Mint stamp matching the cache entry this value owns (see
+    /// [`SharedDocument::wrappers`]).
+    stamp: u64,
 }
 
 impl Drop for NodeHandle {
@@ -673,18 +727,25 @@ impl Drop for NodeHandle {
     ///
     /// This [`Drop`] runs when the wrapper's JS object was collected (the napi
     /// finalizer drops the wrapped Rust value) or at process teardown. The
-    /// cache holds at most one entry per [`NodeId`], and that entry belongs to
-    /// this very value — a replacement wrapper is only minted after this entry
-    /// upgraded to `None` (i.e. after this value was already dropped) — so
-    /// removing by id is correct. It keeps dead entries from accumulating and
-    /// guarantees identity never bleeds across reused arena slots once Core
-    /// enables slot recycling.
+    /// cache holds at most one entry per [`NodeId`]; normally that entry
+    /// belongs to this very value and removing by id is correct. The one
+    /// exception is the "collected but not yet finalized" window:
+    /// [`SharedDocument::wrap_node`] may have re-minted a replacement wrapper
+    /// for the same node after this value was collected but before this
+    /// [`Drop`] ran. The mint stamp distinguishes the two — only the entry
+    /// this value owns is evicted, so a replacement's identity survives this
+    /// late drop. Eviction keeps dead entries from accumulating and guarantees
+    /// identity never bleeds across reused arena slots once Core enables slot
+    /// recycling.
     fn drop(&mut self) {
-        self.shared
+        let mut guard = self
+            .shared
             .wrappers
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .remove(&self.id);
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if matches!(guard.get(&self.id), Some((_, stamp)) if *stamp == self.stamp) {
+            guard.remove(&self.id);
+        }
     }
 }
 
@@ -790,6 +851,32 @@ impl NodeHandle {
     pub fn node_name(&self, env: Env) -> napi::Result<String> {
         check_affinity(&self.shared, &env)?;
         self.node_name_inner().map_err(|err| err.into_napi(&env))
+    }
+
+    /// The wrapper-classification bundle: `nodeType`, `nodeName` and
+    /// `namespaceUri` in one crossing.
+    ///
+    /// The facade wrapper factory needs all three to pick the wrapper class;
+    /// reading them separately costs three FFI crossings per minted wrapper,
+    /// which dominates DOM-churn workloads (tree walks, bulk node creation).
+    /// One call, one document-lock scope. Name and namespace are empty for
+    /// non-element nodes, which never read them.
+    #[napi(catch_unwind)]
+    pub fn wrapper_kind(&self, env: Env) -> napi::Result<(u32, String, Option<String>)> {
+        check_affinity(&self.shared, &env)?;
+        self.run(|doc| {
+            let kind = doc.node_type(self.id).map(node_type_value)?;
+            let (name, namespace) = if kind == 1 {
+                (
+                    doc.node_name(self.id)?.to_owned(),
+                    doc.element_namespace_uri(self.id)?.map(str::to_owned),
+                )
+            } else {
+                (String::new(), None)
+            };
+            Ok((kind, name, namespace))
+        })
+        .map_err(|err| err.into_napi(&env))
     }
 
     #[napi(catch_unwind)]
@@ -904,6 +991,7 @@ mod tests {
         NodeHandle {
             shared: Arc::clone(&doc.shared),
             id,
+            stamp: 0,
         }
     }
 
