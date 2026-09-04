@@ -167,23 +167,36 @@ function runBuild(Window) {
   // JS counter, not root.childNodes.length: the childNodes snapshot read on a
   // multi-thousand-child node crashes mad-dom in the wrapper-cache "collected
   // but not yet finalized" window (handle.rs transient gap); tracked separately.
-  return { ms: performance.now() - t0, acc: BUILD_NODES, builtElements, builtTextNodes, buildRoots };
+  const ms = performance.now() - t0;
+  // Real-tree verification, outside the measured window and read exactly once
+  // right after the build (same transient-gap discipline as above): subtree
+  // node count plus spot-probes of known ids.
+  const treeNodes = countNodes(root) - 1;
+  const probeIds = ["node-0", "node-9999", "node-19999"].map((id) => (root.querySelector("#" + id) ? 1 : 0)).join("");
+  const probeIdSum = [...probeIds].reduce((sum, c) => sum + Number(c), 0);
+  return { ms, acc: treeNodes + probeIdSum, treeNodes, probeIds, builtElements, builtTextNodes, buildRoots };
 }
 
 function runQuery(document) {
-  let acc = 0;
   const t0 = performance.now();
-  acc += document.querySelectorAll(".item-3").length;
-  acc += document.querySelectorAll("section > ul > li").length;
-  acc += document.querySelector("#node-1234") === null ? 0 : 1;
-  acc += document.getElementsByTagName("li").length;
-  return { ms: performance.now() - t0, acc };
+  const item3 = document.querySelectorAll(".item-3").length;
+  const descendant = document.querySelectorAll("section > ul > li").length;
+  const hit = document.querySelector("#node-1234");
+  const idHit = hit && hit.id === "node-1234" ? 1 : 0;
+  const byTag = document.getElementsByTagName("li").length;
+  const acc = item3 + descendant + idHit + byTag;
+  return { ms: performance.now() - t0, acc, hits: { item3, descendant, idHit, byTag } };
 }
 
 function runSerialize(document) {
   const t0 = performance.now();
   const html = document.body.innerHTML;
-  return { ms: performance.now() - t0, acc: html.length };
+  const ms = performance.now() - t0;
+  // Full-content fingerprint outside the measured window (timing stays a pure
+  // length read so both engines pay the same measured cost).
+  let serializeHash = 0;
+  for (let i = 0; i < html.length; i++) serializeHash = (serializeHash * 31 + html.charCodeAt(i)) | 0;
+  return { ms, acc: html.length, serializeHash };
 }
 
 function countNodes(node) {
@@ -251,6 +264,16 @@ async function main() {
     },
     // Acc sinks, reported so a dead-code-elimination surprise is visible.
     sink: { parse: parse.acc, build: build.acc, query: query.acc, serialize: serialize.acc, traverse: traverse.acc },
+    // Structured validity checks: exact per-selector hits, real built-tree
+    // counts, content hash, and traversal size prove both engines ran the
+    // same correct workload (not a length coincidence).
+    checks: {
+      queryHits: query.last.hits,
+      build: { treeNodes: build.last.treeNodes, probeIds: build.last.probeIds },
+      serializeHash: serialize.last.serializeHash,
+      traverseCount: traverse.last.acc,
+      elementCount,
+    },
   };
   console.log(JSON.stringify(report, null, 2));
 }

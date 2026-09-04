@@ -82,6 +82,35 @@ function runEngine(engine, runs) {
   return report;
 }
 
+function workloadsMatch(mad, happy) {
+  return (
+    mad.workload.elementCount === happy.workload.elementCount &&
+    mad.checks.queryHits.item3 === happy.checks.queryHits.item3 &&
+    mad.checks.queryHits.descendant === happy.checks.queryHits.descendant &&
+    mad.checks.queryHits.idHit === happy.checks.queryHits.idHit &&
+    mad.checks.queryHits.byTag === happy.checks.queryHits.byTag &&
+    mad.checks.build.treeNodes === happy.checks.build.treeNodes &&
+    mad.checks.build.probeIds === happy.checks.build.probeIds &&
+    mad.checks.serializeHash === happy.checks.serializeHash &&
+    mad.checks.traverseCount === happy.checks.traverseCount
+  );
+}
+
+function checkHosts(mad, happy) {
+  if (mad.host.os !== happy.host.os || mad.host.arch !== happy.host.arch) {
+    console.error(
+      `host mismatch: mad-dom ${mad.host.os}/${mad.host.arch} vs happy-dom ${happy.host.os}/${happy.host.arch} — comparison is invalid`,
+    );
+    process.exit(1);
+  }
+}
+
+function bunLabel(mad, happy) {
+  return mad.host.bun === happy.host.bun
+    ? `bun ${mad.host.bun}`
+    : `bun (mad-dom ${mad.host.bun} / happy-dom ${happy.host.bun})`;
+}
+
 function formatRatio(madMs, happyMs) {
   const ratio = happyMs / madMs;
   return ratio >= 1 ? `${ratio.toFixed(1)}x` : `${ratio.toFixed(2)}x (mad-dom slower)`;
@@ -93,12 +122,12 @@ function printReport(reports) {
   const row = (cells) => cells.map((cell) => String(cell).padEnd(width)).join("");
 
   console.log("dom-intensive benchmark: mad-dom vs happy-dom");
-  console.log(`bun ${mad.host.bun} · ${mad.host.os}/${mad.host.arch} · median of ${mad.workload.runs} measured runs per phase`);
+  console.log(`${bunLabel(mad, happy)} · ${mad.host.os}/${mad.host.arch} · median of ${mad.workload.runs} measured runs per phase`);
   console.log(
     `workload: ${mad.workload.elementCount} elements (${Math.round(mad.workload.htmlBytes / 1024)} KB HTML) · ` +
       `${mad.workload.builtElements} elements + ${mad.workload.builtTextNodes} text nodes`,
   );
-  if (mad.workload.elementCount !== happy.workload.elementCount || mad.sink.serialize !== happy.sink.serialize) {
+  if (!workloadsMatch(mad, happy)) {
     console.log("WARNING: engines saw different workloads — comparison is invalid");
   }
   console.log("");
@@ -122,6 +151,8 @@ function printReport(reports) {
 
 const args = parseArgs(process.argv.slice(2));
 const reports = ENGINES.map((engine) => runEngine(engine, args.runs));
+checkHosts(reports[0], reports[1]);
+const valid = workloadsMatch(reports[0], reports[1]);
 
 if (args.json) {
   console.log(
@@ -130,6 +161,7 @@ if (args.json) {
         schema: "mad-dom-dom-bench-comparison/1",
         phases: PHASES,
         reports,
+        valid,
       },
       null,
       2,
