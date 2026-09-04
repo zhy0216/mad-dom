@@ -107,8 +107,17 @@ impl AffinityId {
     /// [`AffinityId::Observed`]; [`AffinityId::Unobservable`] exists so a
     /// context whose identity could not be determined is representable and is
     /// rejected rather than assumed.
+    ///
+    /// The observed id is cached per thread: a thread's [`std::thread::ThreadId`]
+    /// is immutable for its lifetime, so the first observation is every later
+    /// one. This turns the guard's per-call cost (paid by every native entry,
+    /// DOM-churn hot) from a `thread::current()` round trip into a plain
+    /// thread-local read; the observable semantics are unchanged.
     pub(crate) fn current() -> Self {
-        Self::Observed(std::thread::current().id())
+        thread_local! {
+            static SELF_ID: std::thread::ThreadId = std::thread::current().id();
+        }
+        Self::Observed(SELF_ID.with(|id| *id))
     }
 }
 

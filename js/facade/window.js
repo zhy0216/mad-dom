@@ -44,6 +44,7 @@
 import { loadNative } from "../native-loader.js";
 
 import { Document } from "./document.js";
+import { DOC_STATE_SLOT } from "./extensions/classes.js";
 import { installExtensions } from "./extensions/index.js";
 
 export const seam = Object.freeze({
@@ -78,6 +79,57 @@ const WRAP_CACHE = new WeakMap();
 // `ctx.registerHandleType`.
 const HANDLE_TYPES = new Map();
 
+// --- Per-document facade state + wrapper pinning -------------------------
+//
+// Each facade-wrapped document owns a state object:
+//
+//   epoch — an `Int32Array` over the native document's structural epoch slot
+//           (`DocumentHandle.epochView()`): the binding bumps the slot on
+//           every call that changed the tree relations, so the navigation
+//           getters (extensions/node.js) can validate their memoized reads
+//           with a plain typed-array load — no FFI. `null` when the native
+//           binding does not carry the epoch surface; the memo then stays
+//           off and every read crosses into native as before.
+//
+//   pinned — a strong `Map` of native handle → facade wrapper, keyed into
+//           this WeakMap by the document's native handle. The weak key keeps
+//           the native binding's weak wrapper cache authoritative (a released
+//           document still releases everything — the T47 lifecycle test), but
+//           *while the document's native handle is reachable* every wrapper
+//           minted under it stays alive. That stability is what lets the
+//           navigation memo survive garbage collection: a tree walk over an
+//           unchanged document re-reads memoized wrappers instead of
+//           re-minting every node, which is the difference between native-
+//           speed traversal and per-node FFI churn. Memory is bounded by the
+//           document's own node count — the same order happy-dom's plain JS
+//           nodes occupy.
+const DOC_STATES = new WeakMap();
+
+function docStateOf(docHandle) {
+  let state = DOC_STATES.get(docHandle);
+  if (state === undefined) {
+    state = { epoch: null, pinned: new Map() };
+    try {
+      state.epoch = new Int32Array(docHandle.epochView());
+    } catch {
+      // Older native bindings without the epoch surface: the navigation memo
+      // stays disabled, every read crosses into native as before.
+    }
+    DOC_STATES.set(docHandle, state);
+  }
+  return state;
+}
+
+// Pins a node wrapper in its document's state (see `DOC_STATES`). `docState`
+// is passed by callers that already know the wrapper's document (navigation
+// getters, the custom-element mint path); resolving it from the handle costs
+// an `ownerDocument()` crossing and only happens on a cold mint.
+function pinWrapper(nativeHandle, wrapper, docState) {
+  const state = docState ?? docStateOf(nativeHandle.ownerDocument());
+  wrapper[DOC_STATE_SLOT] = state;
+  state.pinned.set(nativeHandle, wrapper);
+}
+
 function registerHandleType(constructorName, makeWrapper) {
   if (typeof constructorName !== "string" || constructorName.length === 0) {
     throw new TypeError("registerHandleType requires a non-empty constructor name");
@@ -91,7 +143,10 @@ function registerHandleType(constructorName, makeWrapper) {
   HANDLE_TYPES.set(constructorName, makeWrapper);
 }
 
-function wrap(nativeHandle) {
+// `docState` (optional, node wrappers only): the already-resolved per-
+// document state of the wrapper's owning document; navigation getters pass
+// their own so a mint never pays an extra `ownerDocument()` crossing.
+function wrap(nativeHandle, docState) {
   if (nativeHandle === null || nativeHandle === undefined) return nativeHandle;
   const cached = WRAP_CACHE.get(nativeHandle);
   if (cached) return cached;
@@ -107,16 +162,26 @@ function wrap(nativeHandle) {
   const wrapper = makeWrapper(nativeHandle);
   WRAP_CACHE.set(nativeHandle, wrapper);
   WRAPPER_TO_HANDLE.set(wrapper, nativeHandle);
+  if (typeName === "NodeHandle") {
+    pinWrapper(nativeHandle, wrapper, docState);
+  } else if (typeName === "DocumentHandle") {
+    wrapper[DOC_STATE_SLOT] = docStateOf(nativeHandle);
+  }
   return wrapper;
 }
 
 // Registers a wrapper that was constructed outside `wrap` (the T48A
 // `new DefinedClass()` mint path) in the same two caches, so a later `wrap`
-// of the same native handle hands back that exact object.
-function registerWrap(nativeHandle, wrapper) {
+// of the same native handle hands back that exact object. `docHandle` (the
+// mint slot's native document handle) resolves the pin target without an
+// extra crossing.
+function registerWrap(nativeHandle, wrapper, docHandle) {
   if (nativeHandle === null || nativeHandle === undefined) return;
   WRAP_CACHE.set(nativeHandle, wrapper);
   WRAPPER_TO_HANDLE.set(wrapper, nativeHandle);
+  if (docHandle !== undefined) {
+    pinWrapper(nativeHandle, wrapper, docStateOf(docHandle));
+  }
 }
 
 // --- Descriptor helpers ---------------------------------------------------
@@ -157,6 +222,10 @@ const ctx = Object.freeze({
   documentContext,
   registerHandleType,
   registerWrap,
+  // Per-document facade state resolver (see `DOC_STATES`): mint-heavy facade
+  // paths pass the result into `wrap` so a fresh wrapper is pinned without an
+  // extra `ownerDocument()` crossing.
+  docStateOf,
   windowFacadeOfDocument,
   windowSettings,
   windowOptions,

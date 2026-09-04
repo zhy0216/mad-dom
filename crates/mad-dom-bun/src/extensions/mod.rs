@@ -68,6 +68,7 @@ mod attributes_api;
 mod character_data_api;
 mod collection_api;
 mod custom_elements_api;
+mod epoch_api;
 mod events_api;
 mod form_api;
 mod html_api;

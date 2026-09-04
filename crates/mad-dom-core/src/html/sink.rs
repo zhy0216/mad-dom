@@ -490,6 +490,10 @@ fn append_text_to_node(doc: &mut Document, node: NodeId, text: &str) -> bool {
 pub(crate) fn attach_last_child(doc: &mut Document, parent: NodeId, child: NodeId) {
     debug_assert_ne!(parent, child);
     doc.detach(child);
+    // Structural generation: parser/apply link primitive (a relation-write
+    // site; see `Document::structure_generation`). `detach` above bumped for
+    // the unlink; this bump covers the new link itself.
+    doc.bump_structure_generation();
     let last = doc.get(parent).expect("live parent").last_child();
     {
         let n = doc.node_mut(child).expect("live child");
@@ -510,6 +514,9 @@ pub(crate) fn attach_last_child(doc: &mut Document, parent: NodeId, child: NodeI
 /// Inserts the already-detached `child` immediately before `sibling`.
 fn insert_before_handle(doc: &mut Document, sibling: NodeId, child: NodeId) {
     debug_assert_ne!(sibling, child);
+    // Structural generation: parser link primitive (a relation-write site;
+    // see `Document::structure_generation`).
+    doc.bump_structure_generation();
     let parent = doc
         .get(sibling)
         .expect("live sibling")

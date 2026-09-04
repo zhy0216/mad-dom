@@ -29,12 +29,16 @@ serializing (`innerHTML`) and selector queries are single native operations
 and run 1.8–4.5× ahead of happy-dom in the per-phase dom benchmark
 (`bun benchmark/dom-bench/run.mjs`).
 
-The trade-off is the other direction: every individual node property read
-crosses the binding, and each node gets a lazily-minted JS wrapper. A raw
-`firstChild`/`nextSibling` tree walk over ~18k nodes is the one workload shape
-where happy-dom's plain JS objects win (~3 ms vs ~20 ms). The practical rule:
-keep bulk operations native (`parseHtml`, `querySelectorAll`, `innerHTML`) and
-touch individual nodes from JS only where you actually need them.
+The trade-off used to be the other direction: every individual node property
+read crosses the binding, and each node gets a lazily-minted JS wrapper. Since
+the navigation-memo work, a raw `firstChild`/`nextSibling` tree walk is no
+longer the losing shape either — reads over an unchanged tree are served from
+an epoch-guarded JS-side memo (invalidated by any structural mutation), and
+the mint cost dropped with classification stamped at creation (~0.4 ms for an
+18k-node walk, several times ahead of happy-dom). Bulk operations remain the
+sweet spot: parsing, serializing (`innerHTML`) and selector queries are single
+native operations and run 2–5× ahead of happy-dom in the per-phase dom
+benchmark.
 
 ## Regression gate
 

@@ -26,11 +26,25 @@
 // per-document weak cache (via `setRegisterMintedWrapper`, wired by node.js to
 // `ctx.registerWrap`) so later `ctx.wrap` re-entries keep identity.
 
-// Native NodeHandle behind each Node facade. Weak so a facade never pins its
-// node; the native handle keeps its document's arena alive (T20 ownership
-// chain), and wrapper identity is produced by `ctx.wrap`, never by a facade
-// constructor.
-const NODE_HANDLES = new WeakMap();
+// Own-symbol slots minted on every facade wrapper. Symbol keys stay invisible
+// to every WHATWG-visible surface (enumeration, JSON, `in` checks key on
+// names) and read in a couple of nanoseconds — the navigation getters run
+// them on every property read, where a WeakMap lookup would cost 10x.
+//
+//   HANDLE_SLOT    — the native NodeHandle behind the wrapper (the reverse of
+//                    `ctx.wrap`); set by the `Node` constructor /
+//                    `registerWrap` mint paths.
+//   DOC_STATE_SLOT — the wrapper's per-document state object
+//                    (`{ epoch, pinned }`, see js/facade/window.js): the
+//                    structural epoch view the navigation memo validates
+//                    against, and the pin registry keeping the wrapper alive
+//                    while its document facade is.
+//   MEMO_SLOT      — the navigation memo (`{ e, fc, lc, ns, ps, pn }`):
+//                    epoch-guarded last answers of the five navigation reads
+//                    (see js/facade/extensions/node.js).
+export const HANDLE_SLOT = Symbol("mad-dom native handle");
+export const DOC_STATE_SLOT = Symbol("mad-dom document state");
+export const MEMO_SLOT = Symbol("mad-dom navigation memo");
 
 function isNodeHandle(handle) {
   return (
@@ -58,7 +72,7 @@ export class Node {
         "Node can only be constructed from a genuine native Node handle",
       );
     }
-    NODE_HANDLES.set(this, nativeHandle);
+    this[HANDLE_SLOT] = nativeHandle;
   }
 
   // happy-dom Node returns `[object <ConstructorName>]` from
@@ -147,7 +161,9 @@ export class Element extends Node {
       // Register the minted wrapper in the per-document weak cache so a later
       // `ctx.wrap` of the same native handle (e.g. a query or append re-entry)
       // hands back this exact object — identity parity with `createElement`.
-      registerMintedWrapper?.(nativeHandle, this);
+      // The mint slot's document handle lets the registry pin the wrapper in
+      // the right per-document state without an extra FFI read.
+      registerMintedWrapper?.(nativeHandle, this, mint.docHandle);
       return;
     }
     super(nativeHandle);
@@ -193,7 +209,10 @@ export class Comment extends CharacterData {}
 
 /** The native handle behind a wrapper (the reverse of `ctx.wrap`). */
 export function nodeHandleOf(wrapper) {
-  return NODE_HANDLES.get(wrapper);
+  if (wrapper === null || wrapper === undefined || typeof wrapper !== "object") {
+    return undefined;
+  }
+  return wrapper[HANDLE_SLOT];
 }
 
 /**
@@ -231,12 +250,23 @@ export function elementClassFor(handle) {
  * fragments, `Text` / `Comment` / `CharacterData` for character-data nodes and
  * the base `Node` for everything else.
  *
- * Classification is read with the single native `wrapperKind()` crossing
- * (`[nodeType, nodeName, namespaceUri]`) — three separate reads here would
- * triple the per-wrapper FFI cost, which dominates DOM-churn workloads.
+ * Classification comes from the `madDomType` / `madDomName` /
+ * `madDomNamespace` stamps the binding mints onto every wrapper object at
+ * creation (crates/mad-dom-bun `stamp_wrapper_kind`) — plain property reads,
+ * no FFI. All three values are immutable per node, so the stamp can never
+ * drift. A handle without stamps (a mixed-version native binding) falls back
+ * to the single `wrapperKind()` crossing that used to be the only route.
  */
 export function createNodeWrapper(handle) {
-  const [nodeType, name, namespace] = handle.wrapperKind();
+  const nodeType = handle.madDomType;
+  if (nodeType === undefined) {
+    const [kind, name, namespace] = handle.wrapperKind();
+    return createNodeWrapperOfKind(handle, kind, name, namespace);
+  }
+  return createNodeWrapperOfKind(handle, nodeType, handle.madDomName, handle.madDomNamespace);
+}
+
+function createNodeWrapperOfKind(handle, nodeType, name, namespace) {
   if (nodeType === 1) {
     return new (elementClassForName(name, namespace))(handle);
   }

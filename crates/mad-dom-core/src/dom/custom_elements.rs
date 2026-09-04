@@ -289,6 +289,13 @@ impl Document {
             // document order), and only the fresh replacement is indexed.
             self.with_custom_element_reactions_suppressed(|doc| {
                 doc.with_observer_records_suppressed(|doc| {
+                    // Structural generation: the upgrade swap reparents the
+                    // old element's children and relinks the replacement by
+                    // pointer (bypassing the mutation chokepoints), so it is
+                    // its own relation-write site (see
+                    // `Document::structure_generation`). The `detach` below
+                    // bumps for the unlink; this bump covers the relink.
+                    doc.bump_structure_generation();
                     let attributes: Vec<(String, String)> = doc
                         .get(old)
                         .expect("live candidate")

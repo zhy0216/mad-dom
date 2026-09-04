@@ -95,6 +95,15 @@ pub struct Document {
     /// serialization never pierce the boundary. Written only through the
     /// `shadow_root` module.
     pub(crate) shadow_roots: HashMap<NodeId, NodeId>,
+    /// Monotonic counter bumped exactly when the tree *relations* change
+    /// (child/parent/sibling links). Bumped at the single relation-write
+    /// chokepoints (`mutation::detach`, `mutation::link_detached_chain_between`,
+    /// the two `html::sink` link primitives, `cross_document::relink_children`),
+    /// so any read-only consumer can detect "the tree moved" by comparing two
+    /// reads. Attribute / character-data / state changes never bump it. The
+    /// binding mirrors it to JavaScript as the navigation-memo invalidation
+    /// epoch; Core itself never reads it.
+    structure_generation: u64,
 }
 
 impl Document {
@@ -113,7 +122,22 @@ impl Document {
             form_state: FormState::default(),
             custom_elements: CustomElementState::default(),
             shadow_roots: HashMap::new(),
+            structure_generation: 0,
         }
+    }
+
+    /// The current structural generation (see the `structure_generation`
+    /// field). Any consumer that reads it twice around a window of work can
+    /// detect "the tree relations changed in between" without knowing which
+    /// mutation happened.
+    pub fn structure_generation(&self) -> u64 {
+        self.structure_generation
+    }
+
+    /// Marks the tree relations as changed. Called by the single
+    /// relation-write chokepoints only (see the `structure_generation` field).
+    pub(crate) fn bump_structure_generation(&mut self) {
+        self.structure_generation += 1;
     }
 
     /// Returns the `Document`-kind node at the top of this document's tree,

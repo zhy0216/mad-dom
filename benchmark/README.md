@@ -83,37 +83,40 @@ worker（`dom-bench/worker.mjs`）对两个引擎跑同一份确定性负载，�
 
 ### traverse 阶段剖析
 
-traverse 是 mad-dom 唯一显著落后的阶段（~21 ms vs happy-dom ~2.8 ms）。
-2026-09-04 用同负载（18,102 节点，~36k 次边读取）做了分层测量：
+traverse 曾是 mad-dom 唯一显著落后的阶段（2026-09-04 早期测量：~20.5 ms vs
+happy-dom ~2.8 ms）。分层测量显示瓶颈不在遍历写法、也不在 Rust 树链查询，而是
+**每个节点的 wrapper 铸造**：bench 每轮计量前强制 gc+排空，弱缓存里的 wrapper
+全部失效，18,102 个节点每轮重新铸造——每次铸造付 `napi_new_instance` +
+create_reference（~0.5 µs）+ facade 侧一次 `wrapperKind()` 分类 FFI（~0.3 µs）+
+facade wrapper 对象与 WeakMap 登记；缓存命中时每条边也有 ~0.2 µs 的 N-API 往返
+下限。朴素 getter 遍历对任何逐节点过 FFI 的 native DOM 都是结构性劣势。
 
-| 场景 | 耗时 |
-| --- | --- |
-| facade 全树 `firstChild`/`nextSibling` 遍历（冷，每轮 gc+排空） | ~20.5 ms |
-| 同一负载的 `TreeWalker.nextNode` 遍历（冷，正确驱逐后） | ~18–20 ms |
-| 仅 native handle 遍历（绕过 facade，冷） | ~15.1 ms |
-| facade 遍历，所有 wrapper 被 JS 侧持有（纯缓存命中） | ~8.3 ms |
-| 仅 native handle 遍历，wrapper 全部持有（纯缓存命中） | ~6.5 ms |
+现行实现（2026-09-04 之后）用三层改动消除了这个劣势，traverse 降到 ~0.4 ms
+（约 6× 快于 happy-dom）：
 
-结论：**瓶颈是每个节点的 wrapper 铸造，不是遍历写法，也不是 Rust 树链查询。**
+1. **分类随 mint 产出**：`wrap_node` 铸造时把 `madDomType` / `madDomName` /
+   `madDomNamespace` 直接盖在 wrapper 对象上（`handle.rs` `stamp_wrapper_kind`），
+   facade 的 wrapper 工厂改为纯属性读取，省掉逐节点的 `wrapperKind()` FFI。
+2. **导航读原路返回裸值**：`firstChild` / `nextSibling` 等改为返回裸
+   Node-API 值（`wrap_node_value` / `raw_value_if_live`），缓存命中只付一次
+   `napi_get_reference_value`，去掉 upgrade/unref 的引用计数往返；亲和检查的
+   线程 id 改为 thread-local 缓存（`affinity.rs`）。
+3. **epoch 守卫的导航 memo + wrapper 驻留**：facade 把五个导航读的最近答案记在
+   wrapper 自身（`node.js` `navRead`），用文档的结构 epoch 校验——binding 在任何
+   改变了树关系的调用后递增该文档的 4 字节 epoch 槽（Core `structure_generation`
+   在全部关系写入点计数，`with_document` 前后比较并递增，见
+   `extensions/epoch_api.rs`），facade 用一次 `Int32Array` 读取即可判定树未变、
+   直接返回缓存；为了让 memo 跨 gc 存活，`ctx.wrap` 在文档 native handle 可达
+   期间把 wrapper 钉在该文档的 facade 状态里（`window.js` `DOC_STATES`，弱键于
+   文档——释放文档仍会释放一切，T47 生命周期测试锁定）。树不变时整轮遍历零 FFI。
 
-- 缓存命中时每条边 ≈ 0.2 µs（N-API 往返 + 一次引用探测的下限），36k 条边
-  ≈ 6.5–8.3 ms——这已经是 happy-dom 全阶段（2.8 ms，纯 JS 属性读取）的
-  ~2.8 倍。朴素 getter 遍历对任何 native-backed DOM 都是结构性劣势。
-- 冷路径每个节点额外 ~1 µs：native 侧 `napi_new_instance` + wrap +
-  create_reference（~0.5 µs），facade 侧再付一次 `wrapperKind()` FFI
-  （含 nodeName/namespace 两个 JS 字符串分配，0.30 µs；对比单读
-  `nodeType()` 只要 0.12 µs）+ facade wrapper 对象与两级 WeakMap 登记。
-  createElement 密集的 build 阶段为同一原因偏慢（20k 次 mint）。
-- **测量坑**：若在 `Bun.gc(true)` 后不排空事件循环就直接测，Bun 推迟执行的
-  finalizer 会让缓存里留下"已回收未 finalize"条目、堆也没清扫，此时
-  TreeWalker 会虚快到 ~5 ms，容易得出"换 TreeWalker 就能省 4 倍"的错误结论。
-  正确驱逐后递归/迭代/TreeWalker 三种写法的成本一致。dom-bench 的
-  collectAndDrain 正是为了避开这个 artifact。
+正确性边界：memo 只在 epoch 未变时命中，而所有结构突变（append/insert/remove/
+replace、innerHTML/textContent、parser、custom-element 升级替换）都经过关系写入
+chokepoint 递增 `structure_generation`，facade 无需枚举突变入口。`tests/bun/
+navigation-memo.test.js` 锁定失效语义、跨 gc 身份与 epoch/印章的 native 形状。
 
-未来若要压缩这个阶段，起点是上面的分层数字：可动的杠杆是让节点分类信息
-（nodeType/nodeName/namespace）随 mint 一并产出、省掉 facade 侧逐节点的
-分类 FFI，上限约 15–25%；再往下就是弱缓存身份语义（T20）与 N-API 往返本身，
-属于会改变 benchmark 含义的架构改动。
+注：bench 的 `build` 阶段因逐节点铸造仍存在（~20k 次 `createElement`），与
+happy-dom 持平（~1.0×）；`query` / `serialize` / `parse` 保持 2–5× 领先。
 
 ## 与 hdunit 的关系
 

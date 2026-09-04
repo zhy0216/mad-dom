@@ -96,13 +96,15 @@
 //! there).
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicPtr, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use mad_dom_core::arena::NodeId;
 use mad_dom_core::dom::{Document, NodeType};
-use napi::bindgen_prelude::{JavaScriptClassExt, Reference, ToNapiValue, WeakReference};
-use napi::{Env, Error as NapiError, Status};
+use napi::bindgen_prelude::{
+    FromNapiValue, JavaScriptClassExt, Reference, ToNapiValue, Unknown, WeakReference,
+};
+use napi::{check_status, Env, Error as NapiError, Status};
 use napi_derive::napi;
 
 use crate::affinity::{AffinityError, AffinityToken};
@@ -164,6 +166,16 @@ pub(crate) struct SharedDocument {
     affinity: AffinityToken,
     /// Monotonic mint stamp counter for the wrapper caches (see `wrappers`).
     stamps: AtomicU64,
+    /// The JavaScript-visible structural epoch slot (the facade
+    /// navigation-memo invalidation signal), registered by
+    /// `DocumentHandle.epochView` (extensions/epoch_api). Points at a
+    /// 4-byte `AtomicI32` owned by the binding and deliberately kept alive
+    /// for the process (see epoch_api): [`with_document`] bumps it whenever
+    /// a call changed Core's `structure_generation`, so the facade can
+    /// detect "the tree moved" with a plain typed-array read — no FFI.
+    /// Null while no view is registered (raw-surface documents, or before
+    /// the facade registers).
+    epoch: AtomicPtr<AtomicI32>,
 }
 
 /// Probes a wrapper-cache entry for the "collected but not yet finalized"
@@ -172,12 +184,12 @@ pub(crate) struct SharedDocument {
 ///
 /// A [`WeakReference`] survives JS-side collection until the Node-API
 /// finalizer runs, yet the reference value already reads back empty at that
-/// point. This probe reads the raw value — the module's only `unsafe` island,
-/// one plain Node-API read through the `napi` conversion trait: a null value
-/// (measured on Bun 1.4.0 for a collected object) or a finalized entry marks
-/// the wrapper dead and the caller mints a replacement; a live value takes the
-/// regular [`WeakReference::upgrade`] path, so the return machinery hands back
-/// the same JS object (identity preserved).
+/// point. This probe reads the raw value — one of the module's confined
+/// `unsafe` islands, one plain Node-API read through the `napi` conversion
+/// trait: a null value (measured on Bun 1.4.0 for a collected object) or a
+/// finalized entry marks the wrapper dead and the caller mints a replacement;
+/// a live value takes the regular [`WeakReference::upgrade`] path, so the
+/// return machinery hands back the same JS object (identity preserved).
 fn reference_value_if_live<T: 'static>(
     env: Env,
     weak: WeakReference<T>,
@@ -196,7 +208,125 @@ fn reference_value_if_live<T: 'static>(
     weak.upgrade(env)
 }
 
+/// Raw-value variant of the liveness probe: returns the live wrapper's JS
+/// value directly, without upgrading the weak reference into a refcounted
+/// [`Reference`].
+///
+/// The upgrade round trip (`napi_reference_ref` on upgrade, the trailing
+/// `napi_reference_unref` on the returned [`Reference`]'s drop, plus the
+/// reference-value read of the return conversion) exists only to satisfy the
+/// `Reference` return type; the JS heap alone keeps a synchronously returned
+/// object alive, so the raw value is sufficient and the per-read cost drops
+/// to a single Node-API reference read. Same `unsafe` island shape as
+/// [`reference_value_if_live`].
+fn raw_value_if_live<T: 'static>(
+    env: napi::sys::napi_env,
+    weak: &WeakReference<T>,
+) -> napi::Result<Option<napi::sys::napi_value>> {
+    let probe = weak.clone();
+    let value = match unsafe { ToNapiValue::to_napi_value(env, probe) } {
+        Ok(value) => value,
+        Err(_) => return Ok(None),
+    };
+    if value.is_null() {
+        return Ok(None);
+    }
+    Ok(Some(value))
+}
+
+/// Stamps the wrapper classification (`madDomType`, and `madDomName` /
+/// `madDomNamespace` for elements) onto a freshly minted node wrapper object.
+///
+/// The facade's wrapper factory needs nodeType + nodeName + namespace to pick
+/// the WHATWG wrapper class; reading them through a separate `wrapperKind()`
+/// FFI crossing per minted wrapper dominated DOM-churn workloads (tree walks,
+/// bulk creation). All three values are immutable per node, so minting them
+/// onto the object lets the facade classify with plain property reads.
+/// Confined `unsafe` island: three Node-API value creations + property sets.
+fn stamp_wrapper_kind(
+    env: Env,
+    value: napi::sys::napi_value,
+    kind: u32,
+    name: &str,
+    namespace: Option<&str>,
+) -> napi::Result<()> {
+    let raw_env = env.raw();
+    let set_u32 = |name: &std::ffi::CStr, number: u32| {
+        let mut created = std::ptr::null_mut();
+        check_status!(unsafe { napi::sys::napi_create_uint32(raw_env, number, &mut created) })?;
+        check_status!(unsafe {
+            napi::sys::napi_set_named_property(raw_env, value, name.as_ptr(), created)
+        })
+    };
+    let set_str = |name: &std::ffi::CStr, text: &str| {
+        let mut created = std::ptr::null_mut();
+        check_status!(unsafe {
+            napi::sys::napi_create_string_utf8(
+                raw_env,
+                text.as_ptr().cast(),
+                text.len().try_into().expect("string length fits isize"),
+                &mut created,
+            )
+        })?;
+        check_status!(unsafe {
+            napi::sys::napi_set_named_property(raw_env, value, name.as_ptr(), created)
+        })
+    };
+    set_u32(c"madDomType", kind)?;
+    if kind == 1 {
+        set_str(c"madDomName", name)?;
+        set_str(c"madDomNamespace", namespace.unwrap_or(""))?;
+    }
+    Ok(())
+}
+
+/// Wraps a raw Node-API value into the type-erased [`Unknown`] return shape.
+///
+/// # Safety
+///
+/// `value` must be a Node-API value of `env`.
+unsafe fn unknown_of(env: Env, value: napi::sys::napi_value) -> napi::Result<Unknown<'static>> {
+    Unknown::from_napi_value(env.raw(), value)
+}
+
+/// The JS `null` as the type-erased return shape (an empty raw value would
+/// surface as `undefined`; the frozen navigation contract hands back `null`).
+fn null_unknown(env: Env) -> napi::Result<Unknown<'static>> {
+    let mut value = std::ptr::null_mut();
+    check_status!(unsafe { napi::sys::napi_get_null(env.raw(), &mut value) })?;
+    Ok(unsafe { Unknown::from_napi_value(env.raw(), value)? })
+}
+
 impl SharedDocument {
+    /// Bumps the JavaScript-visible structural epoch, when registered.
+    ///
+    /// Called by [`with_document`] when a call changed Core's
+    /// `structure_generation`. The slot memory is the deliberately immortal
+    /// 4-byte allocation minted by `DocumentHandle.epochView`
+    /// (extensions/epoch_api), so the pointer write below is valid for the
+    /// process lifetime; writes happen only on the document's affinity
+    /// thread, which is also the thread JavaScript reads it from.
+    pub(crate) fn bump_epoch(&self) {
+        let slot = self.epoch.load(Ordering::Relaxed);
+        if !slot.is_null() {
+            // SAFETY: see above — immortal slot memory, single-threaded
+            // writer/reader pair.
+            unsafe { (*slot).fetch_add(1, Ordering::SeqCst) };
+        }
+    }
+
+    /// The currently registered epoch slot pointer (null while unregistered).
+    pub(crate) fn epoch_slot(&self) -> *mut AtomicI32 {
+        self.epoch.load(Ordering::Relaxed)
+    }
+
+    /// Registers the epoch slot pointer (minted by
+    /// `DocumentHandle.epochView`). Idempotent per document: the caller only
+    /// mints when the slot is still null.
+    pub(crate) fn set_epoch_slot(&self, slot: *mut AtomicI32) {
+        self.epoch.store(slot, Ordering::Relaxed);
+    }
+
     /// Returns the JS wrapper for `id`, creating (and caching) it on a miss.
     ///
     /// This is the single point where wrapper identity is minted: while a
@@ -227,6 +357,32 @@ impl SharedDocument {
         env: Env,
         id: NodeId,
     ) -> napi::Result<Reference<NodeHandle>> {
+        let value = self.wrap_node_value(env, id)?;
+        // SAFETY: the value is the `NodeHandle` class wrapper minted (or
+        // cache-handed-back) by `wrap_node_value` above.
+        unsafe { Reference::from_napi_value(env.raw(), value) }
+    }
+
+    /// Returns the JS wrapper for `id` as a raw Node-API value, creating (and
+    /// caching) it on a miss — the hot-path variant of [`wrap_node`].
+    ///
+    /// Identity and staleness semantics are exactly [`wrap_node`]'s; the
+    /// difference is the return shape. A cache hit hands back the live
+    /// wrapper's value with a single Node-API reference read — no refcount
+    /// round trip ([`WeakReference::upgrade`] + the returned [`Reference`]'s
+    /// drop), which the per-node cost of tree walks and bulk reads is
+    /// dominated by. A miss mints, stamps the wrapper classification
+    /// ([`stamp_wrapper_kind`], so the facade picks the WHATWG class without a
+    /// second FFI crossing) and caches the weak entry.
+    ///
+    /// Callers that need the [`Reference`] type route through [`wrap_node`],
+    /// which re-adopts the value returned here.
+    pub(crate) fn wrap_node_value(
+        self: &Arc<Self>,
+        env: Env,
+        id: NodeId,
+    ) -> napi::Result<napi::sys::napi_value> {
+        let raw_env = env.raw();
         let cached = self
             .wrappers
             .lock()
@@ -234,10 +390,28 @@ impl SharedDocument {
             .get(&id)
             .cloned();
         if let Some((weak, _)) = cached {
-            if let Some(reference) = reference_value_if_live(env, weak)? {
-                return Ok(reference);
+            if let Some(value) = raw_value_if_live(raw_env, &weak)? {
+                return Ok(value);
             }
         }
+        // The wrapper factory needs the node's immutable classification; read
+        // it under the document lock (nested inside the wrappers re-lock
+        // below — the lock order every path agrees on).
+        let kind = with_document(self, |doc| {
+            let kind = doc.node_type(id).map(node_type_value)?;
+            let (name, namespace) = if kind == 1 {
+                (
+                    doc.node_name(id)?.to_owned(),
+                    doc.element_namespace_uri(id)?.map(str::to_owned),
+                )
+            } else {
+                (String::new(), None)
+            };
+            Ok((kind, name, namespace))
+        })
+        // A live node of a live document always classifies; the error arm is
+        // the destroyed-document guard (`with_document` rejects before Core).
+        .map_err(|err| napi::Error::new(Status::GenericFailure, format!("{err:?}")))?;
         let stamp = self.stamps.fetch_add(1, Ordering::Relaxed);
         let reference = NodeHandle {
             shared: Arc::clone(self),
@@ -245,11 +419,27 @@ impl SharedDocument {
             stamp,
         }
         .into_reference(env)?;
+        let weak = reference.downgrade();
+        // Consumes the reference: the value is extracted, then the reference's
+        // drop releases its refcount back to the weak cache entry's level.
+        let value = unsafe { ToNapiValue::to_napi_value(raw_env, reference)? };
+        stamp_wrapper_kind(env, value, kind.0, &kind.1, kind.2.as_deref())?;
         self.wrappers
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(id, (reference.downgrade(), stamp));
-        Ok(reference)
+            .insert(id, (weak, stamp));
+        Ok(value)
+    }
+
+    /// [`wrap_node_value`] convenience for `#[napi]` entries that return the
+    /// type-erased value shape.
+    pub(crate) fn wrap_node_unknown(
+        self: &Arc<Self>,
+        env: Env,
+        id: NodeId,
+    ) -> napi::Result<Unknown<'_>> {
+        let value = self.wrap_node_value(env, id)?;
+        unsafe { unknown_of(env, value) }
     }
 
     /// Returns the single JS `DocumentHandle` wrapper for this document,
@@ -287,6 +477,37 @@ impl SharedDocument {
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(reference.downgrade());
         Ok(reference)
     }
+
+    /// Raw-value variant of [`wrap_document`] for the hot entries that return
+    /// the type-erased value shape (same identity and staleness semantics;
+    /// a cache hit costs a single Node-API reference read).
+    pub(crate) fn wrap_document_value(
+        self: &Arc<Self>,
+        env: Env,
+    ) -> napi::Result<napi::sys::napi_value> {
+        let raw_env = env.raw();
+        let cached = self
+            .document_wrapper
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        if let Some(weak) = cached {
+            if let Some(value) = raw_value_if_live(raw_env, &weak)? {
+                return Ok(value);
+            }
+        }
+        let reference = DocumentHandle {
+            shared: Arc::clone(self),
+        }
+        .into_reference(env)?;
+        let weak = reference.downgrade();
+        let value = unsafe { ToNapiValue::to_napi_value(raw_env, reference)? };
+        *self
+            .document_wrapper
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(weak);
+        Ok(value)
+    }
 }
 
 /// Runs `f` against the live Core document, or reports
@@ -294,6 +515,13 @@ impl SharedDocument {
 ///
 /// A poisoned lock (a panicking entry that held the guard) is recovered with
 /// [`Mutex::into_inner`] so the document stays usable instead of wedging.
+///
+/// Structural epoch: Core's `structure_generation` is compared before/after
+/// `f`; a change means the call mutated the tree relations, so the
+/// registered JavaScript epoch slot is bumped ([`SharedDocument::bump_epoch`]).
+/// This is the single chokepoint every native document access funnels
+/// through, so no mutation path — present or future — can bypass the
+/// invalidation signal the facade navigation memo reads.
 pub(crate) fn with_document<T>(
     shared: &Arc<SharedDocument>,
     f: impl FnOnce(&mut Document) -> std::result::Result<T, BindingError>,
@@ -304,7 +532,14 @@ pub(crate) fn with_document<T>(
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     match guard.as_mut() {
         None => Err(BindingError::Destroyed),
-        Some(live) => f(&mut live.document),
+        Some(live) => {
+            let generation_before = live.document.structure_generation();
+            let result = f(&mut live.document);
+            if live.document.structure_generation() != generation_before {
+                shared.bump_epoch();
+            }
+            result
+        }
     }
 }
 
@@ -383,6 +618,7 @@ impl DocumentHandle {
                 document_wrapper: Mutex::new(None),
                 affinity: AffinityToken::create(),
                 stamps: AtomicU64::new(0),
+                epoch: AtomicPtr::new(std::ptr::null_mut()),
             }),
         }
     }
@@ -518,18 +754,29 @@ impl DocumentHandle {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .clear();
+        // Structural epoch: destroy is the one state change that never runs
+        // through `with_document` (the document is already gone), so bump the
+        // epoch here — a facade navigation memo cached before the destroy
+        // must miss and re-enter the native path, which reports
+        // `ERR_MAD_DOM_DOCUMENT_DESTROYED` instead of serving stale nodes.
+        self.shared.bump_epoch();
     }
 }
 
 #[napi]
 impl DocumentHandle {
+    // Creation entries return the type-erased value shape, like the
+    // navigation surface: the minted wrapper objects are identical
+    // (identity preserved by the weak cache), minus the per-return refcount
+    // round trip.
+
     #[napi(catch_unwind)]
-    pub fn create_element(&self, env: Env, name: String) -> napi::Result<Reference<NodeHandle>> {
+    pub fn create_element(&self, env: Env, name: String) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         let id = self
             .create_element_inner(&name)
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node(env, id)
+        self.shared.wrap_node_unknown(env, id)
     }
 
     /// Creates an element in the given namespace (the read behind
@@ -541,39 +788,39 @@ impl DocumentHandle {
         env: Env,
         namespace: String,
         name: String,
-    ) -> napi::Result<Reference<NodeHandle>> {
+    ) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         let id = self
             .create_element_ns_inner(&namespace, &name)
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node(env, id)
+        self.shared.wrap_node_unknown(env, id)
     }
 
     #[napi(catch_unwind)]
-    pub fn create_text(&self, env: Env, data: String) -> napi::Result<Reference<NodeHandle>> {
+    pub fn create_text(&self, env: Env, data: String) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         let id = self
             .create_text_inner(&data)
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node(env, id)
+        self.shared.wrap_node_unknown(env, id)
     }
 
     #[napi(catch_unwind)]
-    pub fn create_comment(&self, env: Env, data: String) -> napi::Result<Reference<NodeHandle>> {
+    pub fn create_comment(&self, env: Env, data: String) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         let id = self
             .create_comment_inner(&data)
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node(env, id)
+        self.shared.wrap_node_unknown(env, id)
     }
 
     #[napi(catch_unwind)]
-    pub fn create_document_fragment(&self, env: Env) -> napi::Result<Reference<NodeHandle>> {
+    pub fn create_document_fragment(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         let id = self
             .create_document_fragment_inner()
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node(env, id)
+        self.shared.wrap_node_unknown(env, id)
     }
 
     /// Returns the document-root node (`#document`) as a `NodeHandle`.
@@ -584,11 +831,11 @@ impl DocumentHandle {
     /// the sealed `with_document` seam (the only legal way to read a Core
     /// `NodeId` from a `DocumentHandle`).
     #[napi(catch_unwind)]
-    pub fn document_root(&self, env: Env) -> napi::Result<Reference<NodeHandle>> {
+    pub fn document_root(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         let root = with_document(&self.shared, |doc| Ok(doc.document_root()))
             .map_err(|err| err.into_napi(&env))?;
-        self.shared.wrap_node(env, root)
+        self.shared.wrap_node_unknown(env, root)
     }
 
     #[napi(catch_unwind)]
@@ -879,71 +1126,77 @@ impl NodeHandle {
         .map_err(|err| err.into_napi(&env))
     }
 
+    // The navigation reads return the type-erased value shape (`Unknown`):
+    // JavaScript observes the exact same wrapper objects (identity preserved
+    // by the weak cache) as the earlier `Reference`-typed surface, but the
+    // binding skips the per-read refcount round trip that dominated
+    // tree-walk workloads (see `wrap_node_value` / `raw_value_if_live`).
+
     #[napi(catch_unwind)]
-    pub fn parent_node(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+    pub fn parent_node(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         match self
             .parent_node_inner()
             .map_err(|err| err.into_napi(&env))?
         {
-            None => Ok(None),
-            Some(id) => self.shared.wrap_node(env, id).map(Some),
+            None => null_unknown(env),
+            Some(id) => self.shared.wrap_node_unknown(env, id),
         }
     }
 
     #[napi(catch_unwind)]
-    pub fn first_child(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+    pub fn first_child(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         match self
             .first_child_inner()
             .map_err(|err| err.into_napi(&env))?
         {
-            None => Ok(None),
-            Some(id) => self.shared.wrap_node(env, id).map(Some),
+            None => null_unknown(env),
+            Some(id) => self.shared.wrap_node_unknown(env, id),
         }
     }
 
     #[napi(catch_unwind)]
-    pub fn last_child(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+    pub fn last_child(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         match self.last_child_inner().map_err(|err| err.into_napi(&env))? {
-            None => Ok(None),
-            Some(id) => self.shared.wrap_node(env, id).map(Some),
+            None => null_unknown(env),
+            Some(id) => self.shared.wrap_node_unknown(env, id),
         }
     }
 
     #[napi(catch_unwind)]
-    pub fn previous_sibling(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+    pub fn previous_sibling(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         match self
             .previous_sibling_inner()
             .map_err(|err| err.into_napi(&env))?
         {
-            None => Ok(None),
-            Some(id) => self.shared.wrap_node(env, id).map(Some),
+            None => null_unknown(env),
+            Some(id) => self.shared.wrap_node_unknown(env, id),
         }
     }
 
     #[napi(catch_unwind)]
-    pub fn next_sibling(&self, env: Env) -> napi::Result<Option<Reference<NodeHandle>>> {
+    pub fn next_sibling(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
         match self
             .next_sibling_inner()
             .map_err(|err| err.into_napi(&env))?
         {
-            None => Ok(None),
-            Some(id) => self.shared.wrap_node(env, id).map(Some),
+            None => null_unknown(env),
+            Some(id) => self.shared.wrap_node_unknown(env, id),
         }
     }
 
     #[napi(catch_unwind)]
-    pub fn child_nodes(&self, env: Env) -> napi::Result<Vec<Reference<NodeHandle>>> {
+    pub fn child_nodes(&self, env: Env) -> napi::Result<Vec<Unknown<'_>>> {
         check_affinity(&self.shared, &env)?;
         let ids = self
             .child_nodes_inner()
             .map_err(|err| err.into_napi(&env))?;
         ids.iter()
-            .map(|id| self.shared.wrap_node(env, *id))
+            .map(|id| self.shared.wrap_node_unknown(env, *id))
             .collect()
     }
 
@@ -954,9 +1207,10 @@ impl NodeHandle {
     /// (`node.ownerDocument() === window.document()` identity, matching
     /// happy-dom). Works for detached nodes too.
     #[napi(catch_unwind)]
-    pub fn owner_document(&self, env: Env) -> napi::Result<Reference<DocumentHandle>> {
+    pub fn owner_document(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(&self.shared, &env)?;
-        self.shared.wrap_document(env)
+        let value = self.shared.wrap_document_value(env)?;
+        unsafe { unknown_of(env, value) }
     }
 }
 

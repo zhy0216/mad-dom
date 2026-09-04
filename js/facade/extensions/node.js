@@ -38,6 +38,8 @@ import {
   Element,
   DocumentFragment,
   ELEMENT_MINT_SYMBOL,
+  DOC_STATE_SLOT,
+  MEMO_SLOT,
   nodeHandleOf,
   registerElementClass,
   setElementFallbackClasses,
@@ -105,7 +107,7 @@ export function install(ctx) {
     const documentHandle = ctx.documentContext.handleOf(this);
     let element;
     try {
-      element = ctx.wrap(documentHandle.createElement(name));
+      element = ctx.wrap(documentHandle.createElement(name), ctx.docStateOf(documentHandle));
     } catch (error) {
       // T48B: re-raise the invalid-element-name violation as a real
       // DOMException with the stable `code`, keeping the WHATWG name visible in
@@ -126,7 +128,7 @@ export function install(ctx) {
 
   ctx.defineMethod(Document.prototype, "createTextNode", function createTextNode(data) {
     const documentHandle = ctx.documentContext.handleOf(this);
-    return ctx.wrap(documentHandle.createText(data));
+    return ctx.wrap(documentHandle.createText(data), ctx.docStateOf(documentHandle));
   });
 
   // `Node` navigation properties (WHATWG read-only attributes).
@@ -178,24 +180,67 @@ export function install(ctx) {
     return name;
   }, undefined);
 
+  // `Node` navigation getters with an epoch-guarded memo.
+  //
+  // A tree walk over an unchanged document is otherwise 2 FFI crossings per
+  // edge (plus a wrapper mint per node after any GC), which leaves a native-
+  // backed DOM structurally slower than a pure-JS DOM on the most common DOM
+  // workload. The memo caches each read on the wrapper itself and validates
+  // it against the document's structural epoch — the 4-byte slot the native
+  // binding bumps on every call that changed the tree relations
+  // (crates/mad-dom-bun `epoch_api` / `with_document`), readable with a plain
+  // typed-array load. While the epoch is unchanged the cached answer is
+  // exact: navigation results only change with the relations. The wrappers
+  // stay memoizable across garbage collection because `ctx.wrap` pins them in
+  // the per-document state while the document's native handle is reachable
+  // (js/facade/window.js `DOC_STATES`).
+  //
+  // Without an epoch (older native binding) the read falls through to the
+  // plain native delegation, exactly the pre-memo behaviour.
+  const UNSET = {};
+
+  function navRead(wrapper, field, nativeName) {
+    const state = wrapper[DOC_STATE_SLOT];
+    if (state === undefined || state.epoch === null) {
+      return ctx.wrap(nodeHandleOf(wrapper)[nativeName]());
+    }
+    const epoch = state.epoch[0];
+    const memo = wrapper[MEMO_SLOT];
+    if (memo !== undefined && memo.e === epoch) {
+      const value = memo[field];
+      if (value !== UNSET) return value;
+    }
+    const result = ctx.wrap(nodeHandleOf(wrapper)[nativeName](), state);
+    const current = state.epoch[0];
+    const live = memo ?? (wrapper[MEMO_SLOT] = {
+      e: current, fc: UNSET, lc: UNSET, ns: UNSET, ps: UNSET, pn: UNSET,
+    });
+    if (live.e !== current) {
+      live.e = current;
+      live.fc = live.lc = live.ns = live.ps = live.pn = UNSET;
+    }
+    live[field] = result;
+    return result;
+  }
+
   ctx.defineAccessor(Node.prototype, "parentNode", function parentNode() {
-    return ctx.wrap(nodeHandleOf(this).parentNode());
+    return navRead(this, "pn", "parentNode");
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "firstChild", function firstChild() {
-    return ctx.wrap(nodeHandleOf(this).firstChild());
+    return navRead(this, "fc", "firstChild");
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "lastChild", function lastChild() {
-    return ctx.wrap(nodeHandleOf(this).lastChild());
+    return navRead(this, "lc", "lastChild");
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "previousSibling", function previousSibling() {
-    return ctx.wrap(nodeHandleOf(this).previousSibling());
+    return navRead(this, "ps", "previousSibling");
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "nextSibling", function nextSibling() {
-    return ctx.wrap(nodeHandleOf(this).nextSibling());
+    return navRead(this, "ns", "nextSibling");
   }, undefined);
 
   // Ordered children as the T25D *live* `NodeList` bound to this parent. Every

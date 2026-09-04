@@ -319,6 +319,12 @@ impl Document {
     /// `parent`, establishing parent back-pointers, sibling mirrors and the
     /// first/last child fields consistently.
     fn relink_children(&mut self, parent: NodeId, children: &[NodeId]) {
+        // Structural generation: the clone family's link primitive is a
+        // relation-write site (see `Document::structure_generation`).
+        // Conservative even though the linked nodes are freshly allocated:
+        // adoption funnels its source-side unlink through `detach` on the
+        // *source* document, which bumps that document's own counter.
+        self.bump_structure_generation();
         let mut first = None;
         let mut last = None;
         let mut prev = None;

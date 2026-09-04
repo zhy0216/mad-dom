@@ -555,6 +555,9 @@ impl Document {
     /// detach and the fragment-children detach of `pre-insert` — funnels
     /// through it and can never bypass the observer records.
     pub(crate) fn detach(&mut self, node: NodeId) {
+        // Structural generation: the single removal chokepoint is a
+        // relation-write site (see `Document::structure_generation`).
+        self.bump_structure_generation();
         // T42: capture the pre-removal connectivity so the disconnected
         // reactions fire for a connected subtree (and only for it).
         let was_connected =
@@ -645,6 +648,9 @@ impl Document {
             !nodes.is_empty(),
             "empty chains are short-circuited before reaching this point"
         );
+        // Structural generation: the single insertion chokepoint is a
+        // relation-write site (see `Document::structure_generation`).
+        self.bump_structure_generation();
         let first = nodes[0];
         let last = nodes[nodes.len() - 1];
 
