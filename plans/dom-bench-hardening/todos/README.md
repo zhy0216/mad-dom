@@ -22,11 +22,11 @@
 
 1. 01-reliability-patch.md —已完成（done/）
 2. 02-sink-validation.md —已完成（done/，实际文件 02-workload-validation.md）
-3. 03-round-major-stats.md —依赖 02
-4. 04-cold-warm-split.md —依赖 03
+3. 03-round-major-stats.md —已完成（done/）
+4. 04-cold-warm-split.md —已完成（done/）
 5. 05-build-read-mutation-phases.md —已完成（done/）
-6. 06-sizes-rss.md —依赖 05
-7. 07-readme-rewrite.md —依赖 06
+6. 06-sizes-rss.md —已完成（done/）
+7. 07-readme-rewrite.md —已完成（done/）
 
 ## 校验（每个 todo 通用底线）
 

@@ -138,3 +138,32 @@ build 逐节点 FFI 两个引擎侧优化（以本基准新数据为输入）。
   现状相同（解析/构建完成后立刻读，之后不再读；worker.mjs:145-148、193-195 注释即纪律）。
 - **风险**：worker.mjs 大重构在 T3 一次吃掉较多改动；拆解上 T2→T3 顺序执行、每步独立可验收。
 - **假设**：MAD/p90 用纯 JS 手写（数组已排序，几行），不引入统计依赖。
+
+## 执行结果（2026-09-04，herdr-finish-plan 全串行执行，模型统一 opencode-go/muse-spark-1.3-contributor）
+
+合入原分支 `plan/dom-bench-hardening` 的 commit（本轮 6 个，既有 01 由前序工作合入）：
+
+- `a4f46c7` bench(dom): real sink checks and cross-engine workload validation
+  ← `todos/done/02-workload-validation.md`（T2）
+- `fe76995` bench(dom): round-major loop with per-round pipeline totals and min/p90/MAD stats
+  ← `todos/done/03-round-major-stats.md`（T3，schema → `mad-dom-dom-bench/2`）
+- `5012323` bench(dom): split traverse/query into cold/warm phases plus getById/getByTag
+  ← `todos/done/04-cold-warm-split.md`（T4，9 相位；mad-dom traverseWarm ~0.5ms vs
+  traverseCold ~18ms，约 40x 分离；getByTag 暴露 liveCollection 双查询成本）
+- `66e733d` bench(dom): decompose build into create/attr/append/text/bulk plus read-heavy
+  and mutation-churn phases ← `todos/done/05-build-read-mutation-phases.md`（T5，16 相位，
+  三组分节打印；buildCreate 显著小于 buildMixed）
+- `edaf1f5` bench(dom): scale dom-bench across --sizes with per-phase RSS sampling
+  ← `todos/done/06-sizes-rss.md`（T6，schema → `mad-dom-dom-bench/3`，`results[]` 按 size
+  分节；0.1×/1×/10× 近似线性，RSS 同向增长）
+- `36dedb0` bench(dom): rewrite dom-bench README for cold/warm phases and stats
+  ← `todos/done/07-readme-rewrite.md`（T7，仅 `benchmark/README.md`）
+
+归档：`todos/done/` 现含 01–07 全部 7 个文件，`todos/README.md` 全标 ✅。
+blocked/deferred：无。roadmap（未实施）：dom-bench 接入 CI 独立 baseline 门禁；
+`liveCollection` 双查询与 build 逐节点 FFI 两个引擎侧优化（新基准数据为输入）。
+
+实施注记：T4 的 traverseWarm 采用"不计时预走一次、计时复走"（T3 轮主循环每轮重 parse，
+共享文档 memo 驻留不下来；预走恢复 T2 前的驻留语义，worker 有注释）；T5 的 readHeavy
+取样为 li(2500)+div.item-body(2500)=5000（li 仅 2500 个，拼法恒定且双引擎哈希一致）；
+06 后默认单 size 输出结构统一为 `results[0]`。
