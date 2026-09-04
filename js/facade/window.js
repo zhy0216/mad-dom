@@ -91,7 +91,7 @@ const HANDLE_TYPES = new Map();
 //           binding does not carry the epoch surface; the memo then stays
 //           off and every read crosses into native as before.
 //
-//   pinned — a strong `Map` of native handle → facade wrapper, keyed into
+//   pinned — a strong `Set` of facade wrappers, keyed into
 //           this WeakMap by the document's native handle. The weak key keeps
 //           the native binding's weak wrapper cache authoritative (a released
 //           document still releases everything — the T47 lifecycle test), but
@@ -108,7 +108,7 @@ const DOC_STATES = new WeakMap();
 function docStateOf(docHandle) {
   let state = DOC_STATES.get(docHandle);
   if (state === undefined) {
-    state = { epoch: null, pinned: new Map() };
+    state = { epoch: null, pinned: new Set() };
     try {
       state.epoch = new Int32Array(docHandle.epochView());
     } catch {
@@ -128,7 +128,10 @@ function pinWrapper(nativeHandle, wrapper, docState) {
   const state = docState ?? docStateOf(nativeHandle.ownerDocument());
   wrapper[DOC_STATE_SLOT] = state;
   wrapper[VALID_EPOCH_SLOT] = state.epoch === null ? null : state.epoch[0];
-  state.pinned.set(nativeHandle, wrapper);
+  // The wrapper owns `nativeHandle` through HANDLE_SLOT, so retaining the
+  // wrapper is sufficient to retain both halves of the identity pair.  A Set
+  // avoids storing the same relationship a second time as Map key + value.
+  state.pinned.add(wrapper);
 }
 
 function registerHandleType(constructorName, makeWrapper) {
@@ -147,11 +150,17 @@ function registerHandleType(constructorName, makeWrapper) {
 // `docState` (optional, node wrappers only): the already-resolved per-
 // document state of the wrapper's owning document; navigation getters pass
 // their own so a mint never pays an extra `ownerDocument()` crossing.
-function wrap(nativeHandle, docState) {
+// `freshNode` is reserved for native creation methods whose returned
+// NodeHandle has never crossed into JavaScript before. That proof lets the
+// same conversion entry skip an impossible cache hit and constructor-name
+// reflection while preserving all cache registration and pinning below.
+function wrap(nativeHandle, docState, freshNode = false) {
   if (nativeHandle === null || nativeHandle === undefined) return nativeHandle;
-  const cached = WRAP_CACHE.get(nativeHandle);
-  if (cached) return cached;
-  const typeName = nativeHandle.constructor?.name;
+  if (!freshNode) {
+    const cached = WRAP_CACHE.get(nativeHandle);
+    if (cached) return cached;
+  }
+  const typeName = freshNode ? "NodeHandle" : nativeHandle.constructor?.name;
   const makeWrapper = HANDLE_TYPES.get(typeName);
   if (typeof makeWrapper !== "function") {
     throw new TypeError(

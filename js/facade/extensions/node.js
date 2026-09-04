@@ -10,10 +10,10 @@
 //     of that name exists);
 //   - the `Node` navigation properties (`nodeType`, `nodeName`, `parentNode`,
 //     `firstChild`, `lastChild`, `previousSibling`, `nextSibling`,
-//     `childNodes`) delegate every read verbatim to the native `NodeHandle`
-//     and funnel every produced node through `ctx.wrap`, the unique conversion
-//     entry, so wrapper identity mirrors the native per-document weak cache
-//     (T20).
+//     `childNodes`) read from the native `NodeHandle`; bounded first-child and
+//     sibling prefetch seeds epoch-validated facade memos, and every produced
+//     node still funnels through `ctx.wrap`, the unique conversion entry, so
+//     wrapper identity mirrors the native per-document weak cache (T20).
 //
 // It deliberately does **not** implement mutation, attributes, `textContent`
 // or the live `childNodes` collection — those belong to T24C / T25E / T25D and
@@ -45,7 +45,7 @@ import {
   registerElementClass,
   setElementFallbackClasses,
   setRegisterMintedWrapper,
-  createNodeWrapper,
+  createTrustedNodeWrapper,
 } from "./classes.js";
 import { Document } from "../document.js";
 import { Window } from "../window.js";
@@ -109,7 +109,9 @@ function validatedNodeType(wrapper, handle) {
  * native node that crosses back to JavaScript goes through `ctx.wrap`.
  */
 export function install(ctx) {
-  ctx.registerHandleType("NodeHandle", createNodeWrapper);
+  // `ctx.wrap` has already identified the native class, so use the trusted
+  // factory and avoid repeating Node's public authenticity probe per mint.
+  ctx.registerHandleType("NodeHandle", createTrustedNodeWrapper);
   setRegisterMintedWrapper(ctx.registerWrap);
 
   // `window.Node` / `window.Element` / `window.DocumentFragment` — the WHATWG
@@ -129,12 +131,18 @@ export function install(ctx) {
   // The native `DocumentHandle` carries the `createElement` / `createText`
   // symbols (frozen by T23A); the WHATWG `createTextNode` name is adapted
   // here, so no native duplicate exists. Each call mints a fresh detached
-  // node through `ctx.wrap`.
+  // node through `ctx.wrap`. Native creation guarantees a fresh NodeHandle,
+  // so the final flag skips the conversion entry's impossible cache lookup
+  // and type reflection without bypassing its registration or pinning work.
   ctx.defineMethod(Document.prototype, "createElement", function createElement(name) {
     const documentHandle = ctx.documentContext.handleOf(this);
     let element;
     try {
-      element = ctx.wrap(documentHandle.createElement(name), ctx.docStateOf(documentHandle));
+      element = ctx.wrap(
+        documentHandle.createElement(name),
+        ctx.docStateOf(documentHandle),
+        true,
+      );
     } catch (error) {
       // T48B: re-raise the invalid-element-name violation as a real
       // DOMException with the stable `code`, keeping the WHATWG name visible in
@@ -155,7 +163,11 @@ export function install(ctx) {
 
   ctx.defineMethod(Document.prototype, "createTextNode", function createTextNode(data) {
     const documentHandle = ctx.documentContext.handleOf(this);
-    return ctx.wrap(documentHandle.createText(data), ctx.docStateOf(documentHandle));
+    return ctx.wrap(
+      documentHandle.createText(data),
+      ctx.docStateOf(documentHandle),
+      true,
+    );
   });
 
   // `Node` navigation properties (WHATWG read-only attributes).
@@ -310,6 +322,68 @@ export function install(ctx) {
     return result;
   }
 
+  function firstChildAxisRead(wrapper) {
+    const state = wrapper[DOC_STATE_SLOT];
+    if (state === undefined || state.epoch === null) {
+      return navRead(wrapper, "fc", "firstChild", true);
+    }
+    const epoch = state.epoch[0];
+    if (epoch === DESTROYED_EPOCH) {
+      return navRead(wrapper, "fc", "firstChild", true);
+    }
+    const memo = wrapper[MEMO_SLOT];
+    if (memo !== undefined && memo.e === epoch && memo.fc !== UNSET) {
+      return memo.fc;
+    }
+
+    const handle = nodeHandleOf(wrapper);
+    const stampedType =
+      wrapper[VALID_EPOCH_SLOT] === epoch ? handle.madDomType : undefined;
+    const childless =
+      stampedType === 3 || stampedType === 4 || stampedType === 7 ||
+      stampedType === 8 || stampedType === 10;
+    if (childless || typeof handle.firstChildPair !== "function") {
+      return navRead(wrapper, "fc", "firstChild", true);
+    }
+
+    // Most DOM parents have one or two children. Fetch that bounded prefix in
+    // one crossing and seed both directions of the relation memo. At most one
+    // sibling beyond the requested first child is speculatively wrapped.
+    const nativePair = handle.firstChildPair();
+    const reachedEnd = nativePair[nativePair.length - 1] === null;
+    const length = nativePair.length - (reachedEnd ? 1 : 0);
+    const children = new Array(length);
+    for (let i = 0; i < length; i += 1) {
+      children[i] = ctx.wrap(nativePair[i], state);
+    }
+
+    const current = state.epoch[0];
+    wrapper[VALID_EPOCH_SLOT] = current;
+    const parentMemo = memoFor(wrapper, current);
+    if (children.length === 0) {
+      parentMemo.fc = null;
+      if (reachedEnd) parentMemo.lc = null;
+      return null;
+    }
+
+    parentMemo.fc = children[0];
+    let previous = null;
+    for (let i = 0; i < children.length; i += 1) {
+      const child = children[i];
+      child[VALID_EPOCH_SLOT] = current;
+      const childMemo = memoFor(child, current);
+      childMemo.pn = wrapper;
+      childMemo.ps = previous;
+      if (previous !== null) memoFor(previous, current).ns = child;
+      previous = child;
+    }
+    if (reachedEnd) {
+      memoFor(previous, current).ns = null;
+      parentMemo.lc = previous;
+    }
+    return children[0];
+  }
+
   function siblingAxisRead(wrapper) {
     const state = wrapper[DOC_STATE_SLOT];
     if (state === undefined || state.epoch === null) {
@@ -386,7 +460,7 @@ export function install(ctx) {
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "firstChild", function firstChild() {
-    return navRead(this, "fc", "firstChild", true);
+    return firstChildAxisRead(this);
   }, undefined);
 
   ctx.defineAccessor(Node.prototype, "lastChild", function lastChild() {

@@ -276,12 +276,20 @@ describe.skipIf(!nativeAvailable)("facade tree mutation (T24C)", () => {
       const document = window.document;
       const parent = document.createElement("parent");
       const child = document.createElement("child");
+      const inheritedParent = Object.create(parent);
+      const inheritedChild = Object.create(child);
+      const copiedChild = Object.create(Object.getPrototypeOf(child));
+      Object.defineProperties(copiedChild, Object.getOwnPropertyDescriptors(child));
 
       for (const call of [
         () => parent.appendChild({}),
         () => parent.removeChild(undefined),
         () => parent.replaceChild({}, child),
         () => Node.prototype.appendChild.call({}, child),
+        () => parent.appendChild(inheritedChild),
+        () => Node.prototype.appendChild.call(inheritedParent, child),
+        () => parent.appendChild(copiedChild),
+        () => parent.appendChild(new Proxy(child, {})),
       ]) {
         const error = thrown(call);
         expect(error).toBeInstanceOf(TypeError);

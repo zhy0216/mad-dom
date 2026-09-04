@@ -264,6 +264,21 @@ export function elementClassFor(handle) {
  * to the single `wrapperKind()` crossing that used to be the only route.
  */
 export function createNodeWrapper(handle) {
+  if (!isNodeHandle(handle)) {
+    throw new TypeError(
+      "Node can only be constructed from a genuine native Node handle",
+    );
+  }
+  return createTrustedNodeWrapper(handle);
+}
+
+/**
+ * Internal wrapper factory for handles already classified by `ctx.wrap` as a
+ * native `NodeHandle`.  Allocating directly from the selected prototype avoids
+ * re-running the public constructor's three-method authenticity probe for
+ * every node returned by parsing, traversal, queries and creation.
+ */
+export function createTrustedNodeWrapper(handle) {
   const nodeType = handle.madDomType;
   if (nodeType === undefined) {
     const [kind, name, namespace] = handle.wrapperKind();
@@ -273,20 +288,21 @@ export function createNodeWrapper(handle) {
 }
 
 function createNodeWrapperOfKind(handle, nodeType, name, namespace) {
+  let prototype;
   if (nodeType === 1) {
-    return new (elementClassForName(name, namespace))(handle);
+    prototype = elementClassForName(name, namespace).prototype;
+  } else if (nodeType === 11) {
+    prototype = DocumentFragment.prototype;
+  } else if (nodeType === 3) {
+    prototype = Text.prototype;
+  } else if (nodeType === 8) {
+    prototype = Comment.prototype;
+  } else if (nodeType === 4) {
+    prototype = CharacterData.prototype;
+  } else {
+    prototype = Node.prototype;
   }
-  if (nodeType === 11) {
-    return new DocumentFragment(handle);
-  }
-  if (nodeType === 3) {
-    return new Text(handle);
-  }
-  if (nodeType === 8) {
-    return new Comment(handle);
-  }
-  if (nodeType === 4) {
-    return new CharacterData(handle);
-  }
-  return new Node(handle);
+  const wrapper = Object.create(prototype);
+  wrapper[HANDLE_SLOT] = handle;
+  return wrapper;
 }

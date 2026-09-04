@@ -363,6 +363,35 @@ describe.skipIf(!nativeAvailable)("T41 childList records", () => {
       win.destroy();
     }
   });
+
+  test("multi-root innerHTML reports only target removals and one addition per parsed root", async () => {
+    const win = new Window();
+    try {
+      const { parent } = build(win);
+      const order = [];
+      const observer = new win.MutationObserver((records) =>
+        order.push(records.map((record) => [
+          record.target === parent,
+          record.removedNodes[0]?.nodeName ?? null,
+          record.addedNodes[0]?.nodeName ?? null,
+        ])),
+      );
+      observer.observe(parent, { childList: true });
+
+      parent.innerHTML = "<x></x><y></y><z></z>";
+      await flush();
+
+      expect(order).toEqual([[
+        [true, "A", null],
+        [true, "B", null],
+        [true, null, "X"],
+        [true, null, "Y"],
+        [true, null, "Z"],
+      ]]);
+    } finally {
+      win.destroy();
+    }
+  });
 });
 
 describe.skipIf(!nativeAvailable)("T41 attributes and characterData records", () => {

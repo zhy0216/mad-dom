@@ -46,11 +46,12 @@
 //!
 //! ## Optional bounded navigation prefetch
 //!
-//! `nextSiblingChunk()` is a post-T23 performance companion implemented in
-//! `handle.rs`. It returns at most 32 following wrappers and appends a `null`
-//! end marker only when native reached the chain tail. The facade
-//! feature-detects it; older platform packages continue through the frozen
-//! one-node `nextSibling()` contract above.
+//! `firstChildPair()` and `nextSiblingChunk()` are post-T23 performance
+//! companions implemented in `handle.rs`. The former returns at most two
+//! immediate children, while the latter returns at most 32 following
+//! siblings; each appends a `null` end marker only when native reached the
+//! axis tail. The facade feature-detects them, so older platform packages
+//! continue through the frozen one-node navigation contract above.
 //!
 //! # Identity, ownership and delegation
 //!
@@ -129,7 +130,8 @@ pub(crate) const NODE_NAVIGATION_CONTRACT: &[&str] = &[
 /// [`NODE_NAVIGATION_CONTRACT`] because support must remain feature-detectable
 /// when the JavaScript facade is paired with an older native package.
 #[allow(dead_code)]
-pub(crate) const NODE_NAVIGATION_PREFETCH_CONTRACT: &[&str] = &["nextSiblingChunk"];
+pub(crate) const NODE_NAVIGATION_PREFETCH_CONTRACT: &[&str] =
+    &["firstChildPair", "nextSiblingChunk"];
 
 #[cfg(test)]
 mod tests {
@@ -166,7 +168,7 @@ mod tests {
         );
         assert_eq!(
             NODE_NAVIGATION_PREFETCH_CONTRACT,
-            &["nextSiblingChunk"],
+            &["firstChildPair", "nextSiblingChunk"],
             "the optional prefetch method must stay feature-detectable"
         );
     }

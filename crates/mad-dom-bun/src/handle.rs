@@ -1173,6 +1173,29 @@ impl NodeHandle {
         self.run(|doc| doc.first_child(self.id).map_err(BindingError::Core))
     }
 
+    /// Returns the first two children plus a flag saying whether that bounded
+    /// window reached the end of the child axis.  The extra child lets the
+    /// facade seed the overwhelmingly common one- and two-child relations in
+    /// a single native crossing while keeping an isolated `firstChild` read
+    /// constant-space.
+    fn first_child_pair_inner(
+        &self,
+    ) -> std::result::Result<(Option<NodeId>, Option<NodeId>, bool), BindingError> {
+        self.run(|doc| {
+            let Some(first) = doc.first_child(self.id).map_err(BindingError::Core)? else {
+                return Ok((None, None, true));
+            };
+            let Some(second) = doc.next_sibling(first).map_err(BindingError::Core)? else {
+                return Ok((Some(first), None, true));
+            };
+            let reached_end = doc
+                .next_sibling(second)
+                .map_err(BindingError::Core)?
+                .is_none();
+            Ok((Some(first), Some(second), reached_end))
+        })
+    }
+
     pub(crate) fn last_child_inner(&self) -> std::result::Result<Option<NodeId>, BindingError> {
         self.run(|doc| doc.last_child(self.id).map_err(BindingError::Core))
     }
@@ -1286,6 +1309,29 @@ impl NodeHandle {
             None => null_unknown(env),
             Some(id) => self.shared.wrap_node_unknown(env, id),
         }
+    }
+
+    /// Bounded companion for the facade's cold first-child path. Returns at
+    /// most the first two child wrappers and appends `null` only when native
+    /// proved that no third child exists.
+    #[napi(catch_unwind)]
+    pub fn first_child_pair(&self, env: Env) -> napi::Result<Vec<Unknown<'_>>> {
+        check_affinity(&self.shared, &env)?;
+        let (first, second, reached_end) = self
+            .first_child_pair_inner()
+            .map_err(|err| err.into_napi(&env))?;
+        let child_count = usize::from(first.is_some()) + usize::from(second.is_some());
+        let mut values = Vec::with_capacity(child_count + usize::from(reached_end));
+        if let Some(id) = first {
+            values.push(self.shared.wrap_node_unknown(env, id)?);
+        }
+        if let Some(id) = second {
+            values.push(self.shared.wrap_node_unknown(env, id)?);
+        }
+        if reached_end {
+            values.push(null_unknown(env)?);
+        }
+        Ok(values)
     }
 
     #[napi(catch_unwind)]

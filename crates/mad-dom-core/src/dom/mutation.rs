@@ -610,6 +610,56 @@ impl Document {
         }
     }
 
+    /// Detaches the complete child chain of an internal, unobservable parent
+    /// in one relation pass.
+    ///
+    /// This is deliberately narrower than [`Document::detach`]: it skips
+    /// observer records, query-index maintenance and custom-element reactions,
+    /// so callers may use it only for a freshly adopted parser container that
+    /// has never been exposed or connected. The HTML fragment apply path needs
+    /// the children as individually detached roots before its ordinary,
+    /// observable insertion; running the general detach chokepoint once per
+    /// child would otherwise repeat generation bumps and relation lookups for
+    /// every top-level node in a flat fragment.
+    pub(crate) fn detach_unobservable_children(&mut self, parent: NodeId, children: &[NodeId]) {
+        if children.is_empty() {
+            #[cfg(debug_assertions)]
+            {
+                let parent = self.get(parent).expect("live internal parent");
+                debug_assert_eq!(parent.first_child(), None);
+                debug_assert_eq!(parent.last_child(), None);
+            }
+            return;
+        }
+
+        #[cfg(debug_assertions)]
+        {
+            let parent_node = self.get(parent).expect("live internal parent");
+            debug_assert_eq!(parent_node.first_child(), children.first().copied());
+            debug_assert_eq!(parent_node.last_child(), children.last().copied());
+            for (index, &child) in children.iter().enumerate() {
+                let node = self.get(child).expect("live internal child");
+                debug_assert_eq!(node.parent(), Some(parent));
+                debug_assert_eq!(
+                    node.previous_sibling(),
+                    index.checked_sub(1).map(|i| children[i])
+                );
+                debug_assert_eq!(node.next_sibling(), children.get(index + 1).copied());
+            }
+        }
+
+        self.bump_structure_generation();
+        for &child in children {
+            let node = self.node_mut(child).expect("live internal child");
+            node.parent = None;
+            node.previous_sibling = None;
+            node.next_sibling = None;
+        }
+        let parent = self.node_mut(parent).expect("live internal parent");
+        parent.first_child = None;
+        parent.last_child = None;
+    }
+
     /// Splices the already-detached `nodes` (in document order) into `parent`'s
     /// child list before `reference`, or at the end when `reference` is `None`.
     fn insert_detached_chain(

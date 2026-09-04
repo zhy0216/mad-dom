@@ -94,6 +94,9 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     expect(methods).toHaveProperty("nextSibling");
     expect(methods).toHaveProperty("childNodes");
     expect(contract.optionalPerformance.NodeHandle).toHaveProperty(
+      "firstChildPair",
+    );
+    expect(contract.optionalPerformance.NodeHandle).toHaveProperty(
       "nextSiblingChunk",
     );
 
@@ -272,6 +275,32 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     doc.destroy();
   });
 
+  test("firstChildPair speculates at most one sibling and marks a proven end", () => {
+    const doc = native.createDocument();
+    const empty = doc.createElement("div");
+    const parent = doc.createElement("div");
+    const children = Array.from({ length: 3 }, () => doc.createElement("i"));
+    for (const child of children) doc.appendChild(parent, child);
+
+    expect(empty.firstChildPair()).toEqual([null]);
+    const pair = parent.firstChildPair();
+    expect(pair).toHaveLength(2);
+    expect(pair).toEqual(children.slice(0, 2));
+    expect(pair.includes(null)).toBe(false);
+
+    const short = doc.createElement("div");
+    doc.appendChild(short, children[2]);
+    expect(short.firstChildPair()).toEqual([children[2], null]);
+
+    const exact = doc.createElement("div");
+    const a = doc.createElement("a");
+    const b = doc.createElement("b");
+    doc.appendChild(exact, a);
+    doc.appendChild(exact, b);
+    expect(exact.firstChildPair()).toEqual([a, b, null]);
+    doc.destroy();
+  });
+
   test("cross-document handles are rejected and never corrupt navigation", () => {
     const docA = native.createDocument();
     const docB = native.createDocument();
@@ -307,9 +336,11 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
       () => div.nodeName(),
       () => div.parentNode(),
       () => div.firstChild(),
+      () => div.firstChildPair(),
       () => div.lastChild(),
       () => div.previousSibling(),
       () => div.nextSibling(),
+      () => div.nextSiblingChunk(),
       () => div.childNodes(),
       () => text.nodeName(),
     ];

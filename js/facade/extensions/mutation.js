@@ -11,8 +11,9 @@
 //   Node.replaceChild(newChild, oldChild)    -> void native call, returns oldChild
 //
 // No relation, ownership or hierarchy state is kept here. Every operation is
-// forwarded to the audited T24A/T24B `DocumentHandle` methods, and return
-// values are canonicalized through the same `ctx.wrap` conversion entry.
+// forwarded to the audited T24A/T24B `DocumentHandle` methods. Since the
+// native methods return the exact input node, the facade returns that already-
+// canonical wrapper directly instead of looking it up again through `ctx.wrap`.
 
 import { Document } from "../document.js";
 import { Node } from "./node.js";
@@ -72,9 +73,15 @@ function facadeDocumentHandle(ctx, value) {
   return handle;
 }
 
-function nativeMutation(ctx, methodName, parentHandle, argumentHandles) {
-  const documentHandle = loadNative().DocumentHandle;
-  const method = documentHandle?.prototype?.[methodName];
+const NATIVE_MUTATION_METHODS = new Map();
+
+function nativeMutation(ctx, methodName, parentHandle, firstHandle, secondHandle) {
+  let method = NATIVE_MUTATION_METHODS.get(methodName);
+  if (method === undefined) {
+    const documentHandle = loadNative().DocumentHandle;
+    method = documentHandle?.prototype?.[methodName];
+    if (typeof method === "function") NATIVE_MUTATION_METHODS.set(methodName, method);
+  }
   if (typeof method !== "function") {
     throw new Error(`mad-dom native binding is missing DocumentHandle.${methodName}`);
   }
@@ -83,7 +90,11 @@ function nativeMutation(ctx, methodName, parentHandle, argumentHandles) {
   // facade binds `this` to the parent NodeHandle and also passes that same
   // handle as the first (Core-order) argument. Native code then performs all
   // document-affinity and hierarchy checks before touching the tree.
-  method.call(parentHandle, parentHandle, ...argumentHandles);
+  if (secondHandle === undefined) {
+    method.call(parentHandle, parentHandle, firstHandle);
+  } else {
+    method.call(parentHandle, parentHandle, firstHandle, secondHandle);
+  }
   // T42: the mutation queued the connected/disconnected custom element
   // reactions; flush them synchronously, in enqueue order (happy-dom fires the
   // lifecycle callbacks at the mutation point).
@@ -106,8 +117,8 @@ export function install(ctx) {
   ctx.defineMethod(Node.prototype, "appendChild", function appendChild(child) {
     const parentHandle = facadeNodeHandle(ctx, this, "appendChild");
     const childHandle = facadeNodeHandle(ctx, child, "appendChild");
-    nativeMutation(ctx, "appendChild", parentHandle, [childHandle]);
-    return ctx.wrap(childHandle);
+    nativeMutation(ctx, "appendChild", parentHandle, childHandle);
+    return child;
   });
 
   ctx.defineMethod(Node.prototype, "insertBefore", function insertBefore(child, reference) {
@@ -117,19 +128,19 @@ export function install(ctx) {
     // semantics, matching happy-dom); the native contract has no null slot, so
     // the facade routes the null case through appendChild.
     if (reference === null || reference === undefined) {
-      nativeMutation(ctx, "appendChild", parentHandle, [childHandle]);
-      return ctx.wrap(childHandle);
+      nativeMutation(ctx, "appendChild", parentHandle, childHandle);
+      return child;
     }
     const referenceHandle = facadeNodeHandle(ctx, reference, "insertBefore");
-    nativeMutation(ctx, "insertBefore", parentHandle, [childHandle, referenceHandle]);
-    return ctx.wrap(childHandle);
+    nativeMutation(ctx, "insertBefore", parentHandle, childHandle, referenceHandle);
+    return child;
   });
 
   ctx.defineMethod(Node.prototype, "removeChild", function removeChild(child) {
     const parentHandle = facadeNodeHandle(ctx, this, "removeChild");
     const childHandle = facadeNodeHandle(ctx, child, "removeChild");
-    nativeMutation(ctx, "removeChild", parentHandle, [childHandle]);
-    return ctx.wrap(childHandle);
+    nativeMutation(ctx, "removeChild", parentHandle, childHandle);
+    return child;
   });
 
   ctx.defineMethod(Node.prototype, "replaceChild", function replaceChild(newChild, oldChild) {
@@ -138,7 +149,7 @@ export function install(ctx) {
     const oldChildHandle = facadeNodeHandle(ctx, oldChild, "replaceChild");
     // Native/Core order is (parent, old child, replacement); WHATWG order is
     // (new child, old child).
-    nativeMutation(ctx, "replaceChild", parentHandle, [oldChildHandle, newChildHandle]);
-    return ctx.wrap(oldChildHandle);
+    nativeMutation(ctx, "replaceChild", parentHandle, oldChildHandle, newChildHandle);
+    return oldChild;
   });
 }

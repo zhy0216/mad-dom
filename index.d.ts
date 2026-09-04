@@ -2096,6 +2096,8 @@ export interface NodeHandle {
   lastChild(): NodeHandle | null;
   previousSibling(): NodeHandle | null;
   nextSibling(): NodeHandle | null;
+  /** Optional bounded navigation prefetch: at most the first two children, with a trailing null only when the native read proved that no third child exists. */
+  firstChildPair?(): Array<NodeHandle | null>;
   /** Optional bounded navigation prefetch: at most 32 following siblings, with a trailing null only when the native walk reached the chain end. */
   nextSiblingChunk?(): Array<NodeHandle | null>;
   childNodes(): NodeHandle[];

@@ -153,6 +153,23 @@ describe("attribute and textContent install surface (T25E)", () => {
 });
 
 describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () => {
+  test("attribute methods reject inherited, copied and proxied wrapper aliases", () => {
+    const win = new Window();
+    const el = win.document.createElement("div");
+    try {
+      const inherited = Object.create(el);
+      const copied = Object.create(Object.getPrototypeOf(el));
+      Object.defineProperties(copied, Object.getOwnPropertyDescriptors(el));
+
+      for (const alias of [inherited, copied, new Proxy(el, {})]) {
+        expect(() => alias.setAttribute("data-forged", "yes")).toThrow(TypeError);
+      }
+      expect(el.hasAttribute("data-forged")).toBe(false);
+    } finally {
+      win.destroy();
+    }
+  });
+
   test("get/set/has/remove round-trip and observe immediate changes", () => {
     const win = new Window();
     const el = win.document.createElement("div");

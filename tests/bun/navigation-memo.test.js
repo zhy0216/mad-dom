@@ -152,16 +152,45 @@ describe.skipIf(!nativeAvailable)("navigation memo correctness", () => {
     }
   });
 
+  test("first-child pair seeds short axes and invalidates every relation", () => {
+    const window = new Window();
+    try {
+      const { document } = window;
+      document.body.innerHTML = '<div><i id="a"></i><i id="b"></i></div>';
+      const parent = document.body.firstChild;
+      const first = parent.firstChild;
+      const second = first.nextSibling;
+
+      expect(second).toBe(parent.lastChild);
+      expect(first.previousSibling).toBeNull();
+      expect(first.parentNode).toBe(parent);
+      expect(second.previousSibling).toBe(first);
+      expect(second.parentNode).toBe(parent);
+      expect(second.nextSibling).toBeNull();
+
+      const third = document.createElement("i");
+      parent.appendChild(third);
+      expect(parent.firstChild).toBe(first);
+      expect(second.nextSibling).toBe(third);
+      expect(third.previousSibling).toBe(second);
+      expect(parent.lastChild).toBe(third);
+    } finally {
+      window.destroy();
+    }
+  });
+
   test("sibling prefetch stays bounded on an ultra-wide parent", () => {
     const window = new Window();
     try {
       const { document } = window;
       document.body.innerHTML = `<div>${"<i></i>".repeat(1000)}</div>`;
       const parent = document.body.firstChild;
+      const state = parent[DOC_STATE_SLOT];
+      const pinnedBeforePair = state.pinned.size;
       const first = parent.firstChild;
+      expect(state.pinned.size - pinnedBeforePair).toBeLessThanOrEqual(2);
       const second = first.nextSibling;
       const third = second.nextSibling;
-      const state = third[DOC_STATE_SLOT];
       const pinnedBeforeChunk = state.pinned.size;
 
       // The third nextSibling read activates prefetch. It may pin one bounded

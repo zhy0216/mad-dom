@@ -344,6 +344,13 @@ impl Document {
     /// Queues a childList addition record for `target` with a single added
     /// node (the baseline emits one record per inserted node).
     pub(crate) fn queue_child_list_added(&mut self, target: NodeId, node: NodeId) {
+        // Building the record allocates its node vector. Most documents never
+        // register an observer, so reject that overwhelmingly common case
+        // before constructing a value that `queue_observer_record` would
+        // immediately discard.
+        if !self.observer_records_enabled() {
+            return;
+        }
         self.queue_observer_record(MutationRecord {
             record_type: RecordType::ChildList,
             target,
@@ -366,6 +373,9 @@ impl Document {
         previous_sibling: Option<NodeId>,
         next_sibling: Option<NodeId>,
     ) {
+        if !self.observer_records_enabled() {
+            return;
+        }
         self.queue_observer_record(MutationRecord {
             record_type: RecordType::ChildList,
             target,
@@ -387,6 +397,11 @@ impl Document {
         name: &str,
         old_value: Option<&str>,
     ) {
+        // Avoid allocating the attribute name and old value when record
+        // delivery is globally impossible for this document.
+        if !self.observer_records_enabled() {
+            return;
+        }
         self.queue_observer_record(MutationRecord {
             record_type: RecordType::Attributes,
             target,
@@ -403,6 +418,9 @@ impl Document {
     /// Queues a characterData record for `target` with the old data (always
     /// populated, baseline parity).
     pub(crate) fn queue_character_data_record(&mut self, target: NodeId, old_value: &str) {
+        if !self.observer_records_enabled() {
+            return;
+        }
         self.queue_observer_record(MutationRecord {
             record_type: RecordType::CharacterData,
             target,
@@ -424,7 +442,7 @@ impl Document {
     /// order (observer then observation), which also fixes the relative order
     /// in which the binding schedules the per-listener microtasks.
     fn queue_observer_record(&mut self, record: MutationRecord) {
-        if self.suppress_observer_records || self.observers.is_empty() {
+        if !self.observer_records_enabled() {
             return;
         }
         let mut interested: Vec<(usize, usize)> = Vec::new();
@@ -439,6 +457,15 @@ impl Document {
             let obs = &mut self.observers[entry_index].observations[obs_index];
             obs.records.push(record.clone());
         }
+    }
+
+    #[inline]
+    fn observer_records_enabled(&self) -> bool {
+        !self.suppress_observer_records
+            && self
+                .observers
+                .iter()
+                .any(|entry| !entry.observations.is_empty())
     }
 
     /// Whether `obs` should receive `record`.

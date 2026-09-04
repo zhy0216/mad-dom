@@ -31,6 +31,13 @@ const ENGINES = ["mad-dom", "happy-dom"];
 // phases print as their own groups below.
 const PHASES_MAIN = ["parse", "buildMixed", "queryHot", "queryCold", "getById", "getByTag", "serialize", "traverseWarm", "traverseCold"];
 const PHASES_BUILD = ["buildCreate", "buildAttr", "buildAppend", "buildText", "buildBulk"];
+const BUILD_CHECK_KEYS = {
+  buildCreate: "create",
+  buildAttr: "attr",
+  buildAppend: "append",
+  buildText: "text",
+  buildBulk: "bulk",
+};
 const PHASES_READ_MUTATION = ["readHeavy", "mutationChurn"];
 const PHASES = [...PHASES_MAIN, ...PHASES_BUILD, ...PHASES_READ_MUTATION];
 const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--runs <n>] [--sizes <s1,s2,...>] [--json]";
@@ -112,7 +119,13 @@ function runEngine(engine, runs, sizesRaw) {
 function resultMatch(madRes, happyRes) {
   const mad = { workload: madRes.workload, checks: madRes.checks };
   const happy = { workload: happyRes.workload, checks: happyRes.checks };
-  const decompMatch = (key) => JSON.stringify(mad.checks.buildDecomp[key]) === JSON.stringify(happy.checks.buildDecomp[key]);
+  const decompMatch = (phase) => {
+    const key = BUILD_CHECK_KEYS[phase];
+    return key !== undefined &&
+      Object.hasOwn(mad.checks.buildDecomp, key) &&
+      Object.hasOwn(happy.checks.buildDecomp, key) &&
+      JSON.stringify(mad.checks.buildDecomp[key]) === JSON.stringify(happy.checks.buildDecomp[key]);
+  };
   return (
     mad.workload.elementCount === happy.workload.elementCount &&
     mad.checks.queryHits.hot.item3 === happy.checks.queryHits.hot.item3 &&

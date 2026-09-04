@@ -66,6 +66,12 @@
   },
   "optionalPerformance": {
     "NodeHandle": {
+      "firstChildPair": {
+        "returns": "Array<NodeHandle | null>",
+        "identity": "stable per element",
+        "behavior": "returns at most the first two children; a trailing null proves the child axis ended, while no null means more children follow",
+        "fallback": "the facade feature-detects this method and uses firstChild when paired with an older native package"
+      },
       "nextSiblingChunk": {
         "returns": "Array<NodeHandle | null>",
         "identity": "stable per element",

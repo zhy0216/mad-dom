@@ -186,6 +186,7 @@ export function flushCustomElementReactions(ctx, nodeHandle) {
  */
 export function upgradeElementPrototype(ctx, element, docHandle) {
   if (element === null || element === undefined) return;
+  if (!ANY_REGISTRY) return;
   const registry =
     docHandle !== undefined
       ? REGISTRIES_BY_DOC.get(docHandle)

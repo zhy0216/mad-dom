@@ -53,7 +53,7 @@
 use crate::arena::NodeId;
 use crate::dom::{Document, NodeData, NodeType};
 use crate::error::CoreError;
-use crate::html::fragment::FragmentContext;
+use crate::html::fragment::{FragmentContext, ParsedFragment};
 use crate::html::{parse_html_document, parse_html_fragment};
 use crate::serialize::{serialize_children, serialize_node};
 
@@ -219,7 +219,7 @@ impl Document {
     ///   `DocumentFragment`.
     pub fn set_inner_html(&mut self, node: NodeId, input: &str) -> Result<(), CoreError> {
         let mut parsed = parse_fragment_in_context(self, node, input)?;
-        let adopted = adopt_parsed(self, &mut parsed.document, &parsed.nodes)?;
+        let adopted = adopt_fragment(self, &mut parsed)?;
         let target = if self.is_template(node)? {
             self.template_content(node)?
         } else {
@@ -273,7 +273,7 @@ impl Document {
             parent
         };
         let mut parsed = parse_fragment_in_context(self, context, input)?;
-        let adopted = adopt_parsed(self, &mut parsed.document, &parsed.nodes)?;
+        let adopted = adopt_fragment(self, &mut parsed)?;
         replace_in_parent(self, node, &adopted)?;
         self.verify_apply(parent);
         Ok(())
@@ -370,6 +370,26 @@ fn adopt_parsed(
     Ok(adopted)
 }
 
+/// Adopts a parsed fragment as one temporary-root subtree, then removes that
+/// unobservable container and returns its detached children in document order.
+///
+/// Fragment parsing always places every result under a temporary `<html>`
+/// root. Moving that root once lets [`Document::adopt_node`] traverse and
+/// remap the whole forest with one set of scratch allocations. Adopting each
+/// top-level node separately was especially expensive for flat `innerHTML`
+/// fragments, where 20,000 siblings meant 20,000 tiny maps and sets. Template
+/// contents still move through `adopt_node`'s recursive association path.
+fn adopt_fragment(
+    doc: &mut Document,
+    parsed: &mut ParsedFragment,
+) -> Result<Vec<NodeId>, CoreError> {
+    let container = doc.adopt_node(&mut parsed.document, parsed.root)?;
+    let adopted = doc.children(container)?;
+    doc.detach_unobservable_children(container, &adopted);
+    doc.remove_node(container)?;
+    Ok(adopted)
+}
+
 /// Atomically replaces the children of `parent` with `new_children`.
 ///
 /// All current children are detached first, then `new_children` (already
@@ -393,7 +413,9 @@ fn replace_children(
         doc.detach(child);
     }
     for &child in new_children {
-        doc.detach(child);
+        if doc.get(child)?.parent().is_some() {
+            doc.detach(child);
+        }
     }
     if !new_children.is_empty() {
         doc.upgrade_custom_elements(new_children[0])?;
@@ -429,7 +451,9 @@ fn replace_in_parent(
     doc.detach(node);
     if !new_nodes.is_empty() {
         for &n in new_nodes {
-            doc.detach(n);
+            if doc.get(n)?.parent().is_some() {
+                doc.detach(n);
+            }
         }
         doc.upgrade_custom_elements(new_nodes[0])?;
         for &n in &new_nodes[1..] {
