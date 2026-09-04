@@ -3,9 +3,11 @@
 //
 // Spawns benchmark/dom-bench/worker.mjs once per engine (isolated processes),
 // each running the same deterministic workload through the shared public API
-// shape — parse of a ~10k-element page, 20k-node tree build, hot/cold
-// selector queries, separate getById / getByTag phases, serialization, and
-// warm/cold full tree walks — and prints the per-phase comparison.
+// shape — parse of a ~10k-element page, mixed 20k-node tree build plus its
+// create/attr/append/text/bulk decomposition, hot/cold selector queries,
+// separate getById / getByTag phases, serialization, warm/cold full tree
+// walks, read-heavy per-node reads, and mutation churn — and prints the
+// per-phase comparison.
 //
 // This complements the integration-test benchmark (benchmark/run.mjs): that
 // one measures wall-clock of a small, fixed-cost-dominated suite; this one
@@ -24,7 +26,12 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(SCRIPT_DIR, "worker.mjs");
 
 const ENGINES = ["mad-dom", "happy-dom"];
-const PHASES = ["parse", "build", "queryHot", "queryCold", "getById", "getByTag", "serialize", "traverseWarm", "traverseCold"];
+// buildMixed keeps the old build slot; the decomposition + read/mutation
+// phases print as their own groups below.
+const PHASES_MAIN = ["parse", "buildMixed", "queryHot", "queryCold", "getById", "getByTag", "serialize", "traverseWarm", "traverseCold"];
+const PHASES_BUILD = ["buildCreate", "buildAttr", "buildAppend", "buildText", "buildBulk"];
+const PHASES_READ_MUTATION = ["readHeavy", "mutationChurn"];
+const PHASES = [...PHASES_MAIN, ...PHASES_BUILD, ...PHASES_READ_MUTATION];
 const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--runs <n>] [--json]";
 
 function parseRuns(raw) {
@@ -84,6 +91,7 @@ function runEngine(engine, runs) {
 }
 
 function workloadsMatch(mad, happy) {
+  const decompMatch = (key) => JSON.stringify(mad.checks.buildDecomp[key]) === JSON.stringify(happy.checks.buildDecomp[key]);
   return (
     mad.workload.elementCount === happy.workload.elementCount &&
     mad.checks.queryHits.hot.item3 === happy.checks.queryHits.hot.item3 &&
@@ -92,8 +100,14 @@ function workloadsMatch(mad, happy) {
     mad.checks.queryHits.cold.descendant === happy.checks.queryHits.cold.descendant &&
     mad.checks.queryHits.byId === happy.checks.queryHits.byId &&
     mad.checks.queryHits.byTag === happy.checks.queryHits.byTag &&
-    mad.checks.build.treeNodes === happy.checks.build.treeNodes &&
-    mad.checks.build.probeIds === happy.checks.build.probeIds &&
+    mad.checks.buildMixed.treeNodes === happy.checks.buildMixed.treeNodes &&
+    mad.checks.buildMixed.probeIds === happy.checks.buildMixed.probeIds &&
+    PHASES_BUILD.every(decompMatch) &&
+    mad.checks.readHeavy.hash === happy.checks.readHeavy.hash &&
+    mad.checks.readHeavy.textLen === happy.checks.readHeavy.textLen &&
+    mad.checks.readHeavy.count === happy.checks.readHeavy.count &&
+    mad.checks.mutation.fpHash === happy.checks.mutation.fpHash &&
+    mad.checks.mutation.ops === happy.checks.mutation.ops &&
     mad.checks.serializeHash === happy.checks.serializeHash &&
     mad.checks.traverseCount === happy.checks.traverseCount &&
     mad.checks.traverseColdCount === happy.checks.traverseColdCount
@@ -143,7 +157,31 @@ function printReport(reports) {
   console.log("");
   console.log(row(["phase", "mad-dom", "happy-dom", "mad-dom speedup"]));
   console.log("-".repeat(width * 4));
-  for (const phase of PHASES) {
+  for (const phase of PHASES_MAIN) {
+    console.log(
+      row([
+        phase,
+        formatCell(mad.phases[phase]),
+        formatCell(happy.phases[phase]),
+        formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
+      ]),
+    );
+  }
+  console.log("");
+  console.log("build decomposition (per-phase FFI isolation)");
+  for (const phase of PHASES_BUILD) {
+    console.log(
+      row([
+        phase,
+        formatCell(mad.phases[phase]),
+        formatCell(happy.phases[phase]),
+        formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
+      ]),
+    );
+  }
+  console.log("");
+  console.log("read-heavy / mutation churn");
+  for (const phase of PHASES_READ_MUTATION) {
     console.log(
       row([
         phase,
