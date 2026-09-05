@@ -188,29 +188,6 @@ fn prune_observer(observer_id: u64) {
     let _ = with_observers_mut(|guard| guard.remove(&observer_id));
 }
 
-/// Releases the registry entries of observers whose document has died (the
-/// weak document link is dead and the handle is gone). Called at observer entry
-/// points, mirroring the events registry pruning. Entries with no document link
-/// yet (an observer created but not yet `observe`d) are never pruned here —
-/// they are released by the handle's `Drop` when it is collected.
-fn prune_dead_observers() {
-    let dead: Vec<u64> = with_observers_mut(|guard| {
-        guard
-            .iter()
-            .filter(|(_, entry)| {
-                entry
-                    .shared
-                    .as_ref()
-                    .is_some_and(|weak| weak.strong_count() == 0)
-            })
-            .map(|(id, _)| *id)
-            .collect()
-    });
-    for observer_id in dead {
-        prune_observer(observer_id);
-    }
-}
-
 // --- scheduler seam ----------------------------------------------------------
 
 /// Stores the facade-registered delivery scheduler (a `queueMicrotask`
@@ -387,7 +364,11 @@ impl MutationObserverHandle {
         attribute_filter: Option<Vec<String>>,
     ) -> napi::Result<()> {
         check_affinity(target.shared(), &env)?;
-        prune_dead_observers();
+        // A bound live handle owns a strong document Arc until Drop, which
+        // also removes its callback entry. Scanning every observer for dead
+        // document links here cannot release a live handle's entry and makes
+        // registering N observers quadratic. Drop and delivery prune entries
+        // directly by observer id instead.
         let shared = self.bind_shared(target.shared());
         with_document(&shared, |doc| {
             doc.observe(
@@ -605,10 +586,18 @@ pub fn deliver_observer_records(
     let Ok(callback) = callback else {
         return Ok(());
     };
-    let records = with_document(&shared, |doc| {
+    let records = match with_document(&shared, |doc| {
         Ok(doc.take_observer_records(observer_id, observation_key))
-    })
-    .map_err(|err| err.into_napi(&env))?;
+    }) {
+        Ok(records) => records,
+        Err(BindingError::Destroyed) => {
+            // The window can be destroyed after this microtask was queued.
+            // Its handle still owns the Arc, but no document or records remain.
+            prune_observer(observer_id);
+            return Ok(());
+        }
+        Err(err) => return Err(err.into_napi(&env)),
+    };
     if records.is_empty() {
         return Ok(()); // takeRecords drained the queue, or the observation is gone
     }

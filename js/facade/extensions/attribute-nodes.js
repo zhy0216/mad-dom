@@ -67,6 +67,7 @@
 
 import { Document } from "../document.js";
 import { Node } from "./node.js";
+import { Element } from "./classes.js";
 import { HTMLAnchorElement, HTMLLinkElement } from "./html-element.js";
 
 export const seam = Object.freeze({
@@ -392,6 +393,13 @@ export function install(ctx) {
     if (handle.nodeType() !== 1) return null;
     return namedNodeMapOf(handle);
   }, undefined);
+
+  ctx.defineMethod(Element.prototype, "getAttributeNode", function getAttributeNode(name) {
+    const handle = facadeNodeHandle(ctx, this, "getAttributeNode");
+    name = String(name);
+    if (handle.namespaceUri() === "http://www.w3.org/1999/xhtml") name = name.toLowerCase();
+    return handle.hasAttribute(name) ? attrOf(namedNodeMapOf(handle), name) : null;
+  });
 
   ctx.defineAccessor(Node.prototype, "classList", function classList() {
     const handle = facadeNodeHandle(ctx, this, "classList");

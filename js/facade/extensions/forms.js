@@ -72,7 +72,12 @@
 // import and array entry.
 
 import { Node } from "./node.js";
-import { HTMLInputElement, HTMLButtonElement } from "./html-element.js";
+import {
+  HTMLInputElement,
+  HTMLButtonElement,
+  HTMLSelectElement,
+  HTMLTextAreaElement,
+} from "./html-element.js";
 import { Window } from "../window.js";
 import { Event, MouseEvent } from "./events.js";
 
@@ -683,7 +688,7 @@ export function install(ctx) {
 
   // --- value ---------------------------------------------------------------
 
-  ctx.defineAccessor(Node.prototype, "value", function value() {
+  function getValue() {
     const handle = facadeNodeHandle(ctx, this, "value");
     switch (tagOf(handle)) {
       case "input":
@@ -699,7 +704,8 @@ export function install(ctx) {
       default:
         return undefined;
     }
-  }, function value(v) {
+  }
+  function setValue(v) {
     const handle = facadeNodeHandle(ctx, this, "value");
     switch (tagOf(handle)) {
       case "input":
@@ -718,7 +724,13 @@ export function install(ctx) {
       default:
         break;
     }
-  });
+  }
+  // Native setters belong on each control interface. Testing libraries and
+  // framework value trackers inspect the immediate prototype to invoke the
+  // original setter, even when an instance has its own tracked property.
+  for (const Class of [Node, HTMLInputElement, HTMLButtonElement, HTMLSelectElement, HTMLTextAreaElement]) {
+    ctx.defineAccessor(Class.prototype, "value", getValue, setValue);
+  }
 
   // --- name / type / disabled / required / readOnly / multiple ---------------
 

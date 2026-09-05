@@ -15,6 +15,8 @@
 //! name, class, id and namespace URI written in the selector string).
 
 use std::borrow::Borrow;
+use std::cell::RefCell;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
 use cssparser::{
@@ -227,6 +229,44 @@ impl<'i> Parser<'i> for DomSelectorParser {
 /// syntax error is preserved as a structured [`CoreError::Syntax`] carrying the
 /// source location and a stable description of the offending construct.
 pub fn parse_selector_list(input: &str) -> Result<SelectorList<DomSelectorImpl>, CoreError> {
+    // Only immutable syntax is cached: matching always reads the current
+    // document and scope. Bound both the number and size of retained strings,
+    // since applications can issue arbitrarily many distinct selectors.
+    if input.len() > MAX_CACHED_SELECTOR_BYTES {
+        return parse_uncached(input);
+    }
+    SELECTOR_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some(list) = cache.lists.get(input) {
+            return Ok(list.clone());
+        }
+        let list = parse_uncached(input)?;
+        if cache.order.len() == MAX_CACHED_SELECTORS {
+            if let Some(oldest) = cache.order.pop_front() {
+                cache.lists.remove(&oldest);
+            }
+        }
+        cache.order.push_back(input.to_owned());
+        cache.lists.insert(input.to_owned(), list.clone());
+        Ok(list)
+    })
+}
+
+const MAX_CACHED_SELECTORS: usize = 256;
+const MAX_CACHED_SELECTOR_BYTES: usize = 4096;
+
+#[derive(Default)]
+struct SelectorCache {
+    lists: HashMap<String, SelectorList<DomSelectorImpl>>,
+    order: VecDeque<String>,
+}
+
+thread_local! {
+    // Independent caches avoid synchronization between separate DOM workers.
+    static SELECTOR_CACHE: RefCell<SelectorCache> = RefCell::default();
+}
+
+fn parse_uncached(input: &str) -> Result<SelectorList<DomSelectorImpl>, CoreError> {
     let mut parser_input = ParserInput::new(input);
     let mut parser = CssParser::new(&mut parser_input);
     SelectorList::parse(&DomSelectorParser, &mut parser, ParseRelative::No).map_err(|e| {

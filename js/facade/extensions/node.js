@@ -51,6 +51,7 @@ import {
 } from "./classes.js";
 import { Document } from "../document.js";
 import { Window } from "../window.js";
+import { snapshotWrapper } from "./snapshot-node.js";
 import { liveChildNodes } from "./child-nodelist.js";
 import { upgradeElementPrototype } from "./custom-elements.js";
 import { domErrorName, rethrowDomError, webidlMessage } from "./dom-error.js";
@@ -84,14 +85,7 @@ const stringSlice = Function.prototype.call.bind(String.prototype.slice);
 const stringFromCharCode = String.fromCharCode;
 const weakSetAdd = Function.prototype.call.bind(WeakSet.prototype.add);
 const weakSetHas = Function.prototype.call.bind(WeakSet.prototype.has);
-const SNAPSHOT_HTML_NAMES = [
-  "html", "head", "body", "title", "div", "span", "p", "a",
-  "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li",
-  "table", "caption", "tr", "td", "th", "thead", "tbody", "tfoot",
-  "br", "hr", "form", "input", "button", "select", "option",
-  "textarea", "label", "img", "script", "style", "link", "meta",
-  "blockquote", "q", "slot", "template", "section",
-];
+
 
 function createElementToken(documentHandle, documentState, localName, structureEpoch) {
   const elementTokenMethod = documentState.nativeMethods.createElementToken;
@@ -222,7 +216,9 @@ export function install(ctx) {
   // `ctx.wrap` has already identified the native class, so use the trusted
   // factory and avoid repeating Node's public authenticity probe per mint.
   ctx.registerHandleType("NodeHandle", createTrustedNodeWrapper);
-  setRegisterMintedWrapper(ctx.registerWrap);
+  // Recording-only installer contexts have no wrapper registry. They must
+  // leave the active facade's constructor registration hook intact.
+  if (typeof ctx.registerWrap === "function") setRegisterMintedWrapper(ctx.registerWrap);
 
   // `window.Node` / `window.Element` / `window.DocumentFragment` — the WHATWG
   // constructor accessors (T48A), matching the happy-dom window surface.
@@ -492,53 +488,6 @@ export function install(ctx) {
     return result;
   }
 
-  function snapshotWrapper(
-    state,
-    token,
-    descriptor,
-    initialMemo,
-    epoch,
-    knownFresh,
-  ) {
-    if (descriptor >= 16) {
-      const name = SNAPSHOT_HTML_NAMES[descriptor - 16];
-      if (name !== undefined) {
-        return ctx.wrapLazyNode(
-          state.documentHandle,
-          token,
-          1,
-          name,
-          HTML_NAMESPACE,
-          state,
-          initialMemo,
-          epoch,
-          descriptor,
-          knownFresh,
-        );
-      }
-    } else if (descriptor > 0) {
-      return ctx.wrapLazyNode(
-        state.documentHandle,
-        token,
-        descriptor,
-        "",
-        null,
-        state,
-        initialMemo,
-        epoch,
-        undefined,
-        knownFresh,
-      );
-    }
-    // Unknown/custom/non-HTML element: retain the ordinary native
-    // classification path for exact prototype and namespace semantics.
-    const existing = state.getWrapperByToken(token);
-    if (existing !== undefined) return existing;
-    return ctx.wrap(
-      state.nativeMethods.materializeNodeToken(token),
-      state,
-    );
-  }
 
   // Hydrates a bounded subtree prefix and seeds every relation memo whose
   // terminal link is proven by that prefix. Current bindings prefix the pairs
@@ -568,6 +517,7 @@ export function install(ctx) {
       const wrapper = i === 0
         ? rootWrapper
         : snapshotWrapper(
+            ctx,
             state,
             token,
             descriptor,
@@ -849,13 +799,13 @@ export function install(ctx) {
   }, undefined);
 
   // Ordered children as the T25D *live* `NodeList` bound to this parent. Every
-  // access re-reads the frozen native `childNodes()` read through
+  // access re-reads the native child list through
   // `liveChildNodes`, so an existing collection reflects later tree or
   // `textContent` changes immediately and one and the same `NodeList` object is
   // handed back per parent (stable identity), matching happy-dom. The T23B
   // snapshot-array form was replaced by the T25 gate; an empty `NodeList`
   // stands for a leaf node.
   ctx.defineAccessor(Node.prototype, "childNodes", function childNodes() {
-    return liveChildNodes(nodeHandleOf(this));
+    return liveChildNodes(nodeInternalsOf(this)?.documentState === undefined ? nodeHandleOf(this) : this);
   }, undefined);
 }

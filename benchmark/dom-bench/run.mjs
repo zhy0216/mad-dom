@@ -26,6 +26,7 @@
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(SCRIPT_DIR, "worker.mjs");
@@ -36,13 +37,6 @@ const ENGINES = ["mad-dom", "happy-dom"];
 // phases print as their own groups below.
 const PHASES_MAIN = ["parse", "buildMixed", "queryHot", "queryCold", "getById", "getByTag", "serialize", "traverseWarm", "traverseCold"];
 const PHASES_BUILD = ["buildCreate", "buildAttr", "buildAppend", "buildText", "buildBulk"];
-const BUILD_CHECK_KEYS = {
-  buildCreate: "create",
-  buildAttr: "attr",
-  buildAppend: "append",
-  buildText: "text",
-  buildBulk: "bulk",
-};
 const PHASES_READ_MUTATION = ["readHeavy", "mutationChurn"];
 const PHASES = [...PHASES_MAIN, ...PHASES_BUILD, ...PHASES_READ_MUTATION];
 const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--suite <all|core|testing>] [--runs <n>] [--sizes <s1,s2,...>] [--json]";
@@ -129,36 +123,9 @@ function runEngine(engine, runs, sizesRaw, suite = "core") {
   return report;
 }
 
-function resultMatch(madRes, happyRes) {
-  const mad = { workload: madRes.workload, checks: madRes.checks };
-  const happy = { workload: happyRes.workload, checks: happyRes.checks };
-  const decompMatch = (phase) => {
-    const key = BUILD_CHECK_KEYS[phase];
-    return key !== undefined &&
-      Object.hasOwn(mad.checks.buildDecomp, key) &&
-      Object.hasOwn(happy.checks.buildDecomp, key) &&
-      JSON.stringify(mad.checks.buildDecomp[key]) === JSON.stringify(happy.checks.buildDecomp[key]);
-  };
-  return (
-    mad.workload.elementCount === happy.workload.elementCount &&
-    mad.checks.queryHits.hot.item3 === happy.checks.queryHits.hot.item3 &&
-    mad.checks.queryHits.hot.descendant === happy.checks.queryHits.hot.descendant &&
-    mad.checks.queryHits.cold.item3 === happy.checks.queryHits.cold.item3 &&
-    mad.checks.queryHits.cold.descendant === happy.checks.queryHits.cold.descendant &&
-    mad.checks.queryHits.byId === happy.checks.queryHits.byId &&
-    mad.checks.queryHits.byTag === happy.checks.queryHits.byTag &&
-    mad.checks.buildMixed.treeNodes === happy.checks.buildMixed.treeNodes &&
-    mad.checks.buildMixed.probeIds === happy.checks.buildMixed.probeIds &&
-    PHASES_BUILD.every(decompMatch) &&
-    mad.checks.readHeavy.hash === happy.checks.readHeavy.hash &&
-    mad.checks.readHeavy.textLen === happy.checks.readHeavy.textLen &&
-    mad.checks.readHeavy.count === happy.checks.readHeavy.count &&
-    mad.checks.mutation.fpHash === happy.checks.mutation.fpHash &&
-    mad.checks.mutation.ops === happy.checks.mutation.ops &&
-    mad.checks.serializeHash === happy.checks.serializeHash &&
-    mad.checks.traverseCount === happy.checks.traverseCount &&
-    mad.checks.traverseColdCount === happy.checks.traverseColdCount
-  );
+export function resultMatch(mad, happy) {
+  return mad.checks?.roundsIdentical === true && happy.checks?.roundsIdentical === true &&
+    isDeepStrictEqual(mad.workload, happy.workload) && isDeepStrictEqual(mad.checks, happy.checks);
 }
 
 function workloadsMatch(mad, happy) {
@@ -200,10 +167,12 @@ function rssAfterMB(result, phase) {
   return `+${((entry.after - base) / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function printSizeTable(mad, happy, size) {
+export function printSizeTable(mad, happy, size) {
   // mad/happy are per-size views: { host, workload, phases, total, rss, checks }.
   const width = 40;
   const rssWidth = 14;
+  const matches = resultMatch(mad, happy);
+  const speedup = (a, b) => matches ? formatRatio(a.medianMs, b.medianMs) : "invalid (no speedup)";
   const row = (cells) =>
     cells
       .slice(0, 4)
@@ -212,13 +181,13 @@ function printSizeTable(mad, happy, size) {
 
   console.log(`size ${size}× · dom-intensive benchmark: mad-dom vs happy-dom`);
   console.log(
-    `${bunLabel(mad, happy)} · ${mad.host.os}/${mad.host.arch} · median of ${mad.workload.runs} measured rounds per phase; total = median of ${mad.total.samples.length} per-round pipeline totals`,
+    `${bunLabel(mad, happy)} · ${mad.host.os}/${mad.host.arch} · median of ${mad.workload.runs} measured rounds per phase; operations = per-round sum of timed phases; total = pipeline wall time including setup, checks and GC`,
   );
   console.log(
     `workload: ${mad.workload.elementCount} elements (${Math.round(mad.workload.htmlBytes / 1024)} KB HTML) · ` +
       `${mad.workload.builtElements} elements + ${mad.workload.builtTextNodes} text nodes`,
   );
-  if (!resultMatch(mad, happy)) {
+  if (!matches) {
     console.log(`WARNING: size ${size}× engines saw different workloads — comparison is invalid`);
   }
   console.log("");
@@ -230,7 +199,7 @@ function printSizeTable(mad, happy, size) {
         phase,
         formatCell(mad.phases[phase]),
         formatCell(happy.phases[phase]),
-        formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
+        speedup(mad.phases[phase], happy.phases[phase]),
         rssAfterMB(mad, phase),
         rssAfterMB(happy, phase),
       ]),
@@ -244,7 +213,7 @@ function printSizeTable(mad, happy, size) {
         phase,
         formatCell(mad.phases[phase]),
         formatCell(happy.phases[phase]),
-        formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
+        speedup(mad.phases[phase], happy.phases[phase]),
         rssAfterMB(mad, phase),
         rssAfterMB(happy, phase),
       ]),
@@ -258,27 +227,29 @@ function printSizeTable(mad, happy, size) {
         phase,
         formatCell(mad.phases[phase]),
         formatCell(happy.phases[phase]),
-        formatRatio(mad.phases[phase].medianMs, happy.phases[phase].medianMs),
+        speedup(mad.phases[phase], happy.phases[phase]),
         rssAfterMB(mad, phase),
         rssAfterMB(happy, phase),
       ]),
     );
   }
   console.log("-".repeat(width * 4 + rssWidth * 2));
+  console.log(row(["operations", formatCell(mad.operations), formatCell(happy.operations),
+    speedup(mad.operations, happy.operations), "n/a", "n/a"]));
   console.log(
     row([
       "total",
       formatCell(mad.total),
       formatCell(happy.total),
-      formatRatio(mad.total.medianMs, happy.total.medianMs),
+      speedup(mad.total, happy.total),
       // Pipeline-end residency: after-drain RSS of the last phase.
       rssAfterMB(mad, "mutationChurn"),
       rssAfterMB(happy, "mutationChurn"),
     ]),
   );
   for (const [name, report] of [["mad-dom", mad], ["happy-dom", happy]]) {
-    for (const phase of [...PHASES, "total"]) {
-      const s = phase === "total" ? report.total : report.phases[phase];
+    for (const phase of [...PHASES, "operations", "total"]) {
+      const s = report.phases[phase] ?? report[phase];
       if (s.medianMs > 0 && s.madMs > 0.2 * s.medianMs) {
         console.log(`WARNING: ${name} size ${size}× ${phase} unstable (MAD > 20% of median)`);
       }
@@ -296,9 +267,9 @@ function printScaleCurve(reports) {
   console.log("");
   console.log("scale curve (mad-dom median per size)");
   console.log(`phase${" ".repeat(w0 - 5)}` + sizes.map((s) => `${s}×`.padEnd(w)).join(""));
-  for (const phase of [...PHASES, "total"]) {
+  for (const phase of [...PHASES, "operations", "total"]) {
     const cells = mad.results
-      .map((r) => (phase === "total" ? r.total : r.phases[phase]))
+      .map((r) => r.phases[phase] ?? r[phase])
       .map((s) => `${s.medianMs.toFixed(1)} ms`.padEnd(w))
       .join("");
     console.log(String(phase).padEnd(w0) + cells);
@@ -318,10 +289,12 @@ function printReport(reports) {
   if (mad.results.length > 1) printScaleCurve(reports);
 }
 
-function testingPhaseMatches(mad, happy, phase) {
+export function testingPhaseMatches(mad, happy, phase) {
   return mad.phases[phase]?.status === "passed" && happy.phases[phase]?.status === "passed" &&
+    mad.workload.runs === happy.workload.runs &&
     mad.workload.cases[phase] === happy.workload.cases[phase] &&
-    JSON.stringify(mad.checks[phase]) === JSON.stringify(happy.checks[phase]);
+    mad.checks[phase]?.cases === mad.workload.cases[phase] &&
+    isDeepStrictEqual(mad.checks[phase], happy.checks[phase]);
 }
 
 function testingWorkloadsMatch([mad, happy]) {
@@ -358,6 +331,7 @@ function printTestingReport([mad, happy]) {
   }
 }
 
+if (import.meta.main) {
 let args;
 try { args = parseArgs(process.argv.slice(2)); }
 catch (error) { console.error(`${error.message}\n${USAGE}`); process.exit(2); }
@@ -366,7 +340,7 @@ const testingReports = args.suite === "core" ? [] : ENGINES.map((engine) => runE
 if (reports.length) checkHosts(reports[0], reports[1]);
 if (testingReports.length) checkHosts(testingReports[0], testingReports[1]);
 const coreValid = reports.length === 0 || (workloadsMatch(reports[0], reports[1]) &&
-  reports.every((r) => r.results.every((res) => res.checks.roundsIdentical !== false)));
+  reports.every((r) => r.results.every((res) => res.checks.roundsIdentical === true)));
 const testingValid = testingReports.length === 0 || testingWorkloadsMatch(testingReports);
 const valid = coreValid && testingValid;
 
@@ -391,3 +365,4 @@ if (reports.length) printReport(reports);
 if (testingReports.length) printTestingReport(testingReports);
 if (!valid) console.error("\nINVALID comparison: a workload failed or results differed; failed scenarios have no speedup. See --json for full diagnostics.");
 process.exitCode = valid ? 0 : 1;
+}

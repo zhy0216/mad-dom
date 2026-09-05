@@ -7,7 +7,9 @@
 // (crates/mad-dom-bun/src/extensions/query_api.rs) and through it to the Core
 // document-order queries (T31) and the T30 parser/arena matcher. Like the rest
 // of the facade, this module keeps **no second DOM state** and builds no index
-// itself. General/scoped selectors are fresh Core traversals; eligible
+// itself. General/scoped queries traverse Core on a cache miss. Bounded
+// snapshots without pseudo-classes may be reused while both native mutation
+// generations match; each call still returns a new static NodeList. Eligible
 // document id reads may activate Core's private mutation-maintained `by_id`
 // acceleration map, so every mutation surface remains immediately visible to
 // the next query.
@@ -44,6 +46,8 @@
 
 import { Document } from "../document.js";
 import { Element, DocumentFragment } from "./node.js";
+import { nodeDocumentStateOf, nodeInternalsOf } from "./classes.js";
+import { snapshotNodes } from "./snapshot-node.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/query",
@@ -56,6 +60,69 @@ export const seam = Object.freeze({
 // live proxy object: the Proxy forwards every method receiver to the proxy
 // itself, so module state is reachable through the exact object JS holds.
 const STATIC_ITEMS = new WeakMap();
+const QUERY_SNAPSHOTS = new WeakMap();
+const MapConstructor = Map;
+const weakGet = Function.prototype.call.bind(WeakMap.prototype.get);
+const weakSet = Function.prototype.call.bind(WeakMap.prototype.set);
+
+// A native-validated single compound with an HTML type selector can reject
+// other element names from immutable metadata. This is especially useful for
+// consumers checking a long list of element/attribute combinations. Everything
+// outside this narrow grammar still uses the full native selector matcher.
+const SUBJECT_TYPES = new Map();
+const mapGet = Function.prototype.call.bind(Map.prototype.get);
+const mapSet = Function.prototype.call.bind(Map.prototype.set);
+const mapClear = Function.prototype.call.bind(Map.prototype.clear);
+const regexExec = Function.prototype.call.bind(RegExp.prototype.exec);
+const lowerCase = Function.prototype.call.bind(String.prototype.toLowerCase);
+const stringIncludes = Function.prototype.call.bind(String.prototype.includes);
+let subjectTypeCount = 0;
+const TYPED_COMPOUND = /^([a-zA-Z][a-zA-Z0-9-]*)(?:(?:\[[^\]\\]*\])|(?::not\(\[[^\]\\]*\]\)))*$/;
+
+function queryCache(parent, selector) {
+  // Pseudo-classes such as :empty can change with character data without a
+  // structural/attribute generation change. Leave them on the native path.
+  if (selector.length > 4096 || stringIncludes(selector, ":")) return undefined;
+  const state = nodeDocumentStateOf(parent);
+  const tree = state?.epoch?.[0];
+  const attributes = state?.attributeEpoch?.[0];
+  if (tree === undefined || attributes === undefined || tree === -1 || attributes === -1 ||
+      tree === -2147483648 || attributes === -2147483648) return undefined;
+  let cache = weakGet(QUERY_SNAPSHOTS, parent);
+  if (cache === undefined || cache.tree !== tree || cache.attributes !== attributes) {
+    cache = { tree, attributes, entries: new MapConstructor(), count: 0, nodes: 0 };
+    weakSet(QUERY_SNAPSHOTS, parent, cache);
+  }
+  return cache;
+}
+
+function saveQuery(parent, selector, items, cache) {
+  // Native document setup or user code reached during wrapper conversion can
+  // mutate the tree after the snapshot was taken. Never publish that snapshot
+  // under the new generation.
+  if (cache === undefined || queryCache(parent, selector) !== cache || items.length > 65536) return;
+  if (cache.count === 32 || cache.nodes + items.length > 65536) {
+    mapClear(cache.entries);
+    cache.count = 0;
+    cache.nodes = 0;
+  }
+  mapSet(cache.entries, selector, items);
+  cache.count++;
+  cache.nodes += items.length;
+}
+
+function rememberSubjectType(selector) {
+  if (selector.length > 4096) return;
+  const match = regexExec(TYPED_COMPOUND, selector);
+  if (subjectTypeCount === 256) {
+    mapClear(SUBJECT_TYPES);
+    subjectTypeCount = 0;
+  }
+  mapSet(SUBJECT_TYPES, selector, match === null ? null : {
+    name: lowerCase(match[1]), plain: match[1].length === selector.length,
+  });
+  subjectTypeCount++;
+}
 
 function isNodeHandle(handle) {
   return (
@@ -154,10 +221,14 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(Document.prototype, "querySelectorAll", function querySelectorAll(selectors) {
-    return staticNodeList(
-      ctx,
-      facadeDocumentHandle(ctx, this, "querySelectorAll").querySelectorAll(String(selectors)),
-    );
+    const selector = String(selectors);
+    const cache = queryCache(this, selector);
+    const cached = cache === undefined ? undefined : mapGet(cache.entries, selector);
+    if (cached !== undefined) return new StaticNodeList(cached);
+    const items = facadeDocumentHandle(ctx, this, "querySelectorAll").querySelectorAll(selector)
+      .map((handle) => ctx.wrap(handle));
+    saveQuery(this, selector, items, cache);
+    return new StaticNodeList(items);
   });
 
   ctx.defineMethod(Document.prototype, "getElementById", function getElementById(elementId) {
@@ -178,10 +249,7 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(Element.prototype, "querySelectorAll", function querySelectorAll(selectors) {
-    return staticNodeList(
-      ctx,
-      facadeNodeHandle(ctx, this, "querySelectorAll").querySelectorAll(String(selectors)),
-    );
+    return queryNodeList(ctx, this, selectors);
   });
 
   ctx.defineMethod(DocumentFragment.prototype, "querySelector", function querySelector(selectors) {
@@ -189,14 +257,30 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(DocumentFragment.prototype, "querySelectorAll", function querySelectorAll(selectors) {
-    return staticNodeList(
-      ctx,
-      facadeNodeHandle(ctx, this, "querySelectorAll").querySelectorAll(String(selectors)),
-    );
+    return queryNodeList(ctx, this, selectors);
   });
 
   ctx.defineMethod(Element.prototype, "matches", function matches(selectors) {
-    return facadeNodeHandle(ctx, this, "matches").matches(String(selectors));
+    const selector = String(selectors);
+    const internals = nodeInternalsOf(this);
+    const state = internals?.documentState;
+    const method = state?.nativeMethods.matchesToken;
+    if (method !== undefined && internals.token !== undefined) {
+      const subject = mapGet(SUBJECT_TYPES, selector);
+      const epoch = state.epoch?.[0];
+      if (subject != null && epoch !== undefined && epoch !== -1 && epoch !== -2147483648 &&
+          internals.validEpoch === epoch && internals.nodeType === 1 &&
+          typeof internals.nodeName === "string" && typeof internals.nodeNamespace === "string") {
+        if (internals.nodeNamespace !== "http://www.w3.org/1999/xhtml" || internals.nodeName !== subject.name) return false;
+        if (subject.plain) return true;
+      }
+      const result = method(internals.token, selector);
+      // A successful native match also proves this token is still live.
+      internals.validEpoch = state.epoch?.[0] ?? null;
+      if (subject === undefined) rememberSubjectType(selector);
+      return result;
+    }
+    return facadeNodeHandle(ctx, this, "matches").matches(selector);
   });
 
   ctx.defineMethod(Element.prototype, "closest", function closest(selectors) {
@@ -254,9 +338,21 @@ export function install(ctx) {
   });
 }
 
-/**
- * Wraps the matched native handles of one query into a static `NodeList`.
- */
-function staticNodeList(ctx, handles) {
-  return new StaticNodeList(handles.map((handle) => ctx.wrap(handle)));
+function queryNodeList(ctx, parent, selectors) {
+  const selector = String(selectors);
+  const cache = queryCache(parent, selector);
+  const cached = cache === undefined ? undefined : mapGet(cache.entries, selector);
+  if (cached !== undefined) return new StaticNodeList(cached);
+  const handle = facadeNodeHandle(ctx, parent, "querySelectorAll");
+  const state = nodeDocumentStateOf(parent);
+  const queryTokens = state?.nodeNativeMethodsOf(handle).querySelectorAllTokens;
+  if (queryTokens === undefined || state.nativeMethods.materializeNodeToken === undefined) {
+    const items = handle.querySelectorAll(selector).map((handle) => ctx.wrap(handle));
+    saveQuery(parent, selector, items, cache);
+    return new StaticNodeList(items);
+  }
+  const flat = queryTokens(handle, selector);
+  const items = snapshotNodes(ctx, state, flat);
+  saveQuery(parent, selector, items, cache);
+  return new StaticNodeList(items);
 }

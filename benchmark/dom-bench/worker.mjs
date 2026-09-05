@@ -40,7 +40,7 @@
 // Usage:
 //   bun worker.mjs --engine mad-dom [--runs 5] [--sizes 1] [--json]
 
-import { collectAndDrain, summarize } from "./stats.mjs";
+import { collectAndDrain, summarize, summarizeOperations } from "./stats.mjs";
 
 const ENGINE_LOADERS = {
   "mad-dom": () => import("../../index.js"),
@@ -519,6 +519,9 @@ async function main() {
       if (measured) rssPeak.buildMixed = rssNow();
       await collectAndDrain();
       if (measured) rssAfter.buildMixed = rssNow();
+      // Prime these exact selectors on this document, outside the timed sample.
+      // querySelectorAll("*") only warms wrappers, not selector result caches.
+      runQueryBatch(sharedDocument);
       const hot = runQueryBatch(sharedDocument);
       if (measured) rssPeak.queryHot = rssNow();
       await collectAndDrain();
@@ -640,6 +643,7 @@ async function main() {
     const firstChecksJson = JSON.stringify(checksRounds[0]);
     const roundsIdentical = checksRounds.every((c) => JSON.stringify(c) === firstChecksJson);
 
+    const phases = Object.fromEntries(PHASE_KEYS.map((phase) => [phase, summarize(samples[phase])]));
     results.push({
       size,
       workload: {
@@ -655,26 +659,10 @@ async function main() {
         mutationNodes: wl.mutationNodes,
         runs: ARGS.runs,
       },
-      phases: {
-        parse: summarize(samples.parse),
-        buildMixed: summarize(samples.buildMixed),
-        queryHot: summarize(samples.queryHot),
-        queryCold: summarize(samples.queryCold),
-        getById: summarize(samples.getById),
-        getByTag: summarize(samples.getByTag),
-        serialize: summarize(samples.serialize),
-        traverseWarm: summarize(samples.traverseWarm),
-        traverseCold: summarize(samples.traverseCold),
-        buildCreate: summarize(samples.buildCreate),
-        buildAttr: summarize(samples.buildAttr),
-        buildAppend: summarize(samples.buildAppend),
-        buildText: summarize(samples.buildText),
-        buildBulk: summarize(samples.buildBulk),
-        readHeavy: summarize(samples.readHeavy),
-        mutationChurn: summarize(samples.mutationChurn),
-      },
-      // Per-round pipeline wall time (parse start → traverse end), not a sum of
-      // phase medians.
+      phases,
+      operations: summarizeOperations(phases),
+      // Wall time from parse start through mutation verification, including
+      // fixture setup, verification and inter-phase GC/event-loop drains.
       total: summarize(roundTotals),
       // Acc sinks, reported so a dead-code-elimination surprise is visible.
       sink,

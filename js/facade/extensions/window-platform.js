@@ -1335,6 +1335,10 @@ export function install(ctx) {
   ctx.defineMethod(Window.prototype, "close", function close() {});
 
   // Document surface.
+  ctx.defineAccessor(Document.prototype, "defaultView", function defaultView() {
+    return ctx.windowFacadeOfDocument(this) ?? null;
+  }, undefined);
+
   ctx.defineAccessor(Document.prototype, "URL", function getURL() {
     return platformOfDocument(ctx.documentContext.handleOf(this))?.url.href ?? "about:blank";
   }, undefined);

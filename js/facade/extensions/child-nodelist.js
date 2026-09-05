@@ -6,17 +6,14 @@
 // collection reflects tree changes immediately while never caching a second
 // authoritative tree state.
 //
-// # Frozen contract (T23A / T23B / T24)
+// # Native reads and wrapper identity
 //
-// Every read delegates to the audited native navigation read
-// `NodeHandle.childNodes()` (T23A, crates/mad-dom-bun/src/extensions/
-// collection_api.rs) and every produced element funnels through `ctx.wrap` (the
-// unique conversion entry), so element wrapper identity mirrors the native
-// per-document weak cache (T20). Mutations go through the frozen T24C facade
-// (`appendChild` / `insertBefore` / `removeChild` / `replaceChild`); a
-// `NodeList` never mutates the tree itself and holds exactly the parent's
-// opaque native handle — a Core `NodeId` never crosses this seam as a primitive
-// and no stale id is ever dereferenced.
+// Current bindings transfer document-scoped tokens plus immutable node kinds
+// through DocumentHandle.childNodesTokens(). The facade creates canonical
+// wrappers lazily through the same conversion used by queries/navigation.
+// Older bindings and direct raw-handle collections keep NodeHandle.childNodes().
+// Both paths read the current Core child list on every access. A token never
+// exposes a Core NodeId, and native validation retains lifecycle errors.
 //
 // # Snapshot vs live boundary
 //
@@ -29,7 +26,7 @@
 //
 // # Lifecycle and identity
 //
-// A `NodeList` holds the parent's native node handle strongly, so a live
+// A `NodeList` holds its native parent or facade wrapper strongly, so a live
 // collection keeps its document's arena readable under GC (T20 ownership chain)
 // exactly like a node wrapper does. The per-parent cache (`LIVE_LISTS`) is weak:
 // a `NodeList` nobody references is collected together with its parent, and the
@@ -39,6 +36,9 @@
 // by exporting `install(ctx)`; nothing in the registry changes. The `seam`
 // metadata was flipped from `"placeholder"` to `"implemented"` by the T25 gate
 // (tests/bun/seam.test.js pins that shape).
+
+import { nodeInternalsOf, nodeHandleOf } from "./classes.js";
+import { snapshotNodes } from "./snapshot-node.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/child-nodelist",
@@ -54,7 +54,8 @@ export const seam = Object.freeze({
 // parent's owner document and `windowFacadeOfDocument` resolves its window.
 function windowFacadeOfParent(ctx, parentHandle) {
   try {
-    const documentFacade = ctx.wrap(parentHandle.ownerDocument());
+    const state = nodeInternalsOf(parentHandle)?.documentState;
+    const documentFacade = ctx.wrap(state === undefined ? parentHandle.ownerDocument() : state.documentHandle);
     const windowFacade = ctx.windowFacadeOfDocument(documentFacade);
     return windowFacade ?? undefined;
   } catch {
@@ -62,15 +63,37 @@ function windowFacadeOfParent(ctx, parentHandle) {
   }
 }
 
-// Native parent handle behind each NodeList instance, keyed by the live proxy
+// Native parent handle or facade wrapper behind each list, keyed by its proxy
 // object: the Proxy forwards every method receiver to the proxy itself, so
 // module state is reachable through the exact object JavaScript holds.
 const PARENT_HANDLES = new WeakMap();
 
-// Per-parent live collection cache (native parent handle → NodeList). Weak so
+// Per-parent live collection cache (native handle or facade → NodeList). Weak so
 // the facade never pins a parent; a returned NodeList holds its parent's
 // handle strongly (T20 ownership chain).
 const LIVE_LISTS = new WeakMap();
+
+function childCount(list) {
+  const parent = PARENT_HANDLES.get(list);
+  const internals = nodeInternalsOf(parent);
+  const method = internals?.documentState?.nativeMethods.childNodesTokens;
+  if (method !== undefined && internals.token !== undefined) {
+    return (method(internals.token).length - 1) / 2;
+  }
+  return (internals === undefined ? parent : nodeHandleOf(parent)).childNodes().length;
+}
+
+function readNodes(ctx, list) {
+  const parent = PARENT_HANDLES.get(list);
+  const internals = nodeInternalsOf(parent);
+  const state = internals?.documentState;
+  const method = state?.nativeMethods.childNodesTokens;
+  if (method !== undefined && internals.token !== undefined && state.nativeMethods.materializeNodeToken !== undefined) {
+    return snapshotNodes(ctx, state, method(internals.token));
+  }
+  const handle = internals === undefined ? parent : nodeHandleOf(parent);
+  return handle.childNodes().map((node) => ctx.wrap(node));
+}
 
 function isNodeHandle(handle) {
   return (
@@ -95,9 +118,8 @@ function toArrayIndex(property) {
 /**
  * Live `NodeList` facade for one parent node.
  *
- * Construction is restricted: it requires a genuine native node handle (only
- * minted by the native binding), so no facade surface can fabricate a
- * collection. Instances are normally produced through `liveChildNodes`.
+ * Construction requires a genuine native node handle or an authenticated
+ * facade node with its private document state. Instances are normally produced through `liveChildNodes`.
  *
  * The returned object is a Proxy over the real instance: numeric index reads
  * (`list[0]`), `length`, `item` and the iteration surface all re-read the
@@ -106,7 +128,9 @@ function toArrayIndex(property) {
  */
 export class NodeList {
   constructor(parentHandle) {
-    if (!isNodeHandle(parentHandle)) {
+    const internals = nodeInternalsOf(parentHandle);
+    if (!(internals?.documentState !== undefined &&
+        (internals.token !== undefined || isNodeHandle(internals.handle))) && !isNodeHandle(parentHandle)) {
       throw new TypeError(
         "NodeList can only be constructed from a genuine native Node handle",
       );
@@ -154,14 +178,14 @@ export function liveChildNodes(parentHandle) {
  */
 export function install(ctx) {
   ctx.defineAccessor(NodeList.prototype, "length", function length() {
-    return PARENT_HANDLES.get(this).childNodes().length;
+    return childCount(this);
   }, undefined);
 
   ctx.defineMethod(NodeList.prototype, "item", function item(index) {
-    const nodes = PARENT_HANDLES.get(this).childNodes();
+    const nodes = readNodes(ctx, this);
     const position = index >>> 0;
     if (position >= nodes.length) return null;
-    return ctx.wrap(nodes[position]);
+    return nodes[position];
   });
 
   ctx.defineMethod(NodeList.prototype, "forEach", function forEach(callback, thisArg) {
@@ -171,37 +195,37 @@ export function install(ctx) {
     // happy-dom defaults `this` to the owning Window instance when no `thisArg`
     // is provided; the owner document of the parent node resolves the window.
     const defaultThis = windowFacadeOfParent(ctx, PARENT_HANDLES.get(this));
-    const nodes = PARENT_HANDLES.get(this).childNodes();
+    const nodes = readNodes(ctx, this);
     for (let i = 0; i < nodes.length; i += 1) {
-      callback.call(thisArg === undefined ? defaultThis : thisArg, ctx.wrap(nodes[i]), i, this);
+      callback.call(thisArg === undefined ? defaultThis : thisArg, nodes[i], i, this);
     }
   });
 
   ctx.defineMethod(NodeList.prototype, "entries", function* entries() {
-    const nodes = PARENT_HANDLES.get(this).childNodes();
+    const nodes = readNodes(ctx, this);
     for (let i = 0; i < nodes.length; i += 1) {
-      yield [i, ctx.wrap(nodes[i])];
+      yield [i, nodes[i]];
     }
   });
 
   ctx.defineMethod(NodeList.prototype, "keys", function* keys() {
-    const nodes = PARENT_HANDLES.get(this).childNodes();
-    for (let i = 0; i < nodes.length; i += 1) {
+    const length = childCount(this);
+    for (let i = 0; i < length; i += 1) {
       yield i;
     }
   });
 
   ctx.defineMethod(NodeList.prototype, "values", function* values() {
-    const nodes = PARENT_HANDLES.get(this).childNodes();
+    const nodes = readNodes(ctx, this);
     for (let i = 0; i < nodes.length; i += 1) {
-      yield ctx.wrap(nodes[i]);
+      yield nodes[i];
     }
   });
 
   ctx.defineMethod(NodeList.prototype, Symbol.iterator, function* values() {
-    const nodes = PARENT_HANDLES.get(this).childNodes();
+    const nodes = readNodes(ctx, this);
     for (let i = 0; i < nodes.length; i += 1) {
-      yield ctx.wrap(nodes[i]);
+      yield nodes[i];
     }
   });
 

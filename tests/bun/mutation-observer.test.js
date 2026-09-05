@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Window, isNativeAvailable, liveDocumentCount } from "../../index.js";
+import { MutationRecord } from "../../js/facade/extensions/mutation-observer.js";
 
 // T41 MutationObserver integration tests.
 //
@@ -79,6 +80,36 @@ function build(window) {
 }
 
 describe("T41 MutationObserver surface shape", () => {
+  test("record own fields support snapshots and writable data descriptors", () => {
+    const handle = {
+      recordType: () => "attributes", target: () => null,
+      addedNodes: () => [], removedNodes: () => [],
+      previousSibling: () => null, nextSibling: () => null,
+      attributeName: () => "data-value", attributeNamespace: () => null,
+      oldValue: () => "before",
+    };
+    class DerivedRecord extends MutationRecord {
+      extra = "subclass field";
+    }
+    const record = new DerivedRecord(handle);
+    expect(record).toBeInstanceOf(DerivedRecord);
+    expect(record).toBeInstanceOf(MutationRecord);
+    expect({ ...record }).toEqual({
+      type: "attributes", target: null, addedNodes: [], removedNodes: [],
+      previousSibling: null, nextSibling: null, attributeName: "data-value",
+      attributeNamespace: null, oldValue: "before", extra: "subclass field",
+    });
+    for (const key of Object.keys(record)) {
+      expect(Object.getOwnPropertyDescriptor(record, key)).toEqual({
+        value: record[key], enumerable: true, configurable: true, writable: true,
+      });
+    }
+    record.oldValue = "user replacement";
+    expect(record.oldValue).toBe("user replacement");
+    delete record.oldValue;
+    expect(record.oldValue).toBe("before"); // prototype accessor still has its native handle
+  });
+
   test("the facade installs MutationObserver on the window with frozen descriptors", () => {
     const descriptor = Object.getOwnPropertyDescriptor(Window.prototype, "MutationObserver");
     expect(typeof descriptor?.get).toBe("function");
@@ -692,6 +723,44 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
 });
 
 describe.skipIf(!nativeAvailable)("T41 lifecycle and errors", () => {
+  test("live observers survive other documents being destroyed and can observe again", async () => {
+    const kept = new Window();
+    try {
+      const target = kept.document.body;
+      const calls = [];
+      const observer = new kept.MutationObserver((records, owner) => {
+        expect(owner).toBe(observer);
+        calls.push(records.map((record) => record.attributeName));
+      });
+      observer.observe(target, { attributes: true });
+      let discardedDeliveries = 0;
+      const discard = () => {
+        const temporary = new Window();
+        const other = new temporary.MutationObserver(() => { discardedDeliveries++; });
+        other.observe(temporary.document.body, { attributes: true });
+        temporary.document.body.setAttribute("data-discarded", "1");
+        other.disconnect();
+        temporary.destroy();
+      };
+      for (let i = 0; i < 32; i++) discard();
+      await collectGarbage();
+      target.setAttribute("data-kept", "1");
+      await flush();
+      expect(discardedDeliveries).toBe(0);
+      expect(calls).toEqual([["data-kept"]]);
+
+      observer.disconnect();
+      target.setAttribute("data-ignored", "2");
+      observer.observe(target, { attributes: true, attributeFilter: ["data-reused"] });
+      target.setAttribute("data-reused", "3");
+      await flush();
+      expect(calls).toEqual([["data-kept"], ["data-reused"]]);
+      observer.disconnect();
+    } finally {
+      kept.destroy();
+    }
+  });
+
   test("a destroyed document fails the observer surface per T21", () => {
     const win = new Window();
     const { parent } = build(win);

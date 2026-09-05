@@ -76,6 +76,7 @@ const functionCall = Function.prototype.call;
 const objectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 const objectGetPrototypeOf = Object.getPrototypeOf;
 const objectHasOwn = Object.hasOwn;
+const objectCreate = Object.create;
 
 // Optional native performance entries are additive across platform-package
 // versions. Resolve only direct prototype data methods: an application-owned
@@ -133,6 +134,9 @@ function documentNativeMethodsOf(handle) {
       handle,
     ),
     createTextToken: boundNativeMethod(prototype, "createTextToken", handle),
+    matchesToken: boundNativeMethod(prototype, "matchesToken", handle),
+    textContentToken: boundNativeMethod(prototype, "textContentToken", handle),
+    childNodesTokens: boundNativeMethod(prototype, "childNodesTokens", handle),
     materializeNodeToken: boundNativeMethod(prototype, "materializeNodeToken", handle),
     nodeToken: boundNativeMethod(prototype, "nodeToken", handle),
     setAttributeToken: boundNativeMethod(prototype, "setAttributeToken", handle),
@@ -170,6 +174,7 @@ function nodeNativeMethodsOf(handle) {
   return {
     firstChildPair: nativeMethodInvoker(prototype, "firstChildPair"),
     nextSiblingChunk: nativeMethodInvoker(prototype, "nextSiblingChunk"),
+    querySelectorAllTokens: nativeMethodInvoker(prototype, "querySelectorAllTokens"),
     idAttribute: nativeMethodInvoker(prototype, "idAttribute"),
     classAttribute: nativeMethodInvoker(prototype, "classAttribute"),
     idClassAttributes: nativeMethodInvoker(prototype, "idClassAttributes"),
@@ -230,7 +235,7 @@ const HANDLE_TYPES = new Map();
 //           wrappers in `wrappersByToken` below instead.
 //
 //   wrappersByToken — canonical facade identity for every document-scoped
-//           primitive token, including parsed/query nodes stamped by native.
+//           primitive token, grouped into chunks of 256 consecutive tokens.
 //           It also keeps navigation memos alive while the document is
 //           reachable. A later handle materialization converges on the same
 //           wrapper rather than minting a duplicate facade object.
@@ -243,6 +248,34 @@ function docStateOf(docHandle) {
   if (state === undefined) {
     const elementTokenPools = new MapConstructor();
     const wrappersByToken = new MapConstructor();
+    // Tokens usually arrive consecutively during creation and hydration.
+    // A chunk turns those registrations into indexed writes instead of one
+    // hash insertion per wrapper, while the outer Map handles sparse global
+    // tokens from interleaved documents without allocating their gaps. Null
+    // prototypes keep missing numeric entries immune to application-owned
+    // Object/Array prototype properties.
+    let wrapperChunkIndex = -1;
+    let wrapperChunk;
+    function getWrapperByToken(token) {
+      const index = token >>> 8;
+      if (index !== wrapperChunkIndex) {
+        wrapperChunk = mapGet(wrappersByToken, index);
+        wrapperChunkIndex = index;
+      }
+      return wrapperChunk === undefined ? undefined : wrapperChunk[token & 255];
+    }
+    function setWrapperByToken(token, wrapper) {
+      const index = token >>> 8;
+      if (index !== wrapperChunkIndex) {
+        wrapperChunk = mapGet(wrappersByToken, index);
+        wrapperChunkIndex = index;
+      }
+      if (wrapperChunk === undefined) {
+        wrapperChunk = objectCreate(null);
+        mapSet(wrappersByToken, index, wrapperChunk);
+      }
+      wrapperChunk[token & 255] = wrapper;
+    }
     const pinned = new SetConstructor();
     const nativeMethods = documentNativeMethodsOf(docHandle);
     let nodeNativeMethods = null;
@@ -251,9 +284,13 @@ function docStateOf(docHandle) {
       attributeEpoch: null,
       clearElementTokenPools: () => mapClear(elementTokenPools),
       clearPinned: () => setClear(pinned),
-      clearWrappersByToken: () => mapClear(wrappersByToken),
+      clearWrappersByToken: () => {
+        mapClear(wrappersByToken);
+        wrapperChunkIndex = -1;
+        wrapperChunk = undefined;
+      },
       getElementTokenPool: (name) => mapGet(elementTokenPools, name),
-      getWrapperByToken: (token) => mapGet(wrappersByToken, token),
+      getWrapperByToken,
       epoch: null,
       nativeMethods,
       nodeNativeMethodsOf: (handle) => {
@@ -261,8 +298,12 @@ function docStateOf(docHandle) {
         return nodeNativeMethods;
       },
       pinLegacyWrapper: (wrapper) => setAdd(pinned, wrapper),
+      // Materialization bypasses wrap(), so converge its reverse caches here
+      // too. Stored native references must still resolve to this wrapper after
+      // destroy clears the document's token table.
+      registerMaterializedWrapper: registerWrap,
       setElementTokenPool: (name, pool) => mapSet(elementTokenPools, name, pool),
-      setWrapperByToken: (token, wrapper) => mapSet(wrappersByToken, token, wrapper),
+      setWrapperByToken,
       snapshotAttemptEpoch: null,
       snapshotPartitionRoots: null,
       destroyed: false,

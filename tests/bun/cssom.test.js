@@ -36,6 +36,7 @@ import {
   isNativeAvailable,
 } from "../../index.js";
 import { StylePropertyMap, StylePropertyMapReadOnly } from "../../js/facade/extensions/cssom.js";
+import { nodeHandleOf } from "../../js/facade/extensions/classes.js";
 
 const nativeAvailable = isNativeAvailable();
 
@@ -523,6 +524,73 @@ describe("getComputedStyle (T44)", () => {
     expect(() => {
       computed.removeProperty("color");
     }).toThrow();
+  });
+
+  test("cached computed declarations track inline mutations, reparenting and detachment", () => {
+    const win = freshWindow();
+    const { document } = win;
+    document.body.innerHTML = '<section style="color:red"><button>One</button><button>Two</button></section><aside style="color:blue"></aside>';
+    const [first, second] = document.querySelectorAll("button");
+    const firstStyle = win.getComputedStyle(first);
+    const secondStyle = win.getComputedStyle(second);
+    expect(firstStyle.color).toBe("red");
+    expect(secondStyle.color).toBe("red");
+
+    document.querySelector("section").style.color = "green";
+    expect(firstStyle.color).toBe("green");
+    expect(secondStyle.color).toBe("green");
+    nodeHandleOf(first).setAttribute("style", "display:none");
+    expect(firstStyle.display).toBe("none");
+    first.removeAttribute("style");
+    expect(firstStyle.display).toBe("inline-block");
+
+    document.querySelector("aside").appendChild(first);
+    expect(firstStyle.color).toBe("blue");
+    expect(secondStyle.color).toBe("green");
+    expect(win.getComputedStyle(first)).toBe(firstStyle);
+    first.remove();
+    expect(firstStyle.color).toBe("");
+    document.body.appendChild(first);
+    expect(firstStyle.display).toBe("inline-block");
+    expect(firstStyle.color).toBe("");
+  });
+
+  test("cached sheet discovery preserves live stylesheet and text-data edits", () => {
+    const win = freshWindow();
+    const { document } = win;
+    document.body.innerHTML = '<button>Action</button>';
+    const button = document.querySelector("button");
+    const computed = win.getComputedStyle(button);
+    expect(computed.display).toBe("inline-block");
+
+    const style = document.createElement("style");
+    style.textContent = "button { display:none; }";
+    document.head.appendChild(style);
+    expect(computed.display).toBe("none");
+    style.sheet.cssRules[0].style.display = "block";
+    expect(computed.display).toBe("block");
+    style.sheet.insertRule("button { display:flex; }");
+    expect(computed.display).toBe("flex");
+    style.sheet.deleteRule(1);
+    expect(computed.display).toBe("block");
+    style.firstChild.data = "button { display:grid; }";
+    expect(computed.display).toBe("grid");
+    style.remove();
+    expect(computed.display).toBe("inline-block");
+    document.head.appendChild(style);
+    expect(computed.display).toBe("grid");
+    expect(win.getComputedStyle(button)).toBe(computed);
+  });
+
+  test("computed caches retain destroyed-document validation", () => {
+    const win = new Window();
+    const button = win.document.createElement("button");
+    win.document.body.appendChild(button);
+    const computed = win.getComputedStyle(button);
+    expect(computed.display).toBe("inline-block");
+    win.destroy();
+    expect(() => computed.display).toThrow(/ERR_MAD_DOM_DOCUMENT_DESTROYED/);
+    expect(() => win.getComputedStyle(button)).toThrow(/ERR_MAD_DOM_DOCUMENT_DESTROYED/);
   });
 });
 

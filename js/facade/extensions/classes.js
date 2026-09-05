@@ -309,6 +309,7 @@ export function nodeHandleOf(wrapper) {
     ) {
       handle = materializeNodeToken(token);
       internals.handle = handle;
+      state.registerMaterializedWrapper?.(handle, wrapper);
     }
   }
   return handle;

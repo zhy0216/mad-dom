@@ -59,7 +59,7 @@ bun run bench:dom --suite testing --runs 7 --sizes 0.1,1,2
 bun run bench:dom --suite testing --runs 1 --sizes 0.01 # 最小工作量冒烟
 bun run bench:dom --suite core                        # 原有 16 阶段
 bun run bench:dom --json                              # 完整结果与失败诊断
-bun test benchmark/dom-bench/testing-worker.test.js   # fixture 与计量器校验
+bun test benchmark/dom-bench                          # fixture、计量器与报告有效性校验
 ```
 
 ### 单测场景（testing）
@@ -115,12 +115,11 @@ runner 都在输出完整报告后返回 exit 1；非法参数返回 exit 2。�
 `--suite testing` 时 core 的 `reports`/`phases` 为空；`--suite core` 保留原 schema /1。
 testing worker 的 schema 为 `mad-dom-testing-bench/1`。
 
-新增时的本地验证（2026-09-05）：happy-dom 的 13 个场景全部通过；mad-dom 的
-10 个场景通过，3 个真实 Testing Library 场景暴露兼容缺口：`fireEvent` 无法从
-节点取得 window，`getByRole` 读取 window.getComputedStyle 时报错，
-`getByLabelText` 未能找到 `<label for>` 关联控件。它们保留在默认运行中，
-没有补丁、跳过或 expected-fail 豁免；因此当前 `all` / `testing` 会如实输出
-`valid: false` 并 exit 1。修复引擎后同一组场景即可自动参与有效性能对比。
+两引擎的 13 个场景现在全部通过。mad-dom 补齐了 `Document.defaultView`、
+节点类型常量、`getAttributeNode()`、label/control 双向关联，以及控件原型上的
+原生 value setter；真实 Testing Library 的事件、可访问名称和标签查询使用原有
+场景与默认可见性检查。选择器语法与结果缓存、惰性节点读取、按原生代数失效的样式与
+label 关联缓存，以及 observer 注册优化都在引擎内实现，未改变场景工作量。
 
 ### 大树与底层操作（core）
 
@@ -159,7 +158,8 @@ worker（`dom-bench/worker.mjs`）对两个引擎跑同一份确定性负载：�
 | `buildBulk` | 一次 `div.innerHTML` 解析 20k 元素片段再挂载（native 解析路径，无逐节点 FFI） |
 | `readHeavy` | 5000 采样节点逐节点读 `nodeName` / `id` / `className` / `getAttribute` / 首子节点 `textContent` |
 | `mutationChurn` | 2000 采样节点 ×（`setAttribute` 覆写、removeAttribute、remove+append、replaceChild 出入对；每轮独立新文档） |
-| `total` | 每轮整条 pipeline 实测总耗时的中位数（不是各相位中位数之和） |
+| `operations` | 每轮 16 个计时窗口之和的中位数，排除 fixture 准备、验证、强制 GC 与事件循环等待 |
+| `total` | 每轮整条 pipeline 实测墙钟时间的中位数，包含准备、验证、相位间 GC 与等待（保留原有口径） |
 
 `--sizes` 按倍率缩放 sections（parse/query/traverse 负载）与 build/read/mutation
 节点数（多 size 时附 mad-dom 中位数规模曲线表）。每相位结束采样 RSS
@@ -170,13 +170,16 @@ worker（`dom-bench/worker.mjs`）对两个引擎跑同一份确定性负载：�
 - 两引擎跑在各自独立的 `bun` 子进程（`process.execPath` 拉起；spawn 失败、信号
   终止、非法 JSON、schema/engine 不一致都报错退出）。有效性校验（worker 输出
   `checks`）逐项相等才视为有效对比：逐选择器命中数、build 树实际节点计数 +
-  id 抽查、序列化内容哈希、遍历计数、read/mutation 指纹；且两引擎
+  id 抽查、序列化内容哈希、遍历计数、read/mutation 指纹及完整 workload 元数据；
+  各轮结果也必须一致，失败时所有 core 行均不显示 speedup；且两引擎
   `host.os/arch` 必须一致。worker JSON 的 `schema` 为 `mad-dom-dom-bench/3`，
   对比层为 `mad-dom-dom-bench-comparison/1`。
 - 统计口径：每相位保留全部轮次原始 `samples`；打印行为
-  `median [min-p90] MAD`（MAD = median(|x−median|)）；`total` 为每轮 pipeline
-  总耗时数组的中位数；任一相位 MAD > 20% median 即打印 `UNSTABLE` 警告。
+  `median [min-p90] MAD`（MAD = median(|x−median|)）；`operations` 先逐轮相加再取
+  中位数，不是相位中位数之和。`total` 保留 pipeline 墙钟耗时，额外包含测试框架
+  开销，不能当作纯 DOM 操作耗时。任一相位 MAD > 20% median 即打印不稳定警告。
 - **cold/warm 定义**：warm 相位（`queryHot`、`traverseWarm`）跑在轮内共享文档上——
+  `queryHot` 在计时前明确预跑同一组选择器，`traverseWarm` 在计时前完整遍历一次；
   该文档刚被 `elementCount` 全树读取并反复访问，wrapper 已被钉在
   `DOC_STATES` 所持的私有 token registry（旧 binding 回退到 `pinned`；
   `js/facade/window.js`，文档可达期间不失效），导航 memo 命中（树不变时遍历零

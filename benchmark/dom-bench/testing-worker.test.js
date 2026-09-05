@@ -71,6 +71,14 @@ describe("unit-test benchmark validity", () => {
     expect(report.valid).toBe(false);
   });
 
+  test("reports non-Error throws without crashing the worker", async () => {
+    const report = await runTestingSize(null, 1, 1, [{
+      name: "primitiveFailure", cases: 1, run() { throw null; },
+    }]);
+    expect(report.valid).toBe(false);
+    expect(report.phases.primitiveFailure.error.message).toBe("null");
+  });
+
   test("different outcomes across rounds invalidate the timing", async () => {
     let calls = 0;
     const report = await runTestingSize(null, 1, 2, [{
@@ -81,4 +89,26 @@ describe("unit-test benchmark validity", () => {
     expect(report.phases.unstableResult.samples).toEqual([]);
     expect(report.phases.unstableResult.error.message).toBe("results changed between rounds");
   });
+
+  test("matching fingerprints cannot conceal a skipped case", async () => {
+    const report = await runTestingSize(null, 1, 1, [{
+      name: "incomplete", cases: 2,
+      run() { return { ms: 1, checks: { cases: 1 } }; },
+    }]);
+    expect(report.valid).toBe(false);
+    expect(report.phases.incomplete.samples).toEqual([]);
+    expect(report.phases.incomplete.error.message).toBe("expected 2 cases, received 1");
+  });
+
+  for (const ms of [NaN, Infinity, -1]) {
+    test(`rejects invalid timing ${ms}`, async () => {
+      const report = await runTestingSize(null, 1, 1, [{
+        name: "badTiming", cases: 1,
+        run() { return { ms, checks: { cases: 1 } }; },
+      }]);
+      expect(report.valid).toBe(false);
+      expect(report.phases.badTiming.samples).toEqual([]);
+      expect(report.phases.badTiming.error.message).toBe("invalid timing sample");
+    });
+  }
 });

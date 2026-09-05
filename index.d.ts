@@ -641,6 +641,8 @@ export declare class ErrorEvent {
 
 export declare class Document {
   constructor(nativeHandle: DocumentHandle);
+  /** The owning window, or null for a standalone document. */
+  readonly defaultView: Window | null;
   /** Eagerly destroys the document; idempotent. */
   destroy(): void;
   /** Creates a new detached Element (WHATWG `createElement`). */
@@ -1194,7 +1196,24 @@ declare class Selection {
 // they were called with (stable identity); a failed call throws before any
 // observable tree change.
 
-export interface Node {
+interface NodeTypeConstants {
+  readonly ELEMENT_NODE: 1;
+  readonly ATTRIBUTE_NODE: 2;
+  readonly TEXT_NODE: 3;
+  readonly CDATA_SECTION_NODE: 4;
+  readonly ENTITY_REFERENCE_NODE: 5;
+  readonly ENTITY_NODE: 6;
+  readonly PROCESSING_INSTRUCTION_NODE: 7;
+  readonly COMMENT_NODE: 8;
+  readonly DOCUMENT_NODE: 9;
+  readonly DOCUMENT_TYPE_NODE: 10;
+  readonly DOCUMENT_FRAGMENT_NODE: 11;
+  readonly NOTATION_NODE: 12;
+}
+
+export interface Document extends NodeTypeConstants {}
+
+export interface Node extends NodeTypeConstants {
   /** WHATWG `Node.nodeType` (1 Element, 3 Text, 8 Comment, 9 Document, 11 DocumentFragment). */
   readonly nodeType: number;
   /** Lowercased tag for Element, otherwise `#text` / `#comment` / `#document` / `#document-fragment`. */
@@ -1256,6 +1275,8 @@ export interface CharacterData {
 
 /** A node minted by `Document.createElement` (T23 surface plus T25 element attributes and T29 inner/outerHTML). */
 export interface Element extends Node {
+  /** Returns this element's live attribute node, or null when absent. */
+  getAttributeNode(name: string): Attr | null;
   /** WHATWG `Element.localName` (T48): the lowercased local tag name for an element, `undefined` on non-element nodes (happy-dom parity). */
   readonly localName: string;
   /** WHATWG `Element.tagName` (T48): the uppercase tag name for an HTML element (equal to `nodeName`), `undefined` on non-element nodes. */
@@ -1471,7 +1492,7 @@ declare const HTMLElement: {
 /** The WHATWG `Node` constructor value reached through `window.Node` (T48A
  * class hierarchy). The base of every wrapper — Text / Comment /
  * ProcessingInstruction are plain `Node`s and never reach the element members. */
-declare const Node: {
+declare const Node: NodeTypeConstants & {
   readonly prototype: Node;
   new (): Node;
 };
@@ -1588,7 +1609,11 @@ export interface HTMLTableCellElement extends HTMLElement {}
 export interface HTMLTableSectionElement extends HTMLElement {}
 export interface HTMLBRElement extends HTMLElement {}
 export interface HTMLHRElement extends HTMLElement {}
-export interface HTMLLabelElement extends HTMLElement {}
+export interface HTMLLabelElement extends HTMLElement {
+  htmlFor: string;
+  readonly control: HTMLElement | null;
+  readonly form: HTMLFormElement | null;
+}
 export interface HTMLImageElement extends HTMLElement {}
 export interface HTMLScriptElement extends HTMLElement {}
 export interface HTMLStyleElement extends HTMLElement {}
@@ -1679,6 +1704,7 @@ export interface ValidityState {
  * readOnly/multiple plus the constraint-validation surface. The dirty text-like
  * `value` and the dirty `checked` are stored in Core, not the attribute list. */
 export interface HTMLInputElement extends HTMLElement {
+  readonly labels: NodeList<HTMLLabelElement> | null;
   value: string;
   name: string;
   type: string;
@@ -1710,6 +1736,7 @@ export interface HTMLInputElement extends HTMLElement {
 
 /** The WHATWG `HTMLButtonElement` basics (T40, validation T48C). */
 export interface HTMLButtonElement extends HTMLElement {
+  readonly labels: NodeList<HTMLLabelElement>;
   value: string;
   name: string;
   type: string;
@@ -1737,6 +1764,7 @@ export interface HTMLButtonElement extends HTMLElement {
  * value/selectedIndex selection model, the live `options` and
  * `selectedOptions` collections. */
 export interface HTMLSelectElement extends HTMLElement {
+  readonly labels: NodeList<HTMLLabelElement>;
   value: string;
   name: string;
   disabled: boolean;
@@ -1779,6 +1807,7 @@ export interface HTMLOptionElement extends HTMLElement {
 
 /** The WHATWG `HTMLTextAreaElement` basics (T40, validation T48C). */
 export interface HTMLTextAreaElement extends HTMLElement {
+  readonly labels: NodeList<HTMLLabelElement>;
   value: string;
   name: string;
   disabled: boolean;

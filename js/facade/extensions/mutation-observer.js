@@ -244,34 +244,34 @@ export function disconnectAllObservers() {
  */
 export class MutationRecord {
   constructor(handle) {
-    RECORD_HANDLES.set(this, handle);
+    if (ctx === null) {
+      RECORD_HANDLES.set(this, handle);
+      return;
+    }
     // Materialize the record fields as own enumerable data properties so the
     // structural comparison the vendored happy-dom suite uses (`toEqual` /
     // `Object.keys`) sees the same shape as the upstream `MutationRecord`
     // (which stores its fields as own enumerable data properties). The accessor
     // surface below still works (it shadows nothing: the own properties and the
     // prototype accessors return the same values).
-    if (ctx !== null) {
-      const fields = {
-        type: handle.recordType(),
-        target: ctx.wrap(handle.target()),
-        addedNodes: handle.addedNodes().map((node) => ctx.wrap(node)),
-        removedNodes: handle.removedNodes().map((node) => ctx.wrap(node)),
-        previousSibling: ctx.wrap(handle.previousSibling()),
-        nextSibling: ctx.wrap(handle.nextSibling()),
-        attributeName: handle.attributeName(),
-        attributeNamespace: handle.attributeNamespace(),
-        oldValue: handle.oldValue(),
-      };
-      for (const [name, value] of Object.entries(fields)) {
-        Object.defineProperty(this, name, {
-          value,
-          writable: true,
-          enumerable: true,
-          configurable: true,
-        });
-      }
-    }
+    // An object literal creates the same writable/enumerable/configurable
+    // properties directly, without allocating nine descriptors and the
+    // Object.entries pairs for every delivered record. Preserve the actual
+    // new.target prototype for subclasses as well as ordinary records.
+    const record = {
+      __proto__: new.target.prototype,
+      type: handle.recordType(),
+      target: ctx.wrap(handle.target()),
+      addedNodes: handle.addedNodes().map((node) => ctx.wrap(node)),
+      removedNodes: handle.removedNodes().map((node) => ctx.wrap(node)),
+      previousSibling: ctx.wrap(handle.previousSibling()),
+      nextSibling: ctx.wrap(handle.nextSibling()),
+      attributeName: handle.attributeName(),
+      attributeNamespace: handle.attributeNamespace(),
+      oldValue: handle.oldValue(),
+    };
+    RECORD_HANDLES.set(record, handle);
+    return record;
   }
 }
 

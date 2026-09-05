@@ -83,6 +83,7 @@ import { Document } from "../document.js";
 import { Window } from "../window.js";
 import { Node } from "./node.js";
 import { Event } from "./events.js";
+import { nodeDocumentStateOf } from "./classes.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/cssom",
@@ -3315,6 +3316,10 @@ const MEASUREMENT_PROPERTIES = new Set([
 ]);
 
 const COMPUTED_CACHE = new WeakMap();
+const COMPUTED_FACADE_CACHE = new WeakMap();
+const COMPUTED_SHEETS = new WeakMap();
+const COMPUTED_SOURCES = new WeakMap();
+const DEFAULT_CSS_RULES = new Map();
 
 // happy-dom resolves `var(--name[, fallback])` references in computed values
 // against the custom properties accumulated along the element chain (parent
@@ -3336,6 +3341,9 @@ function parseCssVariablesInValue(value, cssProperties) {
 }
 
 function computedStyleFor(ctx, window, element) {
+  const previous = COMPUTED_FACADE_CACHE.get(element);
+  const epoch = previous?.documentState.epoch?.[0] ?? -1;
+  if (epoch >= 0 && previous.epoch === epoch) return previous.declaration;
   const handle = facadeNodeHandle(ctx, element, "getComputedStyle");
   if (handle.nodeType() !== 1) {
     throw new TypeError("Failed to execute 'getComputedStyle' on 'Window': parameter 1 is not of type 'Element'.");
@@ -3343,25 +3351,47 @@ function computedStyleFor(ctx, window, element) {
   let computed = COMPUTED_CACHE.get(handle);
   if (computed === undefined) {
     computed = new CSSStyleDeclaration(handle, { computed: true });
+    declarationState(computed).documentState =
+      nodeDocumentStateOf(element) ?? ctx.docStateOf(handle.ownerDocument());
     COMPUTED_CACHE.set(handle, computed);
   }
+  const documentState = declarationState(computed).documentState;
+  COMPUTED_FACADE_CACHE.set(element, {
+    declaration: computed,
+    documentState,
+    epoch: documentState.epoch?.[0] ?? -1,
+  });
   return computed;
 }
 
-// Collects the `{ name, value, important }` declarations of every `<style>`
-// sheet rule that matches `elementHandle`, in source order. Non-matching or
-// unparseable selectors are skipped silently (they simply do not apply).
-function collectSheetDeclarations(docHandle, elementHandle) {
-  const declarations = [];
-  let styleHandles;
+// Stylesheet membership changes with tree structure; each sheet still reads
+// its current CSSOM rules and text content when declarations are collected.
+function computedSheetHandles(docHandle, documentState, structureEpoch) {
+  const cached = documentState === undefined
+    ? undefined
+    : COMPUTED_SHEETS.get(documentState);
+  if (structureEpoch >= 0 && cached?.structureEpoch === structureEpoch) {
+    return cached.handles;
+  }
+  let handles;
   try {
     // Namespace-agnostic discovery (matching happy-dom): an SVG `<style>`
     // element must be found too, while a bare CSS type selector only matches
     // the default (HTML) namespace.
-    styleHandles = docHandle.getElementsByTagName("style");
+    handles = docHandle.getElementsByTagName("style");
   } catch {
-    return declarations;
+    return [];
   }
+  if (structureEpoch >= 0 && documentState !== undefined) {
+    COMPUTED_SHEETS.set(documentState, { structureEpoch, handles });
+  }
+  return handles;
+}
+
+// Collect matching declarations in source order. Invalid/non-matching
+// selectors do not contribute to the cascade.
+function collectSheetDeclarations(styleHandles, elementHandle) {
+  const declarations = [];
   for (const styleHandle of styleHandles) {
     const sheet = sheetOf(null, styleHandle);
     collectRuleDeclarations(sheet.cssRules, elementHandle, declarations);
@@ -3386,6 +3416,51 @@ function collectRuleDeclarations(rules, elementHandle, out) {
   }
 }
 
+function computedElementSource(elementHandle, sources) {
+  let current = elementHandle;
+  let parent = null;
+  const pending = [];
+  while (current !== null && current !== undefined) {
+    const existing = sources?.get(current);
+    if (existing !== undefined) {
+      parent = existing;
+      break;
+    }
+    if (current.nodeType() === 1) pending.push(current);
+    current = current.parentNode();
+  }
+  for (let index = pending.length - 1; index >= 0; index--) {
+    const handle = pending[index];
+    const tagName = String(handle.nodeName()).toUpperCase();
+    const defaultCSS = DEFAULT_CSS[tagName] ?? DEFAULT_CSS.default;
+    let defaultText = "";
+    if (typeof defaultCSS === "string") defaultText = defaultCSS;
+    else if (defaultCSS) {
+      for (const key of Object.keys(defaultCSS)) {
+        if (key === "default" || handle.getAttribute(key.toLowerCase()) !== null) {
+          defaultText += defaultCSS[key];
+        }
+      }
+    }
+    let defaults = DEFAULT_CSS_RULES.get(defaultText);
+    if (defaults === undefined) {
+      defaults = parseCssText(defaultText);
+      DEFAULT_CSS_RULES.set(defaultText, defaults);
+    }
+    const styleAttribute = handle.getAttribute("style");
+    const source = {
+      handle,
+      tagName,
+      parent,
+      defaults,
+      inline: styleAttribute ? parseCssText(styleAttribute) : null,
+    };
+    sources?.set(handle, source);
+    parent = source;
+  }
+  return parent;
+}
+
 // The layout-free computed-style engine: walks the element's parent chain
 // applying the per-tag default CSS, the matching `<style>` sheet rules, the
 // inline `style` attribute and the inherited font/direction/color properties.
@@ -3396,25 +3471,52 @@ function collectRuleDeclarations(rules, elementHandle, out) {
 // (happy-dom cascade); `!important` declarations beat later non-important
 // ones, mirroring the rest of the engine.
 function getComputedPropertyManager(declaration, elementHandle) {
+  const state = declarationState(declaration);
+  const documentState = state.documentState;
+  const structureEpoch = documentState?.epoch?.[0] ?? -1;
+  const attributeEpoch = documentState?.attributeEpoch?.[0] ?? -1;
+  const cacheable = structureEpoch >= 0 && attributeEpoch >= 0;
+  const cache = state.cache;
+  if (
+    cacheable && cache.structureEpoch === structureEpoch &&
+    cache.attributeEpoch === attributeEpoch
+  ) {
+    return cache.propertyManager;
+  }
   // happy-dom returns an empty computed style for detached elements.
   if (!elementHandle.isConnected()) return new PropertyManager();
 
-  // Walk up from the element to the document root, collecting element handles
-  // in html-first order (happy-dom processes parents from the root down, so a
-  // closer ancestor's non-important value overrides a farther one's).
+  const docHandle = documentState?.documentHandle ?? elementHandle.ownerDocument();
+  const styleHandles = computedSheetHandles(docHandle, documentState, structureEpoch);
+
+  // The same ancestors serve many computed declarations. Their native
+  // ancestry and inline/default declarations can be reused while both Core
+  // epochs match; matching stylesheet rules still run live below.
+  let sourceCache;
+  if (cacheable && documentState !== undefined) {
+    sourceCache = COMPUTED_SOURCES.get(documentState);
+    if (
+      sourceCache?.structureEpoch !== structureEpoch ||
+      sourceCache?.attributeEpoch !== attributeEpoch
+    ) {
+      sourceCache = { structureEpoch, attributeEpoch, elements: new WeakMap() };
+      COMPUTED_SOURCES.set(documentState, sourceCache);
+    }
+  }
+  // Apply ancestors in html-first order, so closer non-important inherited
+  // values override farther ones in the same order as the uncached cascade.
   const chain = [];
-  let current = elementHandle;
-  while (current !== null && current !== undefined) {
-    if (current.nodeType() === 1) chain.unshift(current);
-    current = current.parentNode();
+  let current = computedElementSource(elementHandle, sourceCache?.elements);
+  const targetElement = current;
+  while (current !== null) {
+    chain.unshift(current);
+    current = current.parent;
   }
 
-  const docHandle = elementHandle.ownerDocument();
   const propertyManager = new PropertyManager();
   const cssProperties = {};
   let rootFontSize = 16;
   let parentFontSize = 16;
-  const targetElement = elementHandle;
 
   const applyDeclaration = (element, name, value, important) => {
     if (INHERITED_PROPERTIES.has(name) || element === targetElement) {
@@ -3424,7 +3526,7 @@ function getComputedPropertyManager(declaration, elementHandle) {
         if (name === "font" || name === "font-size") {
           const fontSize = propertyManager.properties["font-size"];
           if (fontSize !== null) {
-            if (String(element.nodeName()).toUpperCase() === "HTML") {
+            if (element.tagName === "HTML") {
               rootFontSize = measurementToNumber(fontSize.value, rootFontSize);
             } else if (element !== targetElement) {
               parentFontSize = measurementToNumber(fontSize.value, rootFontSize);
@@ -3436,35 +3538,19 @@ function getComputedPropertyManager(declaration, elementHandle) {
   };
 
   for (const element of chain) {
-    const tagName = String(element.nodeName()).toUpperCase();
-    let elementCSSText = "";
-    const defaultCSS = DEFAULT_CSS[tagName] ?? DEFAULT_CSS.default;
-    if (defaultCSS) {
-      if (typeof defaultCSS === "string") {
-        elementCSSText += defaultCSS;
-      } else {
-        for (const key of Object.keys(defaultCSS)) {
-          if (key === "default" || element.getAttribute(key.toLowerCase()) !== null) {
-            elementCSSText += defaultCSS[key];
-          }
-        }
-      }
-    }
-
-    const { rules, properties } = parseCssText(elementCSSText);
+    const { rules, properties } = element.defaults;
     Object.assign(cssProperties, properties);
     for (const { name, value, important } of rules) {
       applyDeclaration(element, name, value, important);
     }
 
     // Matching `<style>` sheet rules (before the inline origin).
-    for (const { name, value, important } of collectSheetDeclarations(docHandle, element)) {
+    for (const { name, value, important } of collectSheetDeclarations(styleHandles, element.handle)) {
       applyDeclaration(element, name, value, important);
     }
 
-    const styleAttribute = element.getAttribute("style");
-    if (styleAttribute) {
-      const inline = parseCssText(styleAttribute);
+    const inline = element.inline;
+    if (inline !== null) {
       Object.assign(cssProperties, inline.properties);
       for (const { name, value, important } of inline.rules) {
         applyDeclaration(element, name, value, important);
@@ -3480,6 +3566,14 @@ function getComputedPropertyManager(declaration, elementHandle) {
       const converted = parseMeasurementsInValue(property.value, rootFontSize, parentFontSize, name === "font-size" ? parentFontSize : null);
       if (converted !== null) property.value = converted;
     }
+  }
+  // Inline styles and ancestry are covered by Core's attribute/structure
+  // epochs. CSSOM edits and style text-node data edits are not, so documents
+  // with sheets retain the live cascade path on every read.
+  if (cacheable && styleHandles.length === 0) {
+    cache.propertyManager = propertyManager;
+    cache.structureEpoch = structureEpoch;
+    cache.attributeEpoch = attributeEpoch;
   }
   return propertyManager;
 }

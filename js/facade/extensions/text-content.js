@@ -33,6 +33,7 @@
 // (tests/bun/seam.test.js pins that shape).
 
 import { Node } from "./node.js";
+import { nodeInternalsOf } from "./classes.js";
 import { rethrowDomError, webidlMessage } from "./dom-error.js";
 
 export const seam = Object.freeze({
@@ -77,8 +78,13 @@ export function install(ctx) {
     Node.prototype,
     "textContent",
     function textContent() {
-      const handle = facadeNodeHandle(ctx, this, "textContent");
       try {
+        const internals = nodeInternalsOf(this);
+        const method = internals?.documentState?.nativeMethods.textContentToken;
+        if (method !== undefined && internals.token !== undefined) {
+          return method(internals.token);
+        }
+        const handle = facadeNodeHandle(ctx, this, "textContent");
         return handle.textContent();
       } catch (error) {
         rethrowDomError(error, webidlMessage(error, "textContent", "Node"));

@@ -97,14 +97,17 @@
 //! `tests/bun/query-api.test.js` and the `hc-diff-selector-query` differential
 //! scenario carry the end-to-end evidence.
 
-use napi::bindgen_prelude::Reference;
+use napi::bindgen_prelude::{Reference, Uint32Array};
 use napi::Env;
 use napi_derive::napi;
 
 use mad_dom_core::arena::NodeId;
 
 use crate::extensions::ExtensionSeam;
-use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle, SharedDocument};
+use crate::handle::{
+    check_affinity, node_snapshot_descriptor, with_document, DocumentHandle, NodeHandle,
+    SharedDocument,
+};
 
 /// Seam metadata for the M6 `query_api` boundary.
 ///
@@ -220,6 +223,27 @@ impl DocumentHandle {
 
 #[napi]
 impl NodeHandle {
+    /// Returns the same static query result using document-scoped tokens and
+    /// immutable type descriptors. Facades can create canonical lazy wrappers
+    /// without allocating a Node-API object for every match.
+    #[napi(catch_unwind)]
+    pub fn query_selector_all_tokens(
+        &self,
+        env: Env,
+        selector: String,
+    ) -> napi::Result<Uint32Array> {
+        check_affinity(self.shared(), &env)?;
+        let nodes = with_document(self.shared(), |doc| {
+            doc.query_selector_all(self.id(), &selector)
+                .map_err(crate::error::BindingError::Core)?
+                .into_iter()
+                .map(|id| node_snapshot_descriptor(doc, id).map(|kind| (id, kind << 16)))
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .map_err(|err| err.into_napi(&env))?;
+        Ok(self.shared().token_snapshot(&nodes, None).into())
+    }
+
     /// Returns the WHATWG `element.querySelector`: the first descendant
     /// element of this node that matches `selector`, or `null`.
     ///

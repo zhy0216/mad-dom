@@ -490,6 +490,77 @@ describe.skipIf(!nativeAvailable)("facade lazy-token convergence", () => {
     }
   });
 
+  test("text wrappers keep identity across token chunks and interleaved documents", () => {
+    const windows = [new Window(), new Window()];
+    try {
+      const created = [[], []];
+      const bodies = windows.map((window) => window.document.body);
+      for (let index = 0; index < 520; index++) {
+        for (let documentIndex = 0; documentIndex < windows.length; documentIndex++) {
+          const text = windows[documentIndex].document.createTextNode(
+            `${documentIndex}:${index}:\0🙂`,
+          );
+          created[documentIndex].push(text);
+          bodies[documentIndex].appendChild(text);
+        }
+      }
+      for (let documentIndex = 0; documentIndex < windows.length; documentIndex++) {
+        const nodes = created[documentIndex];
+        expect(nodeTokenOf(nodes.at(-1)) - nodeTokenOf(nodes[0])).toBeGreaterThan(256);
+        Object.freeze(nodes[257]);
+        for (const index of [519, 0, 257, 255, 256, 1, 511, 257]) {
+          const text = nodes[index];
+          expect(bodies[documentIndex].childNodes[index]).toBe(text);
+          expect(text.data).toBe(`${documentIndex}:${index}:\0🙂`);
+          expect(text.ownerDocument).toBe(windows[documentIndex].document);
+          expect(nodeHandleOf(text).ownerDocument()).toBe(
+            nodeHandleOf(nodes[0]).ownerDocument(),
+          );
+        }
+      }
+    } finally {
+      for (const window of windows) window.destroy();
+    }
+  });
+
+  test("an unwrapped token cannot inherit a forged wrapper from a numeric property", () => {
+    const nativeWindow = native.createWindow();
+    const nativeDocument = nativeWindow.document();
+    const window = new Window(nativeWindow);
+    try {
+      const body = window.document.body;
+      const bodyToken = nativeDocument.nodeToken(nodeHandleOf(body));
+      let token;
+      // Use a nontrivial offset so the poisoned property does not affect the
+      // test runner's own short arrays while the facade lookup is exercised.
+      do {
+        window.document.createTextNode("registered");
+        token = nativeDocument.createTextToken("unwrapped");
+      } while ((token & 255) < 32 || (token & 255) > 200);
+      nativeDocument.appendChildToken(bodyToken, token);
+      const property = String(token & 255);
+      const original = Object.getOwnPropertyDescriptor(Object.prototype, property);
+      let found;
+      try {
+        Object.defineProperty(Object.prototype, property, {
+          configurable: true,
+          value: { forged: true },
+          writable: true,
+        });
+        found = body.firstChild;
+      } finally {
+        if (original === undefined) delete Object.prototype[property];
+        else Object.defineProperty(Object.prototype, property, original);
+      }
+      expect(found.nodeType).toBe(3);
+      expect(found.data).toBe("unwrapped");
+      expect(nodeTokenOf(found)).toBe(token);
+      expect(body.firstChild).toBe(found);
+    } finally {
+      window.destroy();
+    }
+  });
+
   test("destroy clears prefetched element tokens before another facade create", () => {
     const window = new Window();
     const document = window.document;
@@ -529,6 +600,27 @@ describe.skipIf(!nativeAvailable)("facade lazy-token convergence", () => {
     } finally {
       window.destroy();
     }
+  });
+
+  test("selection keeps a lazily materialized wrapper after token-cache teardown", () => {
+    const window = new Window();
+    const text = window.document.createTextNode("selected");
+    window.document.body.appendChild(text);
+    expect(hasMaterializedNodeHandle(text)).toBe(false);
+    Object.freeze(text);
+    const range = window.document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, 4);
+    expect(hasMaterializedNodeHandle(text)).toBe(true);
+    const selection = window.document.getSelection();
+    selection.addRange(range);
+
+    // The first wrapper-producing read is after destroy; no earlier read
+    // through wrap() can incidentally populate the native-handle cache.
+    window.destroy();
+    expect(selection.anchorNode).toBe(text);
+    expect(selection.focusNode).toBe(text);
+    expect(() => text.data).toThrow(/ERR_MAD_DOM_DOCUMENT_DESTROYED/);
   });
 
   test("a bundled cold read fills both attribute slots and invalidates atomically", () => {

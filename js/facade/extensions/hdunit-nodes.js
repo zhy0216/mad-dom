@@ -38,6 +38,7 @@ import {
   Text,
   Comment,
   nodeHandleOf,
+  nodeDocumentStateOf,
   registerElementClass,
 } from "./classes.js";
 import { Document } from "../document.js";
@@ -61,8 +62,10 @@ import {
   HTMLTableCellElement,
   HTMLScriptElement,
   HTMLImageElement,
+  HTMLLabelElement,
 } from "./html-element.js";
 import { HTMLCollection } from "./live-collections.js";
+import { NodeList } from "./child-nodelist.js";
 import { DOMTokenList } from "./attribute-nodes.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
 import { rethrowDomError, webidlMessage } from "./dom-error.js";
@@ -383,6 +386,27 @@ function installHyperlinkSurface(ctx, Class) {
 // --- install ----------------------------------------------------------------
 
 export function install(ctx) {
+  // DOM consumers compare nodeType with constants on both Node and instances.
+  // Document has its own facade base, so it also needs the instance constants.
+  for (const [name, value] of Object.entries({
+    ELEMENT_NODE: 1,
+    ATTRIBUTE_NODE: 2,
+    TEXT_NODE: 3,
+    CDATA_SECTION_NODE: 4,
+    ENTITY_REFERENCE_NODE: 5,
+    ENTITY_NODE: 6,
+    PROCESSING_INSTRUCTION_NODE: 7,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+    DOCUMENT_TYPE_NODE: 10,
+    DOCUMENT_FRAGMENT_NODE: 11,
+    NOTATION_NODE: 12,
+  })) {
+    for (const target of [Node, Node.prototype, Document.prototype]) {
+      Object.defineProperty(target, name, { value });
+    }
+  }
+
   // Per-tag element classes (T06): register so createElement / parse / import
   // select them as the direct wrapper prototype.
   for (const [tag, elementClass] of PER_TAG) {
@@ -439,6 +463,23 @@ export function install(ctx) {
   ctx.defineAccessor(Node.prototype, "ownerDocument", function ownerDocument() {
     return ctx.wrap(handleOf(this).ownerDocument());
   }, undefined);
+
+  ctx.defineAccessor(HTMLLabelElement.prototype, "htmlFor", function htmlFor() {
+    return handleOf(this).getAttribute("for") ?? "";
+  }, function htmlFor(value) {
+    handleOf(this).setAttribute("for", String(value));
+  });
+  ctx.defineAccessor(HTMLLabelElement.prototype, "control", function control() {
+    return labelControlOf(ctx, this);
+  }, undefined);
+  ctx.defineAccessor(HTMLLabelElement.prototype, "form", function form() {
+    return labelControlOf(ctx, this)?.form ?? null;
+  }, undefined);
+  for (const Class of [HTMLInputElement, HTMLButtonElement, HTMLSelectElement, HTMLTextAreaElement, HTMLOutputElement]) {
+    ctx.defineAccessor(Class.prototype, "labels", function labels() {
+      return labelsOf(ctx, this);
+    }, undefined);
+  }
 
   // `Element.children` — a live element-children collection (only child
   // elements, nodeType 1), mirroring the WHATWG ParentNode.children.
@@ -544,6 +585,14 @@ export function install(ctx) {
     }
   });
   ctx.defineMethod(Node.prototype, "replaceChildren", function replaceChildren(...nodes) {
+    if (nodes.length === 0 && (this.nodeType === 1 || this.nodeType === 11)) {
+      // Core removes the child list without materializing the subtree merely
+      // to discover its first child. Its mutation hooks still own observers,
+      // live collections and custom-element disconnection reactions.
+      handleOf(this).setTextContent("");
+      flushCustomElementReactions(ctx, this, true);
+      return;
+    }
     while (this.firstChild !== null) {
       this.removeChild(this.firstChild);
     }
@@ -1060,8 +1109,7 @@ export function install(ctx) {
 
   // HTMLOutputElement (W6): the defaultValue slot, the textContent-backed value
   // getter/setter, the htmlFor/name attribute reflections and the constant
-  // "output" type. The labels reads are dropped (label association not
-  // implemented).
+  // "output" type. Label association is shared with the other form controls.
   const OUTPUT_DEFAULT_VALUE = new WeakMap();
   ctx.defineAccessor(HTMLOutputElement.prototype, "defaultValue", function defaultValue() {
     return OUTPUT_DEFAULT_VALUE.get(this) ?? "";
@@ -1752,24 +1800,183 @@ function closeDialog(dialog, returnValue) {
 
 // --- labels -----------------------------------------------------------------
 
-// `labels`: the NodeList of `<label>` elements associated with a control — the
-// `for`-referencing labels (document-root query) plus the first ancestor label,
-// mirroring happy-dom's HTMLLabelElementUtility.
-function labelsOf(ctx, control) {
-  const handle = handleOf(control);
-  const id = handle.getAttribute("id");
-  const result = [];
-  if (id) {
-    const refs = documentOf(ctx, control).querySelectorAll(`label[for="${id}"]`);
-    for (const label of refs) result.push(label);
+function isLabelable(element) {
+  if (element === null) return false;
+  switch (element.localName) {
+    case "input":
+      return (element.getAttribute("type") ?? "").toLowerCase() !== "hidden";
+    case "button":
+    case "meter":
+    case "output":
+    case "progress":
+    case "select":
+    case "textarea":
+      return true;
+    default:
+      return false;
   }
-  for (let parent = handle.parentNode(); parent !== null; parent = parent.parentNode()) {
-    if (parent.nodeType() === 1 && parent.nodeName() === "label") {
-      result.push(ctx.wrap(parent));
-      break;
+}
+
+// Resolve against the label's tree, including detached fragments and shadow
+// roots. An explicit `for` never falls back to a descendant, and duplicate IDs
+// only associate when the first matching element is itself labelable.
+function labelControlOf(ctx, label, root) {
+  const handle = handleOf(label);
+  const id = handle.getAttribute("for");
+  if (id !== null) {
+    if (id === "") return null;
+    root ??= labelTreeRoot(ctx, label);
+    let candidate = null;
+    if (typeof root.getElementById === "function") {
+      candidate = root.getElementById(id);
+    } else if (root.nodeType === 1 && root.getAttribute("id") === id) {
+      candidate = root;
+    } else {
+      // Compare literal IDs; selector metacharacters in IDs have no meaning
+      // to label association.
+      for (const element of root.querySelectorAll("[id]")) {
+        if (element.getAttribute("id") === id) {
+          candidate = element;
+          break;
+        }
+      }
     }
+    return isLabelable(candidate) ? candidate : null;
   }
-  return result;
+  for (const element of label.querySelectorAll("button, input, meter, output, progress, select, textarea")) {
+    if (isLabelable(element)) return element;
+  }
+  return null;
+}
+
+function labelTreeRoot(ctx, node) {
+  let handle = handleOf(node);
+  for (let parent = handle.parentNode(); parent !== null; parent = handle.parentNode()) handle = parent;
+  return handle.nodeType() === 9 ? documentOf(ctx, node) : ctx.wrap(handle);
+}
+
+const LABELABLE_SELECTOR = "button,input,meter,output,progress,select,textarea";
+const LABEL_ASSOCIATIONS = new WeakMap();
+const LABEL_LISTS = new WeakMap();
+const LABEL_LIST_OWNERS = new WeakMap();
+const EMPTY_LABELS = Object.freeze([]);
+const DESTROYED_LABEL_EPOCH = -2147483648;
+
+function labelAssociationCache(control) {
+  const state = nodeDocumentStateOf(control);
+  const treeEpoch = state?.epoch?.[0];
+  const attributeEpoch = state?.attributeEpoch?.[0];
+  if (state?.destroyed || treeEpoch === DESTROYED_LABEL_EPOCH || attributeEpoch === DESTROYED_LABEL_EPOCH) {
+    // A retained collection must not conceal the native lifecycle error.
+    handleOf(control).nodeType();
+  }
+  const cacheable = treeEpoch !== undefined && treeEpoch !== -1 &&
+    attributeEpoch !== undefined && attributeEpoch !== -1;
+  let cache = cacheable ? LABEL_ASSOCIATIONS.get(state) : undefined;
+  if (cache === undefined || cache.treeEpoch !== treeEpoch || cache.attributeEpoch !== attributeEpoch) {
+    cache = { treeEpoch, attributeEpoch, controls: new WeakMap(), indexedRoots: new WeakSet(), documentIndexed: false };
+    if (cacheable) LABEL_ASSOCIATIONS.set(state, cache);
+  }
+  return cache;
+}
+
+// One derived association scan serves all controls in a tree. Both structural
+// and attribute epochs guard it, including writes made through native handles.
+// Record unlabelled controls too so repeated .labels reads need no ancestor
+// walks. Detached trees and shadow roots get their own association scans.
+function indexLabels(ctx, cache, root) {
+  if (cache.indexedRoots.has(root)) return;
+  cache.indexedRoots.add(root);
+  const scope = root instanceof Document ? root.documentElement : root;
+  const labels = [];
+  if (root.localName === "label") labels.push(root);
+  else if (isLabelable(root)) cache.controls.set(root, EMPTY_LABELS);
+  for (const element of scope.querySelectorAll(`label,${LABELABLE_SELECTOR}`)) {
+    if (element.localName === "label") labels.push(element);
+    else cache.controls.set(element, EMPTY_LABELS);
+  }
+  for (const label of labels) {
+    const control = labelControlOf(ctx, label, root);
+    if (control === null) continue;
+    let associated = cache.controls.get(control);
+    if (associated === undefined || associated === EMPTY_LABELS) {
+      associated = [];
+      cache.controls.set(control, associated);
+    }
+    associated.push(label);
+  }
+}
+
+function readLabels(list) {
+  const { ctx, control } = LABEL_LIST_OWNERS.get(list);
+  const cache = labelAssociationCache(control);
+  let labels = cache.controls.get(control);
+  if (labels !== undefined) return labels;
+  if (!cache.documentIndexed) {
+    cache.documentIndexed = true;
+    indexLabels(ctx, cache, documentOf(ctx, control));
+    labels = cache.controls.get(control);
+    if (labels !== undefined) return labels;
+  }
+  indexLabels(ctx, cache, labelTreeRoot(ctx, control));
+  return cache.controls.get(control) ?? EMPTY_LABELS;
+}
+
+function labelListIndex(property) {
+  if (typeof property !== "string") return null;
+  const index = Number(property);
+  return Number.isInteger(index) && index >= 0 && index < 0xffffffff && String(index) === property ? index : null;
+}
+
+class LabelNodeList extends NodeList {
+  constructor(ctx, control) {
+    const target = Object.create(new.target.prototype);
+    const proxy = new Proxy(target, {
+      get(target, property, receiver) {
+        const index = labelListIndex(property);
+        return index === null ? Reflect.get(target, property, receiver) : readLabels(receiver)[index];
+      },
+      has(target, property) {
+        const index = labelListIndex(property);
+        return index === null ? Reflect.has(target, property) : index < readLabels(target).length;
+      },
+      ownKeys(target) {
+        return [...readLabels(target).map((_, index) => String(index)), ...Reflect.ownKeys(target)];
+      },
+      getOwnPropertyDescriptor(target, property) {
+        const index = labelListIndex(property);
+        if (index === null) return Reflect.getOwnPropertyDescriptor(target, property);
+        const value = readLabels(target)[index];
+        return value === undefined ? undefined : { value, enumerable: true, configurable: true };
+      },
+    });
+    const owner = { ctx, control };
+    LABEL_LIST_OWNERS.set(target, owner);
+    LABEL_LIST_OWNERS.set(proxy, owner);
+    return proxy;
+  }
+
+  get length() { return readLabels(this).length; }
+  item(index) { return readLabels(this)[Number(index) >>> 0] ?? null; }
+  forEach(callback, thisArg) {
+    if (typeof callback !== "function") throw new TypeError("NodeList.forEach requires a callback function");
+    const length = this.length;
+    for (let index = 0; index < length && index < this.length; index++) callback.call(thisArg, this[index], index, this);
+  }
+  *entries() { for (let index = 0; index < this.length; index++) yield [index, this[index]]; }
+  *keys() { for (let index = 0; index < this.length; index++) yield index; }
+  *values() { for (let index = 0; index < this.length; index++) yield this[index]; }
+  [Symbol.iterator]() { return this.values(); }
+}
+
+function labelsOf(ctx, control) {
+  if (!isLabelable(control)) return null;
+  let list = LABEL_LISTS.get(control);
+  if (list === undefined) {
+    list = new LabelNodeList(ctx, control);
+    LABEL_LISTS.set(control, list);
+  }
+  return list;
 }
 
 // --- FileList ---------------------------------------------------------------

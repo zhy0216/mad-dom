@@ -38,7 +38,10 @@ export async function runTestingSize(Window, size, runs, scenarios = TESTING_SCE
       const { name } = scenario;
       if (failures[name]) continue;
       try {
-        const result = await scenario.run(Window, casesForSize(scenario, size));
+        const cases = casesForSize(scenario, size);
+        const result = await scenario.run(Window, cases);
+        if (!Number.isFinite(result.ms) || result.ms < 0) throw new Error("invalid timing sample");
+        if (result.checks?.cases !== cases) throw new Error(`expected ${cases} cases, received ${result.checks?.cases}`);
         const fingerprint = createHash("sha256").update(JSON.stringify(result.checks)).digest("hex");
         if (checks[name] && checks[name].fingerprint !== fingerprint) throw new Error("results changed between rounds");
         checks[name] = { cases: result.checks.cases, fingerprint };
@@ -46,7 +49,7 @@ export async function runTestingSize(Window, size, runs, scenarios = TESTING_SCE
       } catch (error) {
         failures[name] = {
           round, stage: measured ? "measured" : "warmup",
-          message: String(error.message ?? error).replace(/\x1b\[[0-9;]*m/g, "").slice(0, 4000),
+          message: String(error?.message ?? error).replace(/\x1b\[[0-9;]*m/g, "").slice(0, 4000),
         };
         // Never publish a partial or failed run as a speedup.
         samples[name] = [];

@@ -20,6 +20,41 @@ Reproduce it yourself:
 bun benchmark/run.mjs
 ```
 
+## DOM operations and test workflows
+
+`bun run bench:dom` runs 16 core phases and 13 small test workflows, including
+real DOM Testing Library event, label and accessible-role queries. Both engines
+now pass every workload and produce matching result fingerprints.
+
+The 2026-09-05 local run (`bun run bench:dom --runs 9 --json`, macOS arm64,
+Bun 1.4.0, happy-dom 20.11.11, size 1×) measured:
+
+| Timed workload | mad-dom | happy-dom | Speedup |
+| --- | ---: | ---: | ---: |
+| Core operations | 150.29 ms | 452.28 ms | 3.01× |
+| Test workflows | 98.23 ms | 154.66 ms | 1.57× |
+
+Each total is the median of nine per-round sums of the timed phases, excluding
+forced GC, validation and untimed setup. The workflow sum is derived only after
+all 13 scenarios pass; window construction/closing is included in the
+`windowLifecycle` phase. The core report's separate `total` field is pipeline
+wall time and includes setup, checks and GC, so it is not the operations figure
+above. The local raw report is retained as `bench/baseline.dom-2026-09-05.json`
+(ignored host-specific output).
+
+Fifteen of 16 core phase medians were faster in this run, including truly
+warmed queries; cold traversal was about 3% slower. Ten of 13 workflow medians
+were faster. `testingLibraryEvents`, `testingLibraryLabel` and `asyncObserver`
+remained slower (about 2–17%); these are included in the totals.
+Microsecond-scale hot queries and near-ties remain sensitive to timing noise.
+
+The changes reuse bounded selector syntax/results, transfer query and child
+results as lazy native tokens, cache computed-style sources and label
+associations against native mutation generations, and remove a redundant
+global scan from observer registration. Results remain live after native or
+facade mutations; pseudo-class query results are not cached because character
+data can affect selectors such as `:empty` independently of those generations.
+
 ## Why it's fast
 
 The DOM doesn't live in JS objects. Nodes are stored in a Rust memory arena,
@@ -45,7 +80,10 @@ registers the guaranteed-fresh node without a futile reverse-map probe, and
 uses a creation-only lazy `Text` wrapper factory that still enters the same
 per-document identity table.
 
-On macOS arm64 / Bun 1.4.0, the formal 15-round 1× command put mad-dom ahead
+The earlier measurements below predate the corrected hot-query warmup and the
+separate operation total above.
+
+On macOS arm64 / Bun 1.4.0, the earlier 15-round 1× command put mad-dom ahead
 in 15 phases. Its only apparent loss, `readHeavy` at 4.41 ms vs 4.39 ms, was
 0.46% and within run noise. To avoid relying on fixed engine order or selecting
 a favorable result, a full-pipeline ABBA follow-up (mad, happy, happy, mad)

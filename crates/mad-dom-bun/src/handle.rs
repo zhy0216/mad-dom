@@ -705,7 +705,11 @@ impl SharedDocument {
     /// Resolves tokens and writes an already-classified subtree directly into
     /// the flat transfer buffer. One registry lock and one allocation cover
     /// the snapshot; nodes already exposed keep their token.
-    fn token_snapshot(&self, nodes: &[(NodeId, u32)], continuation_depth: Option<u32>) -> Vec<u32> {
+    pub(crate) fn token_snapshot(
+        &self,
+        nodes: &[(NodeId, u32)],
+        continuation_depth: Option<u32>,
+    ) -> Vec<u32> {
         self.enable_tokens();
         let mut tokens = self
             .tokens
@@ -1182,7 +1186,7 @@ fn snapshot_html_element_descriptor(name: &str) -> u32 {
 /// as a compact code into the facade's fixed name table; zero means the
 /// element needs the ordinary opaque-handle classification path
 /// (unknown/custom/non-HTML).
-fn node_snapshot_descriptor(doc: &Document, id: NodeId) -> Result<u32, BindingError> {
+pub(crate) fn node_snapshot_descriptor(doc: &Document, id: NodeId) -> Result<u32, BindingError> {
     let data = doc.get(id).map_err(BindingError::Core)?.data();
     let node_type = data.node_type();
     if node_type != NodeType::Element {
@@ -1596,6 +1600,41 @@ impl DocumentHandle {
         self.run(|doc| doc.get(id).map(|_| ()).map_err(BindingError::Core))
             .map_err(|err| err.into_napi(&env))?;
         Ok(self.shared.token_for(id))
+    }
+
+    /// Reads a token-backed node without first allocating its opaque wrapper.
+    #[napi(catch_unwind)]
+    pub fn matches_token(&self, env: Env, token: u32, selector: String) -> napi::Result<bool> {
+        check_affinity(&self.shared, &env)?;
+        let id = self.resolve_node_token(&env, token)?;
+        self.run(|doc| doc.matches(id, &selector).map_err(BindingError::Core))
+            .map_err(|err| err.into_napi(&env))
+    }
+
+    #[napi(catch_unwind)]
+    pub fn text_content_token(&self, env: Env, token: u32) -> napi::Result<Option<String>> {
+        check_affinity(&self.shared, &env)?;
+        let id = self.resolve_node_token(&env, token)?;
+        self.run(|doc| doc.text_content(id).map_err(BindingError::Core))
+            .map_err(|err| err.into_napi(&env))
+    }
+
+    #[napi(catch_unwind)]
+    pub fn child_nodes_tokens(&self, env: Env, token: u32) -> napi::Result<Uint32Array> {
+        check_affinity(&self.shared, &env)?;
+        let id = self.resolve_node_token(&env, token)?;
+        let nodes = self
+            .run(|doc| {
+                doc.children(id)
+                    .map_err(BindingError::Core)?
+                    .into_iter()
+                    .map(|child| {
+                        node_snapshot_descriptor(doc, child).map(|kind| (child, kind << 16))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .map_err(|err| err.into_napi(&env))?;
+        Ok(self.shared.token_snapshot(&nodes, None).into())
     }
 
     /// Returns a bounded pre-order subtree chunk as a flat `Uint32Array`.
