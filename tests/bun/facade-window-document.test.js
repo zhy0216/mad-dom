@@ -241,6 +241,30 @@ describe("facade registry (T22B)", () => {
     ]);
     expect(calls.some(([kind, target]) => kind === "method" && target === Document.prototype)).toBe(true);
     expect(calls.length).toBeGreaterThan(0);
+
+    // Re-installing into a recording context must not replace the conversion
+    // context used by real collections, regardless of test-file order.
+    if (nativeAvailable) {
+      const win = createWindow();
+      try {
+        const element = win.document.createElement("div");
+        element.id = "item";
+        element.className = "item";
+        win.document.body.appendChild(element);
+        for (const collection of [
+          win.document.getElementsByTagName("div"),
+          win.document.body.getElementsByClassName("item"),
+        ]) {
+          expect(collection.length).toBe(1);
+          expect(collection[0]).toBe(element);
+          expect(collection.item(0)).toBe(element);
+          expect(collection.namedItem("item")).toBe(element);
+          expect([...collection]).toEqual([element]);
+        }
+      } finally {
+        win.destroy();
+      }
+    }
   });
 });
 

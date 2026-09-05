@@ -48,11 +48,16 @@ async function settle(turns = 3) {
 // and the window FinalizationRegistry cleanup run (Bun defers them to the next
 // event-loop turn). Multiple rounds are needed: collecting the window facade
 // and then releasing the async state it carried takes more than one pass,
-// especially when earlier test files have loaded many modules.
-async function collectGarbage() {
-  for (let i = 0; i < 5; i++) {
-    Bun.gc(true);
+// especially when earlier test files have loaded many modules. When checking
+// reclamation, allow bounded retries instead of assuming five passes suffice.
+async function collectGarbage(isCollected = () => true) {
+  Bun.gc(true);
+  for (let i = 0; i < 100; i++) {
+    // Leave the job that inspected WeakRefs before collecting again, so the
+    // inspection itself cannot keep their targets alive for the next pass.
     await new Promise((resolve) => setTimeout(resolve, 10));
+    Bun.gc(true);
+    if (i >= 4 && isCollected()) return;
   }
 }
 
@@ -395,7 +400,11 @@ describe.skipIf(!nativeAvailable)("T47 lifecycle: releasing a window leaves no o
     };
     spawn();
 
-    await collectGarbage();
+    await collectGarbage(() =>
+      winRef.deref() === undefined &&
+      docRef.deref() === undefined &&
+      liveDocumentCount() === before
+    );
     expect(winRef.deref()).toBeUndefined();
     expect(docRef.deref()).toBeUndefined();
     expect(liveDocumentCount()).toBe(before);

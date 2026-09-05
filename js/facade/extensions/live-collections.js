@@ -345,7 +345,10 @@ function namedItemOf(collection, name) {
  * non-configurable, matching the rest of the facade surface.
  */
 export function install(ctx) {
-  windowCtx = ctx;
+  // Prototype methods keep their original installation context. Keep the
+  // item reader on that same context when a recording context re-drives the
+  // registry without replacing the installed methods.
+  if (windowCtx === null) windowCtx = ctx;
 
   // Document surface.
   ctx.defineMethod(Document.prototype, "getElementsByTagName", function getElementsByTagName(tagName) {
