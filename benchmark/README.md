@@ -46,16 +46,92 @@ deterministic cases plus the exception observer; the full suite including the
 live-network cases stays available via the package `test` script or
 `bun test test`.
 
-## DOM-intensive benchmark (dom-bench)
+## DOM benchmark：引擎操作 + 单测场景
+
+`bun run bench:dom` 默认运行两组对比：原有 16 个大树/底层操作阶段（`core`），
+以及 13 个面向单测的小型应用流程（`testing`）。两组各自为每个引擎启动独立
+Bun 进程，避免大树测试的内存驻留影响单测场景。
+
+```sh
+bun run bench:dom                                     # 默认 all：两组全部运行
+bun run bench:dom --suite testing                     # 只跑单测场景
+bun run bench:dom --suite testing --runs 7 --sizes 0.1,1,2
+bun run bench:dom --suite testing --runs 1 --sizes 0.01 # 最小工作量冒烟
+bun run bench:dom --suite core                        # 原有 16 阶段
+bun run bench:dom --json                              # 完整结果与失败诊断
+bun test benchmark/dom-bench/testing-worker.test.js   # fixture 与计量器校验
+```
+
+### 单测场景（testing）
+
+场景定义在 `dom-bench/testing-scenarios.mjs`。它们模拟测试文件中常见的
+setup → mount → query/interact → inspect → cleanup 流程，使用确定性数据、
+小组件和重复用例，而不是把每个组件放大成上万节点。
+
+| 阶段 | 1× 每轮用例数 | 场景与验证 |
+| --- | ---: | --- |
+| `fixtureLifecycle` | 100 | 共享 Window 中反复挂载计数器、点击更新、读取结果、卸载和移除监听器；验证卸载后的监听器不会继续更新组件 |
+| `windowLifecycle` | 25 | 每例创建独立 Window、挂载/查询、localStorage 写入、清理并关闭；验证初始 DOM/storage 无前例残留 |
+| `testingLibraryText` | 50 | 20 行项目列表，真实 `within` / `getByTestId` / `getByText` / `queryByText` 查询与缺失元素检查 |
+| `testingLibraryEvents` | 50 | 真实 `fireEvent.click` 分发两次，验证 `{ once: true }` 监听器只执行一次 |
+| `testingLibraryRole` | 25 | 真实 `getByRole` / `getAllByRole`，含 heading level、按钮 accessible name 和默认可见性检查 |
+| `testingLibraryLabel` | 25 | 真实 `getByLabelText` 查找 `<label for>` 关联输入框，`fireEvent.input` 后通过 `getByDisplayValue` 查询 |
+| `todoInteractions` | 50 | 创建 12 条 Todo、Fragment 批量挂载、嵌套点击事件委托、完成/删除、class/dataset/aria 更新及 live collection 失效 |
+| `formSubmission` | 50 | 填写 input/textarea/select/checkbox，冒泡事件、requestSubmit、FormData 成功控件筛选和 reset 恢复默认值 |
+| `templateClone` | 50 | 深克隆 template.content，填充 20 张卡片，Fragment 挂载，验证模板保持原样及所有卡片内容 |
+| `keyedReconcile` | 50 | 20 行列表删掉偶数项、逆序移动保留节点并更新文本；验证顺序、节点身份、live collection 与静态 NodeList |
+| `asyncObserver` | 25 | Promise 模拟请求返回、更新 loading 组件、等待 MutationObserver 通知，验证最终文本及属性/子节点记录 |
+| `shadowComponent` | 50 | Shadow DOM 计数器挂载、slot 分配、内部查询、composed 事件冒泡、状态更新与 light/shadow 查询隔离 |
+| `snapshotRoundTrip` | 50 | 克隆组件、修改副本、outerHTML 快照、重解析，验证原树未变以及实体、属性和注释的完整内容 |
+
+Testing Library 使用锁定的开发依赖 `@testing-library/dom@10.4.1`，直接调用包内
+API；查询选择参考[官方查询文档](https://testing-library.com/docs/queries/about/)。
+这些是 DOM 组件及真实 Testing Library 工作流，未包含 React/Vue renderer、
+`user-event`、jest-dom matcher 或测试运行器的启动成本，不能作为这些完整框架的性能结论。
+
+计时口径：
+
+- `--sizes` 只缩放独立用例数（四舍五入，最少 1 例），每个组件的节点数保持固定。
+  表中时间是该阶段**整批用例**的耗时；每个阶段显示每轮用例数，JSON 也保留
+  `workload.cases`。各场景的用例数不同，耗时不能直接作跨场景速度排名。
+- 每例的 fixture 解析、查询、交互、结果读取和 `body.replaceChildren()` 清理均计时。
+  预生成 fixture 字符串、最终断言、SHA-256 指纹、强制 GC 和事件循环排空不计时。
+  只有 `windowLifecycle` 把 Window 创建与 `happyDOM.close()` 也放进计时窗口；
+  其余阶段每轮共享一个 Window，创建及最终关闭在窗口外。
+- 2 轮 warmup 后保留所有测量样本，仍报告 median/min/p90/MAD。异步场景使用
+  Promise + MutationObserver；2 秒定时器只是失败 watchdog，正常路径没有固定等待或外网。
+- 每一例都在计时后与明确期望值比对，包含清理后的空 body；warmup 也校验。
+  同引擎跨轮指纹必须一致，两引擎的用例数及完整结果指纹也必须一致。
+- 某场景报错、结果错误或跨轮不一致时标为 `FAIL`，清空已有 samples，并继续其他
+  场景；失败场景不再重试、不显示 speedup。JSON 的 error 包含首个失败轮次及原因。
+  不汇总 testing 的 total，避免不完整工作量产生误导。
+- testing JSON 保留每个成功阶段最后测量轮 GC 前/后的 RSS 采样（`peak` 是时点值，
+  不是操作系统高水位），以及首个测量轮前的基线；表格聚焦耗时。
+
+**有效性与兼容缺口：** 任一组有场景失败、结果不一致或 core 跨轮校验失败，
+runner 都在输出完整报告后返回 exit 1；非法参数返回 exit 2。包含 testing 时
+对比 JSON schema 为 `mad-dom-dom-bench-comparison/2`：原 core 报告仍在
+`reports`，新组在 `testing: { phases, reports, valid }`，顶层 `valid` 要求两组都有效。
+`--suite testing` 时 core 的 `reports`/`phases` 为空；`--suite core` 保留原 schema /1。
+testing worker 的 schema 为 `mad-dom-testing-bench/1`。
+
+新增时的本地验证（2026-09-05）：happy-dom 的 13 个场景全部通过；mad-dom 的
+10 个场景通过，3 个真实 Testing Library 场景暴露兼容缺口：`fireEvent` 无法从
+节点取得 window，`getByRole` 读取 window.getComputedStyle 时报错，
+`getByLabelText` 未能找到 `<label for>` 关联控件。它们保留在默认运行中，
+没有补丁、跳过或 expected-fail 豁免；因此当前 `all` / `testing` 会如实输出
+`valid: false` 并 exit 1。修复引擎后同一组场景即可自动参与有效性能对比。
+
+### 大树与底层操作（core）
 
 `benchmark/run.mjs`（上文）测的是小型集成套件的 wall-clock，其中进程启动、模块
 加载、网络等固定成本占大头。`benchmark/dom-bench/` 则直接压 DOM 引擎本身：
 
 ```sh
-bun benchmark/dom-bench/run.mjs                         # 对比表（默认 5 轮，size 1×）
-bun benchmark/dom-bench/run.mjs --json                  # JSON（含 schema、samples、checks、rss）
-bun benchmark/dom-bench/run.mjs --runs 7                # 每引擎计量轮数（默认 5）
-bun benchmark/dom-bench/run.mjs --sizes 0.1,1,10        # 规模曲线（1 = 基准负载）
+bun run bench:dom --suite core                        # 对比表（默认 5 轮，size 1×）
+bun run bench:dom --suite core --json                 # JSON（含 schema、samples、checks、rss）
+bun run bench:dom --suite core --runs 7               # 每引擎计量轮数（默认 5）
+bun run bench:dom --suite core --sizes 0.1,1,10        # 规模曲线（1 = 基准负载）
 ```
 
 `--runs` 必须为 ≥ 1 的整数，`--sizes` 为逗号分隔的正数（可小数）；非法参数打印

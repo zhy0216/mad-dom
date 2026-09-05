@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// DOM-intensive benchmark: mad-dom vs happy-dom.
+// DOM benchmark: core operations + small unit-test workflows.
 //
 // Spawns benchmark/dom-bench/worker.mjs once per engine (isolated processes),
 // each running the same deterministic workload through the shared public API
@@ -13,18 +13,23 @@
 // one measures wall-clock of a small, fixed-cost-dominated suite; this one
 // exercises the DOM engine itself, where the native parser / selector /
 // serializer win (and where the FFI boundary shows its per-call cost).
+// The testing worker adds small mount/interact/assert/cleanup workflows and
+// real DOM Testing Library calls, with failures reported separately.
 //
 // Usage:
 //   bun benchmark/dom-bench/run.mjs                # print comparison
 //   bun benchmark/dom-bench/run.mjs --json         # machine-readable JSON
 //   bun benchmark/dom-bench/run.mjs --runs 7       # measured runs per phase
 //   bun benchmark/dom-bench/run.mjs --sizes 0.1,1,10  # scale curve (1 = base)
+//   bun benchmark/dom-bench/run.mjs --suite testing   # small test workflows
+//   bun benchmark/dom-bench/run.mjs --suite core      # original 16 phases
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(SCRIPT_DIR, "worker.mjs");
+const TESTING_WORKER = join(SCRIPT_DIR, "testing-worker.mjs");
 
 const ENGINES = ["mad-dom", "happy-dom"];
 // buildMixed keeps the old build slot; the decomposition + read/mutation
@@ -40,7 +45,7 @@ const BUILD_CHECK_KEYS = {
 };
 const PHASES_READ_MUTATION = ["readHeavy", "mutationChurn"];
 const PHASES = [...PHASES_MAIN, ...PHASES_BUILD, ...PHASES_READ_MUTATION];
-const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--runs <n>] [--sizes <s1,s2,...>] [--json]";
+const USAGE = "usage: bun benchmark/dom-bench/run.mjs [--suite <all|core|testing>] [--runs <n>] [--sizes <s1,s2,...>] [--json]";
 
 function parseRuns(raw) {
   const runs = Number(raw);
@@ -52,10 +57,16 @@ function parseRuns(raw) {
 }
 
 function parseArgs(argv) {
-  const args = { json: false, runs: 5, sizes: [1], sizesRaw: "1" };
+  const args = { json: false, runs: 5, sizes: [1], sizesRaw: "1", suite: "all" };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--json") args.json = true;
-    else if (argv[i] === "--runs") args.runs = parseRuns(argv[++i]);
+    else if (argv[i] === "--suite") {
+      args.suite = argv[++i];
+      if (!["all", "core", "testing"].includes(args.suite)) {
+        console.error(USAGE);
+        process.exit(2);
+      }
+    } else if (argv[i] === "--runs") args.runs = parseRuns(argv[++i]);
     else if (argv[i] === "--sizes") {
       const parsed = parseSizes(argv[++i]);
       args.sizes = parsed.sizes;
@@ -79,8 +90,10 @@ function parseSizes(raw) {
   return { sizes, raw: parts.map((p) => p.trim()).join(",") };
 }
 
-function runEngine(engine, runs, sizesRaw) {
-  const result = spawnSync(process.execPath, [WORKER, "--engine", engine, "--runs", String(runs), "--sizes", sizesRaw, "--json"], {
+function runEngine(engine, runs, sizesRaw, suite = "core") {
+  const worker = suite === "testing" ? TESTING_WORKER : WORKER;
+  const schema = suite === "testing" ? "mad-dom-testing-bench/1" : "mad-dom-dom-bench/3";
+  const result = spawnSync(process.execPath, [worker, "--engine", engine, "--runs", String(runs), "--sizes", sizesRaw, "--json"], {
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
@@ -107,7 +120,7 @@ function runEngine(engine, runs, sizesRaw) {
     );
     process.exit(1);
   }
-  if (report.schema !== "mad-dom-dom-bench/3" || report.engine !== engine) {
+  if (report.schema !== schema || report.engine !== engine) {
     console.error(
       `worker for ${engine} returned an unexpected report (schema=${JSON.stringify(report.schema)}, engine=${JSON.stringify(report.engine)})`,
     );
@@ -305,27 +318,76 @@ function printReport(reports) {
   if (mad.results.length > 1) printScaleCurve(reports);
 }
 
-const args = parseArgs(process.argv.slice(2));
-const reports = ENGINES.map((engine) => runEngine(engine, args.runs, args.sizesRaw));
-checkHosts(reports[0], reports[1]);
-const valid =
-  workloadsMatch(reports[0], reports[1]) &&
-  reports.every((r) => r.results.every((res) => res.checks.roundsIdentical !== false));
+function testingPhaseMatches(mad, happy, phase) {
+  return mad.phases[phase]?.status === "passed" && happy.phases[phase]?.status === "passed" &&
+    mad.workload.cases[phase] === happy.workload.cases[phase] &&
+    JSON.stringify(mad.checks[phase]) === JSON.stringify(happy.checks[phase]);
+}
+
+function testingWorkloadsMatch([mad, happy]) {
+  return JSON.stringify(mad.sizes) === JSON.stringify(happy.sizes) &&
+    JSON.stringify(mad.phases) === JSON.stringify(happy.phases) &&
+    mad.results.length === happy.results.length &&
+    mad.results.every((result, i) => result.size === happy.results[i].size && result.valid && happy.results[i].valid &&
+      mad.phases.every((phase) => testingPhaseMatches(result, happy.results[i], phase)));
+}
+
+function printTestingReport([mad, happy]) {
+  const row = (cells) => cells.map((cell) => String(cell).padEnd(40)).join("");
+  for (let i = 0; i < mad.results.length; i++) {
+    const a = mad.results[i];
+    const b = happy.results[i];
+    console.log(`\nsize ${a.size}× · unit-test workflows: mad-dom vs happy-dom`);
+    console.log(`${bunLabel(mad, happy)} · ${mad.host.os}/${mad.host.arch} · median of ${mad.runs} rounds; each sample includes all cases, mounting and DOM cleanup`);
+    console.log(row(["phase (cases/round)", "mad-dom", "happy-dom", "mad-dom speedup"]));
+    console.log("-".repeat(160));
+    for (const phase of mad.phases) {
+      const x = a.phases[phase];
+      const y = b.phases[phase];
+      const matches = testingPhaseMatches(a, b, phase);
+      console.log(row([`${phase} (${a.workload.cases[phase]})`,
+        x.status === "passed" ? formatCell(x) : "FAIL",
+        y.status === "passed" ? formatCell(y) : "FAIL",
+        matches ? formatRatio(x.medianMs, y.medianMs) : "invalid (no speedup)"]));
+      for (const [engine, stats] of [["mad-dom", x], ["happy-dom", y]]) {
+        if (stats.status === "failed") console.log(`  ${engine}: ${stats.error.message.split("\n")[0]}`);
+        else if (stats.madMs > 0.2 * stats.medianMs) console.log(`  WARNING: ${engine} ${phase} unstable (MAD > 20% of median)`);
+      }
+      if (!matches && x.status === "passed" && y.status === "passed") console.log(`  FAIL: ${phase} workload or result fingerprints differ`);
+    }
+  }
+}
+
+let args;
+try { args = parseArgs(process.argv.slice(2)); }
+catch (error) { console.error(`${error.message}\n${USAGE}`); process.exit(2); }
+const reports = args.suite === "testing" ? [] : ENGINES.map((engine) => runEngine(engine, args.runs, args.sizesRaw));
+const testingReports = args.suite === "core" ? [] : ENGINES.map((engine) => runEngine(engine, args.runs, args.sizesRaw, "testing"));
+if (reports.length) checkHosts(reports[0], reports[1]);
+if (testingReports.length) checkHosts(testingReports[0], testingReports[1]);
+const coreValid = reports.length === 0 || (workloadsMatch(reports[0], reports[1]) &&
+  reports.every((r) => r.results.every((res) => res.checks.roundsIdentical !== false)));
+const testingValid = testingReports.length === 0 || testingWorkloadsMatch(testingReports);
+const valid = coreValid && testingValid;
 
 if (args.json) {
   console.log(
     JSON.stringify(
       {
-        schema: "mad-dom-dom-bench-comparison/1",
-        phases: PHASES,
+        schema: testingReports.length ? "mad-dom-dom-bench-comparison/2" : "mad-dom-dom-bench-comparison/1",
+        phases: reports.length ? PHASES : [],
         reports,
+        ...(testingReports.length ? { testing: { phases: testingReports[0].phases, reports: testingReports, valid: testingValid } } : {}),
         valid,
       },
       null,
       2,
     ),
   );
-  process.exit(0);
+  process.exit(valid ? 0 : 1);
 }
 
-printReport(reports);
+if (reports.length) printReport(reports);
+if (testingReports.length) printTestingReport(testingReports);
+if (!valid) console.error("\nINVALID comparison: a workload failed or results differed; failed scenarios have no speedup. See --json for full diagnostics.");
+process.exitCode = valid ? 0 : 1;

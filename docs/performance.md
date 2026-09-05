@@ -27,7 +27,7 @@ HTML is parsed natively, and selector matching runs natively — JS reaches all
 of it through a thin Node-API binding. Bulk work is where that pays: parsing,
 serializing (`innerHTML`) and selector queries are single native operations
 and ran 1.8–5.1× ahead of happy-dom in a recorded 1× full-pipeline ABBA run
-with 30 samples per engine (`bun benchmark/dom-bench/run.mjs`).
+with 30 samples per engine (`bun run bench:dom --suite core`).
 
 The trade-off used to be the other direction: every individual node operation
 crossed the binding and eagerly minted a native wrapper. Current builds use
@@ -79,7 +79,7 @@ above clearly favored mad-dom. Bulk work remains the strongest shape:
 parsing, serialization, selector queries and bulk fragment construction run
 several times ahead of happy-dom. The happy-dom aggregate total was unstable,
 so these conclusions use per-phase medians only. Reproduce the scale audit
-with `bun run bench:dom --runs 15 --sizes 0.1,1,2`.
+with `bun run bench:dom --suite core --runs 15 --sizes 0.1,1,2`.
 
 The same final run reported these pipeline-end, post-drain worker RSS deltas
 on its total rows:

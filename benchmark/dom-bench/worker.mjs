@@ -40,6 +40,8 @@
 // Usage:
 //   bun worker.mjs --engine mad-dom [--runs 5] [--sizes 1] [--json]
 
+import { collectAndDrain, summarize } from "./stats.mjs";
+
 const ENGINE_LOADERS = {
   "mad-dom": () => import("../../index.js"),
   "happy-dom": () => import("happy-dom"),
@@ -136,41 +138,8 @@ function parseArgs(argv) {
   return args;
 }
 
-function median(values) {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-// p90 over an ascending-sorted array (ceil rank; small samples take the top).
-function p90Sorted(sorted) {
-  return sorted[Math.min(sorted.length - 1, Math.ceil(0.9 * sorted.length) - 1)];
-}
-
-// Robust per-phase summary over raw per-round samples. MAD = median(|x-median|).
-function summarize(samples) {
-  const sorted = [...samples].sort((a, b) => a - b);
-  const medianMs = median(sorted);
-  const madMs = median(sorted.map((x) => Math.abs(x - medianMs)));
-  return { samples: [...samples], medianMs, minMs: sorted[0], p90Ms: p90Sorted(sorted), madMs };
-}
-
-// RSS in bytes (Bun exposes process.memoryUsage().rss as a number).
 function rssNow() {
   return process.memoryUsage().rss;
-}
-
-function drainEventLoop() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-// Forced collection + two event-loop drains. Gives every run the same clean
-// phase boundary outside the measured window, including time for deferred
-// Node-API finalizers and residual heap pressure to settle.
-async function collectAndDrain() {
-  if (typeof Bun !== "undefined" && typeof Bun.gc === "function") Bun.gc(true);
-  await drainEventLoop();
-  await drainEventLoop();
 }
 
 // --- Phases --------------------------------------------------------------------
