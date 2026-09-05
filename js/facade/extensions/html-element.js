@@ -22,10 +22,11 @@
 //
 // # Reflected attributes are the attribute contract
 //
-// None of the reflected accessors keep state: every read is a live
-// `getAttribute`, every write a `setAttribute` / `removeAttribute` on the same
-// Core attribute storage (T25B), so reflection is two-way by construction — a
-// `setAttribute` write is visible on the next property read and vice versa.
+// Every write is a `setAttribute` / `removeAttribute` on the same Core
+// attribute storage (T25B). `id` / `className` may reuse an exact scalar value
+// while Core's structure and attribute generations match; every mutation
+// invalidates it before the next read. Reflection is therefore two-way by
+// construction without a second authoritative attribute store.
 // The facade only shapes the WebIDL conversion (`id = 42` stores `"42"`,
 // `title = null` stores `"null"`, `hidden`/`inert` are boolean-presence,
 // `tabIndex` is a `long` with the happy-dom `Number` rules) and the
@@ -61,6 +62,7 @@ import { Element, registerElementClass, setElementFallbackClasses } from "./node
 import { Window } from "../window.js";
 import { Event } from "./events.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
+import { readCachedAttribute } from "./attribute-cache.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/html-element",
@@ -174,6 +176,7 @@ const PER_TAG = [
   ["q", HTMLQuoteElement],
   ["slot", HTMLSlotElement],
   ["template", HTMLTemplateElement],
+  ["section", HTMLElement],
 ];
 
 const PER_TAG_WINDOW_ACCESSORS = Object.freeze({
@@ -373,7 +376,8 @@ export function install(ctx) {
   // Element-level string reflection (T48A: on `Element.prototype`, matching
   // happy-dom; Text/Comment never reach them).
   ctx.defineAccessor(Element.prototype, "id", function id() {
-    return facadeNodeHandle(ctx, this, "id").getAttribute("id") || "";
+    const handle = facadeNodeHandle(ctx, this, "id");
+    return readCachedAttribute(this, handle, "id") || "";
   }, function id(value) {
     const handle = facadeNodeHandle(ctx, this, "id");
     handle.setAttribute("id", String(value));
@@ -381,7 +385,8 @@ export function install(ctx) {
   });
 
   ctx.defineAccessor(Element.prototype, "className", function className() {
-    return facadeNodeHandle(ctx, this, "className").getAttribute("class") || "";
+    const handle = facadeNodeHandle(ctx, this, "className");
+    return readCachedAttribute(this, handle, "class") || "";
   }, function className(value) {
     const handle = facadeNodeHandle(ctx, this, "className");
     handle.setAttribute("class", String(value));

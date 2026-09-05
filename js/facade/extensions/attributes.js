@@ -2,12 +2,12 @@
 //
 // Installs the WHATWG element attribute surface — `getAttribute`,
 // `setAttribute`, `removeAttribute`, `hasAttribute` — as prototype methods on
-// `Element.prototype` (T48A) that delegate every read and every write to the
-// native `NodeHandle` attribute contract (T25E, crates/mad-dom-bun/src/
-// extensions/attributes_api.rs). Like the rest of the facade, this module
-// keeps **no second attribute state**: the ordered `(name, value)` list lives
-// in the Core arena and every call routes through the native handle, so a
-// write through any entry point is immediately visible to every reader.
+// `Element.prototype` (T48A) over the native attribute contract (T25E,
+// crates/mad-dom-bun/src/extensions/attributes_api.rs). The ordered
+// `(name, value)` list lives only in Core. The hot `id` / `class` reads may use
+// a facade scalar cache while independent structural and attribute generation
+// views prove it current; all other reads and every write route through the
+// native boundary, so no authoritative attribute state is duplicated.
 //
 // # WebIDL argument shaping
 //
@@ -41,6 +41,8 @@
 // (tests/bun/seam.test.js pins that shape).
 
 import { Element } from "./node.js";
+import { nodeDocumentStateOf } from "./classes.js";
+import { readCachedAttribute } from "./attribute-cache.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
 import { domErrorName, rethrowDomError, webidlMessage } from "./dom-error.js";
 
@@ -99,16 +101,43 @@ export function install(ctx) {
   ctx.defineMethod(Element.prototype, "getAttribute", function getAttribute(name) {
     const handle = facadeNodeHandle(ctx, this, "getAttribute");
     try {
-      return handle.getAttribute(attributeName(name));
+      return readCachedAttribute(this, handle, attributeName(name));
     } catch (error) {
       rethrowDomError(error, webidlMessage(error, "getAttribute", "Element"));
     }
   });
 
   ctx.defineMethod(Element.prototype, "setAttribute", function setAttribute(name, value) {
-    const handle = facadeNodeHandle(ctx, this, "setAttribute");
+    const token = ctx.documentContext.tokenOf(this);
+    const documentHandle = ctx.documentContext.nodeDocumentOf(this);
+    let handle;
     try {
-      handle.setAttribute(attributeName(name), String(value));
+      const normalizedName = attributeName(name);
+      const normalizedValue = String(value);
+      const state = nodeDocumentStateOf(this);
+      const setAttributeToken = state?.nativeMethods.setAttributeToken;
+      if (
+        token !== undefined &&
+        documentHandle !== undefined &&
+        setAttributeToken !== undefined
+      ) {
+        const setAttributeTokenLocal = state.nativeMethods.setAttributeTokenLocal;
+        if (
+          state?.attributeEpoch !== null &&
+          setAttributeTokenLocal !== undefined
+        ) {
+          state.attributeEpoch[0] = setAttributeTokenLocal(
+            token,
+            normalizedName,
+            normalizedValue,
+          );
+        } else {
+          setAttributeToken(token, normalizedName, normalizedValue);
+        }
+      } else {
+        handle = facadeNodeHandle(ctx, this, "setAttribute");
+        handle.setAttribute(normalizedName, normalizedValue);
+      }
     } catch (error) {
       // The happy-dom verbatim message for an invalid attribute name; the
       // `Uncaught InvalidCharacterError: ` prefix is happy-dom's own literal
@@ -121,7 +150,7 @@ export function install(ctx) {
     }
     // T42: the write queued the `attributeChangedCallback` reaction for a
     // custom element observing the attribute; flush it synchronously.
-    flushCustomElementReactions(ctx, handle);
+    flushCustomElementReactions(ctx, handle ?? this, handle === undefined);
   });
 
   ctx.defineMethod(Element.prototype, "removeAttribute", function removeAttribute(name) {

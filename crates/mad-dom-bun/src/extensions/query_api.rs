@@ -30,11 +30,12 @@
 //! | `document.querySelectorAll` | `querySelectorAll` | `(selector: String) → Vec<NodeHandle>` | every matching descendant element, in document order; a static snapshot of the query |
 //! | `document.getElementById` | `getElementById` | `(id: String) → Option<NodeHandle>` | the first element in the document whose `id` attribute equals `id`; `null` when none |
 //!
-//! The document queries build the implied HTML skeleton first (`ensure_html_skeleton`),
-//! so a fresh window reads exactly like happy-dom's (`document.querySelector("body")`
-//! finds the implied body). This is a pure-read convenience that never invents
-//! nodes the document model would otherwise lack — Core's `query_selector`
-//! itself stays side-effect free.
+//! The document selector queries build the implied HTML skeleton first
+//! (`ensure_html_skeleton`), so a fresh window reads exactly like happy-dom's
+//! (`document.querySelector("body")` finds the implied body). `getElementById`
+//! deliberately does not materialize that skeleton. Core's query operations
+//! themselves stay side-effect free; the binding only asks Core to prepare its
+//! private adaptive id index before eligible document reads.
 //!
 //! ## Node surface (on the native `NodeHandle`)
 //!
@@ -57,15 +58,17 @@
 //! plain JS array of node wrappers. The array is a *snapshot*: it is computed
 //! once and never updates, so a later mutation of the tree does not change an
 //! already-returned result. The facade wraps the array into the static
-//! `NodeList` object; no live collection or id/class/tag index is built (the
-//! T31 boundary).
+//! `NodeList` object; this operation builds neither a live collection nor an
+//! index (the T31 boundary).
 //!
 //! # Single source of tree state
 //!
 //! The tree lives in exactly one place — the Core arena. This module keeps no
-//! copy and builds no index: every query is a fresh read-only traversal of
-//! Core, so a change through any mutation surface is immediately visible to
-//! the next query and vice versa. Every returned node is minted through
+//! copy. General and scoped selector queries are fresh read-only traversals;
+//! for a document-scoped plain `#id` or `getElementById`, Core may lazily build
+//! and maintain a private `by_id` acceleration map. It is derived exclusively
+//! from the arena and updated at Core mutation chokepoints, so it is not a
+//! second tree state. Every returned node is minted through
 //! [`SharedDocument::wrap_node`](crate::handle::SharedDocument::wrap_node), so
 //! wrapper identity stays the frozen per-document weak cache (T20).
 //!
@@ -158,6 +161,8 @@ impl DocumentHandle {
         let id = with_document(self.shared(), |doc| {
             doc.ensure_html_skeleton()
                 .map_err(crate::error::BindingError::Core)?;
+            doc.prepare_adaptive_document_query_selector(&selector)
+                .map_err(crate::error::BindingError::Core)?;
             let root = doc.document_root();
             doc.query_selector(root, &selector)
                 .map_err(crate::error::BindingError::Core)
@@ -203,6 +208,8 @@ impl DocumentHandle {
     ) -> napi::Result<Option<Reference<NodeHandle>>> {
         check_affinity(self.shared(), &env)?;
         let node = with_document(self.shared(), |doc| {
+            doc.prepare_adaptive_get_element_by_id()
+                .map_err(crate::error::BindingError::Core)?;
             doc.get_element_by_id(&id)
                 .map_err(crate::error::BindingError::Core)
         })
@@ -309,9 +316,10 @@ mod tests {
         );
     }
 
-    /// The selector-query surface must never drift into live getElementsBy*
-    /// collections or an id/class/tag index (the T31 boundary), nor into the
-    /// T25 live childNodes surface.
+    /// The selector-query surface must never expose live getElementsBy*
+    /// collections or an index-control method (the T31 boundary), nor the T25
+    /// live childNodes surface. Core's private adaptive id map is not a native
+    /// contract entry.
     #[test]
     fn contract_has_no_live_collection_or_index_surface() {
         for name in DOCUMENT_QUERY_CONTRACT

@@ -157,11 +157,19 @@ describe.skipIf(!nativeAvailable)("attribute read/write behaviour (T25E)", () =>
     const win = new Window();
     const el = win.document.createElement("div");
     try {
+      el.setAttribute("class", "authentic");
+      // Authenticate and populate the private reflected-attribute cache before
+      // copying the wrapper's own descriptors. A copied cache record must not
+      // turn an alias into a genuine facade receiver.
+      expect(el.getAttribute("class")).toBe("authentic");
       const inherited = Object.create(el);
       const copied = Object.create(Object.getPrototypeOf(el));
       Object.defineProperties(copied, Object.getOwnPropertyDescriptors(el));
 
       for (const alias of [inherited, copied, new Proxy(el, {})]) {
+        expect(() => alias.getAttribute("class")).toThrow(TypeError);
+        expect(() => alias.id).toThrow(TypeError);
+        expect(() => alias.className).toThrow(TypeError);
         expect(() => alias.setAttribute("data-forged", "yes")).toThrow(TypeError);
       }
       expect(el.hasAttribute("data-forged")).toBe(false);

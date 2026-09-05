@@ -99,6 +99,21 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     expect(contract.optionalPerformance.NodeHandle).toHaveProperty(
       "nextSiblingChunk",
     );
+    expect(contract.optionalPerformance.NodeHandle).toHaveProperty("idAttribute");
+    expect(contract.optionalPerformance.NodeHandle).toHaveProperty("classAttribute");
+    expect(contract.optionalPerformance.NodeHandle).toHaveProperty(
+      "idClassAttributes",
+    );
+    expect(contract.optionalPerformance.DocumentHandle).toHaveProperty(
+      "createElementTokenBatch",
+    );
+    expect(contract.optionalPerformance.DocumentHandle).toHaveProperty(
+      "createElementTokenRange",
+    );
+    expect(contract.optionalPerformance.DocumentHandle).toHaveProperty(
+      "preorderTokenSnapshot",
+    );
+    expect(contract.optionalPerformance.DocumentHandle).toHaveProperty("nodeToken");
 
     expect(contract.identity.rule).toContain("wrap_node");
     expect(contract.documentContext.documentAccess).toContain("with_document");
@@ -110,6 +125,9 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     // classes — node_api adds no export, so nothing is duplicated.
     const documentProto = native.DocumentHandle.prototype;
     for (const name of Object.keys(contract.creation.DocumentHandle)) {
+      expect(typeof documentProto[name], `${name} must exist on DocumentHandle`).toBe("function");
+    }
+    for (const name of Object.keys(contract.optionalPerformance.DocumentHandle)) {
       expect(typeof documentProto[name], `${name} must exist on DocumentHandle`).toBe("function");
     }
 
@@ -192,6 +210,19 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     expect(text.childNodes()).toEqual([]);
 
     doc.destroy();
+  });
+
+  test("the bundled id/class reader preserves null and empty values", () => {
+    const doc = native.createDocument();
+    try {
+      const element = doc.createElement("div");
+      expect(element.idClassAttributes()).toEqual([null, null]);
+      element.setAttribute("id", "");
+      element.setAttribute("class", "item active");
+      expect(element.idClassAttributes()).toEqual(["", "item active"]);
+    } finally {
+      doc.destroy();
+    }
   });
 
   test("each create call mints a distinct node", () => {

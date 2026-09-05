@@ -411,14 +411,21 @@ impl<M: SinkMode> TreeSink for HtmlSink<M> {
 
     fn add_attrs_if_missing(&self, target: &Self::Handle, attrs: Vec<Attribute>) {
         let mut doc = self.document.borrow_mut();
-        let Ok(attributes) = doc.element_attributes_mut(*target) else {
-            return;
-        };
-        for attr in attrs {
-            let name = qualified_name(&attr.name);
-            if !attributes.iter().any(|(n, _)| n == &name) {
-                attributes.push((name, attr.value.to_string()));
+        let mut changed = false;
+        {
+            let Ok(attributes) = doc.element_attributes_mut(*target) else {
+                return;
+            };
+            for attr in attrs {
+                let name = qualified_name(&attr.name);
+                if !attributes.iter().any(|(n, _)| n == &name) {
+                    attributes.push((name, attr.value.to_string()));
+                    changed = true;
+                }
             }
+        }
+        if changed {
+            doc.bump_attribute_generation();
         }
     }
 

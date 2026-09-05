@@ -137,6 +137,7 @@ impl Document {
                 None => attributes.push((name.to_string(), value.to_string())),
             }
         }
+        self.bump_attribute_generation();
         // T32: re-key the optional query index when an id/class write changes
         // the tokens an element matches (a no-op when the index is disabled).
         self.index_attribute_changed(id, name, old_value.as_deref(), Some(value))?;
@@ -179,6 +180,7 @@ impl Document {
             }
         };
         if removed {
+            self.bump_attribute_generation();
             // T32: drop the id/class tokens of the removed attribute from the
             // optional query index (a no-op when the index is disabled).
             self.index_attribute_changed(id, name, old_value.as_deref(), None)?;

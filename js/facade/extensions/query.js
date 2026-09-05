@@ -6,9 +6,11 @@
 // read verbatim to the native T31 contract
 // (crates/mad-dom-bun/src/extensions/query_api.rs) and through it to the Core
 // document-order queries (T31) and the T30 parser/arena matcher. Like the rest
-// of the facade, this module keeps **no second DOM state** and builds **no
-// index**: every query is a fresh read-only traversal of Core, so a mutation
-// through any surface is immediately visible to the next query.
+// of the facade, this module keeps **no second DOM state** and builds no index
+// itself. General/scoped selectors are fresh Core traversals; eligible
+// document id reads may activate Core's private mutation-maintained `by_id`
+// acceleration map, so every mutation surface remains immediately visible to
+// the next query.
 //
 // # Static `NodeList` semantics
 //

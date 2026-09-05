@@ -235,21 +235,44 @@ pub fn register_observer_scheduler(scheduler: Unknown<'_>) -> napi::Result<()> {
 /// current task, so further mutations in the same task batch into the same
 /// callback. Cheap when no observer exists anywhere (a single atomic read).
 pub(crate) fn schedule_pending_observer_deliveries(env: &Env, shared: &Arc<SharedDocument>) {
+    let _ = schedule_pending_observer_deliveries_inner(env, shared, false);
+}
+
+/// Scheduler variant for token hot writes whose facade-local epoch store
+/// normally happens after the native call returns. If a pending scheduler can
+/// re-enter JavaScript synchronously, publish those views before invoking it.
+pub(crate) fn schedule_pending_observer_deliveries_after_local_epoch(
+    env: &Env,
+    shared: &Arc<SharedDocument>,
+) -> bool {
+    schedule_pending_observer_deliveries_inner(env, shared, true)
+}
+
+fn schedule_pending_observer_deliveries_inner(
+    env: &Env,
+    shared: &Arc<SharedDocument>,
+    publish_local_epoch: bool,
+) -> bool {
     if !OBSERVERS_EXIST.load(Ordering::SeqCst) {
-        return;
+        return false;
     }
     let scheduler = match SCHEDULER.with(|cell| cell.borrow().as_ref().map(|f| f.borrow_back(env)))
     {
         Some(Ok(scheduler)) => scheduler,
-        _ => return, // scheduler not registered (facade not initialized): leave records pending
+        _ => return false, // scheduler not registered: leave records pending
     };
     let pending = match with_document(shared, |doc| Ok(doc.pending_observer_deliveries())) {
         Ok(pending) => pending,
-        Err(_) => return,
+        Err(_) => return false,
     };
+    let may_reenter = !pending.is_empty();
+    if publish_local_epoch && may_reenter {
+        shared.publish_local_epochs();
+    }
     for (observer_id, observation_key) in pending {
         let _ = scheduler.call(FnArgs::from((observer_id as u32, observation_key as u32)));
     }
+    may_reenter
 }
 
 // --- MutationObserverHandle --------------------------------------------------

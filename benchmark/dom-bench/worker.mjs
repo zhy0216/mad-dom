@@ -32,13 +32,10 @@
 //
 // Between measured runs (and between phases) the worker forces a full GC and
 // drains the event loop, outside the measured window and identical for both
-// engines. This is required because Bun defers Node-API finalizers to the next
-// event-loop tick: without the drain, mad-dom's weak wrapper cache accumulates
-// stale "collected but not yet finalized" entries during synchronous churn and
-// later node reads return undefined or fail array conversion (known gap, see
-// crates/mad-dom-bun/src/handle.rs "transient gap"; a large childNodes
-// snapshot read on a multi-thousand-child node crashes outright, so the build
-// phase accumulates into a JS counter instead).
+// engines. The drain makes deferred Node-API finalization and residual heap
+// pressure settle at the same phase boundary; facade wrappers intentionally
+// remain document-resident, and the raw weak cache safely re-mints entries in
+// the collected-before-finalized window.
 //
 // Usage:
 //   bun worker.mjs --engine mad-dom [--runs 5] [--sizes 1] [--json]
@@ -167,10 +164,9 @@ function drainEventLoop() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-// Forced collection + two event-loop drains. Gives every run identical,
-// clean starting state (both engines pay it outside the measured window) and
-// is required for mad-dom: without it the deferred-finalizer wrapper-cache
-// gap (see header) corrupts later phases under churn.
+// Forced collection + two event-loop drains. Gives every run the same clean
+// phase boundary outside the measured window, including time for deferred
+// Node-API finalizers and residual heap pressure to settle.
 async function collectAndDrain() {
   if (typeof Bun !== "undefined" && typeof Bun.gc === "function") Bun.gc(true);
   await drainEventLoop();
@@ -211,13 +207,11 @@ function runBuildMixed(Window, buildNodes) {
   }
   // buildRoots: how many top-level nodes were mounted into body (here just root).
   const buildRoots = 1;
-  // JS counter, not root.childNodes.length: the childNodes snapshot read on a
-  // multi-thousand-child node crashes mad-dom in the wrapper-cache "collected
-  // but not yet finalized" window (handle.rs transient gap); tracked separately.
+  // Keep build accounting independent of a collection materialization that is
+  // not part of this phase; the real tree is verified immediately below.
   const ms = performance.now() - t0;
   // Real-tree verification, outside the measured window and read exactly once
-  // right after the build (same transient-gap discipline as above): subtree
-  // node count plus spot-probes of known ids.
+  // right after the build: subtree node count plus spot-probes of known ids.
   const treeNodes = countNodes(root) - 1;
   const probeIds = [`node-0`, `node-${Math.floor((buildNodes - 1) / 2)}`, `node-${buildNodes - 1}`].map((id) => (root.querySelector("#" + id) ? 1 : 0)).join("");
   const probeIdSum = [...probeIds].reduce((sum, c) => sum + Number(c), 0);

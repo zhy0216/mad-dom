@@ -100,6 +100,60 @@ describe.skipIf(!nativeAvailable)("T48A element class hierarchy", () => {
       expect(document.createElement("button")).toBeInstanceOf(window.HTMLButtonElement);
       expect(document.createElement("template")).toBeInstanceOf(window.HTMLTemplateElement);
       expect(document.createElement("form")).toBeInstanceOf(window.HTMLFormElement);
+      expect(Object.getPrototypeOf(document.createElement("section"))).toBe(
+        window.HTMLElement.prototype,
+      );
+      const mixedCase = document.createElement("DiV");
+      expect(mixedCase).toBeInstanceOf(window.HTMLDivElement);
+      expect([mixedCase.localName, mixedCase.nodeName, mixedCase.tagName]).toEqual([
+        "div",
+        "DIV",
+        "DIV",
+      ]);
+      // HTML folding is ASCII-only: non-ASCII characters stay verbatim.
+      expect(document.createElement("ÄBC").localName).toBe("Äbc");
+
+      // Delayed facade work uses the primordials captured when the module was
+      // initialized, so same-realm monkey-patching cannot intercept casing or
+      // Web IDL string coercion.
+      const OriginalString = globalThis.String;
+      const originalCharCodeAt = String.prototype.charCodeAt;
+      const originalSlice = String.prototype.slice;
+      const originalFromCharCode = String.fromCharCode;
+      let intercepted = false;
+      let patchedSection;
+      let coercedElement;
+      let coercedText;
+      try {
+        globalThis.String = () => {
+          intercepted = true;
+          throw new Error("global String must not be reached");
+        };
+        OriginalString.prototype.charCodeAt = () => {
+          intercepted = true;
+          throw new Error("String.prototype.charCodeAt must not be reached");
+        };
+        OriginalString.prototype.slice = () => {
+          intercepted = true;
+          throw new Error("String.prototype.slice must not be reached");
+        };
+        OriginalString.fromCharCode = () => {
+          intercepted = true;
+          throw new Error("String.fromCharCode must not be reached");
+        };
+        patchedSection = document.createElement("SECTION");
+        coercedElement = document.createElement({ toString: () => "ASIDE" });
+        coercedText = document.createTextNode({ toString: () => "payload" });
+      } finally {
+        globalThis.String = OriginalString;
+        OriginalString.prototype.charCodeAt = originalCharCodeAt;
+        OriginalString.prototype.slice = originalSlice;
+        OriginalString.fromCharCode = originalFromCharCode;
+      }
+      expect(intercepted).toBe(false);
+      expect(patchedSection.localName).toBe("section");
+      expect(coercedElement.localName).toBe("aside");
+      expect(coercedText.data).toBe("payload");
 
       // Unknown names follow the happy-dom rule: a hyphenated undefined name is
       // a bare HTMLElement, a plain undefined name is an HTMLUnknownElement.
@@ -162,7 +216,11 @@ describe.skipIf(!nativeAvailable)("T48A element class hierarchy", () => {
     const window = new Window();
     try {
       class Direct extends window.HTMLElement {}
+      const prototypeSymbols = Object.getOwnPropertySymbols(Direct.prototype);
       window.customElements.define("direct-el", Direct);
+      expect(Object.getOwnPropertySymbols(Direct.prototype)).toEqual(
+        prototypeSymbols,
+      );
       const direct = new Direct();
       expect(direct.localName).toBe("direct-el");
       expect(direct.tagName).toBe("DIRECT-EL");
@@ -174,6 +232,13 @@ describe.skipIf(!nativeAvailable)("T48A element class hierarchy", () => {
       expect(direct.getAttribute("a")).toBe("b");
       expect(direct.isConnected).toBe(false);
       expect(direct.parentNode).toBeNull();
+
+      // Mint authority follows the class prototype chain without putting the
+      // owning native document handle in a reflectable Symbol property.
+      class Derived extends Direct {}
+      const derived = new Derived();
+      expect(derived.localName).toBe("direct-el");
+      expect(derived).toBeInstanceOf(Derived);
 
       // The minted wrapper keeps identity when re-wrapped (append re-entry).
       const holder = window.document.createElement("div");

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Window, isNativeAvailable } from "../../index.js";
+import { hasMaterializedNodeHandle } from "../../js/facade/extensions/classes.js";
 
 // T42 Custom Elements integration tests.
 //
@@ -29,7 +30,7 @@ import { Window, isNativeAvailable } from "../../index.js";
 //   - clone / import / adopt keep the custom class without firing a reaction.
 //
 // The structural block needs no native artifact; the runtime block skips
-// without the locally built one (npm run dev:build, or MAD_DOM_NATIVE_PATH),
+// without the locally built one (bun run dev:build, or MAD_DOM_NATIVE_PATH),
 // exactly like the other native suites.
 
 const nativeAvailable = isNativeAvailable();
@@ -61,6 +62,20 @@ afterEach(() => {
 const runtimeDescribe = nativeAvailable ? describe : describe.skip;
 
 runtimeDescribe("custom elements", () => {
+  test("a registry in another window does not materialize clean-window nodes", () => {
+    const { window: registered } = makeWindow();
+    registered.customElements.define(
+      "registered-elsewhere",
+      class extends registered.HTMLElement {},
+    );
+
+    const { document } = makeWindow();
+    const element = document.createElement("div");
+    element.setAttribute("id", "still-lazy");
+    document.body.appendChild(element);
+    expect(hasMaterializedNodeHandle(element)).toBe(false);
+  });
+
   test("define/get/getName and the name/constructor validation", () => {
     const { window } = makeWindow();
     const { customElements } = window;
@@ -109,6 +124,19 @@ runtimeDescribe("custom elements", () => {
     window.document.body.appendChild(pre);
     customElements.define("late-widget", Late);
     expect(order).toEqual(["connected"]);
+  });
+
+  test("createElement ASCII-folds mixed-case custom names before upgrade", () => {
+    const { window, document } = makeWindow();
+    class MixedName extends window.HTMLElement {}
+    window.customElements.define("mixed-name", MixedName);
+
+    for (const name of ["MIXED-NAME", "Mixed-Name", "mixed-name"]) {
+      const element = document.createElement(name);
+      expect(element).toBeInstanceOf(MixedName);
+      expect(element.localName).toBe("mixed-name");
+      expect(element.nodeName).toBe("MIXED-NAME");
+    }
   });
 
   test("lifecycle callback order: connected, attributeChanged, disconnected", () => {

@@ -11,18 +11,18 @@
       "createElement": {
         "params": ["name: string"],
         "returns": "Node",
-        "behavior": "adapts native DocumentHandle.createElement; mints a fresh detached Element wrapper through ctx.wrap; an invalid name throws ERR_MAD_DOM_INVALID_CHARACTER"
+        "behavior": "adapts native DocumentHandle.createElement; mints a fresh detached Element wrapper through ctx.wrapLazyNode (falling back to ctx.wrap on older bindings); an invalid name throws ERR_MAD_DOM_INVALID_CHARACTER"
       },
       "createTextNode": {
         "params": ["data: string"],
         "returns": "Node",
-        "behavior": "adapts native DocumentHandle.createText under the WHATWG name createTextNode (no native symbol of that name); mints a fresh detached Text wrapper through ctx.wrap"
+        "behavior": "adapts native DocumentHandle.createText under the WHATWG name createTextNode (no native symbol of that name); mints a fresh detached Text wrapper through ctx.wrapFreshTextNode (falling back to ctx.wrap on older bindings)"
       }
     }
   },
   "classes": {
     "Node": {
-      "factory": "Document.createElement / Document.createTextNode / navigation reads via ctx.wrap",
+      "factory": "Document.createElement routes through ctx.wrapLazyNode, Document.createTextNode through ctx.wrapFreshTextNode, and mixed-version creation/navigation through ctx.wrap; all routes converge on the document token identity table",
       "prototypeOf": "Object",
       "members": {
         "nodeType": {
@@ -95,17 +95,19 @@
     "message": "Node can only be constructed from a genuine native Node handle"
   },
   "conversionEntry": {
-    "ctx.wrap": "the single native handle -> facade wrapper conversion entry; every node-producing facade read routes its result through it, so wrapper identity mirrors the native per-document weak cache (T20)"
+    "ctx.wrap": "the canonical native handle -> facade wrapper conversion entry; native results route through it and converge with lazy token wrappers in the per-document identity table",
+    "ctx.wrapLazyNode": "the document-scoped token -> facade wrapper conversion entry added by ADR-0007; later native materialization converges on the same facade object",
+    "ctx.wrapFreshTextNode": "the creation-only fresh Text specialization of ctx.wrapLazyNode; it skips generic kind dispatch and registers in the same document token identity table"
   },
   "registry": {
     "install": "node.js exports install(ctx); the facade registry picks it up without any registry change; other capability extensions stay placeholders"
   },
   "identity": {
-    "rule": "while a node wrapper is alive, repeated facade reads of the same native node hand back one and the same JS object (strict equality), via ctx.wrap mirroring the native SharedDocument::wrap_node cache",
+    "rule": "while a document is alive, repeated facade reads of the same Core node hand back one and the same JS object (strict equality), via ctx.wrap, ctx.wrapLazyNode and ctx.wrapFreshTextNode converging on the document token identity table",
     "distinct": "each createElement / createTextNode call mints a fresh, distinct node"
   },
   "delegation": {
-    "rule": "every navigation read delegates verbatim to the native NodeHandle; the facade keeps no second DOM state and a Core NodeId never crosses the boundary as a primitive"
+    "rule": "navigation reads use Core-derived, structural-epoch-validated memos and bounded token snapshots, falling back to the native NodeHandle; the facade keeps no authoritative second DOM state and a Core NodeId never crosses the boundary"
   },
   "errors": {
     "destroyed": {

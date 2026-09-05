@@ -20,3 +20,7 @@ mad-dom-core = { workspace = true }
 # `panic = unwind` must never be switched to abort (ADR-0005 §1).
 napi = { version = "3.12.2", features = ["napi4"] }
 napi-derive = "3.6.3"
+# Token registries contain only binding-minted integers and Core arena ids,
+# never attacker-supplied strings. A scoped Fx hash avoids spending most of a
+# cold subtree snapshot in SipHash while retaining full-field NodeId mixing.
+rustc-hash = "2.1.3"

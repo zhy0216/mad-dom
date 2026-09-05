@@ -420,7 +420,15 @@ impl Document {
         // --- Validation phase: read-only, must not mutate the tree. ---
 
         self.validate_insert_parent(parent)?;
-        let child_type = self.get(child)?.node_type();
+        let (child_type, child_has_children, child_parent, child_next_sibling) = {
+            let child = self.get(child)?;
+            (
+                child.node_type(),
+                child.first_child().is_some(),
+                child.parent(),
+                child.next_sibling(),
+            )
+        };
         if child_type == NodeType::Document {
             return Err(hierarchy("a Document node cannot be inserted as a child"));
         }
@@ -430,7 +438,13 @@ impl Document {
         if parent == child {
             return Err(hierarchy("cannot insert a node into itself"));
         }
-        if self.is_descendant_of(parent, child)? {
+        // A child with no children cannot be an ancestor of `parent` in a
+        // valid tree. Freshly-created leaves are by far the common append
+        // case, and avoiding the parent-chain walk here keeps construction of
+        // a deep one-child chain linear instead of quadratic. The explicit
+        // identity check above remains necessary because a leaf can still be
+        // inserted into itself.
+        if child_has_children && self.is_descendant_of(parent, child)? {
             return Err(hierarchy(
                 "cannot insert an ancestor into its own descendant",
             ));
@@ -460,17 +474,13 @@ impl Document {
                 ));
             }
             // WHATWG pre-insert step 6: already immediately before `reference`.
-            if self.get(child)?.parent() == Some(parent)
-                && self.get(child)?.next_sibling() == Some(r)
-            {
+            if child_parent == Some(parent) && child_next_sibling == Some(r) {
                 return Ok(());
             }
         } else {
             // Appending a node that is already the parent's last child is a
             // no-op.
-            if self.get(child)?.parent() == Some(parent)
-                && self.get(parent)?.last_child() == Some(child)
-            {
+            if child_parent == Some(parent) && self.get(parent)?.last_child() == Some(child) {
                 return Ok(());
             }
         }
@@ -491,7 +501,9 @@ impl Document {
             }
             self.insert_detached_chain(parent, &fragment_children, reference);
         } else {
-            self.detach(child);
+            if child_parent.is_some() {
+                self.detach(child);
+            }
             self.insert_detached_chain(parent, &[child], reference);
         }
 
@@ -735,7 +747,7 @@ impl Document {
         // linked into the tree (a no-op when the query index is disabled), so
         // every mutation path — append/insert/replace and the T29 apply path —
         // funnels index maintenance through this single primitive.
-        if self.query_index.is_enabled() {
+        if self.query_index.has_id_index() {
             let _ = self.index_subtree_attached(nodes);
         }
 

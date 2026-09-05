@@ -101,7 +101,11 @@ describe("facade node contract fixture (T23B)", () => {
 
     expect(contract.classes.Node.prototypeOf).toBe("Object");
     expect(contract.conversionEntry).toHaveProperty(["ctx.wrap"]);
+    expect(contract.conversionEntry).toHaveProperty(["ctx.wrapLazyNode"]);
+    expect(contract.conversionEntry).toHaveProperty(["ctx.wrapFreshTextNode"]);
     expect(contract.identity.rule).toContain("ctx.wrap");
+    expect(contract.identity.rule).toContain("ctx.wrapLazyNode");
+    expect(contract.identity.rule).toContain("ctx.wrapFreshTextNode");
     expect(contract.errors.invalidCharacter.code).toBe("ERR_MAD_DOM_INVALID_CHARACTER");
     expect(contract.errors.destroyed.code).toBe("ERR_MAD_DOM_DOCUMENT_DESTROYED");
   });

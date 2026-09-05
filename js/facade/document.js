@@ -21,6 +21,11 @@
 // The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
 // tests/bun/seam.test.js pins that shape.
 
+import {
+  nodeDocumentStateOf,
+  releaseNodeDocumentState,
+} from "./extensions/classes.js";
+
 export const seam = Object.freeze({
   id: "facade/document",
   owner: "T22B",
@@ -31,6 +36,8 @@ export const seam = Object.freeze({
 // Native handle behind each Document facade. Weak so a facade never pins its
 // document; the native handle itself keeps the Core arena alive (T20).
 const DOCUMENT_HANDLES = new WeakMap();
+const getDocumentHandle = DOCUMENT_HANDLES.get.bind(DOCUMENT_HANDLES);
+const setDocumentHandle = DOCUMENT_HANDLES.set.bind(DOCUMENT_HANDLES);
 
 function isDocumentHandle(handle) {
   return (
@@ -56,7 +63,7 @@ export class Document {
         "Document can only be constructed from a genuine native Document handle",
       );
     }
-    DOCUMENT_HANDLES.set(this, nativeHandle);
+    setDocumentHandle(this, nativeHandle);
   }
 }
 
@@ -65,7 +72,8 @@ export class Document {
 // Window and Document keep a uniform, pinned surface.
 Object.defineProperty(Document.prototype, "destroy", {
   value: function destroy() {
-    DOCUMENT_HANDLES.get(this).destroy();
+    getDocumentHandle(this).destroy();
+    releaseNodeDocumentState(nodeDocumentStateOf(this));
   },
   writable: false,
   enumerable: false,

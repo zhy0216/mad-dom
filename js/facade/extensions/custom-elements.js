@@ -83,7 +83,8 @@
 import { loadNative } from "../../native-loader.js";
 
 import { Window } from "../window.js";
-import { Node, Element, ELEMENT_MINT_SYMBOL } from "./node.js";
+import { Node, Element } from "./node.js";
+import { setElementMint } from "./classes.js";
 
 export const seam = Object.freeze({
   id: "facade/extensions/custom-elements",
@@ -169,11 +170,23 @@ function registryForNode(ctx, nodeHandle) {
  * opaque handles; the callbacks run here, outside any lock, so a callback may
  * re-enter the API (its own nested flush fires the reactions it triggers).
  */
-export function flushCustomElementReactions(ctx, nodeHandle) {
+export function flushCustomElementReactions(ctx, nodeHandle, facadeNode = false) {
   if (!ANY_REGISTRY) return;
+  let registry = null;
+  if (facadeNode) {
+    const documentHandle = ctx.documentContext.nodeDocumentOf(nodeHandle);
+    if (documentHandle !== undefined) {
+      registry = REGISTRIES_BY_DOC.get(documentHandle) ?? null;
+      // Another window having touched `customElements` must not force every
+      // token-only mutation in this registry-free document to materialize a
+      // native NodeHandle. No definition can have queued a reaction here.
+      if (registry === null) return;
+    }
+    nodeHandle = ctx.documentContext.handleOf(nodeHandle);
+  }
   const reactions = loadNative().takeCustomElementReactions(nodeHandle);
   if (reactions.length === 0) return;
-  const registry = registryForNode(ctx, nodeHandle);
+  registry ??= registryForNode(ctx, nodeHandle);
   if (registry !== null) {
     registry.dispatchReactions(reactions, ctx);
   }
@@ -448,14 +461,11 @@ export function install(ctx) {
       Object.setPrototypeOf(elementClass.prototype, Element.prototype);
     }
 
-    // T48A `new DefinedClass()`: stash the native document handle and the
-    // registered name on the class prototype so the `Element` constructor can
-    // cast a real detached element (happy-dom stashes window/document/localName
-    // symbols the same way).
-    elementClass.prototype[ELEMENT_MINT_SYMBOL] = {
-      docHandle: this.docHandle,
-      localName: name,
-    };
+    // T48A `new DefinedClass()`: associate the native document handle and the
+    // registered name with the class prototype in classes.js's private
+    // WeakMap, so the `Element` constructor can cast a real detached element
+    // without exposing a forgeable handle-bearing Symbol property.
+    setElementMint(elementClass.prototype, this.docHandle, name);
 
     // Core registers the definition, physically replaces the connected
     // matching elements with fresh custom elements and queues their

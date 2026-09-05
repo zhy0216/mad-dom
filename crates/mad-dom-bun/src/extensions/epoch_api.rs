@@ -4,44 +4,37 @@
 //!
 //! The facade memoizes `Node` navigation reads (`firstChild` / `nextSibling`
 //! / …) so a repeated tree walk over an unchanged tree stays in JavaScript.
-//! For the memo to be *safe*, JavaScript must be able to detect "the tree
-//! relations changed since I cached this" without an FFI round trip — this
-//! module provides that signal.
+//! JavaScript therefore needs to detect native mutations without making an
+//! FFI call for every cached read. This module exposes one four-byte epoch
+//! buffer for structural mutations and another for attribute mutations.
 //!
-//! `DocumentHandle.epochView()` hands JavaScript a 4-byte `ArrayBuffer` view
-//! over the document's epoch slot (a binding-owned `AtomicI32`, registered on
-//! [`SharedDocument`](crate::handle::SharedDocument) via
-//! `set_epoch_slot`). [`crate::handle::with_document`] — the single chokepoint
-//! every native document access funnels through — bumps the slot whenever a
-//! call changed Core's `structure_generation` (all tree-relation writes). The
-//! facade compares the view's word against the stamp it cached with each memo
-//! entry; a mismatch discards the entry. No facade enumeration of mutation
-//! entry points can drift, because the bump lives below all of them.
+//! Each returned `ArrayBuffer` is ordinary JavaScript-owned memory. The
+//! document retains only a weak Node-API reference to it. For ordinary/raw
+//! views, whenever Core's generation changes the binding briefly resolves
+//! each live reference, obtains its current backing-store pointer, writes the
+//! new value, and drops the pointer before returning to JavaScript. Facade-
+//! local views instead receive the exact canonical generation as the return
+//! value of token hot writes and publish it with a local typed-array store;
+//! mutations through any other entry remain native-published. The binding
+//! never shares or retains a Rust-owned allocation behind an `ArrayBuffer`.
 //!
-//! # Memory model
+//! This also makes transfer safe by construction. Transferring a view detaches
+//! the subscribed buffer; the next mutation removes that subscription. The
+//! transferred buffer is merely a stale four-byte copy and has no connection
+//! to native state.
 //!
-//! The slot is a 4-byte `Box<AtomicI32>` deliberately leaked into the process:
-//! JavaScript may hold the buffer view longer than any facade reference to the
-//! document (a raw handle can still mutate while the facade is gone), so the
-//! binding can never prove the view dead — 4 bytes per document is the price
-//! of an airtight invalidation signal. The external `ArrayBuffer` is created
-//! directly through Node-API (no finalize callback), so collecting the JS view
-//! frees only the view.
-//!
-//! # Safety preconditions
-//!
-//! The single confined `unsafe` block creates the external ArrayBuffer over
-//! the leaked slot and reads the slot pointer; the slot's immortality makes
-//! every access valid for the process lifetime. Writes to the slot happen only
-//! through [`crate::handle::SharedDocument::bump_epoch`] on the document's
-//! affinity thread — the same thread JavaScript reads it from.
+//! Two values are reserved: `i32::MIN` means the document was destroyed, and
+//! `-1` means the live generation space was exhausted. At `-1` the document
+//! remains usable, but consumers must permanently bypass generation caches;
+//! the value saturates instead of repeating and creating an ABA cache hit.
 
-use std::sync::atomic::AtomicI32;
+use std::ffi::c_void;
 
 use napi::bindgen_prelude::{FromNapiValue, Unknown};
 use napi::{check_status, Env};
 use napi_derive::napi;
 
+use crate::error::BindingError;
 use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, DocumentHandle};
 
@@ -54,44 +47,96 @@ pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
     status: "implemented",
 };
 
+/// Creates an ordinary JavaScript-owned four-byte buffer initialized to
+/// `value`. The backing-store pointer is used only while this call is active.
+fn make_epoch_buffer(env: Env, value: i32) -> napi::Result<napi::sys::napi_value> {
+    let mut data: *mut c_void = std::ptr::null_mut();
+    let mut buffer = std::ptr::null_mut();
+    check_status!(unsafe {
+        napi::sys::napi_create_arraybuffer(
+            env.raw(),
+            std::mem::size_of::<i32>(),
+            &mut data,
+            &mut buffer,
+        )
+    })?;
+    if data.is_null() || buffer.is_null() {
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "Node-API returned no backing store for an epoch buffer".to_owned(),
+        ));
+    }
+    // SAFETY: Node-API just returned a writable four-byte backing store. The
+    // pointer is not retained beyond this synchronous call.
+    unsafe { data.cast::<i32>().write_unaligned(value) };
+    Ok(buffer)
+}
+
 /// Adds the epoch surface to the existing [`DocumentHandle`] class through a
-/// second `#[napi] impl` block — napi merges class properties registered for
-/// the same Rust type (the same pattern `traversal_api` uses), so the shared
-/// class keeps its audited surface with no duplicate export.
+/// second `#[napi] impl` block.
 #[napi]
 impl DocumentHandle {
-    /// Returns a fresh 4-byte `ArrayBuffer` view over this document's
-    /// structural epoch slot, registering the slot on first call.
-    ///
-    /// JavaScript wraps the buffer in an `Int32Array` and reads element 0:
-    /// the value changes exactly when a native call mutated this document's
-    /// tree relations (see module docs). Repeated calls return independent
-    /// views over the same slot. The facade calls this once per document,
-    /// when the document wrapper is first minted.
+    /// Returns a fresh JavaScript-owned structural-epoch buffer and weakly
+    /// subscribes it to future structural changes in this document.
     #[napi(catch_unwind)]
     pub fn epoch_view(&self, env: Env) -> napi::Result<Unknown<'_>> {
         check_affinity(self.shared(), &env)?;
-        let mut slot = self.shared().epoch_slot();
-        if slot.is_null() {
-            slot = Box::into_raw(Box::new(AtomicI32::new(0)));
-            self.shared().set_epoch_slot(slot);
+        if self.shared().is_destroyed() {
+            return Err(BindingError::Destroyed.into_napi(&env));
         }
-        let mut buffer = std::ptr::null_mut();
-        // SAFETY: `slot` points at a leaked `AtomicI32` valid for the process
-        // lifetime (module docs "Memory model"); no finalize callback, so
-        // collecting the view never touches the slot memory.
-        check_status!(unsafe {
-            napi::sys::napi_create_external_arraybuffer(
-                env.raw(),
-                slot.cast(),
-                std::mem::size_of::<AtomicI32>(),
-                None,
-                std::ptr::null_mut(),
-                &mut buffer,
-            )
-        })?;
+        self.shared().enable_tokens();
+        let buffer = make_epoch_buffer(env, self.shared().epoch_value())?;
+        self.shared()
+            .register_epoch_view(env, buffer, false, false)?;
         // SAFETY: `buffer` is the ArrayBuffer value just created on `env`.
-        // JavaScript wraps it in an `Int32Array` itself.
+        unsafe { Unknown::from_napi_value(env.raw(), buffer) }
+    }
+
+    /// Returns a fresh JavaScript-owned attribute-epoch buffer and weakly
+    /// subscribes it to future attribute changes in this document.
+    #[napi(catch_unwind)]
+    pub fn attribute_epoch_view(&self, env: Env) -> napi::Result<Unknown<'_>> {
+        check_affinity(self.shared(), &env)?;
+        if self.shared().is_destroyed() {
+            return Err(BindingError::Destroyed.into_napi(&env));
+        }
+        self.shared().enable_tokens();
+        let buffer = make_epoch_buffer(env, self.shared().attribute_epoch_value())?;
+        self.shared()
+            .register_epoch_view(env, buffer, true, false)?;
+        // SAFETY: `buffer` is the ArrayBuffer value just created on `env`.
+        unsafe { Unknown::from_napi_value(env.raw(), buffer) }
+    }
+
+    /// Facade-only structural view. Token mutation companions advance the
+    /// canonical native epoch and return its exact value instead of resolving
+    /// this buffer through Node-API; the facade writes that value locally.
+    /// Ordinary [`Self::epoch_view`] subscribers remain native-published.
+    #[napi(catch_unwind)]
+    pub fn facade_epoch_view(&self, env: Env) -> napi::Result<Unknown<'_>> {
+        check_affinity(self.shared(), &env)?;
+        if self.shared().is_destroyed() {
+            return Err(BindingError::Destroyed.into_napi(&env));
+        }
+        self.shared().enable_tokens();
+        let buffer = make_epoch_buffer(env, self.shared().epoch_value())?;
+        self.shared()
+            .register_epoch_view(env, buffer, false, true)?;
+        // SAFETY: `buffer` is the ArrayBuffer value just created on `env`.
+        unsafe { Unknown::from_napi_value(env.raw(), buffer) }
+    }
+
+    /// Facade-only counterpart to [`Self::attribute_epoch_view`].
+    #[napi(catch_unwind)]
+    pub fn facade_attribute_epoch_view(&self, env: Env) -> napi::Result<Unknown<'_>> {
+        check_affinity(self.shared(), &env)?;
+        if self.shared().is_destroyed() {
+            return Err(BindingError::Destroyed.into_napi(&env));
+        }
+        self.shared().enable_tokens();
+        let buffer = make_epoch_buffer(env, self.shared().attribute_epoch_value())?;
+        self.shared().register_epoch_view(env, buffer, true, true)?;
+        // SAFETY: `buffer` is the ArrayBuffer value just created on `env`.
         unsafe { Unknown::from_napi_value(env.raw(), buffer) }
     }
 }

@@ -11,10 +11,10 @@ import { loadNative } from "../../js/native-loader.js";
 // entry (index.js → js/entry.js) and pin the acceptance criteria:
 //
 //   - `getElementsByTagName` / `getElementsByClassName` return a *live*
-//     `HTMLCollection`: an existing collection re-reads Core on every access
-//     (length, item, namedItem, iteration, indexed and named reads), so a later
-//     tree or attribute mutation is reflected immediately while a fresh query
-//     agrees — no snapshot is ever kept;
+//     `HTMLCollection`: item-producing access re-reads Core, while `length`
+//     may reuse a scalar only while Core's relevant generations still match.
+//     A later tree or attribute mutation is therefore reflected immediately
+//     while a fresh query agrees — no result snapshot is ever kept;
 //   - results come back in document order, tag matching is ASCII
 //     case-insensitive, `"*"` matches every element, and class matching
 //     requires every whitespace-separated token;
@@ -35,7 +35,7 @@ import { loadNative } from "../../js/native-loader.js";
 //     deviation pinned here).
 //
 // The structural block needs no native artifact; the runtime block skips
-// without the locally built one (npm run dev:build, or MAD_DOM_NATIVE_PATH),
+// without the locally built one (`bun run dev:build`, or MAD_DOM_NATIVE_PATH),
 // exactly like the other native suites.
 
 const nativeAvailable = isNativeAvailable();
@@ -139,12 +139,13 @@ describe.skipIf(!nativeAvailable)("getElementsByTagName (T32)", () => {
 
       const lis = doc.getElementsByTagName("li");
       expect(tagReads).toEqual([]);
-      expect(classReads).toEqual([""]);
+      expect(classReads).toEqual([]);
+      expect(tagCounts).toEqual(["li"]);
 
       expect(lis.length).toBe(3);
       expect(tagCounts).toEqual(["li"]);
       expect(tagReads).toEqual([]);
-      expect(classReads).toEqual([""]);
+      expect(classReads).toEqual([]);
 
       // Node-producing reads keep using the full query and wrapper path.
       expect(lis[0].nodeName).toBe("LI");
@@ -155,10 +156,11 @@ describe.skipIf(!nativeAvailable)("getElementsByTagName (T32)", () => {
       tagCounts.length = 0;
       classCounts.length = 0;
       const items = doc.getElementsByClassName("item");
-      expect(classReads).toEqual([""]);
+      expect(classReads).toEqual([]);
+      expect(classCounts).toEqual(["item"]);
       expect(items.length).toBe(3);
       expect(classCounts).toEqual(["item"]);
-      expect(classReads).toEqual([""]);
+      expect(classReads).toEqual([]);
     } finally {
       win.destroy();
     }
@@ -279,9 +281,140 @@ describe.skipIf(!nativeAvailable)("HTMLCollection read surface (T32)", () => {
       win.destroy();
     }
   });
+
+  test("reflection invariants survive sealing while the collection stays live", () => {
+    const win = new Window();
+    try {
+      const doc = build(win);
+      const lis = doc.getElementsByTagName("li");
+      expect(() => Object.freeze(lis)).not.toThrow();
+      expect(Object.isFrozen(lis)).toBe(true);
+      expect(() => Reflect.ownKeys(lis)).not.toThrow();
+
+      const added = doc.createElement("li");
+      doc.getElementById("list").appendChild(added);
+      expect(lis.length).toBe(4);
+      expect(lis[3]).toBe(added);
+    } finally {
+      win.destroy();
+    }
+  });
+
+  test("lazy count eviction and reflection use module-load primordials", () => {
+    const win = new Window();
+    try {
+      const doc = build(win);
+      for (let i = 0; i < 32; i += 1) {
+        void doc.getElementsByTagName(`unused-${i}`).length;
+      }
+
+      const OriginalMap = globalThis.Map;
+      const OriginalProxy = globalThis.Proxy;
+      const OriginalSet = globalThis.Set;
+      const iteratorPrototype = Object.getPrototypeOf(new OriginalMap().keys());
+      const originalIteratorNext = iteratorPrototype.next;
+      const originalSetAdd = OriginalSet.prototype.add;
+      const originalOwnKeys = Reflect.ownKeys;
+      const originalIsExtensible = Reflect.isExtensible;
+      let evictedLength;
+      let reflectedKeys;
+      let intercepted;
+      try {
+        globalThis.Map = class FakeMap {
+          constructor() {
+            throw new Error("intercepted Map constructor");
+          }
+        };
+        globalThis.Proxy = class FakeProxy {
+          constructor() {
+            throw new Error("intercepted Proxy constructor");
+          }
+        };
+        globalThis.Set = class FakeSet {
+          constructor() {
+            throw new Error("intercepted Set constructor");
+          }
+        };
+        iteratorPrototype.next = function patchedMapIteratorNext() {
+          throw new Error("intercepted Map iterator next");
+        };
+        OriginalSet.prototype.add = function patchedSetAdd() {
+          throw new Error("intercepted Set.add");
+        };
+        Reflect.ownKeys = function patchedOwnKeys() {
+          throw new Error("intercepted Reflect.ownKeys");
+        };
+        Reflect.isExtensible = function patchedIsExtensible() {
+          throw new Error("intercepted Reflect.isExtensible");
+        };
+
+        // The 33rd key evicts through %MapIteratorPrototype%.next. The element
+        // scope also lazily creates its shared-count Map and collection Proxy.
+        evictedLength = doc.getElementsByTagName("unused-32").length;
+        const collection = doc.getElementById("list")
+          .getElementsByTagName("li");
+        reflectedKeys = originalOwnKeys(collection);
+      } catch (error) {
+        intercepted = error;
+      } finally {
+        globalThis.Map = OriginalMap;
+        globalThis.Proxy = OriginalProxy;
+        globalThis.Set = OriginalSet;
+        iteratorPrototype.next = originalIteratorNext;
+        OriginalSet.prototype.add = originalSetAdd;
+        Reflect.ownKeys = originalOwnKeys;
+        Reflect.isExtensible = originalIsExtensible;
+      }
+
+      expect(intercepted).toBeUndefined();
+      expect(evictedLength).toBe(0);
+      expect(reflectedKeys).toEqual(["0", "1", "2"]);
+    } finally {
+      win.destroy();
+    }
+  });
 });
 
 describe.skipIf(!nativeAvailable)("live semantics (T32)", () => {
+  test("private count state ignores late Object.prototype setters", () => {
+    const win = new Window();
+    const previous = Object.getOwnPropertyDescriptor(Object.prototype, "count");
+    try {
+      const doc = build(win);
+      Object.defineProperty(Object.prototype, "count", {
+        configurable: true,
+        set() {
+          throw new Error("poison-count");
+        },
+      });
+
+      const items = doc.getElementsByTagName("li");
+      expect(items.length).toBe(3);
+      doc.getElementById("list").appendChild(doc.createElement("li"));
+      expect(items.length).toBe(4);
+    } finally {
+      if (previous === undefined) {
+        delete Object.prototype.count;
+      } else {
+        Object.defineProperty(Object.prototype, "count", previous);
+      }
+      win.destroy();
+    }
+  });
+
+  test("a frozen element can still create and refresh scoped collections", () => {
+    const win = new Window();
+    try {
+      const doc = build(win);
+      const list = doc.getElementById("list");
+      Object.freeze(list);
+      expect(list.getElementsByTagName("li").length).toBe(3);
+      expect(list.getElementsByTagName("li").length).toBe(3);
+    } finally {
+      win.destroy();
+    }
+  });
+
   test("an existing collection reflects a later attribute change", () => {
     const win = new Window();
     try {

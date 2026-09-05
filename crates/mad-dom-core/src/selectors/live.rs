@@ -1,29 +1,35 @@
-//! Live element collections and the optional id/class/tag query index (T32).
+//! Live element collections and the adaptive/full query index (T32).
 //!
 //! Implements the Core half of the WHATWG live collection surface —
 //! `Document` / `Element` `getElementsByTagName` and `getElementsByClassName`
-//! — as document-order walks of the arena that are *re-run on every call*, so
-//! an already-returned result set is never a snapshot: the live collection
-//! facade re-reads this contract on every access and therefore reflects any
-//! tree or attribute change immediately, with no second tree state anywhere.
+//! — as document-order reads that are *re-evaluated on every call* (by traversal
+//! or the maintained full index), so an already-returned result set is never a
+//! snapshot: the live collection facade re-reads this contract on every access
+//! and therefore reflects any tree or attribute change immediately, with no
+//! second tree state anywhere.
 //!
-//! # The optional query index
+//! # Adaptive and full query-index modes
 //!
 //! Queries rooted in the light document tree can be served from a
 //! per-document [`QueryIndex`] of `id` / `class` / `tag` keys instead of a
 //! fresh traversal. Detached and shadow-tree scopes fall back to traversal so
 //! one document-wide index never has to impose an order across disconnected
-//! roots. The index is
-//! **opt-in and benchmark-driven** (the T32 boundary: no index without
-//! measurement): it is off by default and enabled per document with
-//! [`Document::set_query_index_enabled`]. Every write that can change a query
-//! result is funnelled through the single mutation/attribute maintenance
-//! surface in this module ([`Document::index_subtree_attached`],
+//! roots. Its explicit modes are `Off` (the default), `IdOnly` (adaptively
+//! enabled by document-scoped plain `#id` and `getElementById` reads), and
+//! `Full` (the opt-in T32 id/class/tag/all-elements diagnostic mode selected by
+//! [`Document::set_query_index_enabled`]). The public T32 enabled flag denotes
+//! only `Full`, so the adaptive implementation detail does not change that
+//! contract.
+//!
+//! Every write that can change a query result is funnelled through the single
+//! mutation/attribute maintenance surface in this module
+//! ([`Document::index_subtree_attached`],
 //! [`Document::index_subtree_detached`], [`Document::index_attribute_changed`]),
-//! which the unified tree mutation API and the attribute write API call; the
-//! index is therefore kept in lock-step with the arena, and the two query
-//! paths produce byte-for-byte identical results (the T32 acceptance "启用或
-//! 禁用索引时结果完全一致").
+//! which the unified tree mutation API and the attribute write API call. An
+//! Off → IdOnly or IdOnly → Full transition builds complete local state before
+//! publishing it. The maintained and traversal paths therefore produce
+//! byte-for-byte identical results (the T32 acceptance "启用或禁用索引时结果
+//! 完全一致").
 //!
 //! Because every maintenance entry re-derives a node's keys from the arena
 //! attributes on the fly and inserts into document-ordered key lists, the
@@ -63,25 +69,32 @@ fn hierarchy(message: impl Into<String>) -> CoreError {
     }
 }
 
-/// The optional id/class/tag query index of one [`Document`].
+/// The adaptive/full light-document-tree query index of one [`Document`].
 ///
-/// Each key maps to the matching elements of the document **in document
-/// (pre) order**, plus a flat `all_elements` list used by `getElementsByTagName("*")`.
-/// The lists are maintained by the mutation and attribute maintenance entries
-/// of this module, so they always mirror the arena; queries serve from them in
-/// `O(key size)` instead of walking the whole tree. The `enabled` flag is the
-/// T32 switch: when off, every query is a fresh traversal and the structure
-/// stays empty.
+/// In `IdOnly`, only `by_id` is populated. In `Full`, each key maps to matching
+/// elements **in document (pre) order**, plus a flat `all_elements` list used
+/// by `getElementsByTagName("*")`. The lists are maintained by the mutation and
+/// attribute entries of this module, so they always mirror the arena; indexed
+/// reads cost `O(key size)` instead of a whole-tree walk. `Off` keeps every
+/// structure empty and serves all reads by traversal.
 ///
 /// `id` / `class` / `tag` are the only indexed keys: `id` is the `id`
 /// attribute value, `class` is one token of the `class` attribute per entry
 /// (so `getElementsByClassName` intersects token lists), and `tag` is the
 /// element's local name lowercased (so `getElementsByTagName` matches
 /// ASCII case-insensitively like the WHATWG HTML-document rule).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum QueryIndexMode {
+    #[default]
+    Off,
+    IdOnly,
+    Full,
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct QueryIndex {
-    /// Whether light-document-tree queries are served from the index.
-    enabled: bool,
+    /// Which light-document-tree indexes are built and maintained.
+    mode: QueryIndexMode,
     /// `id` attribute value → matching elements, in document order.
     by_id: HashMap<String, Vec<NodeId>>,
     /// One `class` attribute token → matching elements, in document order.
@@ -93,9 +106,14 @@ pub(crate) struct QueryIndex {
 }
 
 impl QueryIndex {
-    /// Whether the index is currently enabled (serving queries).
-    pub(crate) fn is_enabled(&self) -> bool {
-        self.enabled
+    /// Whether document id reads may use `by_id` and writes must maintain it.
+    pub(crate) fn has_id_index(&self) -> bool {
+        self.mode != QueryIndexMode::Off
+    }
+
+    /// Whether live class/tag collection reads may use the full index.
+    pub(crate) fn has_full_index(&self) -> bool {
+        self.mode == QueryIndexMode::Full
     }
 
     /// Every indexed element matching `id`, in its owning tree's order.
@@ -103,14 +121,6 @@ impl QueryIndex {
     /// Only light-document-tree elements are maintained in this shared index.
     pub(crate) fn matches_for_id(&self, id: &str) -> Option<&[NodeId]> {
         self.by_id.get(id).map(Vec::as_slice)
-    }
-
-    /// Drops all cached entries but keeps the `enabled` flag.
-    fn clear(&mut self) {
-        self.by_id.clear();
-        self.by_class.clear();
-        self.by_tag.clear();
-        self.all_elements.clear();
     }
 
     /// Returns the key list (kind, value) the query uses for one key, as a
@@ -198,7 +208,7 @@ impl Document {
         name: &str,
     ) -> Result<Vec<NodeId>, CoreError> {
         self.expect_collection_scope(scope)?;
-        if self.query_index.enabled && self.scope_uses_document_index(scope)? {
+        if self.query_index.has_full_index() && self.scope_uses_document_index(scope)? {
             let key = name.to_ascii_lowercase();
             let candidates = if name == "*" {
                 self.index_all_in_scope(scope)?
@@ -234,7 +244,7 @@ impl Document {
         if tokens.is_empty() {
             return Ok(Vec::new());
         }
-        if self.query_index.enabled && self.scope_uses_document_index(scope)? {
+        if self.query_index.has_full_index() && self.scope_uses_document_index(scope)? {
             self.indexed_by_class(scope, &tokens)
         } else {
             self.traverse_by_class(scope, &tokens)
@@ -250,7 +260,20 @@ impl Document {
     /// collection that the caller would immediately discard.
     pub fn count_elements_by_tag_name(&self, scope: NodeId, name: &str) -> Result<u32, CoreError> {
         self.expect_collection_scope(scope)?;
-        if self.query_index.enabled && self.scope_uses_document_index(scope)? {
+        if self.query_index.has_full_index() && self.scope_uses_document_index(scope)? {
+            // A Document collection is scoped at the document root, so every
+            // indexed candidate is necessarily in scope. Avoid re-checking
+            // ancestry for each element; the maintained index already is the
+            // exact live cardinality.
+            if self.cached_document_root() == Some(scope) {
+                let len = if name == "*" {
+                    self.query_index.all_elements.len()
+                } else {
+                    let key = name.to_ascii_lowercase();
+                    self.query_index.by_tag.get(&key).map_or(0, Vec::len)
+                };
+                return Ok(u32::try_from(len).expect("DOM element count exceeds u32::MAX"));
+            }
             let mut count = 0_u32;
             if name == "*" {
                 for &element in &self.query_index.all_elements {
@@ -291,40 +314,58 @@ impl Document {
         if name.split_ascii_whitespace().next().is_none() {
             return Ok(0);
         }
-        if self.query_index.enabled && self.scope_uses_document_index(scope)? {
+        if self.query_index.has_full_index() && self.scope_uses_document_index(scope)? {
             Ok(self.indexed_count_by_class(scope, name))
         } else {
             self.traverse_count_by_class(scope, name)
         }
     }
 
-    /// Enables or disables the optional id/class/tag query index.
+    /// Enables or disables the full id/class/tag/all-elements query index.
     ///
     /// Enabling builds the index from the current tree in one document-order
     /// pass; from then on every mutation and attribute write keeps it in lock
-    /// step through the maintenance entries of this module. Disabling drops
-    /// the cached lists and restores the pure-traversal query path. The two
-    /// paths are interchangeable — indexed and traversal queries return the
-    /// same result for any tree state (the T32 acceptance).
+    /// step through the maintenance entries of this module. Enabling from an
+    /// adaptive IdOnly state rebuilds the exact full index atomically.
+    /// Disabling either indexed mode drops every cached list and restores the
+    /// pure-traversal query path. The paths are interchangeable — indexed and
+    /// traversal queries return the same result for any tree state (the T32
+    /// acceptance).
     ///
     /// This is a Core diagnostic/benchmark surface; the native binding and the
     /// facade deliberately do not expose it.
     pub fn set_query_index_enabled(&mut self, enabled: bool) -> Result<(), CoreError> {
-        if self.query_index.enabled == enabled {
-            return Ok(());
-        }
-        self.query_index.enabled = enabled;
         if enabled {
-            self.rebuild_query_index()?;
+            if self.query_index.has_full_index() {
+                return Ok(());
+            }
+            self.query_index = self.build_full_query_index()?;
         } else {
-            self.query_index.clear();
+            if self.query_index.mode == QueryIndexMode::Off {
+                return Ok(());
+            }
+            self.query_index = QueryIndex::default();
         }
         Ok(())
     }
 
-    /// Returns whether the query index is currently enabled.
+    /// Ensures that document-scoped id lookups have a lightweight `by_id`
+    /// index. Off → IdOnly builds into local state and publishes only after a
+    /// successful traversal; IdOnly and Full are idempotent no-ops.
+    pub fn ensure_id_query_index_enabled(&mut self) -> Result<(), CoreError> {
+        if self.query_index.has_id_index() {
+            return Ok(());
+        }
+        self.query_index = self.build_id_query_index()?;
+        Ok(())
+    }
+
+    /// Returns whether the public T32 full query index is currently enabled.
+    ///
+    /// The private adaptive IdOnly mode deliberately reports `false` so this
+    /// diagnostic contract retains its original meaning.
     pub fn query_index_enabled(&self) -> bool {
-        self.query_index.enabled
+        self.query_index.has_full_index()
     }
 
     /// Returns the first document-order `id` match below `scope` from the
@@ -556,22 +597,52 @@ impl Document {
     // Index maintenance (the single place every write funnels through).
     // ------------------------------------------------------------------
 
-    /// Rebuilds the whole index from the current tree, in document order.
-    fn rebuild_query_index(&mut self) -> Result<(), CoreError> {
-        self.query_index.clear();
+    /// Builds the full index in local state, publishing nothing until the
+    /// complete document-order traversal succeeds.
+    fn build_full_query_index(&self) -> Result<QueryIndex, CoreError> {
+        let mut index = QueryIndex {
+            mode: QueryIndexMode::Full,
+            ..QueryIndex::default()
+        };
         let Some(root) = self.cached_document_root() else {
-            return Ok(());
+            return Ok(index);
         };
         let mut stack: Vec<NodeId> = self.children(root)?.into_iter().rev().collect();
         while let Some(node) = stack.pop() {
             if self.node_type(node)? == NodeType::Element {
-                self.index_push_element(node)?;
+                index.all_elements.push(node);
+                for (kind, value) in self.index_keys_for(node)? {
+                    index.push_key(&kind, &value, node);
+                }
             }
             for &child in self.children(node)?.iter().rev() {
                 stack.push(child);
             }
         }
-        Ok(())
+        Ok(index)
+    }
+
+    /// Builds only `by_id` in local state for the adaptive lookup mode.
+    fn build_id_query_index(&self) -> Result<QueryIndex, CoreError> {
+        let mut index = QueryIndex {
+            mode: QueryIndexMode::IdOnly,
+            ..QueryIndex::default()
+        };
+        let Some(root) = self.cached_document_root() else {
+            return Ok(index);
+        };
+        let mut stack: Vec<NodeId> = self.children(root)?.into_iter().rev().collect();
+        while let Some(node) = stack.pop() {
+            if self.node_type(node)? == NodeType::Element {
+                if let Some(id) = self.get_attribute(node, "id")? {
+                    index.push_key("id", id, node);
+                }
+            }
+            for &child in self.children(node)?.iter().rev() {
+                stack.push(child);
+            }
+        }
+        Ok(index)
     }
 
     /// Adds `el` to every key it currently belongs to plus `all_elements`,
@@ -616,6 +687,22 @@ impl Document {
         Ok(())
     }
 
+    /// Id-only maintenance counterpart that never allocates class/tag keys or
+    /// touches the full-index vectors.
+    fn id_index_insert_element(&mut self, el: NodeId) -> Result<(), CoreError> {
+        let Some(id) = self.get_attribute(el, "id")?.map(str::to_owned) else {
+            return Ok(());
+        };
+        self.index_insert_into_key("id", &id, el)
+    }
+
+    fn id_index_remove_element(&mut self, el: NodeId) -> Result<(), CoreError> {
+        if let Some(id) = self.get_attribute(el, "id")?.map(str::to_owned) {
+            self.query_index.remove_key("id", &id, el);
+        }
+        Ok(())
+    }
+
     /// Adds `el` to a single key (used when an attribute write introduces a
     /// new id/class token on an element in the light document tree).
     fn index_insert_into_key(
@@ -633,18 +720,6 @@ impl Document {
             .vec_for(kind, value)
             .partition_point(|&n| self.precedes(n, el));
         self.query_index.insert_key(kind, value, el, pos);
-        Ok(())
-    }
-
-    /// Pushes `el` to every key it belongs to plus `all_elements`, assuming
-    /// `el` is the last node in document order. Only used during the initial
-    /// full rebuild, whose walk is already in document order.
-    fn index_push_element(&mut self, el: NodeId) -> Result<(), CoreError> {
-        let keys = self.index_keys_for(el)?;
-        self.query_index.all_elements.push(el);
-        for (kind, value) in keys {
-            self.query_index.push_key(&kind, &value, el);
-        }
         Ok(())
     }
 
@@ -752,13 +827,17 @@ impl Document {
     /// Removes the whole subtree rooted at `node` from the index (called from
     /// [`crate::dom::Document::detach`]); a no-op when the index is disabled.
     pub(crate) fn index_subtree_detached(&mut self, node: NodeId) -> Result<(), CoreError> {
-        if !self.query_index.enabled {
+        if !self.query_index.has_id_index() {
             return Ok(());
         }
         let mut stack: Vec<NodeId> = vec![node];
         while let Some(cur) = stack.pop() {
             if self.node_type(cur)? == NodeType::Element {
-                self.index_remove_element(cur)?;
+                if self.query_index.has_full_index() {
+                    self.index_remove_element(cur)?;
+                } else {
+                    self.id_index_remove_element(cur)?;
+                }
             }
             for &child in self.children(cur)?.iter().rev() {
                 stack.push(child);
@@ -773,7 +852,7 @@ impl Document {
     /// disconnected/shadow roots and calls while the index is disabled are
     /// no-ops.
     pub(crate) fn index_subtree_attached(&mut self, nodes: &[NodeId]) -> Result<(), CoreError> {
-        if !self.query_index.enabled {
+        if !self.query_index.has_id_index() {
             return Ok(());
         }
         for &root in nodes {
@@ -783,7 +862,11 @@ impl Document {
             let mut stack: Vec<NodeId> = vec![root];
             while let Some(cur) = stack.pop() {
                 if self.node_type(cur)? == NodeType::Element {
-                    self.index_insert_element(cur)?;
+                    if self.query_index.has_full_index() {
+                        self.index_insert_element(cur)?;
+                    } else {
+                        self.id_index_insert_element(cur)?;
+                    }
                 }
                 for &child in self.children(cur)?.iter().rev() {
                     stack.push(child);
@@ -803,13 +886,17 @@ impl Document {
     /// keeps its document order) and therefore only needs to index the
     /// replacement itself.
     pub(crate) fn index_element_attached(&mut self, el: NodeId) -> Result<(), CoreError> {
-        if !self.query_index.enabled {
+        if !self.query_index.has_id_index() {
             return Ok(());
         }
         if !self.is_in_document_tree(el)? {
             return Ok(());
         }
-        self.index_insert_element(el)
+        if self.query_index.has_full_index() {
+            self.index_insert_element(el)
+        } else {
+            self.id_index_insert_element(el)
+        }
     }
 
     /// Re-syncs the index when an attribute write changes `id` or `class`;
@@ -823,7 +910,7 @@ impl Document {
         old: Option<&str>,
         new: Option<&str>,
     ) -> Result<(), CoreError> {
-        if !self.query_index.enabled {
+        if !self.query_index.has_id_index() {
             return Ok(());
         }
         match name {
@@ -838,6 +925,9 @@ impl Document {
                 }
             }
             "class" => {
+                if !self.query_index.has_full_index() {
+                    return Ok(());
+                }
                 if let Some(old) = old {
                     for token in old.split_ascii_whitespace() {
                         self.query_index.remove_key("class", token, id);
@@ -964,6 +1054,7 @@ fn element_has_all_classes_adaptive(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dom::ShadowRootMode;
 
     /// Builds a small corpus tree and returns the document.
     fn corpus() -> Document {
@@ -1028,11 +1119,25 @@ mod tests {
             && doc.query_index.by_tag == by_tag)
     }
 
+    fn id_index_matches_traversal(doc: &Document) -> Result<bool, CoreError> {
+        let mut by_id: HashMap<String, Vec<NodeId>> = HashMap::new();
+        for el in traversal_elements(doc) {
+            if let Some(id) = doc.get_attribute(el, "id")? {
+                by_id.entry(id.to_owned()).or_default().push(el);
+            }
+        }
+        Ok(doc.query_index.mode == QueryIndexMode::IdOnly
+            && doc.query_index.by_id == by_id
+            && doc.query_index.by_class.is_empty()
+            && doc.query_index.by_tag.is_empty()
+            && doc.query_index.all_elements.is_empty())
+    }
+
     #[test]
     fn enabling_the_index_builds_it_from_the_current_tree() {
         let mut doc = corpus();
         doc.set_query_index_enabled(true).unwrap();
-        assert!(doc.query_index.enabled);
+        assert_eq!(doc.query_index.mode, QueryIndexMode::Full);
         assert!(index_matches_traversal(&doc).unwrap());
     }
 
@@ -1134,9 +1239,140 @@ mod tests {
         let root = doc.document_root();
         let indexed = doc.get_elements_by_tag_name(root, "p").unwrap();
         doc.set_query_index_enabled(false).unwrap();
-        assert!(!doc.query_index.enabled);
+        assert_eq!(doc.query_index.mode, QueryIndexMode::Off);
         assert!(doc.query_index.by_id.is_empty());
         let traversed = doc.get_elements_by_tag_name(root, "p").unwrap();
         assert_eq!(indexed, traversed);
+    }
+
+    #[test]
+    fn adaptive_id_index_mode_transitions_are_idempotent_and_exact() {
+        let mut clean = Document::new();
+        assert_eq!(clean.query_index.mode, QueryIndexMode::Off);
+        clean.prepare_adaptive_get_element_by_id().unwrap();
+        assert_eq!(clean.query_index.mode, QueryIndexMode::IdOnly);
+        assert!(!clean.query_index_enabled());
+        assert!(clean.cached_document_root().is_none());
+        assert_eq!(clean.get_element_by_id("missing").unwrap(), None);
+
+        let mut doc = corpus();
+        doc.prepare_adaptive_document_query_selector(".x").unwrap();
+        assert_eq!(doc.query_index.mode, QueryIndexMode::Off);
+        doc.prepare_adaptive_document_query_selector("#p1").unwrap();
+        assert!(id_index_matches_traversal(&doc).unwrap());
+
+        let id_snapshot = doc.query_index.by_id.clone();
+        doc.prepare_adaptive_get_element_by_id().unwrap();
+        doc.prepare_adaptive_document_query_selector("#p1").unwrap();
+        assert_eq!(doc.query_index.by_id, id_snapshot);
+
+        doc.set_query_index_enabled(true).unwrap();
+        assert_eq!(doc.query_index.mode, QueryIndexMode::Full);
+        assert!(doc.query_index_enabled());
+        assert!(index_matches_traversal(&doc).unwrap());
+        let full_id_snapshot = doc.query_index.by_id.clone();
+        doc.set_query_index_enabled(true).unwrap();
+        doc.ensure_id_query_index_enabled().unwrap();
+        assert_eq!(doc.query_index.mode, QueryIndexMode::Full);
+        assert_eq!(doc.query_index.by_id, full_id_snapshot);
+        assert!(index_matches_traversal(&doc).unwrap());
+
+        doc.set_query_index_enabled(false).unwrap();
+        assert_eq!(doc.query_index.mode, QueryIndexMode::Off);
+        assert!(doc.query_index.by_id.is_empty());
+        assert!(doc.query_index.by_class.is_empty());
+        assert!(doc.query_index.by_tag.is_empty());
+        assert!(doc.query_index.all_elements.is_empty());
+        doc.set_query_index_enabled(false).unwrap();
+        assert_eq!(doc.query_index.mode, QueryIndexMode::Off);
+    }
+
+    #[test]
+    fn adaptive_id_index_tracks_duplicate_order_moves_detach_and_id_changes() {
+        let mut doc = corpus();
+        let document_root = doc.document_root();
+        let root = doc.get_element_by_id("root").unwrap().unwrap();
+        let p1 = doc.get_element_by_id("p1").unwrap().unwrap();
+        let s1 = doc.get_element_by_id("s1").unwrap().unwrap();
+        doc.prepare_adaptive_document_query_selector("#p1").unwrap();
+
+        doc.set_attribute(s1, "id", "p1").unwrap();
+        assert_eq!(doc.get_element_by_id("p1").unwrap(), Some(p1));
+        assert_eq!(doc.query_selector(document_root, "#p1").unwrap(), Some(p1));
+        doc.append_child(root, p1).unwrap();
+        assert_eq!(doc.get_element_by_id("p1").unwrap(), Some(s1));
+
+        doc.remove_attribute(s1, "id").unwrap();
+        assert_eq!(doc.get_element_by_id("p1").unwrap(), Some(p1));
+        doc.remove_child(root, p1).unwrap();
+        assert_eq!(doc.get_element_by_id("p1").unwrap(), None);
+        doc.set_attribute(p1, "id", "renamed").unwrap();
+        doc.append_child(root, p1).unwrap();
+        assert_eq!(doc.get_element_by_id("renamed").unwrap(), Some(p1));
+        assert!(id_index_matches_traversal(&doc).unwrap());
+    }
+
+    #[test]
+    fn adaptive_id_index_tracks_parser_replacement_and_non_light_trees() {
+        let mut doc = corpus();
+        let body = doc.document_body().unwrap().unwrap();
+        doc.prepare_adaptive_get_element_by_id().unwrap();
+
+        let fragment = doc.create_document_fragment().unwrap();
+        let detached = doc.create_element("p").unwrap();
+        doc.set_attribute(detached, "id", "outside").unwrap();
+        doc.append_child(fragment, detached).unwrap();
+        assert_eq!(doc.get_element_by_id("outside").unwrap(), None);
+
+        let host = doc.create_element("div").unwrap();
+        let shadow = doc.attach_shadow(host, ShadowRootMode::Open).unwrap();
+        let shadow_match = doc.create_element("p").unwrap();
+        doc.set_attribute(shadow_match, "id", "shadow-only")
+            .unwrap();
+        doc.append_child(shadow, shadow_match).unwrap();
+        doc.append_child(body, host).unwrap();
+        assert_eq!(doc.get_element_by_id("shadow-only").unwrap(), None);
+
+        doc.append_child(body, fragment).unwrap();
+        assert_eq!(doc.get_element_by_id("outside").unwrap(), Some(detached));
+        assert!(id_index_matches_traversal(&doc).unwrap());
+
+        doc.set_inner_html(
+            body,
+            "<main id='parsed'><p id='duplicate'></p><p id='duplicate'></p></main>",
+        )
+        .unwrap();
+        assert_eq!(doc.get_element_by_id("root").unwrap(), None);
+        assert!(doc.get_element_by_id("parsed").unwrap().is_some());
+        assert!(doc.get_element_by_id("duplicate").unwrap().is_some());
+        assert!(id_index_matches_traversal(&doc).unwrap());
+
+        doc.load_html("<!doctype html><html><body><section id='loaded'></section></body></html>")
+            .unwrap();
+        assert_eq!(doc.get_element_by_id("parsed").unwrap(), None);
+        assert!(doc.get_element_by_id("loaded").unwrap().is_some());
+        assert!(id_index_matches_traversal(&doc).unwrap());
+    }
+
+    #[test]
+    fn adaptive_id_index_tracks_cross_document_adoption() {
+        let mut source = Document::new();
+        source.ensure_html_skeleton().unwrap();
+        let source_body = source.document_body().unwrap().unwrap();
+        let moved = source.create_element("article").unwrap();
+        source.set_attribute(moved, "id", "moved").unwrap();
+        source.append_child(source_body, moved).unwrap();
+        source.prepare_adaptive_get_element_by_id().unwrap();
+
+        let mut target = corpus();
+        target.prepare_adaptive_get_element_by_id().unwrap();
+        let target_body = target.document_body().unwrap().unwrap();
+        let adopted = target.adopt_node(&mut source, moved).unwrap();
+        assert_eq!(source.get_element_by_id("moved").unwrap(), None);
+        assert_eq!(target.get_element_by_id("moved").unwrap(), None);
+        target.append_child(target_body, adopted).unwrap();
+        assert_eq!(target.get_element_by_id("moved").unwrap(), Some(adopted));
+        assert!(id_index_matches_traversal(&source).unwrap());
+        assert!(id_index_matches_traversal(&target).unwrap());
     }
 }

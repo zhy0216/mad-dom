@@ -85,6 +85,20 @@ impl Document {
                 node.data().pi_data().unwrap_or_default().1.to_string(),
             )),
             NodeType::Element | NodeType::DocumentFragment | NodeType::ShadowRoot => {
+                // Empty containers and the very common single-Text-child case
+                // need no traversal stack. The initial validated node already
+                // carries both terminal child links, so this preserves the
+                // same ownership/staleness checks while avoiding a Vec and
+                // repeated relation lookups for headings, labels, and spans.
+                let only_child = node.first_child();
+                if only_child == node.last_child() {
+                    let Some(child_id) = only_child else {
+                        return Ok(Some(String::new()));
+                    };
+                    if let NodeData::Text { data } = self.get(child_id)?.data() {
+                        return Ok(Some(data.clone()));
+                    }
+                }
                 let mut out = String::new();
                 self.collect_descendant_text(id, &mut out)?;
                 Ok(Some(out))
@@ -140,21 +154,49 @@ impl Document {
     /// Appends the data of every descendant `Text` node of `root` (in tree
     /// order) to `out`.
     ///
-    /// The walk is an iterative preorder traversal over the public navigation
-    /// API, so arbitrarily deep trees cannot overflow the call stack; `Text`
-    /// nodes contribute their data and every other node is descended into, so
-    /// comments and nested containers contribute nothing themselves.
+    /// The walk is an iterative preorder traversal over the arena relations,
+    /// so arbitrarily deep trees cannot overflow the call stack and no heap
+    /// traversal stack is needed. `Text` nodes contribute their data and every
+    /// other node is descended into, so comments and nested containers
+    /// contribute nothing themselves.
     fn collect_descendant_text(&self, root: NodeId, out: &mut String) -> Result<(), CoreError> {
-        let mut stack = vec![root];
-        while let Some(n) = stack.pop() {
-            match self.get(n)?.data() {
-                NodeData::Text { data } => out.push_str(data),
-                _ => {
-                    let children = self.children(n)?;
-                    for &child in children.iter().rev() {
-                        stack.push(child);
-                    }
+        let mut current = self.first_child(root)?;
+        while let Some(id) = current {
+            let node = self.get(id)?;
+            let descend = match node.data() {
+                NodeData::Text { data } => {
+                    out.push_str(data);
+                    false
                 }
+                _ => true,
+            };
+            if descend {
+                if let Some(child) = node.first_child() {
+                    current = Some(child);
+                    continue;
+                }
+            }
+            if let Some(sibling) = node.next_sibling() {
+                current = Some(sibling);
+                continue;
+            }
+
+            let mut ancestor = node.parent();
+            loop {
+                let Some(parent) = ancestor else {
+                    current = None;
+                    break;
+                };
+                if parent == root {
+                    current = None;
+                    break;
+                }
+                let parent_node = self.get(parent)?;
+                if let Some(sibling) = parent_node.next_sibling() {
+                    current = Some(sibling);
+                    break;
+                }
+                ancestor = parent_node.parent();
             }
         }
         Ok(())

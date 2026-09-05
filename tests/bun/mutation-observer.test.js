@@ -637,6 +637,58 @@ describe.skipIf(!nativeAvailable)("T41 batching, ordering and microtask delivery
       win.destroy();
     }
   });
+
+  test("re-entrant native scheduling cannot expose or restore stale facade epochs", () => {
+    const win = new Window();
+    const originalQueueMicrotask = globalThis.queueMicrotask;
+    try {
+      const element = win.document.createElement("div");
+      win.document.body.appendChild(element);
+      element.setAttribute("class", "before");
+      expect(element.className).toBe("before");
+
+      let attributeSeen;
+      const attributeObserver = new win.MutationObserver(() => {
+        // The outer token mutation is already committed. Its local epoch must
+        // be visible before a hostile scheduler re-enters this getter.
+        attributeSeen = element.className;
+        attributeObserver.disconnect();
+        // A nested write advances the canonical epoch again. The outer call
+        // must return that newest value instead of restoring its older epoch.
+        element.setAttribute("class", "nested");
+      });
+      attributeObserver.observe(element, { attributes: true });
+
+      const parent = win.document.createElement("parent");
+      const outerChild = win.document.createElement("outer-child");
+      const nestedChild = win.document.createElement("nested-child");
+      win.document.body.appendChild(parent);
+      expect(parent.lastChild).toBeNull();
+
+      let childSeen;
+      const childObserver = new win.MutationObserver(() => {
+        childSeen = parent.lastChild;
+        childObserver.disconnect();
+        parent.appendChild(nestedChild);
+      });
+      childObserver.observe(parent, { childList: true });
+
+      // The public method is normally asynchronous. Replacing it with a
+      // synchronous callback exercises the native scheduler's re-entry safety
+      // without changing the ordinary MutationObserver timing contract.
+      globalThis.queueMicrotask = (callback) => callback();
+      element.setAttribute("class", "outer");
+      parent.appendChild(outerChild);
+
+      expect(attributeSeen).toBe("outer");
+      expect(element.className).toBe("nested");
+      expect(childSeen).toBe(outerChild);
+      expect(parent.lastChild).toBe(nestedChild);
+    } finally {
+      globalThis.queueMicrotask = originalQueueMicrotask;
+      win.destroy();
+    }
+  });
 });
 
 describe.skipIf(!nativeAvailable)("T41 lifecycle and errors", () => {

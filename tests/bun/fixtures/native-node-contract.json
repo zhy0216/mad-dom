@@ -65,7 +65,86 @@
     }
   },
   "optionalPerformance": {
+    "DocumentHandle": {
+      "epochView": {
+        "returns": "ArrayBuffer",
+        "behavior": "JS-owned 4-byte structural generation view; -2147483648 means destroyed; -1 permanently disables equality-based caching before ABA; transfer detaches this subscription and yields a stale non-shared copy",
+        "fallback": "the facade disables navigation memoization when absent"
+      },
+      "attributeEpochView": {
+        "returns": "ArrayBuffer",
+        "behavior": "JS-owned 4-byte attribute generation view with the same destroy/cache-disabled sentinels and detach/transfer contract",
+        "fallback": "the facade disables reflected-attribute caching when absent"
+      },
+      "facadeEpochView": {
+        "returns": "ArrayBuffer",
+        "behavior": "facade-local structural view published by token hot-write return values"
+      },
+      "facadeAttributeEpochView": {
+        "returns": "ArrayBuffer",
+        "behavior": "facade-local attribute view published by token hot-write return values"
+      },
+      "createElementToken": {
+        "returns": "number",
+        "behavior": "creates the same detached Core element as createElement without eagerly minting a NodeHandle"
+      },
+      "createElementTokenBatch": {
+        "returns": "number[]",
+        "behavior": "creates 1..4096 independent detached Core elements after one name validation"
+      },
+      "createElementTokenRange": {
+        "returns": "number",
+        "behavior": "creates 1..4096 independent detached Core elements and returns the first token of their contiguous registered range"
+      },
+      "createTextToken": {
+        "returns": "number",
+        "behavior": "creates the same detached Core text node as createText without eagerly minting a NodeHandle"
+      },
+      "materializeNodeToken": {
+        "returns": "NodeHandle",
+        "behavior": "resolves a document-scoped token through the canonical weak wrapper cache"
+      },
+      "nodeToken": {
+        "returns": "number",
+        "behavior": "registers an already-materialized same-document node for raw-to-facade identity convergence"
+      },
+      "setAttributeToken": {
+        "returns": "void",
+        "behavior": "delegates an attribute write for a document-scoped token to Core"
+      },
+      "setAttributeTokenLocal": {
+        "returns": "number",
+        "behavior": "same Core write while returning the canonical attribute epoch for facade-local publication"
+      },
+      "appendChildToken": {
+        "returns": "void",
+        "behavior": "delegates an append of two document-scoped tokens to Core"
+      },
+      "appendChildTokenLocal": {
+        "returns": "number",
+        "behavior": "same Core append while returning the canonical structural epoch for facade-local publication"
+      },
+      "preorderTokenSnapshot": {
+        "returns": "Uint32Array",
+        "behavior": "up to 65,535 preorder token/classification/depth pairs prefixed by a continuation-depth header (zero when complete)"
+      }
+    },
     "NodeHandle": {
+      "idAttribute": {
+        "returns": "string | null",
+        "behavior": "fixed-name id attribute read; null when absent",
+        "fallback": "the facade uses getAttribute with older native packages"
+      },
+      "classAttribute": {
+        "returns": "string | null",
+        "behavior": "fixed-name class attribute read; null when absent",
+        "fallback": "the facade uses getAttribute with older native packages"
+      },
+      "idClassAttributes": {
+        "returns": "[string | null, string | null]",
+        "behavior": "coherent fixed-name id and class attribute reads in one document access",
+        "fallback": "the facade uses the separate fixed-name readers, then getAttribute with older native packages"
+      },
       "firstChildPair": {
         "returns": "Array<NodeHandle | null>",
         "identity": "stable per element",

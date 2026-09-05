@@ -208,6 +208,30 @@ fn remove_attribute_is_no_op_for_unknown() {
     assert_eq!(ordered(&doc, el), vec![("a".to_string(), "1".to_string())]);
 }
 
+#[test]
+fn attribute_generation_tracks_successful_writes_only() {
+    let mut doc = Document::new();
+    let el = element(&mut doc);
+    let initial = doc.attribute_generation();
+
+    doc.set_attribute(el, "class", "a").unwrap();
+    assert_eq!(doc.attribute_generation(), initial + 1);
+    doc.set_attribute(el, "class", "a").unwrap();
+    assert_eq!(
+        doc.attribute_generation(),
+        initial + 2,
+        "an observable set call invalidates derived caches even when the value repeats"
+    );
+    assert!(!doc.remove_attribute(el, "missing").unwrap());
+    assert_eq!(doc.attribute_generation(), initial + 2);
+    assert!(doc.remove_attribute(el, "class").unwrap());
+    assert_eq!(doc.attribute_generation(), initial + 3);
+
+    let before_error = doc.attribute_generation();
+    assert!(doc.set_attribute(el, "bad name", "x").is_err());
+    assert_eq!(doc.attribute_generation(), before_error);
+}
+
 // ---- invalid names ----
 
 #[test]

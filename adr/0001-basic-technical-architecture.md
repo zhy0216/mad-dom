@@ -1,6 +1,6 @@
 # ADR-0001：基础技术架构
 
-- 状态：已接受
+- 状态：已接受（第 1、3 节由 [ADR-0007](./0007-facade-native-boundary-performance.md) 修订）
 - 日期：2026-08-27
 
 ## 背景
@@ -33,7 +33,8 @@ Rust DOM Core
 - **原生绑定层** 只负责值转换、对象包装、异常映射、GC 生命周期衔接和对象身份缓存，不承载 DOM 业务逻辑。
 - **Rust DOM Core** 负责解析、树结构、属性、节点变更、选择器匹配和序列化；核心层不依赖 Bun 或 JavaScriptCore，因此可以独立测试。
 
-DOM 状态只在 Rust Core 中保存，不在 JavaScript 侧维护第二份镜像树。
+DOM 权威状态只在 Rust Core 中保存，不在 JavaScript 侧维护第二份镜像树。Facade
+可以保存由 Core 代际验证的派生缓存，边界见 ADR-0007。
 
 ### 2. 运行时和语言
 
@@ -54,8 +55,11 @@ NodeId = { slot, generation }
 - 节点删除并复用槽位时递增 `generation`，从而识别悬空句柄。
 - 父节点、子节点和兄弟节点关系均保存为句柄，不保存跨 FFI 的裸指针。
 - 所有树变更必须通过统一的 mutation API 完成，并在一次操作内维护父子关系、文档归属和索引等不变量。
-- JavaScript 节点包装对象保存“文档所有权引用 + `NodeId`”。只要包装对象仍可达，其所属文档及 arena 就必须保持存活。
-- 同一文档、同一 `NodeId` 应返回稳定的 JavaScript 对象身份；绑定层负责弱引用包装缓存。
+- JavaScript 节点包装对象保存“文档所有权引用 + 原生 `NodeHandle`”，或 ADR-0007
+  定义的文档作用域不透明令牌；Core `NodeId` 不以原始值跨边界。只要包装对象仍
+  可达，其所属文档及 arena 就必须保持存活。
+- 同一文档、同一 `NodeId` 应返回稳定的 JavaScript 对象身份；绑定层弱引用缓存与
+  facade 的令牌身份表共同维持该不变量（ADR-0007）。
 - 跨文档移动、克隆和收养节点必须通过显式操作完成，不能直接复用另一个 arena 的句柄。
 
 ### 4. 核心模块边界

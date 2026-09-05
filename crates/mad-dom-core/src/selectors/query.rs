@@ -16,8 +16,9 @@
 //! `Vec<NodeId>` during one traversal, so the result is a *static snapshot*:
 //! a later mutation of the tree never changes an already-returned result (the
 //! WHATWG static `NodeList` semantics). General selector matching does not use
-//! the T32 live-collection index; only document-scoped plain `#id` reads reuse
-//! `getElementById` and its optional, mutation-maintained id index.
+//! the T32 full live-collection index; document-scoped plain `#id` reads and
+//! `getElementById` instead share an adaptive, mutation-maintained id-only
+//! index.
 //!
 //! # Scopes and receivers
 //!
@@ -69,6 +70,27 @@ fn simple_ascii_id_selector(selector: &str) -> Option<&str> {
 }
 
 impl Document {
+    /// Prepares the adaptive id-only index for a document-scoped plain `#id`
+    /// selector. Other selector shapes are left untouched and continue through
+    /// the standards parser. Keeping recognition here makes the preparation
+    /// rule identical to the actual simple-id fast path below.
+    pub fn prepare_adaptive_document_query_selector(
+        &mut self,
+        selector: &str,
+    ) -> Result<(), CoreError> {
+        if simple_ascii_id_selector(selector).is_some() {
+            self.ensure_id_query_index_enabled()?;
+        }
+        Ok(())
+    }
+
+    /// Prepares the same id-only index for `getElementById`. This reads only a
+    /// cached document root and therefore never materializes the implied HTML
+    /// skeleton of a clean document.
+    pub fn prepare_adaptive_get_element_by_id(&mut self) -> Result<(), CoreError> {
+        self.ensure_id_query_index_enabled()
+    }
+
     /// Returns the first descendant element of `scope`, in document order,
     /// that matches `selector`, or `None` when there is none.
     ///
@@ -155,10 +177,10 @@ impl Document {
     ///
     /// The search covers the descendants of the document root; a document that
     /// has not allocated a root yet returns `None`. This is a pure read and
-    /// never materializes the implied HTML skeleton. With the T32 query index
-    /// enabled the lookup is served from the id index (O(key size) instead of
-    /// a traversal) and returns the same first document-order match; with it
-    /// disabled, from a document-order walk.
+    /// never materializes the implied HTML skeleton. Once either the adaptive
+    /// id-only or full T32 index is prepared, the lookup is served from its id
+    /// map (`O(key size)` instead of a traversal) and returns the same first
+    /// document-order match; otherwise it uses a document-order walk.
     ///
     /// # Errors
     ///
@@ -166,7 +188,7 @@ impl Document {
     /// was corrupted); the public API never produces this, but the walk
     /// propagates it rather than panicking.
     pub fn get_element_by_id(&self, id: &str) -> Result<Option<NodeId>, CoreError> {
-        if self.query_index.is_enabled() {
+        if self.query_index.has_id_index() {
             let Some(root) = self.cached_document_root() else {
                 return Ok(None);
             };

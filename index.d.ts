@@ -2003,12 +2003,12 @@ export interface NodeList<T extends Node = Node> {
 }
 
 /** A live `HTMLCollection` of elements (T32). It is bound to one scope and one
- * query key (`getElementsByTagName` / `getElementsByClassName`) and re-read
- * from Core on every access, so an existing collection reflects later tree and
- * attribute changes immediately (see `live-collections.js`). Numeric index
- * reads and the named getter mirror the WHATWG `HTMLCollection` surface. */
+ * query key (`getElementsByTagName` / `getElementsByClassName`) and validated
+ * against native mutation generations, so an existing collection reflects
+ * later tree and attribute changes immediately (see `live-collections.js`).
+ * Numeric index reads and the named getter mirror the WHATWG surface. */
 export interface HTMLCollection<T extends Element = Element> {
-  /** Live number of matched elements; re-read from Core on every access. */
+  /** Live number of matched elements. */
   readonly length: number;
   /** Returns the element at `index`, or `null` past the end (WHATWG `HTMLCollection.item`). */
   item(index: number): T | null;
@@ -2022,8 +2022,10 @@ export interface HTMLCollection<T extends Element = Element> {
 //
 // Low-level binding entry, not the public DOM facade. Every handle object is
 // opaque: the underlying Core NodeId and document ownership never cross the
-// native boundary as primitives. Methods throw TypeError / Error (with a
-// stable `code`) on misuse; the exception taxonomy is T21.
+// native boundary. Optional performance methods may exchange document-scoped
+// numeric tokens, which cannot be interpreted without their DocumentHandle.
+// Methods throw TypeError / Error (with a stable `code`) on misuse; the
+// exception taxonomy is T21.
 
 export declare function isNativeAvailable(): boolean;
 export declare function createDocument(): DocumentHandle;
@@ -2038,6 +2040,42 @@ export interface WindowHandle {
 
 /** Opaque wrapper for a live Core document. */
 export interface DocumentHandle {
+  /**
+   * Optional JS-owned structural-generation view used by facade navigation caches.
+   * `-2147483648` means destroyed; `-1` permanently disables equality-based caching.
+   */
+  epochView?(): ArrayBuffer;
+  /**
+   * Optional JS-owned attribute-generation view used by facade reflected-value caches.
+   * `-2147483648` means destroyed; `-1` permanently disables equality-based caching.
+   */
+  attributeEpochView?(): ArrayBuffer;
+  /** Internal facade-local structural view paired with token hot-write epoch returns. */
+  facadeEpochView?(): ArrayBuffer;
+  /** Internal facade-local attribute view paired with token hot-write epoch returns. */
+  facadeAttributeEpochView?(): ArrayBuffer;
+  /** Optional lazy-node companion to `createElement`. */
+  createElementToken?(name: string): number;
+  /** Optional amortized lazy-node element creation. */
+  createElementTokenBatch?(name: string, count: number): number[];
+  /** Optional contiguous-range form of lazy-node element creation. */
+  createElementTokenRange?(name: string, count: number): number;
+  /** Optional lazy-node companion to `createText`. */
+  createTextToken?(data: string): number;
+  /** Resolves a document-scoped lazy token to its canonical native handle. */
+  materializeNodeToken?(token: number): NodeHandle;
+  /** Resolves a pre-token raw node wrapper into the document token registry. */
+  nodeToken?(node: NodeHandle): number;
+  /** Optional token-based attribute write. */
+  setAttributeToken?(token: number, name: string, value: string): void;
+  /** Internal token write returning the canonical attribute epoch. */
+  setAttributeTokenLocal?(token: number, name: string, value: string): number;
+  /** Optional token-based append for two nodes owned by this document. */
+  appendChildToken?(parent: number, child: number): void;
+  /** Internal token append returning the canonical structural epoch. */
+  appendChildTokenLocal?(parent: number, child: number): number;
+  /** Optional bounded pre-order snapshot: continuation-depth header, then `(token, descriptor/depth)` pairs. */
+  preorderTokenSnapshot?(rootToken: number): Uint32Array;
   createElement(name: string): NodeHandle;
   createText(data: string): NodeHandle;
   createComment(data: string): NodeHandle;
@@ -2089,6 +2127,14 @@ export interface DocumentHandle {
 
 /** Opaque wrapper for a Core node (document ownership reference + NodeId). */
 export interface NodeHandle {
+  /** Internal immutable document-scoped token stamped by current bindings. */
+  readonly madDomToken?: number;
+  /** Internal immutable WHATWG node-type stamp. */
+  readonly madDomType?: number;
+  /** Internal immutable element local-name stamp. */
+  readonly madDomName?: string;
+  /** Internal immutable element namespace stamp. */
+  readonly madDomNamespace?: string;
   nodeType(): number;
   nodeName(): string;
   parentNode(): NodeHandle | null;
@@ -2101,6 +2147,11 @@ export interface NodeHandle {
   /** Optional bounded navigation prefetch: at most 32 following siblings, with a trailing null only when the native walk reached the chain end. */
   nextSiblingChunk?(): Array<NodeHandle | null>;
   childNodes(): NodeHandle[];
+  /** Optional fixed-name reflected-attribute reads used by the facade cache. */
+  idAttribute?(): string | null;
+  classAttribute?(): string | null;
+  /** Optional bundled cold fill for the facade's id/class cache. */
+  idClassAttributes?(): [id: string | null, classValue: string | null];
   /** T25E native attribute read (`getAttribute`), `null` when absent. */
   getAttribute(name: string): string | null;
   /** T25E native attribute write (`setAttribute`). */

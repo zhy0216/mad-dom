@@ -1,20 +1,21 @@
 // `Window` facade base module (T22B).
 //
-// The facade is a thin, state-free wrapper over the native binding
+// The facade is a thin wrapper over the native binding
 // (crates/mad-dom-bun, T19/T22A): it does argument shaping, wraps opaque
 // native handles into facade objects and forwards lifecycle calls. It keeps
 // **no second DOM state** — the Rust arena is the only authoritative tree and
-// every wrapper below it stays exactly as long as its native handle.
+// generation-guarded derived caches never become an independent source of
+// DOM truth.
 //
-// # The unique conversion entry (`ctx.wrap`)
+// # The wrapper conversion family
 //
-// Every facade wrapper is produced by `ctx.wrap`, the single native handle →
-// facade wrapper conversion point required by js/facade/CONTRACT.md. It
-// mirrors the native per-document weak wrapper cache (T20): one facade object
-// per live native handle, so `window.document === window.document` holds and
-// cross-window documents never share identity. Facade wrappers are cached
-// weakly (WeakMap keyed by the native handle), so the facade never pins a
-// document either.
+// Facade wrappers are produced by `ctx.wrap` for native handles,
+// `ctx.wrapLazyNode` for general document tokens, or the creation-only
+// `ctx.wrapFreshTextNode` specialization. Native handles use the original
+// WeakMap cache; all node routes converge through a per-document token map, so
+// lazy and materialized routes return one facade object. The document-state
+// island is reachable through a weak key and does not keep an otherwise
+// unreachable document alive.
 //
 // # Handle-type registration
 //
@@ -29,13 +30,15 @@
 // js/facade/window.js builds the context and hands it to the facade registry
 // (extensions/index.js) exactly once at facade initialization:
 //
-//   - `ctx.wrap(nativeHandle)` — the unique conversion entry above;
+//   - `ctx.wrap(nativeHandle)` / `ctx.wrapLazyNode(...)` /
+//     `ctx.wrapFreshTextNode(...)` — the conversion family above;
 //   - `ctx.defineMethod(target, name, fn, descriptor)` /
 //     `ctx.defineAccessor(target, name, get, set, descriptor)` — the only
 //     sanctioned property-definition helpers for extension installers;
 //   - `ctx.documentContext` — frozen, read-only access to the document
 //     ownership reference a wrapper carries (`handleOf(wrapper)`); the native
-//     handle is opaque, a Core `NodeId` never crosses this seam;
+//     handle is opaque; optional document-scoped tokens cross as primitive
+//     values, while a Core `NodeId` never leaves the binding;
 //   - `ctx.registerHandleType(name, makeWrapper)` — wrapper-type registry.
 //
 // The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
@@ -44,8 +47,136 @@
 import { loadNative } from "../native-loader.js";
 
 import { Document } from "./document.js";
-import { DOC_STATE_SLOT, VALID_EPOCH_SLOT } from "./extensions/classes.js";
+import {
+  createFreshLazyTextWrapper,
+  createLazyNodeWrapper,
+  nodeHandleOf,
+  nodeInternalsOf,
+  releaseNodeDocumentState,
+  setNodeDocumentState,
+  setNodeHandle,
+} from "./extensions/classes.js";
 import { installExtensions } from "./extensions/index.js";
+
+// Keep facade-private registries private even if application code later
+// replaces Map/WeakMap prototype methods in the same realm.
+const MapConstructor = Map;
+const SetConstructor = Set;
+const Int32ArrayConstructor = Int32Array;
+const weakMapGet = Function.prototype.call.bind(WeakMap.prototype.get);
+const weakMapSet = Function.prototype.call.bind(WeakMap.prototype.set);
+const mapClear = Function.prototype.call.bind(Map.prototype.clear);
+const mapGet = Function.prototype.call.bind(Map.prototype.get);
+const mapHas = Function.prototype.call.bind(Map.prototype.has);
+const mapSet = Function.prototype.call.bind(Map.prototype.set);
+const setAdd = Function.prototype.call.bind(Set.prototype.add);
+const setClear = Function.prototype.call.bind(Set.prototype.clear);
+const bindFunction = Function.prototype.call.bind(Function.prototype.bind);
+const functionCall = Function.prototype.call;
+const objectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+const objectGetPrototypeOf = Object.getPrototypeOf;
+const objectHasOwn = Object.hasOwn;
+
+// Optional native performance entries are additive across platform-package
+// versions. Resolve only direct prototype data methods: an application-owned
+// Object.prototype property must never masquerade as a capability on an older
+// binding. Tables are built once per document (and lazily once for NodeHandle)
+// so the hot path does not repeat descriptor inspection.
+function ownNativeMethod(prototype, name) {
+  const descriptor = prototype === null
+    ? undefined
+    : objectGetOwnPropertyDescriptor(prototype, name);
+  return descriptor !== undefined &&
+      objectHasOwn(descriptor, "value") &&
+      typeof descriptor.value === "function"
+    ? descriptor.value
+    : undefined;
+}
+
+function ownNativeStamp(handle, name) {
+  const descriptor = objectGetOwnPropertyDescriptor(handle, name);
+  return descriptor !== undefined && objectHasOwn(descriptor, "value")
+    ? descriptor.value
+    : undefined;
+}
+
+function boundNativeMethod(prototype, name, receiver) {
+  const method = ownNativeMethod(prototype, name);
+  return method === undefined ? undefined : bindFunction(method, receiver);
+}
+
+function nativeMethodInvoker(prototype, name) {
+  const method = ownNativeMethod(prototype, name);
+  return method === undefined ? undefined : bindFunction(functionCall, method);
+}
+
+function documentNativeMethodsOf(handle) {
+  const prototype = objectGetPrototypeOf(handle);
+  return {
+    epochView: boundNativeMethod(prototype, "epochView", handle),
+    attributeEpochView: boundNativeMethod(prototype, "attributeEpochView", handle),
+    facadeEpochView: boundNativeMethod(prototype, "facadeEpochView", handle),
+    facadeAttributeEpochView: boundNativeMethod(
+      prototype,
+      "facadeAttributeEpochView",
+      handle,
+    ),
+    createElementToken: boundNativeMethod(prototype, "createElementToken", handle),
+    createElementTokenBatch: boundNativeMethod(
+      prototype,
+      "createElementTokenBatch",
+      handle,
+    ),
+    createElementTokenRange: boundNativeMethod(
+      prototype,
+      "createElementTokenRange",
+      handle,
+    ),
+    createTextToken: boundNativeMethod(prototype, "createTextToken", handle),
+    materializeNodeToken: boundNativeMethod(prototype, "materializeNodeToken", handle),
+    nodeToken: boundNativeMethod(prototype, "nodeToken", handle),
+    setAttributeToken: boundNativeMethod(prototype, "setAttributeToken", handle),
+    setAttributeTokenLocal: boundNativeMethod(
+      prototype,
+      "setAttributeTokenLocal",
+      handle,
+    ),
+    appendChildToken: boundNativeMethod(prototype, "appendChildToken", handle),
+    appendChildTokenLocal: boundNativeMethod(
+      prototype,
+      "appendChildTokenLocal",
+      handle,
+    ),
+    preorderTokenSnapshot: boundNativeMethod(
+      prototype,
+      "preorderTokenSnapshot",
+      handle,
+    ),
+    countElementsByTagName: boundNativeMethod(
+      prototype,
+      "countElementsByTagName",
+      handle,
+    ),
+    countElementsByClassName: boundNativeMethod(
+      prototype,
+      "countElementsByClassName",
+      handle,
+    ),
+  };
+}
+
+function nodeNativeMethodsOf(handle) {
+  const prototype = objectGetPrototypeOf(handle);
+  return {
+    firstChildPair: nativeMethodInvoker(prototype, "firstChildPair"),
+    nextSiblingChunk: nativeMethodInvoker(prototype, "nextSiblingChunk"),
+    idAttribute: nativeMethodInvoker(prototype, "idAttribute"),
+    classAttribute: nativeMethodInvoker(prototype, "classAttribute"),
+    idClassAttributes: nativeMethodInvoker(prototype, "idClassAttributes"),
+    countElementsByTagName: nativeMethodInvoker(prototype, "countElementsByTagName"),
+    countElementsByClassName: nativeMethodInvoker(prototype, "countElementsByClassName"),
+  };
+}
 
 export const seam = Object.freeze({
   id: "facade/window",
@@ -62,17 +193,21 @@ export const seam = Object.freeze({
 // with a stable `MAD_DOM_UNSUPPORTED_PLATFORM` / `MAD_DOM_ABI_MISMATCH` /
 // `MAD_DOM_NATIVE_NOT_FOUND` error (ADR-0005 §6, §8, §9).
 
-// --- The unique conversion entry -----------------------------------------
+// --- Native-handle conversion and token identity convergence --------------
 
 // Native handle behind each facade wrapper (reverse of the wrap cache below).
 // Used by `ctx.documentContext.handleOf` so extensions can read the document
 // ownership reference a wrapper carries without touching private fields.
 const WRAPPER_TO_HANDLE = new WeakMap();
+const getWrapperHandle = WRAPPER_TO_HANDLE.get.bind(WRAPPER_TO_HANDLE);
+const setWrapperHandle = WRAPPER_TO_HANDLE.set.bind(WRAPPER_TO_HANDLE);
 
 // Facade wrapper cache: native handle → facade wrapper. Weak on the native
 // handle, so a facade wrapper never keeps its document alive; identity simply
 // mirrors the native per-document weak cache (T20).
 const WRAP_CACHE = new WeakMap();
+const getCachedWrapper = WRAP_CACHE.get.bind(WRAP_CACHE);
+const setCachedWrapper = WRAP_CACHE.set.bind(WRAP_CACHE);
 
 // Native handle type → facade wrapper factory, keyed by the native class name
 // (`WindowHandle`, `DocumentHandle`, …). Extensions add entries through
@@ -83,39 +218,76 @@ const HANDLE_TYPES = new Map();
 //
 // Each facade-wrapped document owns a state object:
 //
-//   epoch — an `Int32Array` over the native document's structural epoch slot
-//           (`DocumentHandle.epochView()`): the binding bumps the slot on
-//           every call that changed the tree relations, so the navigation
-//           getters (extensions/node.js) can validate their memoized reads
-//           with a plain typed-array load — no FFI. `null` when the native
-//           binding does not carry the epoch surface; the memo then stays
-//           off and every read crosses into native as before.
+//   epoch — an `Int32Array` over a JS-owned structural-generation buffer
+//           subscribed through `DocumentHandle.epochView()`: the binding
+//           updates live attached buffers after every call that changed tree
+//           relations, so navigation getters can validate memoized reads with
+//           a plain typed-array load — no FFI. `null` on older bindings, where
+//           the memo stays off and every read crosses into native as before.
 //
-//   pinned — a strong `Set` of facade wrappers, keyed into
-//           this WeakMap by the document's native handle. The weak key keeps
-//           the native binding's weak wrapper cache authoritative (a released
-//           document still releases everything — the T47 lifecycle test), but
-//           *while the document's native handle is reachable* every wrapper
-//           minted under it stays alive. That stability is what lets the
-//           navigation memo survive garbage collection: a tree walk over an
-//           unchanged document re-reads memoized wrappers instead of
-//           re-minting every node, which is the difference between native-
-//           speed traversal and per-node FFI churn. Memory is bounded by the
-//           document's own node count — the same order happy-dom's plain JS
-//           nodes occupy.
+//   pinned — legacy-binding fallback set for wrappers whose native handles do
+//           not carry document tokens. Current bindings retain canonical
+//           wrappers in `wrappersByToken` below instead.
+//
+//   wrappersByToken — canonical facade identity for every document-scoped
+//           primitive token, including parsed/query nodes stamped by native.
+//           It also keeps navigation memos alive while the document is
+//           reachable. A later handle materialization converges on the same
+//           wrapper rather than minting a duplicate facade object.
 const DOC_STATES = new WeakMap();
+const getDocState = DOC_STATES.get.bind(DOC_STATES);
+const setDocState = DOC_STATES.set.bind(DOC_STATES);
 
 function docStateOf(docHandle) {
-  let state = DOC_STATES.get(docHandle);
+  let state = getDocState(docHandle);
   if (state === undefined) {
-    state = { epoch: null, pinned: new Set() };
+    const elementTokenPools = new MapConstructor();
+    const wrappersByToken = new MapConstructor();
+    const pinned = new SetConstructor();
+    const nativeMethods = documentNativeMethodsOf(docHandle);
+    let nodeNativeMethods = null;
+    state = {
+      documentHandle: docHandle,
+      attributeEpoch: null,
+      clearElementTokenPools: () => mapClear(elementTokenPools),
+      clearPinned: () => setClear(pinned),
+      clearWrappersByToken: () => mapClear(wrappersByToken),
+      getElementTokenPool: (name) => mapGet(elementTokenPools, name),
+      getWrapperByToken: (token) => mapGet(wrappersByToken, token),
+      epoch: null,
+      nativeMethods,
+      nodeNativeMethodsOf: (handle) => {
+        nodeNativeMethods ??= nodeNativeMethodsOf(handle);
+        return nodeNativeMethods;
+      },
+      pinLegacyWrapper: (wrapper) => setAdd(pinned, wrapper),
+      setElementTokenPool: (name, pool) => mapSet(elementTokenPools, name, pool),
+      setWrapperByToken: (token, wrapper) => mapSet(wrappersByToken, token, wrapper),
+      snapshotAttemptEpoch: null,
+      snapshotPartitionRoots: null,
+      destroyed: false,
+    };
     try {
-      state.epoch = new Int32Array(docHandle.epochView());
+      const epochView = nativeMethods.facadeEpochView ?? nativeMethods.epochView;
+      if (epochView !== undefined) {
+        state.epoch = new Int32ArrayConstructor(epochView());
+      }
     } catch {
       // Older native bindings without the epoch surface: the navigation memo
       // stays disabled, every read crosses into native as before.
     }
-    DOC_STATES.set(docHandle, state);
+    try {
+      const attributeEpochView =
+        nativeMethods.facadeAttributeEpochView ?? nativeMethods.attributeEpochView;
+      if (attributeEpochView !== undefined) {
+        state.attributeEpoch = new Int32ArrayConstructor(
+          attributeEpochView(),
+        );
+      }
+    } catch {
+      // Mixed-version fallback: attribute reads remain direct native calls.
+    }
+    setDocState(docHandle, state);
   }
   return state;
 }
@@ -124,14 +296,20 @@ function docStateOf(docHandle) {
 // is passed by callers that already know the wrapper's document (navigation
 // getters, the custom-element mint path); resolving it from the handle costs
 // an `ownerDocument()` crossing and only happens on a cold mint.
-function pinWrapper(nativeHandle, wrapper, docState) {
+function pinWrapper(nativeHandle, wrapper, docState, resolvedToken) {
   const state = docState ?? docStateOf(nativeHandle.ownerDocument());
-  wrapper[DOC_STATE_SLOT] = state;
-  wrapper[VALID_EPOCH_SLOT] = state.epoch === null ? null : state.epoch[0];
-  // The wrapper owns `nativeHandle` through HANDLE_SLOT, so retaining the
-  // wrapper is sufficient to retain both halves of the identity pair.  A Set
-  // avoids storing the same relationship a second time as Map key + value.
-  state.pinned.add(wrapper);
+  const token = resolvedToken ?? ownNativeStamp(nativeHandle, "madDomToken");
+  setNodeDocumentState(wrapper, state);
+  const internals = nodeInternalsOf(wrapper);
+  internals.validEpoch = state.epoch === null ? null : state.epoch[0];
+  if (token !== undefined) {
+    internals.token = token;
+    state.setWrapperByToken(token, wrapper);
+  } else {
+    // Mixed-version fallback: an older native binding has no primitive token,
+    // so retain the wrapper in the legacy set.
+    state.pinLegacyWrapper(wrapper);
+  }
 }
 
 function registerHandleType(constructorName, makeWrapper) {
@@ -141,10 +319,10 @@ function registerHandleType(constructorName, makeWrapper) {
   if (typeof makeWrapper !== "function") {
     throw new TypeError("registerHandleType requires a wrapper factory function");
   }
-  if (HANDLE_TYPES.has(constructorName)) {
+  if (mapHas(HANDLE_TYPES, constructorName)) {
     throw new Error(`mad-dom facade: handle type "${constructorName}" is already registered`);
   }
-  HANDLE_TYPES.set(constructorName, makeWrapper);
+  mapSet(HANDLE_TYPES, constructorName, makeWrapper);
 }
 
 // `docState` (optional, node wrappers only): the already-resolved per-
@@ -157,11 +335,35 @@ function registerHandleType(constructorName, makeWrapper) {
 function wrap(nativeHandle, docState, freshNode = false) {
   if (nativeHandle === null || nativeHandle === undefined) return nativeHandle;
   if (!freshNode) {
-    const cached = WRAP_CACHE.get(nativeHandle);
+    const cached = getCachedWrapper(nativeHandle);
     if (cached) return cached;
   }
   const typeName = freshNode ? "NodeHandle" : nativeHandle.constructor?.name;
-  const makeWrapper = HANDLE_TYPES.get(typeName);
+  let nodeToken;
+  if (typeName === "NodeHandle") {
+    const state = docState ?? docStateOf(nativeHandle.ownerDocument());
+    nodeToken = ownNativeStamp(nativeHandle, "madDomToken");
+    // A raw NodeHandle may predate the facade's epochView call that enables
+    // token stamping. Resolve that one legacy handle explicitly so snapshots,
+    // later queries and the raw wrapper all converge on one facade identity.
+    const nodeTokenMethod = state.nativeMethods.nodeToken;
+    if (nodeToken === undefined && nodeTokenMethod !== undefined) {
+      nodeToken = nodeTokenMethod(nativeHandle);
+    }
+    const existing = nodeToken === undefined
+      ? undefined
+      : state.getWrapperByToken(nodeToken);
+    if (existing !== undefined) {
+      setNodeHandle(existing, nativeHandle);
+      nodeInternalsOf(existing).validEpoch =
+        state.epoch === null ? null : state.epoch[0];
+      setCachedWrapper(nativeHandle, existing);
+      setWrapperHandle(existing, nativeHandle);
+      return existing;
+    }
+    docState = state;
+  }
+  const makeWrapper = mapGet(HANDLE_TYPES, typeName);
   if (typeof makeWrapper !== "function") {
     throw new TypeError(
       `mad-dom facade: no wrapper registered for native handle type "${
@@ -170,25 +372,80 @@ function wrap(nativeHandle, docState, freshNode = false) {
     );
   }
   const wrapper = makeWrapper(nativeHandle);
-  WRAP_CACHE.set(nativeHandle, wrapper);
-  WRAPPER_TO_HANDLE.set(wrapper, nativeHandle);
+  setCachedWrapper(nativeHandle, wrapper);
+  setWrapperHandle(wrapper, nativeHandle);
   if (typeName === "NodeHandle") {
-    pinWrapper(nativeHandle, wrapper, docState);
+    pinWrapper(nativeHandle, wrapper, docState, nodeToken);
   } else if (typeName === "DocumentHandle") {
-    wrapper[DOC_STATE_SLOT] = docStateOf(nativeHandle);
+    setNodeDocumentState(wrapper, docStateOf(nativeHandle));
   }
+  return wrapper;
+}
+
+// Primitive-token counterpart to `wrap`. No Node-API class object exists yet:
+// immutable classification arrives from the creation/snapshot call and every
+// other piece of state remains in Core. A later unsupported operation
+// materializes the canonical native handle via `nodeHandleOf`, while
+// token-based hot operations stay allocation-free. Fresh creation calls pass
+// `knownFresh`; snapshot calls may carry the equivalent native proof bit, so
+// neither pays an impossible identity-map probe.
+function wrapLazyNode(
+  documentHandle,
+  token,
+  nodeType,
+  name,
+  namespace,
+  docState,
+  initialMemo,
+  validEpoch,
+  snapshotDescriptor,
+  knownFresh = false,
+) {
+  const state = docState ?? docStateOf(documentHandle);
+  const currentEpoch = validEpoch ?? (state.epoch === null ? null : state.epoch[0]);
+  // A newly created token, or one marked fresh by the current native
+  // snapshot, has never crossed into JavaScript and therefore cannot already
+  // have a canonical facade wrapper; every older/pre-exposed token probes.
+  const existing = knownFresh ? undefined : state.getWrapperByToken(token);
+  if (existing !== undefined) {
+    const internals = nodeInternalsOf(existing);
+    internals.validEpoch = currentEpoch;
+    if (initialMemo !== undefined) internals.memo = initialMemo;
+    return existing;
+  }
+  const wrapper = createLazyNodeWrapper(
+    nodeType,
+    name,
+    namespace,
+    state,
+    token,
+    currentEpoch,
+    initialMemo,
+    snapshotDescriptor,
+  );
+  state.setWrapperByToken(token, wrapper);
+  return wrapper;
+}
+
+// Creation-only specialization of the primitive-token conversion path. The
+// native call proves this is a fresh Text node, so no identity probe or generic
+// kind dispatch is needed; canonical registration still uses the same
+// document token table consumed by `wrap` and `wrapLazyNode`.
+function wrapFreshTextNode(state, token, validEpoch) {
+  const wrapper = createFreshLazyTextWrapper(state, token, validEpoch);
+  state.setWrapperByToken(token, wrapper);
   return wrapper;
 }
 
 // Registers a wrapper that was constructed outside `wrap` (the T48A
 // `new DefinedClass()` mint path) in the same two caches, so a later `wrap`
 // of the same native handle hands back that exact object. `docHandle` (the
-// mint slot's native document handle) resolves the pin target without an
-// extra crossing.
+// private mint record's native document handle) resolves the pin target
+// without an extra crossing.
 function registerWrap(nativeHandle, wrapper, docHandle) {
   if (nativeHandle === null || nativeHandle === undefined) return;
-  WRAP_CACHE.set(nativeHandle, wrapper);
-  WRAPPER_TO_HANDLE.set(wrapper, nativeHandle);
+  setCachedWrapper(nativeHandle, wrapper);
+  setWrapperHandle(wrapper, nativeHandle);
   if (docHandle !== undefined) {
     pinWrapper(nativeHandle, wrapper, docStateOf(docHandle));
   }
@@ -221,12 +478,47 @@ const documentContext = Object.freeze({
   // The returned native handle is opaque — a Core `NodeId` never crosses this
   // seam as a primitive value (CONTRACT.md / native-window-document contract).
   handleOf(wrapper) {
-    return WRAPPER_TO_HANDLE.get(wrapper) ?? null;
+    const handle = getWrapperHandle(wrapper);
+    if (handle !== undefined) return handle;
+    const internals = nodeInternalsOf(wrapper);
+    if (internals !== undefined) {
+      const state = internals.documentState;
+      const token = internals.token;
+      if (
+        token !== undefined &&
+        (state?.destroyed === true || state?.getWrapperByToken(token) === wrapper)
+      ) {
+        return nodeHandleOf(wrapper) ?? null;
+      }
+    }
+    return null;
+  },
+  tokenOf(wrapper) {
+    const internals = nodeInternalsOf(wrapper);
+    if (internals === undefined) return undefined;
+    const state = internals.documentState;
+    const token = internals.token;
+    return token !== undefined &&
+      (state?.destroyed === true || state?.getWrapperByToken(token) === wrapper)
+      ? token
+      : undefined;
+  },
+  nodeDocumentOf(wrapper) {
+    const internals = nodeInternalsOf(wrapper);
+    if (internals === undefined) return undefined;
+    const state = internals.documentState;
+    const token = internals.token;
+    return token !== undefined &&
+      (state?.destroyed === true || state?.getWrapperByToken(token) === wrapper)
+      ? state.documentHandle
+      : undefined;
   },
 });
 
 const ctx = Object.freeze({
   wrap,
+  wrapFreshTextNode,
+  wrapLazyNode,
   defineMethod,
   defineAccessor,
   documentContext,
@@ -256,6 +548,7 @@ function isWindowHandle(handle) {
 // Native handle behind each Window facade (the document's ownership lives in
 // the native window handle itself).
 const WIN_HANDLES = new WeakMap();
+const WIN_DOCUMENT_HANDLES = new WeakMap();
 
 // Per-window viewport state (happy-dom Window constructor parity: `width` /
 // `height` options (and the deprecated `innerWidth` / `innerHeight` aliases)
@@ -305,7 +598,7 @@ function computeWindowSettings(options) {
 // none). Not part of the module export surface — the public `window.js` shape
 // is pinned by the T22B export test.
 function windowSettings(windowFacade) {
-  return WINDOW_SETTINGS.get(windowFacade) ?? computeWindowSettings({});
+  return weakMapGet(WINDOW_SETTINGS, windowFacade) ?? computeWindowSettings({});
 }
 
 // Per-window constructor options accessor exposed through the facade `ctx` for
@@ -313,7 +606,7 @@ function windowSettings(windowFacade) {
 // exact options object the window was constructed with, or an empty object for
 // the native-handle construction path.
 function windowOptions(windowFacade) {
-  return WINDOW_OPTIONS.get(windowFacade) ?? {};
+  return weakMapGet(WINDOW_OPTIONS, windowFacade) ?? {};
 }
 
 function computeViewport(options) {
@@ -341,7 +634,7 @@ const DOC_TO_WINDOW = new WeakMap();
 // reclaim in the lifecycle test); a collected window simply derefs to
 // undefined.
 function windowFacadeOfDocument(documentFacade) {
-  return DOC_TO_WINDOW.get(documentFacade)?.deref();
+  return weakMapGet(DOC_TO_WINDOW, documentFacade)?.deref();
 }
 
 /**
@@ -377,10 +670,10 @@ export class Window {
         "Window can only be constructed from a genuine native Window handle (as returned by createWindow)",
       );
     }
-    WIN_HANDLES.set(this, nativeHandle);
-    WINDOW_OPTIONS.set(this, options ?? {});
-    WINDOW_VIEWPORTS.set(this, computeViewport(options));
-    WINDOW_SETTINGS.set(this, computeWindowSettings(options));
+    weakMapSet(WIN_HANDLES, this, nativeHandle);
+    weakMapSet(WINDOW_OPTIONS, this, options ?? {});
+    weakMapSet(WINDOW_VIEWPORTS, this, computeViewport(options));
+    weakMapSet(WINDOW_SETTINGS, this, computeWindowSettings(options));
     // happy-dom constructor options: honor `url` by simulating the initial
     // navigation (the T45 simulated location), so `new Window({ url })`
     // matches `new Window()` plus a synchronous navigation to that URL.
@@ -391,11 +684,14 @@ export class Window {
 }
 
 // `document` is a live accessor: each read forwards to the native handle and
-// the result goes through the unique conversion entry, so repeated reads hand
-// back one and the same Document facade (native identity + facade cache).
+// the result goes through the canonical native-handle conversion entry, so
+// repeated reads hand back one and the same Document facade (native identity
+// + facade cache).
 defineAccessor(Window.prototype, "document", function getDocument() {
-  const documentFacade = wrap(WIN_HANDLES.get(this).document());
-  DOC_TO_WINDOW.set(documentFacade, new WeakRef(this));
+  const documentHandle = weakMapGet(WIN_HANDLES, this).document();
+  weakMapSet(WIN_DOCUMENT_HANDLES, this, documentHandle);
+  const documentFacade = wrap(documentHandle);
+  weakMapSet(DOC_TO_WINDOW, documentFacade, new WeakRef(this));
   return documentFacade;
 }, undefined);
 
@@ -404,7 +700,7 @@ defineAccessor(Window.prototype, "document", function getDocument() {
 // constructor options (T22B viewport). `outerWidth` / `outerHeight` mirror the
 // happy-dom window surface where the outer size equals the viewport size.
 function windowViewport(windowFacade) {
-  const viewport = WINDOW_VIEWPORTS.get(windowFacade);
+  const viewport = weakMapGet(WINDOW_VIEWPORTS, windowFacade);
   return viewport ?? { width: 1024, height: 768, devicePixelRatio: 1 };
 }
 
@@ -416,10 +712,10 @@ function windowViewport(windowFacade) {
 // the `window.happyDOM` detached-window API (window-platform.js); the public
 // `window.js` export shape is pinned by the T22B export test.
 function setWindowViewport(windowFacade, viewport) {
-  let current = WINDOW_VIEWPORTS.get(windowFacade);
+  let current = weakMapGet(WINDOW_VIEWPORTS, windowFacade);
   if (current === undefined) {
     current = { width: 1024, height: 768, devicePixelRatio: 1 };
-    WINDOW_VIEWPORTS.set(windowFacade, current);
+    weakMapSet(WINDOW_VIEWPORTS, windowFacade, current);
   }
   Object.assign(current, viewport);
 }
@@ -445,7 +741,12 @@ defineAccessor(Window.prototype, "devicePixelRatio", function devicePixelRatio()
 }, undefined);
 
 defineMethod(Window.prototype, "destroy", function destroy() {
-  WIN_HANDLES.get(this).destroy();
+  const windowHandle = weakMapGet(WIN_HANDLES, this);
+  const documentHandle = weakMapGet(WIN_DOCUMENT_HANDLES, this);
+  windowHandle.destroy();
+  if (documentHandle !== undefined) {
+    releaseNodeDocumentState(getDocState(documentHandle));
+  }
 });
 
 // --- Facade entry ----------------------------------------------------------

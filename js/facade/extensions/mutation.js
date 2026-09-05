@@ -16,6 +16,7 @@
 // canonical wrapper directly instead of looking it up again through `ctx.wrap`.
 
 import { Document } from "../document.js";
+import { nodeInternalsOf } from "./classes.js";
 import { Node } from "./node.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
 import { loadNative } from "../../native-loader.js";
@@ -73,6 +74,21 @@ function facadeDocumentHandle(ctx, value) {
   return handle;
 }
 
+// Resolves and authenticates the token island in one pass. `appendChild`
+// needs both the token and owning document for each operand; calling the
+// token/document helpers separately repeats the same private-state and
+// canonical-token-map probes twice per node on the hottest mutation path.
+function facadeTokenState(value) {
+  const internals = nodeInternalsOf(value);
+  if (internals === undefined) return undefined;
+  const state = internals.documentState;
+  const token = internals.token;
+  return token !== undefined &&
+      (state?.destroyed === true || state?.getWrapperByToken(token) === value)
+    ? internals
+    : undefined;
+}
+
 const NATIVE_MUTATION_METHODS = new Map();
 
 function nativeMutation(ctx, methodName, parentHandle, firstHandle, secondHandle) {
@@ -115,6 +131,30 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(Node.prototype, "appendChild", function appendChild(child) {
+    const parentInternals = facadeTokenState(this);
+    const childInternals = facadeTokenState(child);
+    const parentState = parentInternals?.documentState;
+    const parentDocument = parentState?.documentHandle;
+    const appendChildToken = parentState?.nativeMethods.appendChildToken;
+    if (
+      parentDocument !== undefined &&
+      parentDocument === childInternals?.documentState?.documentHandle &&
+      appendChildToken !== undefined
+    ) {
+      const parentToken = parentInternals.token;
+      const childToken = childInternals.token;
+      const appendChildTokenLocal = parentState.nativeMethods.appendChildTokenLocal;
+      if (
+        parentState.epoch !== null &&
+        appendChildTokenLocal !== undefined
+      ) {
+        parentState.epoch[0] = appendChildTokenLocal(parentToken, childToken);
+      } else {
+        appendChildToken(parentToken, childToken);
+      }
+      flushCustomElementReactions(ctx, this, true);
+      return child;
+    }
     const parentHandle = facadeNodeHandle(ctx, this, "appendChild");
     const childHandle = facadeNodeHandle(ctx, child, "appendChild");
     nativeMutation(ctx, "appendChild", parentHandle, childHandle);

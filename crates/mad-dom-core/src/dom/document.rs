@@ -38,6 +38,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 /// Global counter assigning each [`Document`] a unique id.
 static NEXT_DOCUMENT_ID: AtomicU64 = AtomicU64::new(0);
 
+/// Bounded pre-order payload and the depth of the first node not included.
+pub type PreorderSubtreeChunk = (Vec<(NodeId, u32)>, Option<u32>);
+
 /// A document that owns its own node arena.
 ///
 /// Nodes are created through the `create_*` helpers, which allocate into the
@@ -45,10 +48,11 @@ static NEXT_DOCUMENT_ID: AtomicU64 = AtomicU64::new(0);
 /// handle belongs to this document first, so foreign handles fail with
 /// [`CoreError::WrongDocument`] rather than aliasing a node in this document.
 ///
-/// The `query_index` field holds the T32 optional id/class/tag query index
-/// (`selectors/live.rs`). It is a pure cache of the arena, off by default,
-/// and is only ever written through the mutation/attribute maintenance hooks
-/// in that module; the arena stays the single authoritative tree state.
+/// The `query_index` field holds the adaptive/full query index
+/// (`selectors/live.rs`). It is a pure cache of the arena with explicit
+/// Off/IdOnly/Full modes, and is only ever written through the
+/// mutation/attribute maintenance hooks in that module; the arena stays the
+/// single authoritative tree state.
 pub struct Document {
     id: u64,
     arena: Arena<Node>,
@@ -60,7 +64,7 @@ pub struct Document {
     /// The document's focused element (`document.activeElement`), tracked by
     /// the T39 `html_element` module. `None` when nothing is focused.
     pub(crate) active_element_id: Option<NodeId>,
-    /// The T32 optional id/class/tag query index (off by default).
+    /// The adaptive id-only / T32 full query index (off by default).
     pub(crate) query_index: QueryIndex,
     /// The T41 MutationObserver registry: one entry per observer, each holding
     /// its per-target observations and record queues. Written only through the
@@ -104,6 +108,10 @@ pub struct Document {
     /// binding mirrors it to JavaScript as the navigation-memo invalidation
     /// epoch; Core itself never reads it.
     structure_generation: u64,
+    /// Monotonic counter bumped whenever an existing element's ordered
+    /// attribute storage changes. This is independent from tree structure so
+    /// attribute caches need not invalidate navigation memos.
+    attribute_generation: u64,
 }
 
 impl Document {
@@ -123,6 +131,7 @@ impl Document {
             custom_elements: CustomElementState::default(),
             shadow_roots: HashMap::new(),
             structure_generation: 0,
+            attribute_generation: 0,
         }
     }
 
@@ -138,6 +147,17 @@ impl Document {
     /// relation-write chokepoints only (see the `structure_generation` field).
     pub(crate) fn bump_structure_generation(&mut self) {
         self.structure_generation += 1;
+    }
+
+    /// Current attribute-storage generation for binding-side cache
+    /// invalidation. Reads never mutate this value.
+    pub fn attribute_generation(&self) -> u64 {
+        self.attribute_generation
+    }
+
+    /// Marks an observable attribute-storage change.
+    pub(crate) fn bump_attribute_generation(&mut self) {
+        self.attribute_generation += 1;
     }
 
     /// Returns the `Document`-kind node at the top of this document's tree,
@@ -200,6 +220,43 @@ impl Document {
         self.create_element_ns(HTML_NAMESPACE, name)
     }
 
+    /// Allocates a batch of detached HTML elements with the same local name.
+    /// This is semantically equivalent to repeated [`Document::create_element`]
+    /// calls, but validates and interns the immutable name/namespace once.
+    /// It exists for bindings that amortize a high per-call FFI cost; every
+    /// returned node is otherwise an ordinary independent arena node.
+    pub fn create_elements(&mut self, name: &str, count: usize) -> Result<Vec<NodeId>, CoreError> {
+        validate_element_name(name)?;
+        let local_name = LocalName::from(name.to_string());
+        let namespace = Namespace::from(HTML_NAMESPACE.to_string());
+        let is_template = name.eq_ignore_ascii_case("template");
+        let is_custom = self.custom_elements.is_defined(name);
+        let mut nodes = Vec::with_capacity(count);
+        for _ in 0..count {
+            let node = self.arena.allocate(
+                self.id,
+                Node::new(NodeData::Element {
+                    name: local_name.clone(),
+                    namespace: namespace.clone(),
+                    attributes: Vec::new(),
+                    mathml_annotation_xml_integration_point: false,
+                    had_duplicate_attributes: false,
+                }),
+            );
+            if is_template {
+                let content = self
+                    .arena
+                    .allocate(self.id, Node::new(NodeData::DocumentFragment));
+                self.template_contents.insert(node, content);
+            }
+            if is_custom {
+                self.custom_elements.mark_custom(node);
+            }
+            nodes.push(node);
+        }
+        Ok(nodes)
+    }
+
     /// Creates an element in the given `namespace` with `name` and returns its
     /// handle.
     ///
@@ -245,12 +302,16 @@ impl Document {
     /// `data` is stored verbatim, including NUL characters (matching happy-dom
     /// and the T48B text-data alignment).
     pub fn create_text(&mut self, data: &str) -> Result<NodeId, CoreError> {
-        Ok(self.arena.allocate(
-            self.id,
-            Node::new(NodeData::Text {
-                data: data.to_string(),
-            }),
-        ))
+        self.create_text_owned(data.to_owned())
+    }
+
+    /// Owned-string companion for bindings that already paid their runtime's
+    /// string conversion. Keeping the allocation here would copy every text
+    /// payload a second time on the per-node creation path.
+    pub fn create_text_owned(&mut self, data: String) -> Result<NodeId, CoreError> {
+        Ok(self
+            .arena
+            .allocate(self.id, Node::new(NodeData::Text { data })))
     }
 
     /// Creates a comment node with `data` and returns its handle.
@@ -378,6 +439,68 @@ impl Document {
             cur = self.get(child)?.next_sibling();
         }
         Ok(out)
+    }
+
+    /// Returns the complete subtree rooted at `id` in pre-order together with
+    /// each node's depth, provided it fits within `limit` nodes. Returning
+    /// `None` instead of a partial prefix lets callers distinguish a complete
+    /// relation snapshot (safe to memoize, including terminal null links) from
+    /// a large tree that must stay on a bounded/lazy path.
+    pub fn preorder_subtree_limited(
+        &self,
+        id: NodeId,
+        limit: usize,
+    ) -> Result<Option<Vec<(NodeId, u32)>>, CoreError> {
+        let (nodes, continuation_depth) = self.preorder_subtree_chunk(id, limit)?;
+        Ok(continuation_depth.is_none().then_some(nodes))
+    }
+
+    /// Returns the first `limit` nodes of a subtree pre-order walk and the
+    /// depth of the next node when a continuation remains. Unlike a stack of
+    /// every pending sibling, this follows first-child/next-sibling/parent
+    /// links directly, so both work and temporary memory stay bounded even
+    /// for a root with millions of direct children.
+    pub fn preorder_subtree_chunk(
+        &self,
+        id: NodeId,
+        limit: usize,
+    ) -> Result<PreorderSubtreeChunk, CoreError> {
+        self.get(id)?;
+        let mut out = Vec::with_capacity(limit.min(256));
+        let mut current = Some((id, 0u32));
+        while let Some((node, depth)) = current {
+            if out.len() == limit {
+                return Ok((out, Some(depth)));
+            }
+            out.push((node, depth));
+
+            if let Some(child) = self.get(node)?.first_child() {
+                current = Some((
+                    child,
+                    depth.checked_add(1).expect("DOM depth exceeds u32::MAX"),
+                ));
+                continue;
+            }
+
+            let mut cursor = node;
+            let mut cursor_depth = depth;
+            current = loop {
+                if cursor == id {
+                    break None;
+                }
+                if let Some(sibling) = self.get(cursor)?.next_sibling() {
+                    break Some((sibling, cursor_depth));
+                }
+                let Some(parent) = self.get(cursor)?.parent() else {
+                    break None;
+                };
+                cursor = parent;
+                cursor_depth = cursor_depth
+                    .checked_sub(1)
+                    .expect("subtree parent depth underflow");
+            };
+        }
+        Ok((out, None))
     }
 
     /// Returns whether `node` is a proper descendant of `ancestor`.
@@ -667,6 +790,57 @@ mod tests {
             doc.get(el).unwrap().data().element_attributes(),
             Some(&[][..])
         );
+    }
+
+    #[test]
+    fn create_elements_matches_individual_html_element_creation() {
+        let mut doc = Document::new();
+        let elements = doc.create_elements("span", 3).unwrap();
+
+        assert_eq!(elements.len(), 3);
+        assert_eq!(
+            elements
+                .iter()
+                .copied()
+                .collect::<std::collections::HashSet<_>>()
+                .len(),
+            3
+        );
+        for element in elements {
+            assert_eq!(doc.node_type(element).unwrap(), NodeType::Element);
+            assert_eq!(doc.node_name(element).unwrap(), "span");
+            assert_eq!(
+                doc.element_namespace_uri(element).unwrap(),
+                Some(HTML_NAMESPACE)
+            );
+            assert_eq!(doc.parent(element).unwrap(), None);
+        }
+    }
+
+    #[test]
+    fn create_elements_keeps_template_contents_independent_and_rejects_atomically() {
+        let mut doc = Document::new();
+        let templates = doc.create_elements("template", 2).unwrap();
+        let first_content = doc.template_content_id(templates[0]).unwrap().unwrap();
+        let second_content = doc.template_content_id(templates[1]).unwrap().unwrap();
+
+        assert_ne!(first_content, second_content);
+        assert_eq!(
+            doc.node_type(first_content).unwrap(),
+            NodeType::DocumentFragment
+        );
+        assert_eq!(
+            doc.node_type(second_content).unwrap(),
+            NodeType::DocumentFragment
+        );
+
+        let before = doc.create_element("before").unwrap();
+        assert!(matches!(
+            doc.create_elements("bad name", 8),
+            Err(CoreError::InvalidCharacter { .. })
+        ));
+        let after = doc.create_element("after").unwrap();
+        assert_eq!(after.slot(), before.slot() + 1);
     }
 
     #[test]
@@ -1010,5 +1184,53 @@ mod tests {
             b.set_character_data(bogus, "x"),
             Err(CoreError::Arena(ArenaError::OutOfBounds { .. }))
         ));
+    }
+
+    #[test]
+    fn bounded_preorder_snapshot_is_complete_ordered_or_empty() {
+        let mut doc = Document::new();
+        let root = doc.create_element("root").unwrap();
+        let left = doc.create_element("left").unwrap();
+        let leaf = doc.create_text("leaf").unwrap();
+        let right = doc.create_element("right").unwrap();
+        doc.append_child(root, left).unwrap();
+        doc.append_child(left, leaf).unwrap();
+        doc.append_child(root, right).unwrap();
+
+        assert_eq!(
+            doc.preorder_subtree_limited(root, 4).unwrap(),
+            Some(vec![(root, 0), (left, 1), (leaf, 2), (right, 1)])
+        );
+        assert_eq!(doc.preorder_subtree_limited(root, 3).unwrap(), None);
+        assert_eq!(doc.preorder_subtree_limited(root, 0).unwrap(), None);
+    }
+
+    #[test]
+    fn preorder_chunk_reports_the_exact_next_depth_at_each_boundary() {
+        let mut doc = Document::new();
+        let root = doc.create_element("root").unwrap();
+        let left = doc.create_element("left").unwrap();
+        let leaf = doc.create_text("leaf").unwrap();
+        let right = doc.create_element("right").unwrap();
+        doc.append_child(root, left).unwrap();
+        doc.append_child(left, leaf).unwrap();
+        doc.append_child(root, right).unwrap();
+
+        assert_eq!(
+            doc.preorder_subtree_chunk(root, 0).unwrap(),
+            (vec![], Some(0))
+        );
+        assert_eq!(
+            doc.preorder_subtree_chunk(root, 2).unwrap(),
+            (vec![(root, 0), (left, 1)], Some(2))
+        );
+        assert_eq!(
+            doc.preorder_subtree_chunk(root, 3).unwrap(),
+            (vec![(root, 0), (left, 1), (leaf, 2)], Some(1))
+        );
+        assert_eq!(
+            doc.preorder_subtree_chunk(root, 4).unwrap(),
+            (vec![(root, 0), (left, 1), (leaf, 2), (right, 1)], None,)
+        );
     }
 }

@@ -15,8 +15,8 @@ import { Node, Element, DocumentFragment } from "../../js/facade/extensions/node
 //   - `querySelector` returns the first document-order match (or `null`),
 //     `matches` tests a single element and `closest` walks from the receiver
 //     (itself included) up the ancestor chain;
-//   - `getElementById` returns the first element whose id matches, without an
-//     index;
+//   - `getElementById` returns the first element whose id matches; document id
+//     reads may activate Core's private, mutation-maintained id-only index;
 //   - the query surface is wired per the WHATWG: `querySelector` /
 //     `querySelectorAll` run on a Document or an Element scope and match
 //     *descendants* only, the implied skeleton makes `document.querySelector("body")`
@@ -275,6 +275,28 @@ describe.skipIf(!nativeAvailable)("query identity (T31)", () => {
       win.destroy();
     }
   });
+
+  test("adaptive id lookups preserve identity and duplicate document order after mutations", () => {
+    const win = new Window();
+    try {
+      const doc = win.document;
+      doc.body.innerHTML = '<div id="dup"></div><span id="dup"></span>';
+      const first = doc.body.firstChild;
+      const second = first.nextSibling;
+
+      expect(doc.querySelector("#dup")).toBe(first);
+      expect(doc.getElementById("dup")).toBe(first);
+      doc.body.appendChild(first);
+      expect(doc.querySelector("#dup")).toBe(second);
+      second.setAttribute("id", "renamed");
+      expect(doc.getElementById("dup")).toBe(first);
+      expect(doc.getElementById("renamed")).toBe(second);
+      doc.body.removeChild(second);
+      expect(doc.getElementById("renamed")).toBeNull();
+    } finally {
+      win.destroy();
+    }
+  });
 });
 
 describe.skipIf(!nativeAvailable)("static NodeList surface (T31)", () => {
@@ -331,7 +353,7 @@ describe.skipIf(!nativeAvailable)("query errors (T31)", () => {
     win.destroy();
 
     const reads = [
-      () => doc.querySelector("li"),
+      () => doc.querySelector("#list"),
       () => doc.querySelectorAll("li"),
       () => doc.getElementById("list"),
       () => li.matches("li"),

@@ -5,6 +5,12 @@
 队列表指定的 owner 接管实现；共享文件（本契约、`extensions/index.js`、根
 `index.js`/`index.d.ts`）只有集成闸门（T22/T23/T24/T25）可以修改。
 
+ADR-0007 后，以下“唯一转换入口”扩展为同一身份系统的一组入口：native handle
+使用 `ctx.wrap`，一般文档作用域令牌使用 `ctx.wrapLazyNode`，native 已证明 fresh 的
+Text token 可使用创建专用的 `ctx.wrapFreshTextNode`；三者必须收敛为同一 facade
+对象。Core 仍是唯一权威状态，允许的派生 memo/属性/collection 缓存必须通过 Core
+代际视图验证。
+
 ## 目录与所有权
 
 | 路径 | owner | 闸门 | 角色 |
@@ -52,24 +58,36 @@
 - `ctx.wrap(nativeHandle)` —— **唯一**的 native handle → facade wrapper 转换
   入口。所有 wrapper 生产都必须经过它，使 T20 的 wrapper identity 与每文档
   弱缓存保持权威。
+- `ctx.wrapLazyNode(documentHandle, token, type, name, namespace)` —— ADR-0007
+  的 token → facade wrapper 入口；后续 `ctx.wrap(nativeHandle)` 必须按 token 返回
+  同一对象。
+- `ctx.wrapFreshTextNode(documentState, token, epoch)` —— `ctx.wrapLazyNode` 的
+  创建专用 Text 子入口；只接受 native fresh proof，跳过通用 kind dispatch，仍登记
+  到同一个文档 token 身份表。
 - `ctx.defineMethod(target, name, fn, descriptor)` 与
   `ctx.defineAccessor(target, name, get, set, descriptor)` —— 描述符注册助手；
   安装器不得用其他方式定义属性。
-- `ctx.documentContext` —— 只读访问 wrapper 所需的文档所有权引用；绝不以
-  原始值形式暴露 NodeId。
+- `ctx.documentContext` —— 只读访问 wrapper 所需的文档所有权引用与文档作用域
+  token；绝不暴露 Core `NodeId`。
 - `ctx.registerHandleType(name, makeWrapper)` 与 `ctx.registerWrap(handle,
   wrapper)` —— wrapper 类型注册表与"wrap 之外的铸造"登记（T48A
   `new DefinedClass()` 铸造路径把真实 detached 元素写回每文档弱缓存）。
 
 ### 转换入口
 
-`ctx.wrap` 是 native 与 facade 之间的唯一包装转换点。任何返回节点/文档
-wrapper 的 facade 方法都必须调用 `ctx.wrap`，不得自行缓存或重建对象。
+`ctx.wrap`、`ctx.wrapLazyNode` 与其创建专用子入口 `ctx.wrapFreshTextNode` 是 native
+handle / token 的规范转换点。任何返回节点/文档 wrapper 的 facade 方法必须使用
+其中之一，不得在身份表之外自行重建对象。`ctx.wrapFreshTextNode` 仅可用于 native
+已证明 fresh 的 Text token，并须登记到与 `ctx.wrapLazyNode` 相同的文档 token 身份表。
 
 ## 规则
 
-- facade **不保存第二份权威 DOM 状态**；每次读取/决策都来自 native handle
-  （ADR-0001 §2 "Core 优先"）。
+- facade **不保存第二份权威 DOM 状态**；允许保存 ADR-0007 定义的、由 Core 代际
+  验证的派生缓存，miss 时仍由 native/Core 决定结果。代际值 `-1` 表示计数空间
+  已耗尽，此后必须永久绕过相等性缓存；`-2147483648` 表示文档已销毁。
+- 节点的 handle/token、分类、代际证明、导航 memo 与属性缓存必须保存在模块私有
+  记录中，不得成为 wrapper 或 custom-element prototype 上可反射、复制或伪造的
+  Symbol 属性；文档 token registry 与预取池同样不得作为可替换的公开状态暴露。
 - 扩展不得修改 `window.js`、`document.js`、`extensions/index.js`、根
   `index.js`/`index.d.ts` 或彼此的专属文件。
 - 扩展只新增自己的文件与专属测试。

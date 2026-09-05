@@ -20,37 +20,78 @@
 // # `new DefinedClass()` minting (T48A)
 //
 // The `Element` constructor, when invoked without a native handle (the
-// `new DefinedClass()` path), reads the mint slot the T42 registry stashed on
-// the class prototype (`ELEMENT_MINT_SYMBOL`) and casts a real detached
+// `new DefinedClass()` path), reads the mint record the T42 registry associated
+// with the class prototype in a private WeakMap and casts a real detached
 // element through the owning document, then registers the wrapper in the
 // per-document weak cache (via `setRegisterMintedWrapper`, wired by node.js to
 // `ctx.registerWrap`) so later `ctx.wrap` re-entries keep identity.
 
-// Own-symbol slots minted on every facade wrapper. Symbol keys stay invisible
-// to every WHATWG-visible surface (enumeration, JSON, `in` checks key on
-// names) and read in a couple of nanoseconds — the navigation getters run
-// them on every property read, where a WeakMap lookup would cost 10x.
-//
-//   HANDLE_SLOT    — the native NodeHandle behind the wrapper (the reverse of
-//                    `ctx.wrap`); set by the `Node` constructor /
-//                    `registerWrap` mint paths.
-//   DOC_STATE_SLOT — the wrapper's per-document state object
-//                    (`{ epoch, pinned }`, see js/facade/window.js): the
-//                    structural epoch view the navigation memo validates
-//                    against, and the pin registry keeping the wrapper alive
-//                    while its document facade is.
-//   MEMO_SLOT      — the navigation memo (`{ e, fc, lc, ns, ps, pn }`):
-//                    epoch-guarded last answers of the five navigation reads
-//                    (see js/facade/extensions/node.js).
-//   VALID_EPOCH_SLOT — structural epoch at which the native handle was last
-//                    proven live. Immutable wrapper metadata may be served
-//                    without FFI only while it matches the document epoch;
-//                    adoption/destruction invalidate it before a stale stamp
-//                    can mask the native lifecycle error.
-export const HANDLE_SLOT = Symbol("mad-dom native handle");
-export const DOC_STATE_SLOT = Symbol("mad-dom document state");
-export const MEMO_SLOT = Symbol("mad-dom navigation memo");
-export const VALID_EPOCH_SLOT = Symbol("mad-dom native handle valid epoch");
+// All facade-derived node state lives in one non-reflectable record. Ordinary
+// Symbol properties are discoverable through `Object.getOwnPropertySymbols`;
+// keeping a mutable epoch, navigation memo or classification there would let
+// user code forge a cache hit and make the facade disagree with Core. One
+// WeakMap lookup yields the document state, opaque token, optional materialized
+// handle, immutable metadata, validity proof, navigation memo and reflected-
+// attribute cache used by the hot paths.
+const NODE_INTERNALS = new WeakMap();
+const getNodeInternals = NODE_INTERNALS.get.bind(NODE_INTERNALS);
+const setNodeInternals = NODE_INTERNALS.set.bind(NODE_INTERNALS);
+const objectCreate = Object.create;
+const objectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+const objectHasOwn = Object.hasOwn;
+
+function ownNativeStamp(handle, name) {
+  const descriptor = objectGetOwnPropertyDescriptor(handle, name);
+  return descriptor !== undefined && objectHasOwn(descriptor, "value")
+    ? descriptor.value
+    : undefined;
+}
+
+function ensureNodeInternals(wrapper) {
+  let internals = getNodeInternals(wrapper);
+  if (internals === undefined) {
+    internals = objectCreate(null);
+    setNodeInternals(wrapper, internals);
+  }
+  return internals;
+}
+
+export function nodeInternalsOf(wrapper) {
+  if (wrapper === null || wrapper === undefined || typeof wrapper !== "object") {
+    return undefined;
+  }
+  return getNodeInternals(wrapper);
+}
+
+export function setNodeDocumentState(wrapper, state) {
+  ensureNodeInternals(wrapper).documentState = state;
+}
+
+export function nodeDocumentStateOf(wrapper) {
+  return nodeInternalsOf(wrapper)?.documentState;
+}
+
+export function releaseNodeDocumentState(state) {
+  if (state === undefined) return;
+  state.destroyed = true;
+  state.clearElementTokenPools?.();
+  state.clearWrappersByToken?.();
+  state.clearPinned?.();
+  state.snapshotAttemptEpoch = null;
+  state.snapshotPartitionRoots = null;
+}
+
+export function setNodeHandle(wrapper, handle) {
+  ensureNodeInternals(wrapper).handle = handle;
+}
+
+export function hasMaterializedNodeHandle(wrapper) {
+  return nodeInternalsOf(wrapper)?.handle !== undefined;
+}
+
+export function nodeTokenOf(wrapper) {
+  return nodeInternalsOf(wrapper)?.token;
+}
 
 function isNodeHandle(handle) {
   return (
@@ -78,7 +119,17 @@ export class Node {
         "Node can only be constructed from a genuine native Node handle",
       );
     }
-    this[HANDLE_SLOT] = nativeHandle;
+    const internals = objectCreate(null);
+    internals.handle = nativeHandle;
+    const nodeType = ownNativeStamp(nativeHandle, "madDomType");
+    if (nodeType !== undefined) {
+      internals.nodeType = nodeType;
+      if (nodeType === 1) {
+        internals.nodeName = ownNativeStamp(nativeHandle, "madDomName");
+        internals.nodeNamespace = ownNativeStamp(nativeHandle, "madDomNamespace");
+      }
+    }
+    setNodeInternals(this, internals);
   }
 
   // happy-dom Node returns `[object <ConstructorName>]` from
@@ -91,12 +142,32 @@ export class Node {
   }
 }
 
-// The mint slot the T42 registry stashes on a defined custom-element class
-// prototype (`{ docHandle, localName }`), so `new DefinedClass()` can cast a
-// real detached element (happy-dom stashes window/document symbols the same
-// way). Kept here (not in custom-elements.js) so the `Element` constructor
-// below can read it without an import cycle.
+// Retained as an inert compatibility export because node.js's frozen module
+// contract predates the private state boundary. No wrapper or prototype stores
+// this Symbol; exposing it therefore cannot reveal or forge a document handle.
 export const ELEMENT_MINT_SYMBOL = Symbol("mad-dom custom element mint");
+
+// A prototype may inherit from a registered custom element, so lookup walks
+// the prototype chain just as the old inherited Symbol property did. Capture
+// the intrinsics before application code can patch them: the mint record holds
+// an owning native document handle and must never be observable or forgeable.
+const ELEMENT_MINTS = new WeakMap();
+const getElementMint = ELEMENT_MINTS.get.bind(ELEMENT_MINTS);
+const putElementMint = ELEMENT_MINTS.set.bind(ELEMENT_MINTS);
+const getPrototypeOf = Object.getPrototypeOf;
+
+export function setElementMint(prototype, docHandle, localName) {
+  putElementMint(prototype, { docHandle, localName });
+}
+
+function elementMintFor(prototype) {
+  while (prototype !== null && typeof prototype === "object") {
+    const mint = getElementMint(prototype);
+    if (mint !== undefined) return mint;
+    prototype = getPrototypeOf(prototype);
+  }
+  return undefined;
+}
 
 // Per-tag element class selection (T48A). The html-element extension registers
 // the common classes through `registerElementClass` and the two fallbacks
@@ -109,6 +180,9 @@ export const ELEMENT_MINT_SYMBOL = Symbol("mad-dom custom element mint");
 // elements keep the existing HTML behaviour.
 const ELEMENT_CLASSES = new Map();
 const SVG_ELEMENT_CLASSES = new Map();
+const mapGet = Function.prototype.call.bind(Map.prototype.get);
+const mapHas = Function.prototype.call.bind(Map.prototype.has);
+const mapSet = Function.prototype.call.bind(Map.prototype.set);
 let hyphenFallbackClass = null; // HTMLElement (an undefined hyphenated name)
 let unknownFallbackClass = null; // HTMLUnknownElement (an undefined plain name)
 let fallbackSvgElementClass = null; // SVGElement (an unknown SVG tag)
@@ -117,14 +191,19 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 
 export function registerElementClass(tag, elementClass) {
-  ELEMENT_CLASSES.set(tag, elementClass);
+  mapSet(ELEMENT_CLASSES, tag, elementClass);
+}
+
+/** Whether `tag` is a built-in HTML element with a registered direct class. */
+export function isRegisteredElementName(tag) {
+  return mapHas(ELEMENT_CLASSES, tag);
 }
 
 export function registerSvgElementClass(tag, elementClass) {
-  SVG_ELEMENT_CLASSES.set(tag, elementClass);
+  mapSet(SVG_ELEMENT_CLASSES, tag, elementClass);
   // The HTML5 parser lowercases SVG local names; happy-dom's SVGElementConfig
   // keys are lowercased too, so a parsed `<feBlend>` also resolves.
-  SVG_ELEMENT_CLASSES.set(tag.toLowerCase(), elementClass);
+  mapSet(SVG_ELEMENT_CLASSES, tag.toLowerCase(), elementClass);
 }
 
 export function setSvgElementFallbackClass(elementClass) {
@@ -150,15 +229,15 @@ export function setRegisterMintedWrapper(register) {
  *
  * Instances are normally minted through `ctx.wrap` (per-tag direct prototypes)
  * or constructed with a native handle. Constructed without a handle — the
- * `new DefinedClass()` path — the constructor looks up the mint slot the T42
- * registry stashed on the class prototype and casts a real detached element
- * (`localName` reads the registered name). Without that slot the constructor
+ * `new DefinedClass()` path — the constructor looks up the private mint record
+ * associated with the class prototype and casts a real detached element
+ * (`localName` reads the registered name). Without that record the constructor
  * is illegal exactly like happy-dom (`TypeError: Illegal constructor`).
  */
 export class Element extends Node {
   constructor(nativeHandle) {
     if (nativeHandle === undefined) {
-      const mint = new.target?.prototype?.[ELEMENT_MINT_SYMBOL];
+      const mint = elementMintFor(new.target?.prototype);
       if (mint === undefined) {
         throw new TypeError("Illegal constructor");
       }
@@ -167,8 +246,8 @@ export class Element extends Node {
       // Register the minted wrapper in the per-document weak cache so a later
       // `ctx.wrap` of the same native handle (e.g. a query or append re-entry)
       // hands back this exact object — identity parity with `createElement`.
-      // The mint slot's document handle lets the registry pin the wrapper in
-      // the right per-document state without an extra FFI read.
+      // The private mint record's document handle lets the registry pin the
+      // wrapper in the right per-document state without an extra FFI read.
       registerMintedWrapper?.(nativeHandle, this, mint.docHandle);
       return;
     }
@@ -215,10 +294,24 @@ export class Comment extends CharacterData {}
 
 /** The native handle behind a wrapper (the reverse of `ctx.wrap`). */
 export function nodeHandleOf(wrapper) {
-  if (wrapper === null || wrapper === undefined || typeof wrapper !== "object") {
-    return undefined;
+  const internals = nodeInternalsOf(wrapper);
+  if (internals === undefined) return undefined;
+  let handle = internals.handle;
+  if (handle === undefined) {
+    const state = internals.documentState;
+    const documentHandle = state?.documentHandle;
+    const token = internals.token;
+    const materializeNodeToken = state?.nativeMethods?.materializeNodeToken;
+    if (
+      documentHandle !== undefined &&
+      token !== undefined &&
+      materializeNodeToken !== undefined
+    ) {
+      handle = materializeNodeToken(token);
+      internals.handle = handle;
+    }
   }
-  return wrapper[HANDLE_SLOT];
+  return handle;
 }
 
 /**
@@ -230,7 +323,7 @@ export function nodeHandleOf(wrapper) {
  */
 export function elementClassForName(tag, namespace) {
   if (namespace === SVG_NAMESPACE) {
-    const svgClass = SVG_ELEMENT_CLASSES.get(tag);
+    const svgClass = mapGet(SVG_ELEMENT_CLASSES, tag);
     return svgClass ?? (fallbackSvgElementClass ?? Element);
   }
   // A non-HTML, non-SVG namespace yields a plain Element (happy-dom
@@ -239,7 +332,7 @@ export function elementClassForName(tag, namespace) {
   if (namespace !== HTML_NAMESPACE) {
     return Element;
   }
-  const known = ELEMENT_CLASSES.get(tag);
+  const known = mapGet(ELEMENT_CLASSES, tag);
   if (known !== undefined) return known;
   const fallback = tag.includes("-") ? hyphenFallbackClass : unknownFallbackClass;
   return fallback ?? Element;
@@ -279,18 +372,97 @@ export function createNodeWrapper(handle) {
  * every node returned by parsing, traversal, queries and creation.
  */
 export function createTrustedNodeWrapper(handle) {
-  const nodeType = handle.madDomType;
+  const nodeType = ownNativeStamp(handle, "madDomType");
   if (nodeType === undefined) {
     const [kind, name, namespace] = handle.wrapperKind();
-    return createNodeWrapperOfKind(handle, kind, name, namespace);
+    return createNodeWrapperOfKind(handle, kind, name, namespace, true);
   }
-  return createNodeWrapperOfKind(handle, nodeType, handle.madDomName, handle.madDomNamespace);
+  return createNodeWrapperOfKind(
+    handle,
+    nodeType,
+    ownNativeStamp(handle, "madDomName"),
+    ownNativeStamp(handle, "madDomNamespace"),
+    true,
+  );
 }
 
-function createNodeWrapperOfKind(handle, nodeType, name, namespace) {
+/**
+ * Creates a facade wrapper from native-known immutable metadata without first
+ * allocating a native `NodeHandle`. `window.js` registers the document/token
+ * ownership and pins the result immediately after this factory returns.
+ */
+export function createLazyNodeWrapper(
+  nodeType,
+  name,
+  namespace,
+  documentState,
+  token,
+  validEpoch,
+  initialMemo,
+  snapshotDescriptor,
+) {
+  return createNodeWrapperOfKind(
+    undefined,
+    nodeType,
+    name,
+    namespace,
+    true,
+    documentState,
+    token,
+    validEpoch,
+    initialMemo,
+    snapshotDescriptor,
+  );
+}
+
+/**
+ * Exact creation-only specialization for a freshly minted lazy Text node.
+ * The caller still owns canonical token registration; this only avoids the
+ * generic node-kind/prototype dispatch after native already proved the kind.
+ */
+export function createFreshLazyTextWrapper(
+  documentState,
+  token,
+  validEpoch,
+) {
+  const wrapper = objectCreate(Text.prototype);
+  const internals = objectCreate(null);
+  internals.nodeType = 3;
+  internals.documentState = documentState;
+  internals.token = token;
+  internals.validEpoch = validEpoch;
+  setNodeInternals(wrapper, internals);
+  return wrapper;
+}
+
+// Compact snapshot descriptors are fixed by the native protocol. Cache the
+// already-selected direct prototype by descriptor so hydration does not pay a
+// string-keyed class-registry lookup for every parsed HTML element.
+const SNAPSHOT_HTML_PROTOTYPES = objectCreate(null);
+
+function createNodeWrapperOfKind(
+  handle,
+  nodeType,
+  name,
+  namespace,
+  facadeStamped = false,
+  documentState,
+  token,
+  validEpoch,
+  initialMemo,
+  snapshotDescriptor,
+) {
   let prototype;
   if (nodeType === 1) {
-    prototype = elementClassForName(name, namespace).prototype;
+    if (snapshotDescriptor !== undefined) {
+      prototype = SNAPSHOT_HTML_PROTOTYPES[snapshotDescriptor];
+      if (prototype === undefined) {
+        prototype = elementClassForName(name, namespace).prototype;
+        SNAPSHOT_HTML_PROTOTYPES[snapshotDescriptor] = prototype;
+      }
+    } else {
+      prototype = elementClassForName(name, namespace).prototype;
+    }
   } else if (nodeType === 11) {
     prototype = DocumentFragment.prototype;
   } else if (nodeType === 3) {
@@ -302,7 +474,27 @@ function createNodeWrapperOfKind(handle, nodeType, name, namespace) {
   } else {
     prototype = Node.prototype;
   }
-  const wrapper = Object.create(prototype);
-  wrapper[HANDLE_SLOT] = handle;
+  const wrapper = objectCreate(prototype);
+  // A null prototype keeps missing private fields from consulting mutable
+  // Object.prototype accessors during delayed hydration or materialization.
+  const internals = objectCreate(null);
+  if (handle !== undefined) internals.handle = handle;
+  if (facadeStamped) {
+    internals.nodeType = nodeType;
+    if (nodeType === 1) {
+      internals.nodeName = name;
+      internals.nodeNamespace = namespace;
+    }
+    // Snapshot hydration already owns every value in the private record. Seed
+    // it before NODE_INTERNALS.set so a fresh wrapper needs no follow-up
+    // WeakMap reads merely to attach its state, token, proof and memo.
+    if (documentState !== undefined) {
+      internals.documentState = documentState;
+      internals.token = token;
+      internals.validEpoch = validEpoch;
+      if (initialMemo !== undefined) internals.memo = initialMemo;
+    }
+  }
+  setNodeInternals(wrapper, internals);
   return wrapper;
 }
