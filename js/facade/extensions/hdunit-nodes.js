@@ -244,8 +244,9 @@ function eventHandlerGetter(ctx, element, eventName) {
   const handlers = handlersOf(element);
   const stored = handlers.get(eventName);
   if (stored !== undefined) return stored;
-  const handle = handleOf(element);
-  const code = handle.getAttribute(`on${eventName}`);
+  // Document and Window expose event-handler properties without attributes.
+  const handle = element instanceof Element ? handleOf(element) : null;
+  const code = handle?.getAttribute(`on${eventName}`) ?? null;
   if (code === null || code === "") return null;
   const win = windowOf(ctx, element);
   if (win === undefined) return null;
@@ -265,8 +266,9 @@ function eventHandlerGetter(ctx, element, eventName) {
 }
 
 function eventHandlerSetter(ctx, element, eventName, value) {
-  const handle = handleOf(element);
-  handle.removeAttribute(`on${eventName}`);
+  if (element instanceof Element) {
+    handleOf(element).removeAttribute(`on${eventName}`);
+  }
   const handlers = handlersOf(element);
   const previous = handlers.get(eventName);
   if (previous !== undefined) {
@@ -412,6 +414,12 @@ export function install(ctx) {
   for (const [tag, elementClass] of PER_TAG) {
     registerElementClass(tag, elementClass);
   }
+
+  // React checks the active element against this constructor during commits.
+  // Expose the same class used by createElement / parse / clone / import.
+  ctx.defineAccessor(Window.prototype, "HTMLIFrameElement", function getHTMLIFrameElement() {
+    return HTMLIFrameElement;
+  }, undefined);
 
   // `window.Text` / `window.Comment` / `window.CharacterData` — per-window
   // subclasses that mint a detached node through the window's document, like
@@ -1726,6 +1734,17 @@ export function install(ctx) {
     else detailsHandle.setAttribute("open", "");
     details.dispatchEvent(new Event("toggle"));
   });
+
+  // React detects modern input events through `"oninput" in document`.
+  // Use real handler accessors so assignment, replacement and removal also
+  // participate in normal event dispatch on each supported target.
+  for (const Class of [Window, Document, HTMLElement]) {
+    ctx.defineAccessor(Class.prototype, "oninput", function oninput() {
+      return eventHandlerGetter(ctx, this, "input");
+    }, function oninput(value) {
+      eventHandlerSetter(ctx, this, "input", value);
+    });
+  }
 
   // HTMLBodyElement + window: global event-handler attribute accessors.
   for (const eventName of GLOBAL_EVENT_NAMES) {

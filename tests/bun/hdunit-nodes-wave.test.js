@@ -249,6 +249,44 @@ describe("T06 reflected attributes", () => {
 });
 
 describe("T06 event-handler attributes", () => {
+  test("oninput handlers default to null, can be replaced and removed, and are target-local", () => {
+    const window = freshWindow();
+    const { document } = window;
+    const input = document.createElement("input");
+    const other = document.createElement("input");
+    for (const target of [window, document, input]) {
+      expect("oninput" in target).toBe(true);
+      expect(target.oninput).toBeNull();
+      const calls = [];
+      const first = function (event) { calls.push(["first", this, event]); };
+      const second = function (event) { calls.push(["second", this, event]); };
+      const event = new window.Event("input");
+      target.oninput = first;
+      expect(target.oninput).toBe(first);
+      target.dispatchEvent(event);
+      target.oninput = second;
+      expect(target.oninput).toBe(second);
+      target.dispatchEvent(event);
+      target.oninput = null;
+      expect(target.oninput).toBeNull();
+      target.dispatchEvent(event);
+      expect(calls).toEqual([["first", target, event], ["second", target, event]]);
+      expect(other.oninput).toBeNull();
+    }
+  });
+
+  test("input events bubble from an element handler to the document handler", () => {
+    const window = freshWindow();
+    const { document } = window;
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    const calls = [];
+    input.oninput = (event) => calls.push(["input", event.target, event.currentTarget]);
+    document.oninput = (event) => calls.push(["document", event.target, event.currentTarget]);
+    input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    expect(calls).toEqual([["input", input, input], ["document", input, document]]);
+  });
+
   test("on* getter compiles the attribute in the window scope", () => {
     const window = freshWindow({
       settings: { enableJavaScriptEvaluation: true, suppressCodeGenerationFromStringsWarning: true },

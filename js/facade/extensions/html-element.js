@@ -176,7 +176,15 @@ const PER_TAG = [
   ["q", HTMLQuoteElement],
   ["slot", HTMLSlotElement],
   ["template", HTMLTemplateElement],
-  ["section", HTMLElement],
+  // These standard tags use HTMLElement itself, not HTMLUnknownElement.
+  // https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
+  ...[
+    "abbr", "address", "article", "aside", "b", "bdi", "bdo", "cite", "code",
+    "dd", "dfn", "dt", "em", "figcaption", "figure", "footer", "header",
+    "hgroup", "i", "kbd", "main", "mark", "nav", "noscript", "rp", "rt",
+    "ruby", "s", "samp", "search", "section", "small", "strong", "sub",
+    "summary", "sup", "u", "var", "wbr",
+  ].map((tag) => [tag, HTMLElement]),
 ];
 
 const PER_TAG_WINDOW_ACCESSORS = Object.freeze({

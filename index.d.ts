@@ -81,6 +81,7 @@ export interface DetachedWindowAPI {
 }
 
 export declare class Window {
+  oninput: ((this: Window, event: Event) => void) | null;
   constructor(options?: IWindowOptions);
   /** The live Document facade of this window (T20 wrapper identity). */
   readonly document: Document;
@@ -159,6 +160,8 @@ export declare class Window {
   readonly HTMLLabelElement: typeof HTMLLabelElement;
   /** The WHATWG `HTMLImageElement` constructor (T48A). */
   readonly HTMLImageElement: typeof HTMLImageElement;
+  /** The constructor used by iframe elements, including for instanceof checks. */
+  readonly HTMLIFrameElement: typeof HTMLIFrameElement;
   /** The WHATWG `HTMLScriptElement` constructor (T48A). */
   readonly HTMLScriptElement: typeof HTMLScriptElement;
   /** The WHATWG `HTMLStyleElement` constructor (T48A). */
@@ -640,6 +643,7 @@ export declare class ErrorEvent {
 }
 
 export declare class Document {
+  oninput: ((this: Document, event: Event) => void) | null;
   readonly currentScript: HTMLScriptElement | null;
   open(): Document;
   constructor(nativeHandle: DocumentHandle);
@@ -1346,6 +1350,7 @@ export interface ShadowRootInit {
  * `contentEditable`) plus `dataset` and the `click`/`focus`/`blur`
  * interaction live here, two-way synced with the element's attribute storage. */
 export interface HTMLElement extends Element {
+  oninput: ((this: HTMLElement, event: Event) => void) | null;
   /** WHATWG `HTMLElement.title`: the `title` attribute (`""` when absent). */
   title: string;
   /** WHATWG `HTMLElement.dir`: the `dir` attribute (`""` when absent). */
@@ -1566,6 +1571,8 @@ declare const HTMLHRElement: { readonly prototype: HTMLHRElement; new (): HTMLHR
 declare const HTMLLabelElement: { readonly prototype: HTMLLabelElement; new (): HTMLLabelElement };
 /** The WHATWG `HTMLImageElement` constructor (T48A). */
 declare const HTMLImageElement: { readonly prototype: HTMLImageElement; new (): HTMLImageElement };
+/** The HTMLIFrameElement constructor exposed on Window. */
+declare const HTMLIFrameElement: { readonly prototype: HTMLIFrameElement; new (): HTMLIFrameElement };
 /** The WHATWG `HTMLScriptElement` constructor (T48A). */
 declare const HTMLScriptElement: { readonly prototype: HTMLScriptElement; new (): HTMLScriptElement };
 /** The WHATWG `HTMLStyleElement` constructor (T48A). */
@@ -1617,6 +1624,18 @@ export interface HTMLLabelElement extends HTMLElement {
   readonly form: HTMLFormElement | null;
 }
 export interface HTMLImageElement extends HTMLElement {}
+/** The implemented iframe attribute surface. */
+export interface HTMLIFrameElement extends HTMLElement {
+  allow: string;
+  height: string;
+  width: string;
+  name: string;
+  referrerPolicy: string;
+  src: string;
+  srcdoc: string;
+  get sandbox(): DOMTokenList;
+  set sandbox(value: string);
+}
 export interface HTMLScriptElement extends HTMLElement {}
 export interface HTMLStyleElement extends HTMLElement {}
 export interface HTMLLinkElement extends HTMLElement {}

@@ -27,7 +27,29 @@ if (label instanceof window.HTMLLabelElement) {
   void [control, form];
 }
 void [defaultView, elementNode, documentNode, classAttribute];
+const iframe = document.createElement("iframe");
+const iframePrototype: import("dom-under-test").HTMLIFrameElement = window.HTMLIFrameElement.prototype;
+if (iframe instanceof window.HTMLIFrameElement) {
+  const typedIframe: import("dom-under-test").HTMLIFrameElement = iframe;
+  iframe.src = "/preview";
+  iframe.srcdoc = "<main>Preview</main>";
+  iframe.name = "preview";
+  iframe.allow = "fullscreen";
+  iframe.height = "300";
+  iframe.width = "400";
+  iframe.referrerPolicy = "no-referrer";
+  iframe.sandbox = "allow-scripts";
+  iframe.sandbox.add("allow-forms");
+  const source: string = iframe.src;
+  const tokens: string = iframe.sandbox.value;
+  void [typedIframe, source, tokens];
+}
+void iframePrototype;
 const input = document.createElement("input");
+window.oninput = function (event) { void [this.document, event.type]; };
+document.oninput = function (event) { void [this.activeElement, event.target]; };
+input.oninput = function (event) { void [this.id, event.bubbles]; };
+window.oninput = document.oninput = input.oninput = null;
 if (input instanceof window.HTMLInputElement) {
   const labels = input.labels;
   const firstLabel = labels?.item(0);
