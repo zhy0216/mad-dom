@@ -1,141 +1,203 @@
 # Performance
 
-The same test suite, the same runner, only the import swapped.
+mad-dom is compared with **happy-dom 20.11.11** using the same deterministic
+DOM workloads through each engine's public API. The benchmark covers
+**16 core phases** and **13 test workflows**, including actual
+`@testing-library/dom@10.4.1` queries and events.
 
-## mad-dom vs happy-dom
+## Recorded results
 
-| | mad-dom | happy-dom 20.11.11 |
-| --- | --- | --- |
-| Deterministic DOM suite | **128 ms** | **206 ms** |
-
-**1.6× faster.** Median of 3 runs, macOS arm64, Bun 1.4.0, under `bun test`.
-
-The suite is happy-dom's own integration-test suite, vendored verbatim — the
-only change is the import specifier (`happy-dom` → `mad-dom`). Details in the
-[benchmark README](https://github.com/zhy0216/mad-dom/blob/main/benchmark/README.md).
-
-Reproduce it yourself:
-
-```sh
-bun benchmark/run.mjs
-```
-
-## DOM operations and test workflows
-
-`bun run bench:dom` runs 16 core phases and 13 small test workflows, including
-real DOM Testing Library event, label and accessible-role queries. Both engines
-now pass every workload and produce matching result fingerprints.
-
-The 2026-09-05 local run (`bun run bench:dom --runs 9 --json`, macOS arm64,
-Bun 1.4.0, happy-dom 20.11.11, size 1×) measured:
+The **2026-09-05 source-build run** produced matching workload checks for both
+engines and passed all 13 test scenarios (`valid: true`).
 
 | Timed workload | mad-dom | happy-dom | Speedup |
 | --- | ---: | ---: | ---: |
-| Core operations | 150.29 ms | 452.28 ms | 3.01× |
-| Test workflows | 98.23 ms | 154.66 ms | 1.57× |
+| Core operations, 16 phases | **141.70 ms** | 401.60 ms | **2.83×** |
+| Test workflows, 13 scenarios | **91.10 ms** | 143.08 ms | **1.57×** |
 
-Each total is the median of nine per-round sums of the timed phases, excluding
-forced GC, validation and untimed setup. The workflow sum is derived only after
-all 13 scenarios pass; window construction/closing is included in the
-`windowLifecycle` phase. The core report's separate `total` field is pipeline
-wall time and includes setup, checks and GC, so it is not the operations figure
-above. The local raw report is retained as `bench/baseline.dom-2026-09-05.json`
-(ignored host-specific output).
+Environment: Apple M3 Max, 48 GiB RAM, macOS 26.6.2 arm64, Bun 1.4.0, Rust
+1.93.1; size 1×, 2 warmup rounds followed by 9 measured rounds per engine.
+The code measured was revision
+[`2fda7ea`](https://github.com/zhy0216/mad-dom/commit/2fda7eaf75572a29618f9443527011886a970e0b),
+whose package manifest is `0.0.1-alpha.3`. The native artifact was built from
+that checkout and explicitly selected with `MAD_DOM_NATIVE_PATH`; these are
+source-build measurements, not measurements of a downloaded npm binary.
 
-Fifteen of 16 core phase medians were faster in this run, including truly
-warmed queries; cold traversal was about 3% slower. Ten of 13 workflow medians
-were faster. `testingLibraryEvents`, `testingLibraryLabel` and `asyncObserver`
-remained slower (about 2–17%); these are included in the totals.
-Microsecond-scale hot queries and near-ties remain sensitive to timing noise.
+[Download the raw report](https://github.com/zhy0216/mad-dom/blob/main/benchmark/results/2026-09-05-dom.json)
+for all samples, medians, min/p90/MAD, workload metadata, result checks and RSS
+readings. [Benchmark methodology](https://github.com/zhy0216/mad-dom/blob/main/benchmark/README.md)
+documents each workload and how to derive the workflow aggregate.
 
-The changes reuse bounded selector syntax/results, transfer query and child
-results as lazy native tokens, cache computed-style sources and label
-associations against native mutation generations, and remove a redundant
-global scan from observer registration. Results remain live after native or
-facade mutations; pseudo-class query results are not cached because character
-data can affect selectors such as `:empty` independently of those generations.
+Each aggregate above is the **median of per-round sums** of timed phases,
+not the sum of phase medians. Core exposes this as `operations`; the testing
+aggregate is derived from all 13 passing phases because the testing runner
+reports scenarios individually. Speedup is happy-dom time / mad-dom time;
+values below 1 mean mad-dom took longer.
 
-## Why it's fast
+These totals weight the exact workload mix below, including the separate
+construction experiments. They do not predict complete application or
+test-runner speedups. Framework renderers such as React/Vue, `user-event`,
+jest-dom matchers and runner startup are outside this benchmark.
 
-The DOM doesn't live in JS objects. Nodes are stored in a Rust memory arena,
-HTML is parsed natively, and selector matching runs natively — JS reaches all
-of it through a thin Node-API binding. Bulk work is where that pays: parsing,
-serializing (`innerHTML`) and selector queries are single native operations
-and ran 1.8–5.1× ahead of happy-dom in a recorded 1× full-pipeline ABBA run
-with 30 samples per engine (`bun run bench:dom --suite core`).
+## Core DOM operations
 
-The trade-off used to be the other direction: every individual node operation
-crossed the binding and eagerly minted a native wrapper. Current builds use
-document-scoped lazy node tokens for creation and a bounded compact subtree
-snapshot for the first `firstChild`/`nextSibling` walk. Reads over an unchanged
-tree then stay in an epoch-guarded JS memo; Core-maintained structure and
-attribute generations invalidate navigation, reflected-attribute and live
-collection caches after every relevant mutation.
+At size 1×, the parsed page contains 10,304 elements and 326,405 bytes of HTML.
+Mixed construction creates 20,000 elements plus a root and 4,000 text nodes;
+the separate construction phases each use 20,000 nodes. Read-heavy work
+samples 5,000 nodes, and mutation churn uses 2,000.
 
-Simple document ID lookup now activates a Core-owned ID-only index, without
-turning on the full class/tag/all-elements query index. Core text reads also
-use an allocation-free relation walk with empty and single-text-child fast
-paths. Text creation moves the Node-API-owned string directly into Core,
-registers the guaranteed-fresh node without a futile reverse-map probe, and
-uses a creation-only lazy `Text` wrapper factory that still enters the same
-per-document identity table.
+All times below are **per-phase medians in milliseconds** for the same run.
 
-The earlier measurements below predate the corrected hot-query warmup and the
-separate operation total above.
+| Phase | mad-dom (ms) | happy-dom (ms) | Speedup |
+| --- | ---: | ---: | ---: |
+| `parse` | 9.845 | 31.415 | 3.19× |
+| `buildMixed` | 31.152 | 51.809 | 1.66× |
+| `queryHot` | 0.001500 | 0.003458 | 2.31× |
+| `queryCold` | 5.741 | 11.014 | 1.92× |
+| `getById` | 1.029 | 52.569 | 51.10× |
+| `getByTag` | 0.231 | 2.693 | 11.66× |
+| `serialize` | 1.007 | 5.013 | 4.98× |
+| `traverseWarm` | 0.688 | 1.732 | 2.52× |
+| `traverseCold` | 3.238 | 3.460 | 1.07× |
+| `buildCreate` | 6.529 | 7.477 | 1.15× |
+| `buildAttr` | 20.653 | 27.810 | 1.35× |
+| `buildAppend` | 11.895 | 12.700 | 1.07× |
+| `buildText` | 7.293 | 10.388 | 1.42× |
+| `buildBulk` | 27.461 | 99.400 | 3.62× |
+| `readHeavy` | 6.564 | 6.429 | 0.98× |
+| `mutationChurn` | 9.416 | 80.848 | 8.59× |
 
-On macOS arm64 / Bun 1.4.0, the earlier 15-round 1× command put mad-dom ahead
-in 15 phases. Its only apparent loss, `readHeavy` at 4.41 ms vs 4.39 ms, was
-0.46% and within run noise. To avoid relying on fixed engine order or selecting
-a favorable result, a full-pipeline ABBA follow-up (mad, happy, happy, mad)
-ran 15 measured rounds per worker and combined 30 samples per engine. Its
-per-phase medians put mad-dom ahead in all 16 phases: cold traversal was
-3.203 ms vs 3.434 ms, mixed construction 29.028 ms vs 47.382 ms, ID lookup
-0.791 ms vs 41.147 ms, and the read-heavy phase 4.117 ms vs 4.559 ms. The two
-mad-dom `readHeavy` batch medians were 4.005/4.142 ms; happy-dom's were
-4.386/4.582 ms, so both paired directions agreed. A 200,000-draw
-batch-stratified bootstrap estimated a 9.69% mad-dom advantage, with a
-happy-dom/mad-dom ratio 95% CI of 1.030×..1.189×. The same 50,000-draw check
-across every phase gave a positive happy-dom − mad-dom difference lower bound
-for all 16; the narrowest was +0.119 ms for cold traversal.
+mad-dom had lower medians in 15 of 16 core phases. `readHeavy` was about 2%
+slower in this run. `queryHot` takes only a few microseconds, and happy-dom's
+`queryHot` and `traverseWarm` samples exceeded the report's instability
+threshold (MAD > 20% of the median). Small differences and those unstable
+ratios should not be treated as reliable wins.
 
-A retained small-scale ABBA audit used four alternating workers with 31 rounds
-each (62 samples per engine). Fourteen of 16 phases had a positive
-happy-dom − mad-dom bootstrap-difference interval; `buildText` and `readHeavy`
-were statistical ties. Their combined medians were 0.5742 vs 0.6689 ms and
-0.4050 vs 0.3996 ms respectively, with 95% difference intervals of
-−0.0332..+0.1914 ms and −0.0487..+0.0260 ms. Cold traversal remained just
-positive at 0.3377 vs 0.3528 ms (CI +0.0003..+0.0263 ms). This is the expected
-microsecond-scale noise floor, not evidence of a remaining boundary cliff.
+`queryHot` reruns the exact selectors after an untimed priming batch.
+`traverseWarm` measures the second complete walk of an unchanged tree.
+Their cold counterparts use separate, freshly parsed documents without the
+warmup traversal or element-count pass. `getById` measures 100
+`document.querySelector("#id")` calls, including the initial ID index build;
+`getByTag` measures 20 live-collection length reads.
 
-In the final fixed-code 15-round 0.1×/1×/2× command, all 1× and 2× phases
-except `readHeavy` had favorable point medians. At 2×, text creation was
-14.82 ms vs 18.50 ms, element creation 12.42 ms vs 20.39 ms, and cold
-traversal 6.27 ms vs 7.09 ms. `readHeavy` was 10.21 ms vs 10.17 ms—a 0.04 ms
-(0.4%) gap with overlapping intervals; an earlier formal 2× run measured
-9.81 ms vs 10.30 ms in the other direction, while the higher-sample 1× ABBA
-above clearly favored mad-dom. Bulk work remains the strongest shape:
-parsing, serialization, selector queries and bulk fragment construction run
-several times ahead of happy-dom. The happy-dom aggregate total was unstable,
-so these conclusions use per-phase medians only. Reproduce the scale audit
-with `bun run bench:dom --suite core --runs 15 --sizes 0.1,1,2`.
+## Test workflows
 
-The same final run reported these pipeline-end, post-drain worker RSS deltas
-on its total rows:
+Each phase repeats small fixture-based cases. Size 1× determines the number
+of cases below; larger sizes increase case count while keeping each component
+the same size. Times are for the **whole batch**, not one case.
 
-| Scale | mad-dom RSS Δ | happy-dom RSS Δ |
+| Scenario | Cases / round | mad-dom (ms) | happy-dom (ms) | Speedup |
+| --- | ---: | ---: | ---: | ---: |
+| `fixtureLifecycle` | 100 | 3.327 | 2.956 | 0.89× |
+| `windowLifecycle` | 25 | 0.900 | 35.585 | 39.53× |
+| `testingLibraryText` | 50 | 14.163 | 15.953 | 1.13× |
+| `testingLibraryEvents` | 50 | 2.052 | 1.844 | 0.90× |
+| `testingLibraryRole` | 25 | 15.495 | 16.938 | 1.09× |
+| `testingLibraryLabel` | 25 | 7.177 | 6.979 | 0.97× |
+| `todoInteractions` | 50 | 20.027 | 29.661 | 1.48× |
+| `formSubmission` | 50 | 4.832 | 5.701 | 1.18× |
+| `templateClone` | 50 | 12.243 | 16.549 | 1.35× |
+| `keyedReconcile` | 50 | 5.986 | 5.876 | 0.98× |
+| `asyncObserver` | 25 | 0.914 | 0.723 | 0.79× |
+| `shadowComponent` | 50 | 1.757 | 2.039 | 1.16× |
+| `snapshotRoundTrip` | 50 | 1.893 | 2.338 | 1.24× |
+
+These exercise fixture/window lifecycle, text/role/label queries, event
+dispatch, Todo updates, forms, template cloning, keyed reconciliation,
+MutationObserver, Shadow DOM and snapshot round trips. Both engines passed
+every scenario with matching case counts and SHA-256 result fingerprints.
+
+mad-dom had lower medians in 8 of 13 scenarios. Shared-window fixture
+lifecycle, Testing Library events and labels, keyed reconciliation and async
+observers were slower. The aggregate includes all five.
+
+Fixture mounting, querying, interaction, result reads and DOM cleanup are
+timed. Only `windowLifecycle` also times Window construction and
+`happyDOM.close()`; other scenarios create a shared Window outside each
+round's timed cases. Prebuilt strings, final assertions, hashing, explicit GC
+and event-loop drains are outside the timing windows. Normal runtime GC
+inside a timed operation still contributes to its duration.
+
+## Timing and memory limits
+
+The runner starts separate Bun processes for each engine and suite, in fixed
+order: core mad-dom, core happy-dom, testing mad-dom, testing happy-dom.
+It retains all measured samples after warmup and reports median, minimum,
+nearest-rank p90 and median absolute deviation (MAD). This snapshot is one
+machine's run in that order, without an alternating-order audit or confidence
+intervals. Repeat on comparable hardware and inspect variability when a
+decision depends on a small difference.
+
+Core `total` is pipeline wall time, including fixture preparation, validation,
+explicit GC and event-loop drains. Its medians here were 374.80 ms for mad-dom
+and 3,252.41 ms for happy-dom. The latter was unstable (MAD > 20% of median);
+the headline comparison uses the timed `operations` field instead.
+
+The same workers reported these pipeline-end RSS changes:
+
+| Last measured round, after GC/drain | mad-dom | happy-dom |
 | --- | ---: | ---: |
-| 0.1× | +13.4 MB | +591.1 MB |
-| 1× | +236.7 MB | +5,752.8 MB |
-| 2× | +333.2 MB | +10,730.1 MB |
+| RSS change from the pre-measurement baseline | +242.3 MiB | +3,475.1 MiB |
 
-These figures include the multi-round worker's resident wrappers, JIT and GC
-state; they are not per-document object sizes. They are reported alongside
-the cold/warm timings because document-lifetime wrapper and memo residency is
-an intentional part of the design. JSON mode retains each phase's peak and
-post-drain RSS samples for machine-specific review.
+RSS includes accumulated worker state, native allocations, wrappers, caches,
+JIT and runtime GC behavior across the run. It is neither a per-document
+allocation count nor a leak test. JSON `rss.perPhase.*.peak` is a point sample
+before explicit GC; `after` is sampled after GC/drain. Both retain only the
+last measured round and `peak` is not an OS high-water mark.
 
-## Regression gate
+## Reproduce from source
 
-Performance and memory are guarded inside the repo: every change is checked
-against a recorded baseline (`bench/baseline.json`) via `bun run bench:check`,
-so regressions don't slip in.
+Use a repository checkout with Bun `1.4.0` and Rust `1.93.1`:
+
+```sh
+bun install --frozen-lockfile
+bun run dev:build
+MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1
+MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1 --json > dom-bench.json
+```
+
+The last command performs another measurement and retains its raw JSON.
+The environment variable forces the freshly built native artifact even if
+an npm platform package is installed. To explore a group or workload size:
+
+```sh
+bun run bench:dom --suite testing
+bun run bench:dom --suite core --runs 9 --sizes 0.1,1,2
+bun run bench:dom --runs 1 --sizes 0.01
+```
+
+Defaults are `--suite all --runs 5 --sizes 1`. Core sizes scale the tree;
+testing sizes scale independent case counts. The tiny run is a correctness
+smoke check, not a useful performance estimate. For source comparisons, keep
+the same native-path override on these commands too.
+
+## Other benchmark commands
+
+| Command | What it measures |
+| --- | --- |
+| `bun run bench:integration` | Wall time of the vendored integration suites, including subprocess startup and a local-server workload; the full group also uses external services |
+| `bun run bench:check` | mad-dom's internal Rust and raw-binding metrics against an applicable recorded baseline |
+
+The integration runner's `local` group is CommonJS, Fetch against local
+Express, WindowGlobals and a standalone exception observer. It is a different
+measurement from the 29 DOM workloads above. Its `full` group can fail due to
+external services or behavior differences; the runner still prints timings
+and does not enforce all test exit statuses. Verify correctness before using
+that output for a comparison.
+
+The internal gate catches large regressions only when a matching baseline
+exists. On a new OS/architecture it records a local baseline and passes;
+a green first run alone is not evidence of no regression. See the
+[gate documentation](https://github.com/zhy0216/mad-dom/blob/main/bench/README.md)
+for thresholds and CI baseline behavior.
+
+## Implementation
+
+The Rust arena stores the DOM tree; a JavaScript facade and native binding
+provide the public API. Native parsing, selector matching and serialization
+handle bulk work. Lazy node tokens, bounded query caches and mutation-aware
+navigation/style/label caches reduce repeated boundary calls while retaining
+JavaScript wrapper identity. The [boundary design
+ADR](https://github.com/zhy0216/mad-dom/blob/main/adr/0007-facade-native-boundary-performance.md)
+describes that trade-off. The phase timings and RSS above measure its effects
+on this workload.

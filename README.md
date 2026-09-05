@@ -2,49 +2,74 @@
 
 > Not happy. Just native.
 
-**A native DOM for Bun, written in Rust. A drop-in replacement for happy-dom —
-one import is the whole migration, and your DOM tests get faster.**
+**A native DOM for Bun, written in Rust, with a happy-dom-compatible API.**
+
+[Documentation](https://zhy0216.github.io/mad-dom/) ·
+[Examples](docs/examples.md) · [Performance](docs/performance.md)
 
 ```sh
 bun add -d mad-dom
 ```
 
-## One import is the whole migration
+## Start with one import
 
 ```diff
 - import { Window } from "happy-dom";
 + import { Window } from "mad-dom";
 ```
 
-That's it. Same API shape — `Window`, `Browser`, `GlobalWindow`,
-`window.document`, the lot — running directly under `bun test`.
+Use familiar APIs — `Window`, `Browser`, `GlobalWindow`, `window.document` —
+under `bun test`. Run your own suite after changing the import; compatibility
+is measured against a defined contract and the package is still alpha.
 
-We didn't just claim it: we vendored **happy-dom's own integration-test
-suite** verbatim and changed nothing but the import specifier. Same tests,
-same assertions, new engine.
+The repository includes two copies of happy-dom's integration tests with
+matching assertions and an engine import swap. The shared Bun runner and
+test adaptations are documented in [benchmark/README.md](benchmark/README.md).
 
-## And it's faster
+## Benchmarks
 
-The same suite, run both ways under `bun test` (median of 3 runs,
-macOS arm64, Bun 1.4.0), on the deterministic DOM workload:
+The DOM benchmark runs **16 core operations** and **13 test workflows** against
+both engines, including real DOM Testing Library queries and events. In the
+**2026-09-05 source-build run**, all workloads passed and their results matched:
 
-| | Median | Result |
-| --- | --- | --- |
-| **mad-dom** | **128 ms** | **1.6× faster** |
-| happy-dom 20.11.11 | 206 ms | baseline |
+| Timed workload | mad-dom | happy-dom 20.11.11 | Speedup |
+| --- | ---: | ---: | ---: |
+| Core operations (16 phases) | **141.70 ms** | 401.60 ms | **2.83×** |
+| Test workflows (13 scenarios) | **91.10 ms** | 143.08 ms | **1.57×** |
 
-Reproduce it yourself:
+Apple M3 Max, 48 GiB RAM, macOS arm64, Bun 1.4.0, Rust 1.93.1; size 1×,
+2 warmup rounds and 9 measured rounds per engine. Each aggregate is the
+**median of per-round sums** of timed phases; speedup is happy-dom / mad-dom.
+Forced GC, validation and untimed setup are excluded. This measures DOM work,
+including scenario mounting and cleanup, rather than complete test-runner or
+React/Vue application performance.
+
+Performance varies by workload: mad-dom had lower medians in 15/16 core phases
+and 8/13 workflows in this run. The read-heavy core phase and workflows for
+shared-window fixture lifecycle, Testing Library events/labels, keyed updates
+and async observers were slower. See the [full phase tables and measurement
+limits](docs/performance.md), [methodology](benchmark/README.md) and
+[raw samples](benchmark/results/2026-09-05-dom.json).
+
+Reproduce from a source checkout:
 
 ```sh
-bun benchmark/run.mjs
+bun install --frozen-lockfile
+bun run dev:build
+MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1
 ```
 
-## Why it's fast
+Use `--suite core` or `--suite testing` to select a group, and `--json` to retain
+samples, result checks and RSS readings. The separate `bench:integration`
+command measures integration-suite wall time; `bench:check` compares mad-dom's
+internal metrics with a baseline. These measure different things.
 
-The DOM doesn't live in JavaScript objects. It lives in a Rust memory arena:
-a native HTML parser, native selector matching and serialization, reached from
-JavaScriptCore through a thin Node-API binding. Less GC churn, more DOM per
-millisecond.
+## How it works
+
+The DOM tree lives in a Rust memory arena, with native HTML parsing, selector
+matching and serialization. A JavaScript facade exposes the API through a
+Node-API binding. Lazy node wrappers and mutation-aware caches reduce repeat
+boundary calls; wrappers and caches also contribute to process memory use.
 
 ## Compatibility
 
@@ -67,7 +92,7 @@ but don't run production on it yet.
 
 ## Digging deeper
 
-- [Benchmark methodology](benchmark/README.md) — how mad-dom vs happy-dom is measured
+- [Benchmark methodology](benchmark/README.md) — workloads, statistics and reproduction
 - [Performance & memory gate](bench/README.md) — regression-gated internal metrics
 - [Compatibility report](docs/compat-report.md) · [Release manual](docs/release.md)
 - [Safety notes](crates/mad-dom-core/SAFETY.md) — the core is `#![forbid(unsafe_code)]`

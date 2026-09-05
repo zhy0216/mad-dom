@@ -1,72 +1,157 @@
-# Integration-test benchmark (mad-dom vs happy-dom)
+# Benchmarks: mad-dom vs happy-dom
 
-This directory vendors the happy-dom integration-test suite in two copies and
-runs both under the bun test runner to compare wall-clock:
+仓库中有三种不同口径的性能测量：
 
-- `mad-dom-integration-test/` — imports `mad-dom` (devDependency `file:../..`)
-- `happy-dom-integration-test/` — imports `happy-dom` 20.11.11 (same version the
-  compat differential suite pins)
+| 命令 | 测量内容 | 用途 |
+| --- | --- | --- |
+| `bun run bench:dom` | 16 个 DOM 操作阶段 + 13 个小型测试工作流 | 比较两个引擎的确定性 DOM 工作负载 |
+| `bun run bench:integration` | 两份集成测试的进程墙钟时间 | 观察模块加载、runner、DOM 和网络叠加的端到端成本 |
+| `bun run bench:check` | Rust Core + raw binding 的内部指标 | 对照适用基线检查 mad-dom 自身的大幅退化，详见 [bench/README.md](../bench/README.md) |
 
-Both packages keep the upstream test files verbatim except:
+## 最新记录：2026-09-05
 
-1. `import ... from 'happy-dom'` → `from 'mad-dom'` in the mad-dom copy.
-2. The `test` script uses `bun test` instead of `node --test` (upstream ran
-   `ls | node --disallow-code-generation-from-strings --test`).
-3. `Browser.test.js` sets `timer.maxIntervalTime` instead of the stale
-   `timer.maxInterval` (no published happy-dom version, nor happy-dom `master`,
-   defines `maxInterval`; the upstream test was already broken against it).
+| 计时工作量 | mad-dom | happy-dom 20.11.11 | happy-dom / mad-dom |
+| --- | ---: | ---: | ---: |
+| Core：16 阶段的操作合计 | **141.70 ms** | 401.60 ms | **2.83×** |
+| Testing：13 场景的工作量合计 | **91.10 ms** | 143.08 ms | **1.57×** |
 
-The `browser-exception-observer` test cannot run inside a test runner — it
-captures process-level `uncaughtException`/`unhandledRejection`, which collide
-with the runner — so the `test` script runs it as a standalone script, exactly
-like the upstream design.
+这次测量使用 Apple M3 Max、48 GiB 内存、macOS 26.6.2 arm64、Bun 1.4.0、
+Rust 1.93.1；size 1×，2 轮 warmup + 9 轮正式计量。
+源码版本为 [`2fda7ea`](https://github.com/zhy0216/mad-dom/commit/2fda7eaf75572a29618f9443527011886a970e0b)
+（package.json 版本 `0.0.1-alpha.3`），通过 `dev:build` 构建并显式加载本地
+native artifact。这里的数字对应源码构建，不代表已发布 npm 二进制的测量。
 
-## Running
+[原始 JSON](results/2026-09-05-dom.json) 保留本次完整输出；
+[性能页](../docs/performance.md) 列出全部 29 个阶段的时间及 RSS。
+两个引擎的工作量和结果校验匹配，13 个 testing 场景全部通过，顶层 `valid: true`。
+mad-dom 在 15/16 个 core 阶段、8/13 个 testing 场景中位数更低；
+较慢项目也计入合计，不能据此宣称每类测试都会加速。
 
-```sh
-bun run bench:integration        # run both suites, print the comparison
-bun benchmark/run.mjs --json     # machine-readable JSON
-bun benchmark/run.mjs --iterations 5
-```
+合计均为**先按轮相加，再对这些轮次总和取中位数**。Core JSON 直接提供
+`operations`；testing runner 只报告单项，表中合计由全部通过的场景 samples
+计算。两者都不是把各相位中位数相加，也不是整套测试进程的运行时间。
+这些阶段及其用例数量构成固定的混合负载，合计没有额外按场景权重归一化。
 
-The report shows two timings (median over 3 runs by default):
+## 从源码复现
 
-- **full** — every test file. The Browser / XMLHttpRequest / WebSocket cases
-  hit real external endpoints (github.com, npmjs.com, echo.websocket.org), so
-  their latency dominates the total and is noisy; on happy-dom those cases
-  usually fail fast in this environment, which makes the full-suite number
-  misleading as a performance signal.
-- **local** — only the deterministic, dependency-free cases (CommonJS, Fetch
-  over a local express server, WindowGlobals, exception observer). This is the
-  stable DOM-workload signal and the number to compare.
-
-`bun run test:integration` runs the mad-dom copy as the CI gate. It uses the
-`test:ci` script, which excludes `Browser.test.js` (see below) and runs the
-deterministic cases plus the exception observer; the full suite including the
-live-network cases stays available via the package `test` script or
-`bun test test`.
-
-## DOM benchmark：引擎操作 + 单测场景
-
-`bun run bench:dom` 默认运行两组对比：原有 16 个大树/底层操作阶段（`core`），
-以及 13 个面向单测的小型应用流程（`testing`）。两组各自为每个引擎启动独立
-Bun 进程，避免大树测试的内存驻留影响单测场景。
+以下命令在仓库根目录运行，需要 Bun `1.4.0` 和 Rust `1.93.1`：
 
 ```sh
-bun run bench:dom                                     # 默认 all：两组全部运行
-bun run bench:dom --suite testing                     # 只跑单测场景
-bun run bench:dom --suite testing --runs 7 --sizes 0.1,1,2
-bun run bench:dom --suite testing --runs 1 --sizes 0.01 # 最小工作量冒烟
-bun run bench:dom --suite core                        # 原有 16 阶段
-bun run bench:dom --json                              # 完整结果与失败诊断
-bun test benchmark/dom-bench                          # fixture、计量器与报告有效性校验
+bun install --frozen-lockfile
+bun run dev:build
+MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1 --json > dom-bench.json
 ```
 
-### 单测场景（testing）
+`MAD_DOM_NATIVE_PATH` 保证使用刚构建的原生模块，即使已安装平台 npm 包。
+对比不同源码版本时，每次重建并使用同样的路径覆盖。其余常用命令：
 
-场景定义在 `dom-bench/testing-scenarios.mjs`。它们模拟测试文件中常见的
-setup → mount → query/interact → inspect → cleanup 流程，使用确定性数据、
-小组件和重复用例，而不是把每个组件放大成上万节点。
+```sh
+bun run bench:dom                                     # all，默认 5 轮、size 1×
+bun run bench:dom --suite testing                     # 只跑单测工作流
+bun run bench:dom --suite core                        # 只跑 16 个操作阶段
+bun run bench:dom --suite core --runs 9 --sizes 0.1,1,2 # 规模曲线
+bun run bench:dom --runs 1 --sizes 0.01                # 两组最小工作量冒烟
+bun test benchmark/dom-bench                          # fixture、计量器与报告校验
+```
+
+这些命令也可加相同的 native-path 前缀。省略 `--json` 会打印对比表；
+`--runs` 必须为 ≥ 1 的整数，`--sizes` 是逗号分隔的有限正数。
+非法参数返回 exit 2。冒烟规模和单轮样本只适合检查能否运行。
+
+### 从原始 samples 复算合计
+
+下面的命令使用 runner 共用的统计函数。将文件名改为 `dom-bench.json`
+即可汇总自己刚跑出的结果：
+
+```sh
+bun -e '
+import { summarizeOperations } from "./benchmark/dom-bench/stats.mjs";
+const report = await Bun.file("benchmark/results/2026-09-05-dom.json").json();
+if (!report.valid || !report.testing?.valid) throw new Error("Invalid comparison");
+for (const [suite, reports] of [["core", report.reports], ["testing", report.testing.reports]]) {
+  for (const engine of reports) {
+    for (const result of engine.results) {
+      if (suite === "testing" && Object.values(result.phases).some(p => p.status !== "passed")) {
+        throw new Error("Incomplete testing workload");
+      }
+      console.log(suite, engine.engine, result.size, summarizeOperations(result.phases));
+    }
+  }
+}
+'
+```
+
+## DOM benchmark 的计量与有效性
+
+`dom-bench/run.mjs` 按固定顺序启动独立 Bun worker：
+core mad-dom → core happy-dom → testing mad-dom → testing happy-dom。
+不同 suite 使用不同进程，多种 size 则在同一 worker 内按给定顺序执行。
+这次记录没有使用 ABBA 交替顺序，也没有计算置信区间；需要判断窄差值时，
+应在目标机器上重复测量并检查全部样本，避免只选有利轮次。
+
+- 每个 size 丢弃 2 轮 warmup，保留全部正式 samples。表格显示
+  `median [min-p90] MAD`，p90 使用 nearest-rank，MAD 为中位绝对偏差。
+  MAD 超过中位数 20% 会警告；`[min-p90]` 不是置信区间。
+- 每阶段后都执行 `Bun.gc(true)` 和两次事件循环排空，让延迟的 Node-API
+  finalizer 有机会运行。这些显式 GC/等待位于单项操作计时窗口外；
+  窗口内发生的普通运行时 GC 仍会计入耗时。
+- Core 检查完整 workload 元数据、逐选择器命中数、真实树节点计数、id 抽查、
+  序列化哈希、遍历计数和 read/mutation 指纹；正式轮次必须一致，两引擎也必须匹配。
+  无效时该规模不展示 core speedup。
+- Testing 每例在计时后检查明确的期望值，包括 cleanup 后空 body；warmup 也检查。
+  同引擎跨轮指纹必须相同，两引擎的用例数和 SHA-256 结果指纹也必须相同。
+- Testing 场景失败后标为 `FAIL`、清空 samples、保留首个失败轮次和原因，并继续
+  其他场景；失败场景不重试，也不展示 speedup 或参与合计。
+- 任一 workload 失败、结果不匹配或 core 跨轮不一致，runner 输出诊断后返回
+  exit 1；worker 启动失败、信号退出或无效 JSON/schema 也会终止比较。
+- 只跑 core 时对比 schema 为 `mad-dom-dom-bench-comparison/1`，core worker
+  为 `mad-dom-dom-bench/3`。包含 testing 时对比 schema 为
+  `mad-dom-dom-bench-comparison/2`，原 core 数据仍在 `reports`，testing 数据在
+  `testing: { phases, reports, valid }`，testing worker 为 `mad-dom-testing-bench/1`。
+  `--suite testing` 时顶层 core 的 `reports` / `phases` 为空。
+
+## 大树与底层操作：core
+
+`dom-bench/worker.mjs` 以轮为主循环，每轮运行完整 pipeline。
+以下负载为 size 1×；`--sizes` 缩放 sections 及 build/read/mutation 节点数。
+各阶段独立计时，分解构建阶段都是另外执行的实验，不是从 `buildMixed` 中拆分时间。
+
+| 阶段 | 负载与计时窗口 |
+| --- | --- |
+| `parse` | `document.write` 一份生成的 ~10.3k 元素 / ~320 KB 页面（每次全新 window，只计 write） |
+| `buildMixed` | 20k 元素 `createElement` + `setAttribute` + `appendChild` 建树（另 +4k 文本节点，只计建树循环） |
+| `queryHot` | 在共享文档上先于计时预跑同一组类 / 复合后代选择器，再计量第二次查询 |
+| `queryCold` | 同一批量在每轮全新解析文档上首查（现铸 wrapper、选择器缓存未命中） |
+| `getById` | 100 个不同 id 的 document `querySelector("#id")` 单点命中（首查含 Core id-only 索引构建，步长覆盖全量 id 区间） |
+| `getByTag` | 20 次 `getElementsByTagName("li").length`（live-collection 成本单独计量） |
+| `serialize` | `body.innerHTML` 全量读取（计时为纯读取；内容哈希在窗口外计算） |
+| `traverseWarm` | 共享文档第二次 `firstChild` / `nextSibling` 全树遍历（驻留 + 导航 memo 命中） |
+| `traverseCold` | 全新解析文档的首次全树遍历（wrapper 现铸、memo 未命中） |
+| `buildCreate` | 20k `createElement`，无属性、不挂载（纯创建成本） |
+| `buildAttr` | `createElement` + 每节点 id/class `setAttribute`，不挂载（属性 FFI） |
+| `buildAppend` | `createElement` + `appendChild` 到浅根，无属性（纯挂载成本） |
+| `buildText` | 20k `createTextNode`，不挂载 |
+| `buildBulk` | 一次 `div.innerHTML` 解析 20k 元素片段再挂载（native 解析路径，无逐节点 FFI） |
+| `readHeavy` | 5000 采样节点逐节点读 `nodeName` / `id` / `className` / `getAttribute` / 首子节点 `textContent` |
+| `mutationChurn` | 2000 采样节点 ×（`setAttribute` 覆写、removeAttribute、remove+append、replaceChild 出入对；每轮独立新文档） |
+| `operations` | 每轮 16 个计时窗口之和的中位数，排除 fixture 准备、验证、强制 GC 与事件循环等待 |
+| `total` | 每轮整条 pipeline 实测墙钟时间的中位数，包含准备、验证、相位间 GC 与等待（保留原有口径） |
+
+`queryHot` 的同一组选择器预跑和 `traverseWarm` 的第一次完整遍历都在计时外。
+Cold 使用另行新建、解析后未作 element-count 预读的文档；`queryCold`
+查询后再运行 `traverseCold`，所以 cold 指首次遍历，不代表完全没有先前查询。
+文档存活时 wrapper/token 和导航缓存驻留是实现成本的一部分，需要连同 RSS 看。
+
+`getById` 名称指单点 ID 查询，但实际 API 是 `querySelector("#id")`，
+不是 `getElementById()`。第一条查询建立 Core 的 ID-only 索引，
+其后的 99 条使用索引；一般 class/后代选择器不会因此开启完整查询索引。
+
+## 小型单测工作流：testing
+
+场景定义在 `dom-bench/testing-scenarios.mjs`。它们执行
+setup → mount → query/interact → inspect → cleanup，使用确定性数据和小组件。
+`--sizes` 只缩放独立用例数（四舍五入、最少 1 例），不放大单个组件。
+每个时间样本是该场景**整批用例**的耗时，不能直接跨场景比较单次操作速度。
 
 | 阶段 | 1× 每轮用例数 | 场景与验证 |
 | --- | ---: | --- |
@@ -84,276 +169,81 @@ setup → mount → query/interact → inspect → cleanup 流程，使用确定
 | `shadowComponent` | 50 | Shadow DOM 计数器挂载、slot 分配、内部查询、composed 事件冒泡、状态更新与 light/shadow 查询隔离 |
 | `snapshotRoundTrip` | 50 | 克隆组件、修改副本、outerHTML 快照、重解析，验证原树未变以及实体、属性和注释的完整内容 |
 
-Testing Library 使用锁定的开发依赖 `@testing-library/dom@10.4.1`，直接调用包内
-API；查询选择参考[官方查询文档](https://testing-library.com/docs/queries/about/)。
-这些是 DOM 组件及真实 Testing Library 工作流，未包含 React/Vue renderer、
-`user-event`、jest-dom matcher 或测试运行器的启动成本，不能作为这些完整框架的性能结论。
+Testing Library 使用锁定的 `@testing-library/dom@10.4.1` 实际 API，保留默认
+可见性检查。场景不包含 React/Vue renderer、`user-event`、jest-dom matcher
+或测试运行器启动，因此不能作为完整框架测试性能的结论。
 
-计时口径：
+每例 fixture 解析、查询、交互、结果读取和 `body.replaceChildren()` 清理都计时。
+只有 `windowLifecycle` 把 Window 创建和 `happyDOM.close()` 算进窗口；
+其他场景每轮共享一个 Window，创建与最终关闭在计时外。
+预生成 fixture 字符串、最终断言、SHA-256、显式 GC 和事件循环排空不计时。
+异步场景使用 Promise + MutationObserver，2 秒定时器仅作失败 watchdog，
+正常路径没有固定等待或外网请求。
 
-- `--sizes` 只缩放独立用例数（四舍五入，最少 1 例），每个组件的节点数保持固定。
-  表中时间是该阶段**整批用例**的耗时；每个阶段显示每轮用例数，JSON 也保留
-  `workload.cases`。各场景的用例数不同，耗时不能直接作跨场景速度排名。
-- 每例的 fixture 解析、查询、交互、结果读取和 `body.replaceChildren()` 清理均计时。
-  预生成 fixture 字符串、最终断言、SHA-256 指纹、强制 GC 和事件循环排空不计时。
-  只有 `windowLifecycle` 把 Window 创建与 `happyDOM.close()` 也放进计时窗口；
-  其余阶段每轮共享一个 Window，创建及最终关闭在窗口外。
-- 2 轮 warmup 后保留所有测量样本，仍报告 median/min/p90/MAD。异步场景使用
-  Promise + MutationObserver；2 秒定时器只是失败 watchdog，正常路径没有固定等待或外网。
-- 每一例都在计时后与明确期望值比对，包含清理后的空 body；warmup 也校验。
-  同引擎跨轮指纹必须一致，两引擎的用例数及完整结果指纹也必须一致。
-- 某场景报错、结果错误或跨轮不一致时标为 `FAIL`，清空已有 samples，并继续其他
-  场景；失败场景不再重试、不显示 speedup。JSON 的 error 包含首个失败轮次及原因。
-  不汇总 testing 的 total，避免不完整工作量产生误导。
-- testing JSON 保留每个成功阶段最后测量轮 GC 前/后的 RSS 采样（`peak` 是时点值，
-  不是操作系统高水位），以及首个测量轮前的基线；表格聚焦耗时。
+## RSS 和 pipeline total
 
-**有效性与兼容缺口：** 任一组有场景失败、结果不一致或 core 跨轮校验失败，
-runner 都在输出完整报告后返回 exit 1；非法参数返回 exit 2。包含 testing 时
-对比 JSON schema 为 `mad-dom-dom-bench-comparison/2`：原 core 报告仍在
-`reports`，新组在 `testing: { phases, reports, valid }`，顶层 `valid` 要求两组都有效。
-`--suite testing` 时 core 的 `reports`/`phases` 为空；`--suite core` 保留原 schema /1。
-testing worker 的 schema 为 `mad-dom-testing-bench/1`。
+JSON `rss.baseline` 是首个正式轮次前的 RSS。
+`rss.perPhase.<phase>.peak` 在 GC 前采样，`after` 在 GC 和事件循环排空后采样；
+它们只保留最后一个正式轮次，`peak` 是时点读数，不是 OS 高水位。
+Core 对比表展示 `after - baseline`，testing 的 RSS 仅保留在 JSON 中。
 
-两引擎的 13 个场景现在全部通过。mad-dom 补齐了 `Document.defaultView`、
-节点类型常量、`getAttributeNode()`、label/control 双向关联，以及控件原型上的
-原生 value setter；真实 Testing Library 的事件、可访问名称和标签查询使用原有
-场景与默认可见性检查。选择器语法与结果缓存、惰性节点读取、按原生代数失效的样式与
-label 关联缓存，以及 observer 注册优化都在引擎内实现，未改变场景工作量。
+本次 core 最后阶段的 after-baseline 为 mad-dom **+242.3 MiB**、
+happy-dom **+3,475.1 MiB**。这是多轮 worker 累积驻留量，包含 native
+分配、wrapper/cache、JIT 和 GC 状态，不是每份文档的对象大小，也不是泄漏检测。
 
-### 大树与底层操作（core）
+Core `total` 为每轮完整 pipeline 的墙钟时间，包含准备、验证及相位间 GC/等待。
+本次中位数是 374.80 / 3,252.41 ms，但 happy-dom 的 total MAD 超过中位数 20%，
+因此主表采用 `operations`。另外 happy-dom 的 `queryHot` 与
+`traverseWarm` 也超过不稳定阈值；微秒级热查询和窄差值不宜当作稳定胜负。
 
-`benchmark/run.mjs`（上文）测的是小型集成套件的 wall-clock，其中进程启动、模块
-加载、网络等固定成本占大头。`benchmark/dom-bench/` 则直接压 DOM 引擎本身：
+## Integration-test benchmark
+
+`run.mjs` 对两个私有包运行测试：
+
+- `mad-dom-integration-test/` 通过 `file:../..` 导入本地 mad-dom。
+- `happy-dom-integration-test/` 导入锁定的 happy-dom `20.11.11`。
+
+两份测试之间仅替换引擎 import/require，断言一致。共同的上游适配包括 Bun
+runner，以及 `Browser.test.js` 使用 `timer.maxIntervalTime`。
+异常观察器会捕获进程级 `uncaughtException` / `unhandledRejection`，
+因此通过独立脚本运行，避开与测试 runner 的冲突。
+
+先完成根目录依赖安装和原生构建，再安装两个私有包的依赖：
 
 ```sh
-bun run bench:dom --suite core                        # 对比表（默认 5 轮，size 1×）
-bun run bench:dom --suite core --json                 # JSON（含 schema、samples、checks、rss）
-bun run bench:dom --suite core --runs 7               # 每引擎计量轮数（默认 5）
-bun run bench:dom --suite core --sizes 0.1,1,10        # 规模曲线（1 = 基准负载）
+bun install --frozen-lockfile --cwd benchmark/mad-dom-integration-test
+bun install --frozen-lockfile --cwd benchmark/happy-dom-integration-test
+bun run bench:integration
+bun run bench:integration --iterations 5 --json
 ```
 
-`--runs` 必须为 ≥ 1 的整数，`--sizes` 为逗号分隔的正数（可小数）；非法参数打印
-用法并 `exit 2`（run.mjs 与 worker.mjs 两侧都校验）。
+默认每引擎运行 3 次，报告两个中位墙钟时间：
 
-worker（`dom-bench/worker.mjs`）对两个引擎跑同一份确定性负载：以**轮主循环**
-跑完整条 pipeline（2 轮 warmup 丢弃，测量轮保留全部原始 samples），共 16 个
-相位，各自独立计量（与 `--json` 输出的 phase 键一一对应）：
-
-| 阶段 | 负载与计时窗口 |
+| 字段 | 工作量与解释 |
 | --- | --- |
-| `parse` | `document.write` 一份生成的 ~10.3k 元素 / ~320 KB 页面（每次全新 window，只计 write） |
-| `buildMixed` | 20k 元素 `createElement` + `setAttribute` + `appendChild` 建树（另 +4k 文本节点，只计建树循环） |
-| `queryHot` | 选择器批量（类 / 复合后代）在轮内共享文档上重跑（驻留态） |
-| `queryCold` | 同一批量在每轮全新解析文档上首查（现铸 wrapper、选择器缓存未命中） |
-| `getById` | 100 个不同 id 的 document `querySelector("#id")` 单点命中（首查含 Core id-only 索引构建，步长覆盖全量 id 区间） |
-| `getByTag` | 20 次 `getElementsByTagName("li").length`（live-collection 成本单独计量） |
-| `serialize` | `body.innerHTML` 全量读取（计时为纯读取；内容哈希在窗口外计算） |
-| `traverseWarm` | 共享文档第二次 `firstChild` / `nextSibling` 全树遍历（驻留 + 导航 memo 命中） |
-| `traverseCold` | 全新解析文档的首次全树遍历（wrapper 现铸、memo 未命中） |
-| `buildCreate` | 20k `createElement`，无属性、不挂载（纯创建成本） |
-| `buildAttr` | `createElement` + 每节点 id/class `setAttribute`，不挂载（属性 FFI） |
-| `buildAppend` | `createElement` + `appendChild` 到浅根，无属性（纯挂载成本） |
-| `buildText` | 20k `createTextNode`，不挂载 |
-| `buildBulk` | 一次 `div.innerHTML` 解析 20k 元素片段再挂载（native 解析路径，无逐节点 FFI） |
-| `readHeavy` | 5000 采样节点逐节点读 `nodeName` / `id` / `className` / `getAttribute` / 首子节点 `textContent` |
-| `mutationChurn` | 2000 采样节点 ×（`setAttribute` 覆写、removeAttribute、remove+append、replaceChild 出入对；每轮独立新文档） |
-| `operations` | 每轮 16 个计时窗口之和的中位数，排除 fixture 准备、验证、强制 GC 与事件循环等待 |
-| `total` | 每轮整条 pipeline 实测墙钟时间的中位数，包含准备、验证、相位间 GC 与等待（保留原有口径） |
+| `local` | CommonJS、使用本地 Express 的 Fetch、WindowGlobals，加独立异常观察器；不依赖外网，但包含进程启动、模块加载和本地 HTTP 成本 |
+| `full` | 全部测试加异常观察器；Browser、部分 XMLHttpRequest 和 WebSocket 用例依赖外网，受服务可达性和实时页面内容影响 |
 
-`--sizes` 按倍率缩放 sections（parse/query/traverse 负载）与 build/read/mutation
-节点数（多 size 时附 mad-dom 中位数规模曲线表）。每相位结束采样 RSS
-（`process.memoryUsage().rss`），打印相对基线的增量（`mad rss Δ` 列）。
+当前 runner 即使测试失败也会输出时间和速度比较，未校验所有子进程 exit status；
+JSON 的 summary 只保留最后一轮 full 主测试结果，不包含逐轮 local 通过情况。
+**报告生成成功不代表测试通过**，使用时间比较前应单独确认所选用例的正确性。
+DOM 性能结论优先使用有 workload 校验的 `bench:dom`。
 
-方法学要点：
+`bun run test:integration` 是 CI 对 mad-dom 包的功能检查，执行其 `test:ci`：
+只排除 `Browser.test.js`，并单独运行异常观察器。
+**它仍包含 XMLHttpRequest 和 WebSocket 的外网用例，并非纯 local 分组。**
+完整 Browser 用例也可能暴露导航或脚本行为差异，不能把失败一概归因于网络。
 
-- 两引擎跑在各自独立的 `bun` 子进程（`process.execPath` 拉起；spawn 失败、信号
-  终止、非法 JSON、schema/engine 不一致都报错退出）。有效性校验（worker 输出
-  `checks`）逐项相等才视为有效对比：逐选择器命中数、build 树实际节点计数 +
-  id 抽查、序列化内容哈希、遍历计数、read/mutation 指纹及完整 workload 元数据；
-  各轮结果也必须一致，失败时所有 core 行均不显示 speedup；且两引擎
-  `host.os/arch` 必须一致。worker JSON 的 `schema` 为 `mad-dom-dom-bench/3`，
-  对比层为 `mad-dom-dom-bench-comparison/1`。
-- 统计口径：每相位保留全部轮次原始 `samples`；打印行为
-  `median [min-p90] MAD`（MAD = median(|x−median|)）；`operations` 先逐轮相加再取
-  中位数，不是相位中位数之和。`total` 保留 pipeline 墙钟耗时，额外包含测试框架
-  开销，不能当作纯 DOM 操作耗时。任一相位 MAD > 20% median 即打印不稳定警告。
-- **cold/warm 定义**：warm 相位（`queryHot`、`traverseWarm`）跑在轮内共享文档上——
-  `queryHot` 在计时前明确预跑同一组选择器，`traverseWarm` 在计时前完整遍历一次；
-  该文档刚被 `elementCount` 全树读取并反复访问，wrapper 已被钉在
-  `DOC_STATES` 所持的私有 token registry（旧 binding 回退到 `pinned`；
-  `js/facade/window.js`，文档可达期间不失效），导航 memo 命中（树不变时遍历零
-  FFI）。cold 相位
-  （`queryCold`、`traverseCold`）跑在每轮
-  全新解析、从未计数的文档上——wrapper 现铸、memo 未命中，测的是铸造路径。
-  **pinned 驻留是设计特性，不是测量噪声**：warm 数字快是诚实的稳态成本，cold
-  数字才是铸造成本；读 warm 收益时请连同 RSS 增量一起读（驻留以内存为代价）。
-- **id 索引口径**：每轮共享文档第一次 document plain-`#id` 查询把 Core 查询模式从
-  `Off` 原子切换为 `IdOnly`，只构建并维护 document light tree 的 `by_id`；因此
-  `getById` 计时同时包含一次构建和其后的 99 次索引读取。class/tag/all-elements 的
-  完整 T32 索引仍保持关闭，`queryHot`/`queryCold` 的一般选择器也不触发它。
-- 每个计量轮之间强制 `Bun.gc(true)` + 排空事件循环（在计量窗口之外，两引擎同样
-  付出）。Bun 会把 Node-API finalizer 推迟到后续事件循环轮；排空可以让两引擎的
-  残留堆压力在固定相位边界收敛。facade wrapper 按设计在文档存活期间驻留；raw 弱缓存
-  则用 mint stamp 安全处理"已回收、尚未 finalize"的重铸窗口。
-- `build` 系相位用 JS 计数器记录同步工作量，并在计量窗口外用单次 walk + id
-  抽查验证真实树，避免把不属于创建相位的 collection 物化成本算入结果。
+## 与兼容性门禁的关系
 
-### traverse 阶段剖析
+| 验证线 | 关注点 |
+| --- | --- |
+| `bench:dom` | 当前 DOM 工作量的有效性和耗时对比 |
+| `test:integration` | mad-dom 侧集成用例的通过情况 |
+| `bench:check` | 内部性能/内存指标相对基线的大幅退化 |
+| `compat:hdunit:validate` | vendored happy-dom 单测文件的 triage 与不可退化检查 |
 
-（历史：2026-09-04 之前）traverse 曾是 mad-dom 唯一显著落后的阶段（早期测量：
-~20.5 ms vs happy-dom ~2.8 ms）。当时分层测量显示瓶颈不在遍历写法、也不在
-Rust 树链查询，而是**每个节点的 wrapper 铸造**：旧 bench 在每轮计量前强制
-gc+排空，弱缓存里的 wrapper 全部失效，上万节点每轮重新铸造——每次铸造付
-`napi_new_instance` + create_reference（~0.5 µs）+ facade 侧一次
-`wrapperKind()` 分类 FFI（~0.3 µs）+ facade wrapper 对象与 WeakMap 登记；
-缓存命中时每条边也有 ~0.2 µs 的 N-API 往返下限。朴素 getter 遍历对任何逐节点
-过 FFI 的 native DOM 都是结构性劣势。
-
-后续四层改动同时消除了 warm 和 cold 路径上的这个劣势（2026-09-05 的完整
-pipeline ABBA 复核：`traverseWarm` 0.546 vs 1.416 ms，`traverseCold`
-3.203 vs 3.434 ms）：
-
-1. **分类随 mint 产出**：`wrap_node` 铸造时把 `madDomType` / `madDomName` /
-   `madDomNamespace` 直接盖在 wrapper 对象上（`handle.rs` `stamp_wrapper_kind`），
-   facade 的 wrapper 工厂改为纯属性读取，省掉逐节点的 `wrapperKind()` FFI。
-2. **导航读原路返回裸值**：`firstChild` / `nextSibling` 等改为返回裸
-   Node-API 值（`wrap_node_value` / `raw_value_if_live`），缓存命中只付一次
-   `napi_get_reference_value`，去掉 upgrade/unref 的引用计数往返；亲和检查的
-   线程 id 改为 thread-local 缓存（`affinity.rs`）。
-3. **epoch 守卫的导航 memo + wrapper 驻留**：facade 把五个导航读的最近答案记在
-   module-private WeakMap 记录中（`node.js` `navRead`），用文档的结构 epoch
-   校验——binding 在任何改变了树关系的调用后递增 canonical epoch，并发布到
-   JS-owned 4 字节 buffer
-   （Core `structure_generation` 在全部关系写入点计数，`with_document` 前后比较，
-   见 `extensions/epoch_api.rs`）；facade 用一次 `Int32Array` 读取即可判定树未变、
-   直接返回缓存；为了让 memo 跨 gc 存活，`ctx.wrap` 在文档 native handle 可达
-   期间把 wrapper 钉在该文档的 facade 状态里（`window.js` `DOC_STATES`，弱键于
-   文档——释放文档仍会释放一切，T47 生命周期测试锁定）。树不变时整轮遍历零 FFI。
-4. **文档令牌 + 有界 subtree snapshot**：facade 节点可以先只持有文档作用域的
-   `u32` token，直到非 token API 才物化 `NodeHandle`；cold walk 首次进入一个树时，
-   native 用 `Uint32Array` 返回最多 65,535 个 preorder token/分类/深度对，以及下一
-   节点深度 header。facade 重建这个有界前缀的 wrapper 与已证明关系，边界后继续
-   使用有界子树/sibling 读取，因此 2× 负载不再陡增到 50+ ms，单次 snapshot 仍有界。
-   token registry 只包含绑定/Core 生成的整数和 arena id，使用局部 `FxHashMap`；
-   快照在一次 registry lock 内单次探测、批量补齐 token，facade hydration 同步预建
-   memo。这个非随机哈希器不得用于用户提供的字符串或一般 facade 状态。
-   snapshot 新分配的 token 由 native fresh bit 证明，facade 可跳过不可能命中的
-   wrapper 查找；同一轮 hydration 复用 descriptor→prototype 结果，并先完整构造
-   null-prototype 私有记录、再一次写入 WeakMap，继续压低首次访问成本。
-
-正确性边界：memo 只在 epoch 未变时命中，而所有结构突变（append/insert/remove/
-replace、innerHTML/textContent、parser、custom-element 升级替换）都经过关系写入
-chokepoint 递增 `structure_generation`，facade 无需枚举突变入口。`tests/bun/
-navigation-memo.test.js` 锁定失效语义、跨 gc 身份与 epoch/印章的 native 形状。
-
-现行测量：`traverseWarm` 测驻留 + memo 命中态，`traverseCold` 测 token wrapper 的
-首次批量铸造；两者仍分别展示稳态与首次访问成本。query 同理拆为 `queryHot` /
-`queryCold`。
-
-创建热路径也使用同一文档令牌：常见 HTML tag 的 token 池从单次创建自适应升到
-8/32/128/256 批，`setAttribute` 与同文档 `appendChild` 直接消费 token。这样既不为
-一次性 tag 隐藏预分配 256 个节点，也把持续创建的固定 FFI 成本摊薄。新建 token
-同时构成“此前不可能已有 wrapper”的证明；facade 复用文档私有 state 中的 handle
-与 coercion 后读取的 epoch，跳过重复 WeakMap/Map 查找。当前 binding 的批量入口只
-返回连续 token 区间的起点，facade 用标量游标按旧数组 `pop()` 顺序消费，避免把
-原生 `Vec<u32>` 封送成 JavaScript 数组；旧 binding 依次回退到 token 数组批量入口
-和单节点入口。所有可选性能方法都只接受原生直接 prototype 上的 own data method，
-原生分类/token 印章也只接受 handle 自身的 data property；解析后的方法按文档缓存并
-安全预绑定，继承属性不能伪造旧 binding 的能力，也不会给热循环重复增加 descriptor
-查询。1× ABBA 合并中位数中 `buildCreate` / `buildAttr` / `buildAppend` /
-`buildText` 分别为 5.880/19.567/10.355/7.109 ms，happy-dom 为
-7.132/26.200/12.515/8.530 ms。
-
-最终的小规模复核又把 Text 创建路径收窄为三步：Node-API 转换出的 owned `String`
-直接移入 Core；fresh `NodeId` 登记跳过必然 miss 的反向表探测；facade 用创建专用
-Text wrapper 工厂直接初始化同一份私有记录和 token 身份表。四个配对、每块 31 轮的
-同引擎 A/B 中，`buildText` 合并中位数从 0.60775 降至 0.57408 ms（快 5.54%）；
-四对 pipeline total 变化为 −0.35%、−0.54%、+0.48%、+1.65%，中心不足 1%。
-
-`getByTag` / class collection 的 length 缓存在 Core 维护的结构/属性 generation 上，
-树或 class 写入后立即 miss；新鲜 collection 身份不变，但重复的未变计数不再跨
-FFI。相同测量中 `getByTag` 为 0.216 vs 2.482 ms。第一次简单 document id 查询只
-自适应建立 Core `by_id` 索引，因此 `getById` 为 0.791 vs 41.147 ms，而一般 selector
-仍不会承担完整 T32 索引的内存和写维护成本。`id`/`class` 反射值使用独立属性
-generation，并在冷 miss 时用一个原生调用同时填充两项，避免 `id`、`className`、
-`getAttribute("class")` 连续读取反复跨边界；Core `textContent` 同时使用无分配关系
-遍历及空/单文本子节点快路径，`readHeavy` 为 4.117 vs 4.559 ms。
-
-高样本 1× 审计的 16 个独立相位全部快于锁定的 happy-dom 基线；其中 `parse`、
-`queryHot`、`serialize`、`buildBulk` 与 mutation churn 是数倍到十倍级领先。数字是
-单机 macOS arm64 / Bun 1.4.0 样本。正式命令 15 轮的第一次 1× 测量中，15 个相位
-领先，`readHeavy` 为 4.41 vs 4.39 ms，仅差 0.46% 且处于噪声内；为避免固定引擎
-顺序和挑选结果，随后补跑完整 pipeline ABBA（mad、happy、happy、mad），每个
-worker 15 个测量轮，合并为每引擎 30 个样本。ABBA 合并中位数 16/16 相位领先；
-两个 mad-dom batch 的 `readHeavy` 中位数为 4.005/4.142 ms，两个 happy-dom batch
-为 4.386/4.582 ms，方向一致。按 batch 分层的 200,000 次 bootstrap 给出 happy-dom
-− mad-dom 差值 95% CI +0.126..+0.777 ms、ratio 1.030×..1.189×，点估计 mad-dom
-少 9.69%。全部 16 相位各做 50,000 次同法 bootstrap 后，差值 CI 下界都大于零，
-最窄的是 `traverseCold` 的 +0.119 ms。
-
-最终固定代码另保留了 0.1× / 1× / 2× 三档审计。0.1× 用四个交替 worker、每个
-31 个测量轮，合并为每引擎 62 个样本：14 个相位的分层 bootstrap 差值 CI 明确大于
-零，`buildText` 与 `readHeavy` 统计持平。合并中位数分别为 `traverseCold`
-0.3377 vs 0.3528 ms、`buildText` 0.5742 vs 0.6689 ms、`readHeavy` 0.4050 vs
-0.3996 ms；后三者的 happy-dom − mad-dom 95% CI 依次为 +0.0003..+0.0263、
-−0.0332..+0.1914、−0.0487..+0.0260 ms。也就是说，小规模只剩微秒级、不足以判定
-回归的边界噪声。最终正式命令的固定引擎顺序 15 轮在这三项给出 0.43 vs 0.36、0.74 vs
-0.49、0.59 vs 0.39 ms，方向与高样本 ABBA 部分相反且三个区间都重叠；原始点值保留
-在此，但结论采用交替顺序的 62 样本审计。
-
-最终 `--runs 15 --sizes 0.1,1,2` 正式命令中，1×/2× 除 `readHeavy` 外的 15 个
-相位都领先；`readHeavy` 为 4.89 vs 4.18 ms 和 10.21 vs 10.17 ms，区间重叠，后者
-只差 0.04 ms（0.4%），应与上面的高样本 1× 证据合读。2× 的 `buildCreate` 为
-12.42 vs 20.39 ms，`buildText` 为 14.82 vs 18.50 ms，`traverseCold` 为
-6.27 vs 7.09 ms。更早一次 2× 正式测量的 `readHeavy` 为 9.81 vs 10.30 ms，方向
-相反，进一步说明该窄差值不能作为稳定输赢。happy-dom 的跨相位总耗时样本波动超过
-稳定性阈值，因此这里只把逐相位中位数作为证据；仍应在目标机器重跑基准确认。
-
-同一次最终正式命令在 total 行记录的 pipeline-end、排空后 worker RSS 增量如下；
-它包含整个多轮 worker 的驻留/JIT/GC 状态，不是单文档对象大小：
-
-| 规模 | mad-dom RSS Δ | happy-dom RSS Δ |
-| --- | ---: | ---: |
-| 0.1× | +13.4 MB | +591.1 MB |
-| 1× | +236.7 MB | +5,752.8 MB |
-| 2× | +333.2 MB | +10,730.1 MB |
-
-因此 warm traversal 的 memo/token 驻留收益没有脱离内存代价单独报告；完整 JSON 还
-保留每相位的 peak/after 采样，可用 `--json` 在目标机器复核。
-
-## 与 hdunit 的关系
-
-本目录的 integration benchmark 与 hdunit（`tests/happy-dom/`，[ADR-0006](../adr/0006-happy-dom-unit-suite-hdunit.md)）
-是**互补的两条验证线**，不互相替代：
-
-| 维度 | integration benchmark（本目录） | hdunit（tests/happy-dom/） |
-| --- | --- | --- |
-| 套件来源 | happy-dom 的 `integration-test/` 子套件（少量、端到端：Fetch、XMLHttpRequest、WebSocket、Browser、窗口脚本求值） | happy-dom 的 `test/` 全量单测（298 个 `*.test.ts`，约 9.9 万行） |
-| 运行方式 | 同一套测试跑两遍（mad-dom vs happy-dom），比对 wall-clock | 只跑 mad-dom 侧，逐文件 triage 终态 |
-| 关注点 | **性能**（local 组：确定性 DOM 负载的中位耗时对比） | **正确性门禁**（每个 vendored 文件声明 enabled/skip/expected-fail 且不可退化） |
-| 测试代码改动 | 拷来改 import（`happy-dom` → `mad-dom`）+ 少量运行适配 | 机械重写（vitest → bun:test + shim 路径），禁止手改断言 |
-| 门禁 | CI `integration` job（`bun run test:integration`）+ `bench` job（`bun run bench:check` 对基线） | `compat:hdunit:validate`（validate job + `bun run validate` 链） |
-
-简单说：integration benchmark 回答「mad-dom 在这个工作负载上快不快」，hdunit 回答
-「mad-dom 跑不跑得对上游单测」。两者的基底版本一致（都锁定 happy-dom v20.11.11 @
-`64e2c774…`），但覆盖范围与判定语义不同。hdunit 的覆盖总结与 known-gap 见
-[tests/happy-dom/COVERAGE.md](../tests/happy-dom/COVERAGE.md)。
-
-## Current gaps on mad-dom
-
-The mad-dom copy now runs the full suite: `Browser` / `BrowserErrorCaptureEnum`
-and the page/frame model are implemented (`js/facade/extensions/browser.js`,
-exported from the package entry). Navigation is server-side and script-free:
-`goto()` fetches the top-level HTML, parses it into the document and sets the
-title and frame URL; page JavaScript is not evaluated. The
-`browser-exception-observer` test passes fully (process-level error capture
-routes uncaught window-script errors to the window `error` event and the
-`virtualConsolePrinter`).
-
-`Browser.test.js` hits real github.com / npmjs.com content: the assertions
-depend on the live SSR markup (and the network path to those hosts), so it
-passes only when the endpoints are reachable and their markup matches — treat
-its failures as environment noise, exactly like the happy-dom copy. For this
-reason it is excluded from the CI gate (`test:ci`); it remains part of the
-`test` script and of the benchmark's full-suite run (`benchmark/run.mjs`).
+集成测试来自上游 `integration-test/`，hdunit 来自上游 `test/`，
+两者都锁定 happy-dom 20.11.11，覆盖范围不同。
+性能比值不能代替兼容性结论；完整范围见
+[兼容报告](../docs/compat-report.md) 和 [hdunit 覆盖说明](../tests/happy-dom/COVERAGE.md)。

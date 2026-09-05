@@ -12,15 +12,16 @@ The platform binary for your OS and CPU is pulled in automatically as an
 optional package — nothing to compile. See [Platforms](/platforms) for the
 support matrix.
 
-## One import is the whole migration
+## Start with one import
 
 ```diff
 - import { Window } from "happy-dom";
 + import { Window } from "mad-dom";
 ```
 
-Same API shape — `Window`, `Browser`, `GlobalWindow`, `window.document`, the
-lot.
+Use familiar APIs — `Window`, `Browser`, `GlobalWindow`, `window.document` —
+and run your existing tests after switching. See the [compatibility
+report](/compat-report) for the tested contract and remaining upstream gaps.
 
 ## A first window
 
@@ -48,15 +49,21 @@ window.close();
 bun test
 ```
 
-On the deterministic DOM workload the same suite runs **1.6× faster** under
-`bun test` (128 ms vs 206 ms, median of 3 runs, macOS arm64, Bun 1.4.0).
-Reproduce it yourself:
+## Run the benchmarks
+
+The source-build benchmark covers 16 core DOM phases and 13 test workflows,
+including DOM Testing Library. To reproduce it, run from a **repository
+checkout** with Bun `1.4.0` and Rust `1.93.1`:
 
 ```sh
-bun benchmark/run.mjs
+bun install --frozen-lockfile
+bun run dev:build
+MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1
 ```
 
-See [Performance](/performance) for the full story, and
+These commands require the repository's benchmark files; they are not part
+of the installed npm package. See [Performance](/performance) for the recorded
+results, workload definitions and measurement limits, and
 [Examples](/examples) for more of the API.
 
 ## Status

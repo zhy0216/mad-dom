@@ -1,6 +1,6 @@
 export default {
   title: 'MAD DOM',
-  description: 'A native DOM for Bun, written in Rust. A drop-in replacement for happy-dom.',
+  description: 'A native DOM for Bun, written in Rust, with a happy-dom-compatible API.',
   base: '/mad-dom/',
   themeConfig: {
     nav: [
