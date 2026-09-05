@@ -74,8 +74,10 @@ The existing ledger has not yet been expanded to cover these findings.
 
 For current behavior, see [Async work and cleanup](/async),
 [Configuration](/configuration), and [Browser](/browser). For example,
-`happyDOM.abort()` currently does not cancel pending work, and `goto()` does
-not execute downloaded page scripts.
+Window and Browser lifecycle now share cancellation, waiting and scoped cleanup.
+Classic scripts execute on opted-in content/navigation paths. Full child-frame,
+module and automatic CSS/image loading remain deferred; see the
+[lifecycle results](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/results.md).
 
 ## Which checks to use
 

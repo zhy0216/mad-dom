@@ -27,10 +27,8 @@ try {
 }
 ```
 
-Nested settings are merged with defaults. For a detached Window, unknown keys
-and incorrectly typed scalar values throw when settings are initialized.
-Browser currently uses a separate merge path and does not enforce identical
-validation. Prefer constructor configuration to mutating settings after work
+Window and Browser use the same validated defaults and nested merge logic.
+Unknown keys and incorrectly typed scalar values throw in the constructor. Prefer constructor configuration to mutating settings after work
 has begun; some changes are only read when the relevant operation starts.
 
 ## Settings with implemented behavior
@@ -40,13 +38,23 @@ has begun; some changes are only read when the relevant operation starts.
 | Window `url` | Initial location; does not fetch content |
 | Window `width` / `height` | Initial viewport; defaults to 1024 × 768 |
 | Window `console` | Supplies `window.console`; otherwise logs go to the virtual printer |
-| `enableJavaScriptEvaluation` | Defaults to false; enables script execution through `document.write()`, not through Browser navigation |
-| `disableJavaScriptFileLoading` | Defaults to false; skips external scripts on the document-write path when true |
+| `enableJavaScriptEvaluation` | Defaults to false; enables classic scripts through `document.write()`, Browser content and navigation |
+| `disableJavaScriptFileLoading` | Defaults to false; skips external classic scripts on all content paths when true |
 | `navigator.userAgent` / `maxTouchPoints` | Values exposed through `window.navigator` |
 | `viewport.width` / `height` / `devicePixelRatio` | Browser page defaults; use `happyDOM.setViewport()` to change a detached Window |
 | `device.prefersColorScheme`, `prefersReducedMotion`, `mediaType`, `forcedColors` | Inputs used by the media-query implementation |
 | `disableComputedStyleRendering` | Consulted by computed-style behavior; does not provide visual layout |
-| `fetch.virtualServers` | Maps Browser navigation to local fixture files; see [Browser](/browser#serve-a-directory-through-a-virtual-url) |
+| `fetch.virtualServers` | Maps fetch, navigation and script loads to local fixture files; see [Browser](/browser#serve-a-directory-through-a-virtual-url) |
+| `timer.maxTimeout`, `maxIntervalTime` | Cap delays; `-1` means unlimited |
+| `timer.maxIntervalIterations` | Stops after limit + 1 callbacks, matching 20.11.11; `-1` means unlimited |
+| `timer.preventTimerLoops` | Limits repeated scheduling stacks; accepts `true` or `{ timeout, requestAnimationFrame }` |
+| `fetch.interceptor` | Async before/after request hooks; sync hooks for parser-blocking scripts |
+| `fetch.requestHeaders` | Applies configured header rules before interceptors |
+| `fetch.disableStrictSSL` | Controls TLS verification on async fetch |
+| `navigation.beforeContentCallback` | Runs after the per-navigation callback, before parsing content |
+| Navigation main-frame/policy flags | Restrict navigation and optional URL fallback |
+| `handleDisabledFileLoadingAsSuccess` | Reports disabled classic script loads as load events |
+| `debug.traceWaitUntilComplete` | Positive milliseconds enable task traces and a rejecting wait deadline |
 | Browser `errorCapture` | Selects error-capture behavior, including the process-level observer mode |
 
 The complete declared shape is `IBrowserSettings` in the shipped
@@ -57,18 +65,18 @@ Type presence alone does not mean a setting is implemented in every path.
 
 | Setting family | Current limitation |
 | --- | --- |
-| `timer.maxTimeout`, `maxIntervalTime`, `maxIntervalIterations`, `preventTimerLoops` | Stored but not consumed by timer scheduling; explicitly stop intervals and use test timeouts |
-| `fetch.interceptor` | Hooks are accepted but not called; do not depend on them to mock requests |
-| `fetch.requestHeaders` | Default headers are not applied through this setting; pass request headers directly |
-| `fetch.disableSameOriginPolicy`, `disableStrictSSL` | Do not currently control the direct fetch implementation |
-| `module.*` | No complete Browser module-loading pipeline |
-| Navigation policy flags and `beforeContentCallback` | Not wired into the current navigation path |
-| Automatic image, CSS, and iframe loading settings | Do not make `goto()` load a complete page with subresources and child frames |
+| `fetch.disableSameOriginPolicy` | A complete direct-fetch CORS/preflight implementation is deferred |
+| `module.*` | No complete module-loading pipeline |
+| `navigation.disableChildFrameNavigation` | Child frames are deferred |
+| Automatic image, CSS, and iframe loading settings | Do not load a complete rendered page |
+| `enableFileSystemHttpRequests`, `canvasAdapter` | Accepted; no corresponding consumer in the bounded lifecycle implementation |
+| Warning suppression flags | Accepted; mad-dom does not emit the upstream VM warnings |
 
-The detached and Browser timer defaults differ in the current code, and neither
-set of limits is enforced. These differences, validation, script behavior,
-and task ownership are recorded in the
-[repair plan](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/plan.md).
+`disableJavaScriptEvaluation` is a deprecated stored flag in the pinned
+baseline; the positive `enableJavaScriptEvaluation` flag controls script
+execution. Both Window and Browser use `-1` for the three timer limits.
+The complete per-key defaults, consumers, coverage and limitations are recorded
+in the [settings inventory](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/settings-inventory.md).
 
 ## Error capture
 

@@ -48,9 +48,11 @@ describe("window platform export shapes (T45)", () => {
       "Location",
       "Navigator",
       "Storage",
+      "closeWindow",
       "fetchCookieJar",
       "install",
       "seam",
+      "setWindowCookieContainer",
     ]);
     expect(mod.seam.owner).toBe("T45");
     expect(Object.isFrozen(mod.seam)).toBe(true);

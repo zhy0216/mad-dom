@@ -301,6 +301,9 @@ export function install(extensionCtx) {
           OBSERVER_WINDOWS.set(this, windowRef);
         }
       };
+      for (const name of ["observe", "disconnect", "takeRecords"]) {
+        Object.defineProperty(constructor.prototype, name, Object.getOwnPropertyDescriptor(BaseMutationObserver.prototype, name));
+      }
       WINDOW_CONSTRUCTORS.set(this, constructor);
     }
     return constructor;
@@ -324,7 +327,11 @@ export function install(extensionCtx) {
       }
     }
     const window = OBSERVER_WINDOWS.get(this)?.deref() ?? ctx.windowFacadeOfDocument(target.ownerDocument ?? target);
-    if (window?.closed) return;
+    if (window?.closed) {
+      // Preserve the explicit native destroy() error protocol.
+      targetHandle.nodeType();
+      return;
+    }
     const resolved = resolveObserverOptions(options);
     const handle = OBSERVER_HANDLES.get(this);
     handle.observe(

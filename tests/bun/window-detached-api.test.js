@@ -173,12 +173,7 @@ describe.skipIf(!nativeAvailable)("window.happyDOM settings", () => {
   });
 
   test("an unknown constructor setting throws like happy-dom", () => {
-    const window = new Window({ settings: { doesNotExist: true } });
-    try {
-      expect(() => window.happyDOM.settings).toThrow('Unknown browser setting "doesNotExist"');
-    } finally {
-      window.destroy();
-    }
+    expect(() => new Window({ settings: { doesNotExist: true } })).toThrow('Unknown browser setting "doesNotExist"');
   });
 });
 

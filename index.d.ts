@@ -39,10 +39,8 @@ export interface IWindowOptions {
    * `window.happyDOM.virtualConsolePrinter`. */
   console?: any;
   /** Browser-style settings (happy-dom parity): merged into the window's
-   * `happyDOM.settings` (DefaultBrowserSettings shape); only
-   * `enableJavaScriptEvaluation` governs `document.write` script evaluation
-   * and `settings.navigator.userAgent` / `maxTouchPoints` feed
-   * `window.navigator`. Unknown keys throw like happy-dom. */
+   * `happyDOM.settings`. Window and Browser validate the same defaults;
+   * unknown keys and invalid scalar types throw in the constructor. */
   settings?: IBrowserSettings;
 }
 
@@ -57,8 +55,9 @@ export interface DetachedWindowAPI {
   /** The window's virtual console printer (the default `window.console`
    * writes into it; a browser page may repoint it at the page's printer). */
   readonly virtualConsolePrinter: VirtualConsolePrinter;
-  /** Resolves once every registered pending task (window timers, external
-   * script loads, navigation promises) has settled. */
+  /** Waits for owned timers, microtasks, fetch/body work and script loads,
+   * including nested tasks and concurrent callers. Operation failures remain
+   * on their returned promises; this method observes idle completion. */
   waitUntilComplete(): Promise<void>;
   /** Deprecated alias of `waitUntilComplete`. */
   whenAsyncComplete(): Promise<void>;
@@ -87,6 +86,7 @@ export declare class Window {
   readonly document: Document;
   /** The `window.happyDOM` detached-window API (T48): `waitUntilComplete()` etc. */
   readonly happyDOM: DetachedWindowAPI;
+  readonly closed: boolean;
   /** The window console (happy-dom parity): the constructor `console` option
    * when given, otherwise a `VirtualConsole` writing into
    * `window.happyDOM.virtualConsolePrinter`. */
@@ -640,6 +640,8 @@ export declare class ErrorEvent {
 }
 
 export declare class Document {
+  readonly currentScript: HTMLScriptElement | null;
+  open(): Document;
   constructor(nativeHandle: DocumentHandle);
   /** The owning window, or null for a standalone document. */
   readonly defaultView: Window | null;
@@ -2750,7 +2752,7 @@ export interface Document {
 // The happy-dom browser/page model the vendored integration suite drives:
 // `new Browser({ settings })` → `newPage()` → `goto()` server-side navigation
 // + `waitUntilComplete()` / `waitForNavigation()` + the `virtualConsolePrinter`
-// error surface. Navigation is script-free (no page JavaScript evaluation);
+// error surface. Classic content/navigation scripts execute when opted in;
 // `errorCapture: "processLevel"` observes the Node process for uncaught
 // window-script errors while pages are open.
 
@@ -2781,7 +2783,8 @@ export interface IReloadOptions {
   headers?: Record<string, string> | Headers;
 }
 
-/** Browser settings (happy-dom shape; accepted and stored). */
+/** Browser settings. See the settings inventory for deferred module, iframe,
+ * automatic subresource and CORS behavior. */
 export interface IBrowserSettings {
   disableJavaScriptEvaluation?: boolean;
   enableJavaScriptEvaluation?: boolean;
@@ -2797,13 +2800,18 @@ export interface IBrowserSettings {
     maxTimeout?: number;
     maxIntervalTime?: number;
     maxIntervalIterations?: number;
-    preventTimerLoops?: boolean;
+    preventTimerLoops?: boolean | { timeout?: number; requestAnimationFrame?: number };
   };
   fetch?: {
     disableSameOriginPolicy?: boolean;
     disableStrictSSL?: boolean;
-    interceptor?: any;
-    requestHeaders?: any;
+    interceptor?: {
+      beforeAsyncRequest?: (context: { request: Request; window: Window }) => Promise<Response | void>;
+      afterAsyncResponse?: (context: { request: Request; response: Response; window: Window }) => Promise<Response | void>;
+      beforeSyncRequest?: (context: { request: Request; window: Window }) => any;
+      afterSyncResponse?: (context: { request: Request; response: any; window: Window }) => any;
+    } | null;
+    requestHeaders?: Array<{ url?: string | RegExp; headers: Record<string, string> }> | null;
     virtualServers?: Array<{ url: string | RegExp; directory: string }>;
   };
   module?: {
@@ -2820,7 +2828,7 @@ export interface IBrowserSettings {
     disableChildPageNavigation?: boolean;
     disableFallbackToSetURL?: boolean;
     crossOriginPolicy?: string;
-    beforeContentCallback?: any;
+    beforeContentCallback?: ((window: Window) => void) | null;
     /** Writable happy-dom parity slot; `window.navigator.userAgent` reads
      * `navigator.userAgent` below, not this field (baseline behavior). */
     userAgent?: string;
@@ -2989,6 +2997,7 @@ export declare class CookieContainer {
  * server-side navigation (`goto`) with session history. */
 export declare class BrowserFrame {
   readonly page: BrowserPage;
+  /** After close(), the runtime value is a { closed: true } sentinel. */
   readonly window: Window;
   readonly document: Document;
   readonly childFrames: BrowserFrame[];
@@ -3010,6 +3019,7 @@ export declare class BrowserFrame {
 
 /** A browser page (tab) with exactly one main frame. */
 export declare class BrowserPage {
+  readonly console: VirtualConsole;
   readonly virtualConsolePrinter: VirtualConsolePrinter;
   readonly mainFrame: BrowserFrame;
   readonly frames: BrowserFrame[];

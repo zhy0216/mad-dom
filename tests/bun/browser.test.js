@@ -96,7 +96,7 @@ describe("browser entry surface", () => {
     expect(browser.settings.errorCapture).toBe("processLevel");
     expect(browser.settings.enableJavaScriptEvaluation).toBe(true);
     expect(browser.settings.timer.maxTimeout).toBe(1000);
-    expect(browser.settings.timer.maxIntervalTime).toBe(2147483647);
+    expect(browser.settings.timer.maxIntervalTime).toBe(-1);
     expect(browser.settings.errorCapture).toBe(BrowserErrorCaptureEnum.processLevel);
     await browser.close();
   });
@@ -161,9 +161,11 @@ describe("browser entry surface", () => {
     expect(expired.deleted.length).toBe(1);
     expect(browser.defaultContext.cookieContainer.getCookies().length).toBe(1);
 
-    // Closing the context clears its cookie store.
+    // Retained contexts are cleared; the browser no longer has a default.
+    const context = browser.defaultContext;
     await browser.close();
-    expect(browser.defaultContext.cookieContainer.getCookies()).toEqual([]);
+    expect(context.cookieContainer.getCookies()).toEqual([]);
+    expect(() => browser.defaultContext).toThrow("No default context");
   });
 });
 
@@ -259,7 +261,7 @@ describe("browser navigation", () => {
 describe("browser error capture", () => {
   maybe("a throwing window timer callback dispatches the error event and prints to the virtual console", async () => {
     const browser = new Browser({
-      settings: { errorCapture: BrowserErrorCaptureEnum.processLevel, enableJavaScriptEvaluation: true },
+      settings: { errorCapture: BrowserErrorCaptureEnum.tryAndCatch, enableJavaScriptEvaluation: true },
     });
     const page = browser.newPage();
     const windowFacade = page.mainFrame.window;
@@ -348,7 +350,7 @@ describe("browser lifecycle", () => {
     await page.close();
     link.click();
     await page.waitUntilComplete();
-    expect(page.url).toBe(`${baseURL}/start`);
+    expect(page.mainFrame.window).toEqual({ closed: true });
     await browser.close();
   });
 });

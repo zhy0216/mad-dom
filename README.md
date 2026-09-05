@@ -86,10 +86,10 @@ and async observers were slower. See the [full phase tables and measurement
 limits](docs/performance.md), [methodology](benchmark/README.md) and
 [raw samples](benchmark/results/2026-09-05-dom.json).
 
-The lifecycle scenario times the current alpha close path, whose cleanup is
-incomplete relative to happy-dom. Its result contributes to the workflow
-aggregate. The [performance page](docs/performance.md) explains this limitation;
-cleanup fixes will require re-measurement.
+Those dated aggregates used the earlier partial close implementation. After
+lifecycle repairs, the 25-Window workload measured 29.842 ms for mad-dom versus
+34.385 ms for happy-dom (1.15×). See the updated
+[performance notes](docs/performance.md) for the separate measurement.
 
 Reproduce from a source checkout:
 

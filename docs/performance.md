@@ -116,12 +116,16 @@ mad-dom had lower medians in 8 of 13 scenarios. Shared-window fixture
 lifecycle, Testing Library events and labels, keyed reconciliation and async
 observers were slower. The aggregate includes all five.
 
-The `windowLifecycle` result measures the current alpha's `happyDOM.close()`
-path, which performs less cleanup than happy-dom's close. The benchmark checks
-the scenario's DOM results, not full cancellation or resource-release parity.
-This matters to that scenario and to the 1.57× workflow aggregate, which includes
-it. [Lifecycle fixes are planned](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/plan.md);
-their completed implementation will need a new measurement.
+The dated results above used the earlier partial close implementation. They
+remain historical measurements. A second 2026-09-05 run after the lifecycle
+repair uses real task cancellation, scoped cleanup and an idle checkpoint.
+With Bun 1.4.0 on darwin/arm64, size 1 and nine measured rounds, the 25-Window
+lifecycle workload took **29.842 ms** in mad-dom and **34.385 ms** in happy-dom
+20.11.11 (**1.15×**). Both engines passed all correctness checks. The added
+cleanup has a real cost; the old lifecycle speedup is not an acceptance target.
+[New raw samples](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/lifecycle-bench.json)
+and [implementation evidence](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/results.md)
+are recorded separately.
 
 Fixture mounting, querying, interaction, result reads and DOM cleanup are
 timed. Only `windowLifecycle` also times Window construction and

@@ -393,8 +393,8 @@ describe.skipIf(!nativeAvailable)("T47 lifecycle: releasing a window leaves no o
       docRef = new WeakRef(win.document);
       win.setInterval(() => fired.push("interval"), 5000);
       win.setTimeout(() => fired.push("timeout"), 5000);
-      win.requestAnimationFrame(() => fired.push("raf"));
-      win.queueMicrotask(() => fired.push("qm"));
+      // GC is not cancellation: immediate/microtask callbacks may execute
+      // before collection. Explicit abort/close tests cover their cancellation.
       const el = win.document.createElement("div");
       win.document.body.appendChild(el);
     };
@@ -435,10 +435,7 @@ describe.skipIf(!nativeAvailable)("T47 lifecycle: releasing a window leaves no o
     win.setTimeout(() => el.textContent = "x", 5);
     win.destroy();
 
-    // The callback may still fire after destroy (Bun owns the timer); if it
-    // touches the destroyed document it is contained as a window error event
-    // instead of crashing the process.
     await settle();
-    expect(events.every((message) => message.includes("destroyed"))).toBe(true);
+    expect(events).toEqual([]);
   });
 });

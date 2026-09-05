@@ -52,11 +52,11 @@ module import order together before expanding the migration.
 | --- | --- |
 | `happyDOM.waitUntilComplete()` | Window-owned timers are tracked; direct fetch and all host async work are not. Await operation promises explicitly. |
 | `browser.waitUntilComplete()` / `page.waitUntilComplete()` | These currently wait for navigation, not every task in the page's Window. |
-| `abort()` or close canceling pending work | Cancellation and close parity are incomplete. Explicitly clear timers, disconnect observers, and finish or abort requests you own. |
+| `abort()` or close canceling pending work | Abort cancels Window work and allows reuse. Close cancels work and clears owned observers/listeners; retained Windows expose empty documents. |
 | Several windows with active observers | Current `happyDOM.close()` disconnects observers across windows. Coordinate teardown; this is a tracked bug. |
-| Scripts in downloaded pages | `goto()` and `page.content` currently parse HTML without executing page scripts. `document.write()` has a separate opt-in execution path. |
+| Scripts in downloaded pages | `goto()`, `page.content` and `document.write()` share opt-in classic script execution. Module and full subresource loading remain incomplete. |
 | Fetch interceptors or timer limits | Some settings are accepted but unused. Check [Configuration](/configuration). |
-| Cookies during navigation | The context CookieContainer is not wired into fetch/navigation requests. |
+| Cookies during navigation | Pages share context cookies through document access, fetch and navigation; incognito contexts remain isolated. |
 | Layout or screenshots | There is no layout/painting engine; common geometry properties return zero. |
 
 These lifecycle and settings issues are scheduled in the

@@ -76,6 +76,7 @@ import { Window } from "../window.js";
 import { Event } from "./events.js";
 import { Clipboard, Permissions, URL as FacadeURL } from "./lightweight.js";
 import { disconnectWindowObservers } from "./mutation-observer.js";
+import { clearWindowListeners } from "./timers.js";
 import { windowTasks } from "../window-tasks.js";
 import { createBrowserSettings, defaultUserAgent } from "../browser-settings.js";
 import { VirtualConsole, VirtualConsolePrinter } from "./virtual-console.js";
@@ -197,7 +198,9 @@ export function closeWindow(window) {
   if (owner.closed) return owner.waitUntilComplete();
   const pending = owner.abort(true);
   disconnectWindowObservers(window);
+  clearWindowListeners(window);
   window.document.parseHtml("");
+  window.happyDOM.virtualConsolePrinter.close();
   return pending;
 }
 

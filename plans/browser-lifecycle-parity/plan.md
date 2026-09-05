@@ -6,8 +6,9 @@ The English documentation review exposed public happy-dom-shaped methods and
 settings whose implementations do less than their names or TypeScript comments
 promise. Fix these behavioral gaps against the pinned **happy-dom 20.11.11**
 baseline, with particular attention to script execution, waiting, cancellation,
-and resource ownership. This plan records future implementation work; the
-documentation update does not implement these fixes.
+and resource ownership. The bounded L1–L7 implementation is recorded in [results.md](results.md),
+with per-key status in [settings-inventory.md](settings-inventory.md). L8 remains
+roadmap work. The original findings below are retained as pre-fix evidence.
 
 ## Goals and scope
 

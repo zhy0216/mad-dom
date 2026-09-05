@@ -1,96 +1,9 @@
-// `Browser` facade extension (happy-dom browser/page model, integration surface).
-//
-// Installs the happy-dom public contract for the browser/page/frame model the
-// vendored happy-dom integration suite drives (`benchmark/`):
-//
-//   - `BrowserErrorCaptureEnum` — the error-capture policy values;
-//   - `Browser` — settings, a default context, `newPage()` and the lifecycle
-//     (`close` / `waitUntilComplete` / `abort`);
-//   - `BrowserContext` — the page list and the cookie container of a browser
-//     context;
-//   - `BrowserPage` — a tab: `mainFrame`, the `virtualConsolePrinter`, `goto`
-//     and the navigation wait surface (`waitUntilComplete` /
-//     `waitForNavigation`);
-//   - `BrowserFrame` — the top-level frame of a page: a full `Window` facade
-//     plus `goto`-based server-side navigation (fetch the HTML, parse it into
-//     the document, set the title and the URL).
-//
-// # Navigation is server-side and script-free
-//
-// `goto(url)` fetches the top-level HTML through the host `fetch` (redirects
-// followed), writes it into the frame's document through the native HTML
-// parser and updates the frame URL. Page scripts are **not** evaluated —
-// mad-dom does not run untrusted page JavaScript (the RCE risk happy-dom
-// warns about), and the vendored navigation tests only observe the SSR'd
-// document (title, links, text content), so default `<a>` navigation (anchor
-// `click` → `goto(href)` when no listener prevents the default) reaches the
-// same observable state. `enableJavaScriptEvaluation` is accepted for
-// settings parity and only governs `document.write` script evaluation through
-// the existing T47 window `eval` surface.
-//
-// # Session history (happy-dom BrowserFrameNavigator parity)
-//
-// Every frame owns a `HistoryItemList` seeded with the `about:blank` entry,
-// exactly like happy-dom's frame history: `goto` pushes an entry, `goBack` /
-// `goForward` / `goSteps` move the current item and — unless the target entry
-// is a same-origin pop-state entry — re-navigate (re-fetch) to its URL with
-// history recording disabled; `reload` re-navigates the current entry. On a
-// fresh page (empty history beyond the `about:blank` seed) all four resolve
-// without throwing: back / forward / steps resolve `null` after one animation
-// frame (and flush the navigation waiters), `reload` re-navigates the
-// `about:blank` entry, which writes an empty document and resolves `null`
-// without touching the network. `about:` targets never fetch — the document
-// resets to the empty skeleton; `javascript:` targets are a no-op (no script
-// evaluation on navigation).
-//
-// # Virtual servers (happy-dom VirtualServerUtility parity)
-//
-// A browser whose `settings.fetch.virtualServers` lists `{ url, directory }`
-// entries serves matching navigations from the local filesystem instead of
-// the network: a string `url` matches by prefix, a `RegExp` by match; the
-// remainder of the request URL maps under `directory` (`/` resolves to
-// `index.html`, a directory path appends `index.html`), and a missing file
-// answers happy-dom's 404 page. `window.open` on a detached window carries
-// the window's own virtual-server settings into the ad-hoc browser minted for
-// the child page, so the child navigation resolves the same way.
-//
-// # Error capture (`errorCapture: processLevel`)
-//
-// Like happy-dom's `BrowserExceptionObserver`, a browser with process-level
-// capture observes the Node process for `uncaughtException` /
-// `unhandledRejection` while it has pages open. Each error is routed to the
-// window whose `node:vm` script context minted it (a window-script error is an
-// instance of that context's own `Error` intrinsic — T47 `evalContextOf`), and
-// dispatched as a window `error` event through the T47 `dispatchWindowError`
-// surface. Contained async errors (throwing timer callbacks, T47) reach the
-// same window `error` event; the page installs one internal `error` listener
-// that forwards every dispatched error into its `virtualConsolePrinter`, so
-// `page.virtualConsolePrinter.readAsString()` sees uncaught script errors.
-// Errors that match no observed window are printed to the host console and
-// never terminate the process (the runner stays intact).
-//
-// # Boundaries
-//
-//   - No iframes / child frames: every page has exactly one frame. Popups
-//     (`window.open`) create a sibling page in the same context (or an ad-hoc
-//     browser for a detached window) and return the child window —
-//     cross-origin opens return a `CrossOriginBrowserWindow` shim.
-//   - No script evaluation on navigation, no subresource loading, no viewport
-//     rendering (the viewport dimensions are propagated to the frame window
-//     for `innerWidth` / `innerHeight` / `devicePixelRatio` reads), no
-//     response caches, no `evaluateModule`. Every context carries a cookie
-//     container (`cookieContainer`, happy-dom shape) for the cookie store
-//     surface; navigation and fetch do not read or write it.
-//   - The `timer` / `fetch` (except `virtualServers`) / `module` / `device`
-//     settings are accepted and stored for shape parity but do not alter
-//     behavior.
-//
-// The module is picked up by the facade registry (extensions/index.js) purely
-// by exporting `install(ctx)`.
+// Browser/page/frame lifecycle and server-side navigation. Each real
+// navigation gets a fresh Window with one task owner. Settings and cookies
+// flow through Window fetch; content uses the opt-in classic-script pipeline.
+// Child frames, modules, rendering and response caches remain separate work.
 
-import { promises as FS } from "node:fs";
-import { join as pathJoin, resolve as pathResolve, sep as pathSep } from "node:path";
-
+import { Script } from "node:vm";
 import { CookieContainer } from "./cookie.js";
 import { HTMLAnchorElement } from "./html-element.js";
 import { Event, MouseEvent } from "./events.js";
@@ -100,7 +13,7 @@ import { Window } from "../window.js";
 import { createBrowserSettings } from "../browser-settings.js";
 import { windowTasks } from "../window-tasks.js";
 import { closeWindow, setWindowCookieContainer } from "./window-platform.js";
-import { evaluateScripts } from "./document-write.js";
+import { evaluateScripts, replaceDocumentContent } from "./document-write.js";
 
 // The virtual console surface is shared with the Window side
 // (js/facade/extensions/virtual-console.js); re-exported here so the package
@@ -293,77 +206,6 @@ function resolveFrameURL(currentHref, url) {
   }
 }
 
-// --- virtual servers (mirrors happy-dom VirtualServerUtility) -----------------
-
-// The happy-dom virtual-server 404 page (byte-identical `NOT_FOUND_HTML`).
-const VIRTUAL_SERVER_NOT_FOUND_HTML =
-  '<html><head><title>Happy DOM Virtual Server - 404 Not Found</title></head><body><h1>Happy DOM Virtual Server - 404 Not Found</h1></body></html>';
-
-// The filesystem path a request URL maps to under a matching virtual server
-// (happy-dom `VirtualServerUtility.getFilepath` parity): a string `url`
-// matches by prefix (trailing slash stripped), a `RegExp` by match; the
-// remainder of the request URL — query / fragment stripped — is joined under
-// the resolved directory.
-function virtualServerFilepath(virtualServers, requestURL, locationOrigin) {
-  for (const virtualServer of virtualServers) {
-    let baseURL = null;
-    if (typeof virtualServer.url === "string") {
-      const url = new URL(
-        virtualServer.url[virtualServer.url.length - 1] === "/"
-          ? virtualServer.url.slice(0, -1)
-          : virtualServer.url,
-        locationOrigin !== "null" ? locationOrigin : undefined,
-      );
-      if (requestURL.startsWith(url.href)) {
-        baseURL = url;
-      }
-    } else if (virtualServer.url instanceof RegExp) {
-      const match = requestURL.match(virtualServer.url);
-      if (match) {
-        // Bun validates the base even for an absolute input (Node ignores it),
-        // so an `about:blank` origin ("null") is dropped like in the string
-        // case above.
-        baseURL = new URL(
-          match[0][match[0].length - 1] === "/" ? match[0].slice(0, -1) : match[0],
-          locationOrigin !== "null" ? locationOrigin : undefined,
-        );
-      }
-    }
-    if (baseURL !== null) {
-      const path = requestURL.slice(baseURL.href.length).split("?")[0].split("#")[0];
-      return pathJoin(pathResolve(virtualServer.directory), path.replaceAll("/", pathSep));
-    }
-  }
-  return null;
-}
-
-// The `Response` a virtual-server request resolves to (happy-dom
-// `Fetch.getVirtualServerResponse` parity): a directory serves its
-// `index.html`, a missing file serves the 404 page, and `url` is always the
-// request URL. Returns `null` when no virtual server matches.
-async function virtualServerResponse(virtualServers, requestURL, locationOrigin) {
-  if (!virtualServers) return null;
-  const filePath = virtualServerFilepath(virtualServers, requestURL, locationOrigin);
-  if (filePath === null) return null;
-  let buffer;
-  try {
-    const stat = await FS.stat(filePath);
-    const resolvedPath = stat.isDirectory() ? pathJoin(filePath, "index.html") : filePath;
-    buffer = await FS.readFile(resolvedPath);
-  } catch {
-    const notFound = new Response(VIRTUAL_SERVER_NOT_FOUND_HTML, {
-      status: 404,
-      statusText: "Not Found",
-      headers: { "Content-Type": "text/html" },
-    });
-    Object.defineProperty(notFound, "url", { value: requestURL, enumerable: true });
-    return notFound;
-  }
-  const response = new Response(buffer);
-  Object.defineProperty(response, "url", { value: requestURL, enumerable: true });
-  return response;
-}
-
 // --- BrowserFrame -------------------------------------------------------------
 
 /**
@@ -434,7 +276,7 @@ export class BrowserFrame {
   }
 
   get document() {
-    return this.#window.document;
+    return this.#window.document ?? null;
   }
 
   get childFrames() {
@@ -616,7 +458,6 @@ export class BrowserFrame {
 
   async #navigate(url, options = {}) {
     const { goToOptions = null, disableHistory = false, method = "GET", formData = null } = options;
-    if (this.#closed) throw new Error('The frame has been destroyed, the "window" property is not set.');
     const targetURL = resolveFrameURL(this.url, url);
 
     // Hash navigation: same document, only the fragment changes — record a
@@ -661,6 +502,15 @@ export class BrowserFrame {
       return null;
     }
 
+    const navigation = this.#page.context.browser.settings.navigation;
+    const from = new URL(this.url);
+    if ((navigation.crossOriginPolicy === "sameOrigin" && from.protocol !== "about:" && targetURL.protocol !== "about:" && from.origin !== targetURL.origin) ||
+        (navigation.crossOriginPolicy === "strictOrigin" && from.protocol === "https:" && targetURL.protocol === "http:")) return null;
+    if (navigation.disableMainFrameNavigation || (navigation.disableChildPageNavigation && this.#openerFrame)) {
+      if (!navigation.disableFallbackToSetURL) this.#setURL(targetURL.href);
+      return null;
+    }
+
     // History management: every real navigation records its entry.
     if (!disableHistory) {
       this.#pushHistory({
@@ -691,7 +541,7 @@ export class BrowserFrame {
     this.#pendingNav++;
     this.#navCompletionPromise = new Promise((resolve) => { this.#navCompletionResolve = resolve; });
     const controller = new window.AbortController();
-    const token = owner.start(() => controller.abort(new DOMException("The operation was aborted.", "AbortError")));
+    const token = owner.start(() => clearTimeout(timeoutId));
     // A navigation timeout covers the response body as well as the headers.
     const timeoutId = setTimeout(() => controller.abort(new DOMException("The operation was aborted. Request timed out.", "TimeoutError")), goToOptions?.timeout ?? 30000);
     try {
@@ -712,9 +562,6 @@ export class BrowserFrame {
   }
 
   async #fetchTopLevel(window, requestURL, options, signal, method, formData) {
-    const virtual = await virtualServerResponse(this.#page.context.browser.settings.fetch.virtualServers, requestURL, window.location.origin);
-    signal.throwIfAborted();
-    if (virtual !== null) return virtual;
     const headers = new window.Headers(options?.headers);
     if (options?.hard) headers.set("Cache-Control", "no-cache");
     return window.fetch(requestURL, {
@@ -754,16 +601,14 @@ export class BrowserFrame {
     void this.#navigate(raw).catch((error) => dispatchWindowError(this.#window, error));
   }
 
-  // Writes a fetched / set document through the native full-document parser
-  // (happy-dom replaces the window's document on every navigation; mad-dom
-  // re-parses the one document in place) and re-registers the structural
-  // handles the anchor default-action lookup walks.
+  // Content assignment resets the current document. Navigation has already
+  // created a new Window. Keep anchor lookup and script evaluation in sync.
   #writeHTML(html) {
     const document = this.#window.document;
     for (const wrapper of this.#registeredNodes) {
       FRAME_OF_NODE.delete(ctx.documentContext.handleOf(wrapper));
     }
-    document.parseHtml(String(html));
+    replaceDocumentContent(document, html);
     this.#registeredNodes = this.#registerDocumentNodes();
     evaluateScripts(this.#window, document);
   }
@@ -813,6 +658,10 @@ export class BrowserFrame {
    * `Script`) runs through `runInContext` against the window's own context.
    */
   evaluate(script) {
+    if (this.#closed) {
+      // Preserve node:vm's post-close context error, including its code.
+      return (typeof script === "string" ? new Script(script) : script).runInContext(this.#window);
+    }
     if (typeof script === "string") {
       return this.#window.eval(script);
     }
@@ -889,6 +738,8 @@ export class BrowserPage {
     };
     configureFrameWindow(this, this.#mainFrame.window);
   }
+
+  get console() { return this.#context.browser.console ?? this.#mainFrame.window.console; }
 
   get mainFrame() {
     return this.#mainFrame;
@@ -989,6 +840,7 @@ export class BrowserPage {
     if (index !== -1) context.pages.splice(index, 1);
     unobserveWindow(context.browser, this.#mainFrame.window);
     await this.#mainFrame.close();
+    this.virtualConsolePrinter.close();
   }
 }
 

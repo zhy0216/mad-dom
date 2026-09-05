@@ -93,9 +93,10 @@ try {
 }
 ```
 
-Use the request's AbortController to cancel it. `happyDOM.abort()` is currently
-an empty compatibility method and does not replace request cancellation.
-Direct fetches are not registered with `happyDOM.waitUntilComplete()`.
+Use the request's AbortController to cancel one request, or `happyDOM.abort()`
+to cancel the Window's pending work. Fetch transports and response bodies are
+included in `happyDOM.waitUntilComplete()`. Await the fetch/body promise itself
+to observe request errors; the completion wait is an idle barrier.
 
 ## Script execution
 
@@ -105,7 +106,7 @@ The entry point determines whether scripts run:
 | --- | --- |
 | `element.innerHTML = html` | Parses markup; do not rely on script execution |
 | `document.write(html)` | Evaluates parsed scripts when `enableJavaScriptEvaluation` is true |
-| `page.content = html` / `page.goto(url)` | Parses HTML without page-script execution |
+| `page.content = html` / `page.goto(url)` | Same opt-in classic script execution as `document.write()` |
 | `window.eval(code)` / `page.evaluate(code)` | Explicitly evaluates code in the Window context |
 | `GlobalWindow.eval(code)` | Explicitly evaluates in the host context |
 
@@ -132,45 +133,43 @@ try {
 }
 ```
 
-For the document-write path, `disableJavaScriptFileLoading: true` skips
-external `src` scripts. Their load promises are tracked when loading is
-enabled. A completed wait does not prove that a script fetched or executed
+`disableJavaScriptFileLoading: true` skips external `src` scripts on all three
+content paths. Parser-blocking classic scripts load synchronously; `async` and
+`defer` scripts load asynchronously and their work is tracked. Synchronous
+network fixtures need a server in another process, as with happy-dom. A completed wait does not prove that a script fetched or executed
 successfully; assert on its result and inspect errors/logs. Window script
 errors can be observed with `window.addEventListener("error", handler)`.
 
-## What completion means today
+## What completion means
 
-| Waiting method | What it currently covers |
+| Waiting method | What it covers |
 | --- | --- |
-| `window.happyDOM.waitUntilComplete()` | The Window's registered promises, including its timers, document-write script loads, and registered child navigation |
-| `page.waitUntilComplete()` / `frame.waitUntilComplete()` | Pending frame navigation |
-| `browser.waitUntilComplete()` / `context.waitUntilComplete()` | Navigation waits of their pages |
-| An operation's returned promise | That specific operation; await response bodies and application follow-up work separately |
+| `window.happyDOM.waitUntilComplete()` | Window timers, animation callbacks, queued microtasks, fetch/body work, script loads and registered child navigation |
+| `page.waitUntilComplete()` / `frame.waitUntilComplete()` | The frame Window's work, including navigation |
+| `browser.waitUntilComplete()` / `context.waitUntilComplete()` | Concurrent waits over their owned pages |
+| An operation's returned promise | That operation's result or rejection |
 
-These methods do not yet provide complete happy-dom task-manager parity.
-Waiting after scheduling host work can resolve too early. Prefer explicit
-application completion promises for fetch-driven updates and observer promises
-for mutation assertions.
+Concurrent waits observe the same tasks. An idle host-timer checkpoint includes
+Promise microtasks that schedule more Window work. Arbitrary host timers and
+unrelated application Promises are outside Window ownership. An unbounded
+interval keeps the wait pending; configure timer limits or cancel it.
+
+A completed wait does not assert successful I/O or successful script execution.
+Await request/body promises and inspect script `error` events or the virtual
+console. Rejected interceptor hooks settle their task and preserve the fetch
+rejection; this also avoids a task leak present in the pinned baseline.
 
 ## Cleanup
 
-Current alpha behavior requires explicit ownership of test resources:
+Use `await window.happyDOM.abort()` to cancel current Window work while keeping
+the Window usable. `cancelAsync()` is its deprecated alias. Use
+`await window.happyDOM.close()` or `await browser.close()` for teardown.
+These operations cancel timers, animation callbacks, queued Window microtasks,
+requests and script loads. Closing disconnects observers created by that Window
+without disturbing another Window's observers, and clears its listeners/logs.
 
-1. Clear timers and intervals you created, and cancel animation callbacks.
-2. Finish or abort your requests, and await their settlement.
-3. Disconnect your MutationObservers and remove listeners from shared objects.
-4. Close owned Browser objects or call the detached `happyDOM.close()` API.
-5. Call the mad-dom-specific `window.destroy()` when you need deterministic
-   native release, then discard all references to that document and its nodes.
-
-`window.close()` is a no-op on a detached Window. `happyDOM.close()` currently
-disconnects **all facade observers across windows**, not just its own, and
-does not fully cancel timers or release the native tree. Avoid calling it
-while another Window still needs observer delivery. Browser close updates
-page/context bookkeeping but is also not a full task shutdown. `destroy()`
-invalidates the native document; it is not a substitute for canceling async
-work before that invalidation.
-
-These are bugs and missing behavior scheduled in the
-[lifecycle repair plan](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/plan.md).
-They are not intended long-term API semantics.
+A retained closed Window exposes an empty document and rejects new fetches;
+new timers and queued microtasks do not run. `window.close()` remains a no-op
+on a detached Window. Native documents are reclaimed once Window/node references
+are discarded. The mad-dom-specific `window.destroy()` cancels owned work and
+immediately invalidates the native arena and its node wrappers.

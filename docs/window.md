@@ -154,12 +154,12 @@ boundary for untrusted code.
 
 | Method | Current behavior |
 | --- | --- |
-| `happyDOM.waitUntilComplete()` | Waits for registered work such as Window timers and `document.write()` external script loads |
+| `happyDOM.waitUntilComplete()` | Waits for Window tasks, including timers, fetch/body work and script loads |
 | `happyDOM.whenAsyncComplete()` | Deprecated alias for that wait |
-| `happyDOM.abort()` / `cancelAsync()` | Present, but cancellation is not implemented |
-| `happyDOM.close()` | Partial observer cleanup; not a full task/resource shutdown |
+| `happyDOM.abort()` / `cancelAsync()` | Cancel current Window tasks while preserving reuse |
+| `happyDOM.close()` | Cancel tasks, clear owned observers/listeners, and leave an empty closed document |
 | `window.close()` | No-op for a detached Window |
 | `window.destroy()` | mad-dom extension that invalidates the native document and its nodes |
 
 The [Async and cleanup guide](/async) explains what to await, how to release
-resources, and the currently tracked lifecycle gaps.
+resources, and the remaining subresource/module limitations.

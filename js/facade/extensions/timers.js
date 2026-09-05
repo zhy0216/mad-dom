@@ -4,60 +4,12 @@ import { windowTasks } from "../window-tasks.js";
 
 import { Window } from "../window.js";
 
-// `Window` timer / task-scheduling / script-evaluation facade extension (T47).
-//
-// Installs the happy-dom public contract for the window async surface —
-// `setTimeout` / `clearTimeout` / `setInterval` / `clearInterval`,
-// `requestAnimationFrame` / `cancelAnimationFrame`, `queueMicrotask`, `eval`
-// and the window `error` event propagation — calibrated against the locked
-// happy-dom 20.11.11 observable behavior.
-//
-// # Timers are scheduled by Bun, never by a second event loop
-//
-// Per the T47 boundary ("不创建独立浏览器事件循环"), every timer is delegated
-// verbatim to the host primitives (`globalThis.setTimeout` /
-// `setInterval` / `setImmediate`), so timer ordering, cancellation and the
-// microtask/macrotask boundary are exactly Bun's. happy-dom's `setImmediate` /
-// `clearImmediate` are **not** public window members (the baseline reads them
-// as `undefined`); only its `requestAnimationFrame` is backed by Node's
-// `setImmediate`, and this module mirrors that — `requestAnimationFrame` is
-// implemented on `setImmediate` and `cancelAnimationFrame` on `clearImmediate`.
-//
-// # Callback wrapping (baseline error propagation)
-//
-// happy-dom wraps every scheduled callback so a throwing callback never
-// becomes an uncaught host error: it is caught and re-dispatched as an `error`
-// event on the window (and `setInterval` additionally clears itself — baseline
-// parity). This module does the same through the small facade-level window
-// `EventTarget` below (`addEventListener` / `removeEventListener` /
-// `dispatchEvent`), plus the baseline `ErrorEvent` class. The wrapped callback
-// also contains a returned rejected Promise, exactly like the baseline.
-//
-// # Script evaluation with document/window global binding
-//
-// `window.eval(code)` runs `code` through `node:vm` with the **owning window
-// facade as its global object** — `document`, `window`, `HTMLElement`,
-// `setTimeout`, `URL` and every other window member resolve as globals, `var`
-// declarations and undeclared writes land on the window (never on the process
-// globals), an undeclared read throws `ReferenceError`, and script errors
-// propagate synchronously to the caller — the happy-dom VM-context observable
-// behavior. `node:vm` is plain script evaluation, not a second event loop
-// (T47 boundary).
-//
-// # Per-window lifecycle: no orphaned timers / native resources
-//
-// Per-window async state is keyed by the native document handle (a WeakMap, the
-// T37/T41/T45 per-document-state pattern), so it is collected with the window
-// and never pins it. Timer callbacks hold only a `WeakRef` to the window facade
-// (a released window is never kept alive by a pending timer), and a
-// `FinalizationRegistry` clears every still-pending timer of a collected
-// window, so releasing a Window leaves neither a pending callback firing into
-// the void nor a native document alive. A timer that fires after its window
-// was released simply cleans itself up without invoking the user callback.
-//
-// This module is picked up by the facade registry (extensions/index.js) purely
-// by exporting `install(ctx)`; nothing in the registry changes beyond the
-// import and array entry.
+// Window scheduling and evaluation use Bun primitives with per-Window task
+// ownership. Timer limits apply before scheduling. Default error capture
+// dispatches Window error events; process-level/disabled modes propagate.
+// Timer and VM bindings hold weak Window references so host roots cannot pin
+// otherwise unreachable native documents. User callbacks may retain their own
+// references; explicit abort/close cancels those callbacks.
 
 export const seam = Object.freeze({
   id: "facade/extensions/timers",
@@ -72,10 +24,7 @@ let ctx = null;
 
 // --- per-window async state --------------------------------------------------
 
-// Native DocumentHandle → per-window async state. Weak: a collected / destroyed
-// window stops holding its timers, listeners and eval binding, and two windows
-// never share an entry (each native document is minted once per window). The
-// native handle is opaque; only the facade uses it as a key.
+// Window → listener and loop-detection state, separate from timer finalization.
 const WINDOW_ASYNC = new WeakMap();
 
 // Native DocumentHandle → the window's `eval` entry: the evaluator, the
@@ -104,6 +53,10 @@ function ensureAsyncState(windowFacade) {
     WINDOW_ASYNC.set(windowFacade, state);
   }
   return state;
+}
+
+export function clearWindowListeners(window) {
+  WINDOW_ASYNC.get(window)?.listeners.clear();
 }
 
 // --- error propagation -------------------------------------------------------
@@ -161,6 +114,10 @@ export function dispatchWindowError(windowFacade, error) {
 // Invokes a user callback inside the try/catch + promise-rejection containment
 // the baseline applies to every scheduled callback.
 function invokeWrapped(windowFacade, callback, args) {
+  const settings = windowFacade.happyDOM.settings;
+  if (settings.disableErrorCapturing || settings.errorCapture !== "tryAndCatch") {
+    return callback(...args);
+  }
   let result;
   try {
     result = callback(...args);
@@ -303,15 +260,18 @@ function windowSurfaceDescriptors(windowFacade) {
 // a bare global call (`addEventListener(…)`) still runs with the facade as
 // `this`; accessors are re-wrapped to invoke the original getter/setter with
 // the facade, so identity-keyed lookups (WIN_HANDLES / DOC_TO_WINDOW) resolve.
-function contextGlobalDescriptor(windowFacade, name, descriptor) {
+function contextGlobalDescriptor(windowRef, name, descriptor) {
   if ("value" in descriptor) {
-    const value =
-      typeof descriptor.value === "function" ? descriptor.value.bind(windowFacade) : descriptor.value;
+    const original = descriptor.value;
+    const value = typeof original === "function" ? function (...args) {
+      if (new.target) return Reflect.construct(original, args);
+      return Reflect.apply(original, windowRef.deref(), args);
+    } : original;
     return { value, writable: true, enumerable: true, configurable: true };
   }
   return {
-    get: descriptor.get === undefined ? undefined : () => descriptor.get.call(windowFacade),
-    set: descriptor.set === undefined ? undefined : (value) => descriptor.set.call(windowFacade, value),
+    get: descriptor.get === undefined ? undefined : () => descriptor.get.call(windowRef.deref()),
+    set: descriptor.set === undefined ? undefined : (value) => descriptor.set.call(windowRef.deref(), value),
     enumerable: true,
     configurable: true,
   };
@@ -341,13 +301,48 @@ export function ensureWindowEval(windowFacade) {
 }
 
 function createWindowEval(windowFacade) {
+  return buildWindowEval(new WeakRef(windowFacade), windowSurfaceDescriptors(windowFacade));
+}
+
+function buildWindowEval(windowRef, descriptors) {
   // Build an explicit global object for the script context instead of handing
   // the facade directly to `vm.createContext`: Bun's VM gives *undefined* as
   // `this` for a bare global call (`addEventListener(…)`), while `this`
   // itself *is* the contextified sandbox object. Binding the window surface
   // to the facade keeps every method `this`-insensitive; the self-references
   // point at the sandbox so `this === window` / `this === globalThis` hold.
-  const globalObject = {};
+  // Forward script-created globals through the Window. A get trap on the
+  // sandbox would hide the VM's own intrinsics (Error, Promise, etc.).
+  let ready = false;
+  const scriptKeys = new Set();
+  function expose(target, key) {
+    if (!ready || WINDOW_SELF_NAMES.includes(key) || scriptKeys.has(key)) return;
+    const window = windowRef.deref();
+    if (!window || Object.getOwnPropertyDescriptor(window, key)?.configurable === false) return;
+    scriptKeys.add(key);
+    Object.defineProperty(window, key, {
+      get: () => Reflect.get(target, key),
+      set: (value) => Reflect.set(target, key, value),
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  const globalObject = new Proxy({}, {
+    set(target, key, value) {
+      const result = Reflect.set(target, key, value);
+      if (result) expose(target, key);
+      return result;
+    },
+    defineProperty(target, key, descriptor) {
+      const result = Reflect.defineProperty(target, key, descriptor);
+      if (result) expose(target, key);
+      return result;
+    },
+    deleteProperty(target, key) {
+      if (scriptKeys.delete(key) && windowRef.deref()) Reflect.deleteProperty(windowRef.deref(), key);
+      return Reflect.deleteProperty(target, key);
+    },
+  });
   const context = createContext(globalObject);
   for (const name of WINDOW_SELF_NAMES) {
     Object.defineProperty(globalObject, name, {
@@ -357,10 +352,11 @@ function createWindowEval(windowFacade) {
       configurable: true,
     });
   }
-  for (const [name, descriptor] of windowSurfaceDescriptors(windowFacade)) {
+  for (const [name, descriptor] of descriptors) {
     if (WINDOW_SELF_NAMES.includes(name)) continue;
-    Object.defineProperty(globalObject, name, contextGlobalDescriptor(windowFacade, name, descriptor));
+    Object.defineProperty(globalObject, name, contextGlobalDescriptor(windowRef, name, descriptor));
   }
+  ready = true;
   return {
     evaluate: (code) => runInContext(String(code), context),
     context,

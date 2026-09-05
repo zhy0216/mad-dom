@@ -23,18 +23,15 @@ try {
   console.log(page.frames.length); // 1
 } finally {
   await browser.close();
-  page.mainFrame.window.destroy();
 }
 ```
 
 Setting `page.url` changes URL state. Setting `page.content` parses HTML into
 the existing document. Reading `page.content` serializes its document element.
-Neither assignment fetches a page, and content assignment currently does not
-execute scripts.
-
-The examples explicitly release the native Window after Browser teardown
-because alpha close behavior is incomplete. Finish requests and clear timers
-before this point; see [Cleanup](/async#cleanup).
+Content assignment executes classic scripts when `enableJavaScriptEvaluation`
+is enabled. Real navigation creates a fresh Window and cancels the previous
+Window's work. After Browser teardown the frame exposes `{ closed: true }`;
+retained Window references have an empty document. See [Cleanup](/async#cleanup).
 
 ## Navigation
 
@@ -66,20 +63,19 @@ try {
   console.log(page.mainFrame.document.querySelector("h1").textContent); // Loaded
 } finally {
   await browser.close();
-  page.mainFrame.window.destroy();
   await server.stop(true);
 }
 ```
 
 Navigation follows redirects. Current supported request options include
 `timeout` in milliseconds (default `30000`), `headers`, and `hard: true`, which
-adds `Cache-Control: no-cache`. Other declared options, including navigation
-callbacks, need behavioral verification; see [Configuration](/configuration).
+adds `Cache-Control: no-cache`. The per-navigation `beforeContentCallback`
+runs before the settings-level callback, both before content scripts execute.
 
-**Navigation is currently HTML-only.** `goto()` does not evaluate page scripts
-or automatically load the page's subresources, even if
-`enableJavaScriptEvaluation` is set. For controlled script execution use
-`evaluate()` or the Window's [`document.write()` path](/async#script-execution).
+`goto()`, `page.content`, and `document.write()` share opt-in classic script
+execution. Parser-blocking scripts execute in document order; `async` and
+`defer` scripts load asynchronously. Modules, automatic CSS/image loading and
+child frames remain incomplete. See [Script execution](/async#script-execution).
 
 ## History
 
@@ -94,8 +90,8 @@ or automatically load the page's subresources, even if
 
 History navigation may fetch the target again; it is not a saved visual page
 snapshot. When calling `goto()` directly, await its returned promise to observe
-navigation errors. `waitUntilComplete()` currently tracks pending navigation,
-and does not also wait for all Window timers or application fetches.
+navigation errors. `waitUntilComplete()` also waits for Window timers, fetch
+transports and response bodies, script loads, and nested Window work.
 
 ## Evaluate code and inspect logs
 
@@ -115,7 +111,6 @@ try {
   console.log(page.virtualConsolePrinter.readAsString().trim()); // Updated
 } finally {
   await browser.close();
-  page.mainFrame.window.destroy();
 }
 ```
 
@@ -135,9 +130,9 @@ layout or painting.
 `browser.newIncognitoContext()` creates another context with its own page list
 and CookieContainer. `context.newPage()` creates a page in that context.
 `browser.newPage()` uses the default context. The CookieContainer supports
-`addCookies()`, `getCookies()`, and `clearCookies()`, but **is not currently
-integrated with fetch/navigation cookie transport**. Do not use it as evidence
-that an authenticated page request will include those cookies.
+`addCookies()`, `getCookies()`, and `clearCookies()`. Pages in a context share
+this store through `document.cookie`, navigation and fetch. Request credentials
+control cookie transport; incognito contexts have separate stores.
 
 ## Serve a directory through a virtual URL
 
@@ -163,13 +158,12 @@ try {
   console.log(page.mainFrame.document.body.textContent);
 } finally {
   await browser.close();
-  page.mainFrame.window.destroy();
 }
 ```
 
 String URL mappings match prefixes; directories resolve to `index.html` and
-missing files produce a 404 response. This mapping is implemented for browser
-navigation; it is not a general interceptor for `window.fetch()`.
+missing files produce a 404 response. Navigation, `window.fetch()` and classic
+script loads use these mappings. Fetch interceptors run before virtual routing.
 
 ## Lifecycle reference
 
@@ -178,9 +172,10 @@ navigation; it is not a general interceptor for `window.fetch()`.
 | Browser | `new Browser()` | `waitUntilComplete()` over contexts | `close()` over contexts |
 | Context | `defaultContext`, `newIncognitoContext()` | `waitUntilComplete()` over pages | `close()` over pages and cookie store |
 | Page | `newPage()` | `waitUntilComplete()` on main frame | `close()` and remove page from context |
-| Frame | `page.mainFrame` | Current navigation | `close()` frame bookkeeping |
+| Frame | `page.mainFrame` | Window tasks and navigation | Cancel work, clear DOM/listeners, release Window reference |
 
-These close operations currently do not implement full native/task shutdown;
-the `abort()` methods are placeholders. Browser/frame lifecycle, cookies,
-settings wiring, and script execution are tracked in the
-[repair plan](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/plan.md).
+`abort()` cancels current work while allowing reuse. `close()` cancels work,
+clears owned observers/listeners and removes closed pages/contexts. Closing the
+default context directly throws; use `browser.close()`. Native arenas are
+collected after their Window/node references are released. A retained Window
+can call `destroy()` for explicit native invalidation.

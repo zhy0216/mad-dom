@@ -31,8 +31,8 @@
 //
 // happy-dom wires each constructor as a per-window subclass carrying the
 // window on a private symbol (`WindowContextClassExtender`). This module does
-// the same: the accessors mint one subclass per window (cached by the native
-// document handle), and instances read their window context from the
+// the same: the accessors mint one subclass per window (cached by the Window
+// itself), and instances read their window context from the
 // prototype symbol, so `new window.Request(…)`, `new window.AbortSignal(…)`
 // and `window.fetch` all resolve against the owning window's location,
 // navigator, cookie jar and `DOMException`/`Headers`/`Response` constructors.
@@ -47,6 +47,10 @@
 // platform state; this module only reaches it through the small
 // `fetchCookieJar` bridge exported by window-platform.js.
 
+import { readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { syncFetch } from "../sync-fetch.js";
+import { virtualServerFilepath, virtualServerResponse } from "../virtual-server.js";
 import { Buffer } from "node:buffer";
 
 import { windowTasks } from "../window-tasks.js";
@@ -1125,15 +1129,10 @@ export class AbortController {
 
 // --- per-window surface ------------------------------------------------------
 
-// Native DocumentHandle → per-window fetch constructors. Weak: a collected /
-// destroyed document stops holding its classes.
+// Window → per-window fetch constructors. The constructors reference their
+// Window, so use that same Window as the ephemeron key. Native handle keys
+// can keep this cycle alive through the native wrapper's method bindings.
 const FETCH_SURFACE = new WeakMap();
-
-function nativeDocumentOfWindow(ctx, windowFacade) {
-  const document = windowFacade.document;
-  if (document === null || document === undefined) return null;
-  return ctx.documentContext.handleOf(document);
-}
 
 function createFetchSurface(windowFacade) {
   class WindowHeaders extends Headers {}
@@ -1167,11 +1166,10 @@ function createFetchSurface(windowFacade) {
 }
 
 function fetchSurface(ctx, windowFacade) {
-  const handle = nativeDocumentOfWindow(ctx, windowFacade);
-  let surface = FETCH_SURFACE.get(handle);
+  let surface = FETCH_SURFACE.get(windowFacade);
   if (surface === undefined) {
     surface = createFetchSurface(windowFacade);
-    FETCH_SURFACE.set(handle, surface);
+    FETCH_SURFACE.set(windowFacade, surface);
   }
   return surface;
 }
@@ -1232,7 +1230,11 @@ async function fetchImpl(ctx, windowFacade, url, init) {
   request.signal.addEventListener("abort", onAbort);
   if (request.signal.aborted) onAbort();
   const cleanup = () => request.signal.removeEventListener("abort", onAbort);
-  const token = owner.start(() => controller.abort(new windowFacade.DOMException("The operation was aborted.", "AbortError")));
+  let lifecycleAborted = false;
+  const token = owner.start(() => {
+    lifecycleAborted = true;
+    controller.abort(new windowFacade.DOMException("The operation was aborted.", "AbortError"));
+  });
   let rejectAbort;
   const aborted = new Promise((_, reject) => { rejectAbort = reject; });
   const cancel = () => rejectAbort(controller.signal.reason);
@@ -1241,6 +1243,13 @@ async function fetchImpl(ctx, windowFacade, url, init) {
   const transport = { owner, controller, cleanup, bodyOwned: false };
   try {
     return await Promise.race([sendFetch(ctx, windowFacade, surface, request, transport), aborted]);
+  } catch (error) {
+    // The pinned baseline routes task-manager cancellation before headers
+    // through its HTTP request error handler; body cancellation is AbortError.
+    if (lifecycleAborted && transport.networkStarted && !transport.bodyOwned) {
+      throw new windowFacade.DOMException(`Failed to execute "fetch()" on "Window" with URL "${request.url}": The operation was aborted.`, "NetworkError");
+    }
+    throw error;
   } finally {
     owner.end(token);
     controller.signal.removeEventListener("abort", cancel);
@@ -1250,12 +1259,7 @@ async function fetchImpl(ctx, windowFacade, url, init) {
 
 async function sendFetch(ctx, windowFacade, surface, request, transport) {
   const settings = windowFacade.happyDOM.settings.fetch;
-  for (const header of settings.requestHeaders ?? []) {
-    // Preserve the pinned baseline's (unusual) string-prefix direction.
-    if (!header.url || (typeof header.url === "string" ? header.url.startsWith(request.url) : request.url.match(header.url))) {
-      for (const [key, value] of Object.entries(header.headers)) request.headers.set(key, value);
-    }
-  }
+  applyRequestHeaders(request, settings);
   const interceptor = settings.interceptor;
   const afterResponse = async (response) => {
     const replacement = await interceptor?.afterAsyncResponse?.({ request, response, window: windowFacade });
@@ -1309,49 +1313,13 @@ async function sendFetch(ctx, windowFacade, surface, request, transport) {
   // http(s): adapt Bun's native fetch. Real network I/O (exactly like
   // happy-dom, which uses node http/https), with the per-window cookie jar
   // bridged onto the wire and `Set-Cookie` responses parsed back into it.
-  const requestURL = new URL(request.url);
-  const wireHeaders = new surface.Headers();
-  for (const [key, value] of request.headers) {
-    wireHeaders.set(key, value);
-  }
-  const originURL = new URL(windowFacade.location.href);
-  const isCORS = originURL.origin !== requestURL.origin;
-  wireHeaders.set("Accept-Encoding", "gzip, deflate, br");
-  wireHeaders.set("Connection", "close");
-  if (!wireHeaders.has("User-Agent")) {
-    wireHeaders.set("User-Agent", windowFacade.navigator.userAgent);
-  }
-  if (request[REFERRER] instanceof URL) {
-    wireHeaders.set("Referer", request[REFERRER].href);
-  }
-  const jar = fetchCookieJar(ctx.documentContext.handleOf(windowFacade.document));
-  if (
-    request.credentials === "include" ||
-    (request.credentials === "same-origin" && !isCORS)
-  ) {
-    const cookieHeader = jar?.readCookies(requestURL, false) ?? "";
-    if (cookieHeader) {
-      wireHeaders.set("Cookie", cookieHeader);
-    }
-  } else {
-    wireHeaders.delete("Cookie");
-    wireHeaders.delete("Cookie2");
-  }
-  if (!wireHeaders.has("Accept")) {
-    wireHeaders.set("Accept", "*/*");
-  }
-  if (!wireHeaders.has("Content-Type") && request[CONTENT_TYPE]) {
-    wireHeaders.set("Content-Type", request[CONTENT_TYPE]);
-  }
-
-  const plainHeaders = {};
-  for (const [key, value] of wireHeaders) {
-    plainHeaders[key] = value;
-  }
-
+  const { requestURL, isCORS, jar, plainHeaders } = requestWire(ctx, windowFacade, request);
   let nativeResponse;
   try {
-    nativeResponse = await globalThis.fetch(request.url, {
+    nativeResponse = await virtualServerResponse(settings.virtualServers, request.url, windowFacade.location.origin);
+    transport.controller.signal.throwIfAborted();
+    transport.networkStarted = nativeResponse === null;
+    nativeResponse ??= await globalThis.fetch(request.url, {
       method: request.method,
       headers: plainHeaders,
       body: request.body ?? undefined,
@@ -1400,6 +1368,101 @@ async function sendFetch(ctx, windowFacade, surface, request, transport) {
   return afterResponse(response);
 }
 
+function applyRequestHeaders(request, settings) {
+  for (const header of settings.requestHeaders ?? []) {
+    // Preserve the pinned baseline's (unusual) string-prefix direction.
+    if (!header.url || (typeof header.url === "string" ? header.url.startsWith(request.url) : request.url.match(header.url))) {
+      for (const [key, value] of Object.entries(header.headers)) request.headers.set(key, value);
+    }
+  }
+}
+
+function requestWire(ctx, windowFacade, request) {
+  const surface = fetchSurface(ctx, windowFacade);
+  const requestURL = new URL(request.url);
+  const wireHeaders = new surface.Headers();
+  for (const [key, value] of request.headers) {
+    wireHeaders.set(key, value);
+  }
+  const originURL = new URL(windowFacade.location.href);
+  const isCORS = originURL.origin !== requestURL.origin;
+  wireHeaders.set("Accept-Encoding", "gzip, deflate, br");
+  wireHeaders.set("Connection", "close");
+  if (!wireHeaders.has("User-Agent")) {
+    wireHeaders.set("User-Agent", windowFacade.navigator.userAgent);
+  }
+  if (request[REFERRER] instanceof URL) {
+    wireHeaders.set("Referer", request[REFERRER].href);
+  }
+  const jar = fetchCookieJar(ctx.documentContext.handleOf(windowFacade.document));
+  if (
+    request.credentials === "include" ||
+    (request.credentials === "same-origin" && !isCORS)
+  ) {
+    const cookieHeader = jar?.readCookies(requestURL, false) ?? "";
+    if (cookieHeader) {
+      wireHeaders.set("Cookie", cookieHeader);
+    }
+  } else {
+    wireHeaders.delete("Cookie");
+    wireHeaders.delete("Cookie2");
+  }
+  if (!wireHeaders.has("Accept")) {
+    wireHeaders.set("Accept", "*/*");
+  }
+  if (!wireHeaders.has("Content-Type") && request[CONTENT_TYPE]) {
+    wireHeaders.set("Content-Type", request[CONTENT_TYPE]);
+  }
+
+  const plainHeaders = {};
+  for (const [key, value] of wireHeaders) {
+    plainHeaders[key] = value;
+  }
+
+  return { requestURL, isCORS, jar, plainHeaders };
+}
+
+// Parser-blocking classic scripts use the same synchronous Bun transport as
+// XMLHttpRequest. Async/defer scripts use owned window.fetch instead.
+export function fetchScriptSync(window, url, init) {
+  const request = new window.Request(url, init);
+  const settings = window.happyDOM.settings.fetch;
+  applyRequestHeaders(request, settings);
+  const intercepted = settings.interceptor?.beforeSyncRequest?.({ window, request });
+  if (intercepted && typeof intercepted === "object") return intercepted;
+  request.signal.throwIfAborted();
+  const { jar, requestURL, isCORS, plainHeaders } = requestWire(fetchContext, window, request);
+  let response;
+  if (requestURL.protocol === "data:") {
+    const data = parseDataURI(request.url);
+    response = { status: 200, statusText: "OK", ok: true, url: request.url, headers: new window.Headers({ "Content-Type": data.type }), body: data.buffer };
+  } else {
+    if (requestURL.protocol === "http:" && window.location.protocol === "https:") throw new DOMException("Mixed Content", "SecurityError");
+    const path = virtualServerFilepath(settings.virtualServers ?? [], request.url, window.location.origin);
+    if (path) {
+      try {
+        const body = readFileSync(statSync(path).isDirectory() ? join(path, "index.html") : path);
+        response = { status: 200, statusText: "OK", ok: true, url: request.url, headers: new window.Headers(), body };
+      } catch {
+        response = { status: 404, statusText: "Not Found", ok: false, url: request.url, headers: new window.Headers(), body: Buffer.alloc(0) };
+      }
+    } else {
+      const result = syncFetch(window, "GET", request.url, new window.Headers(plainHeaders), null);
+      response = { ...result, ok: result.status >= 200 && result.status < 300, headers: new window.Headers(result.headers), body: Buffer.from(result.body, "base64") };
+      if (request.credentials === "include" || (request.credentials === "same-origin" && !isCORS)) {
+        for (const header of response.headers.getSetCookie()) {
+          const cookie = jar.parseCookie(requestURL, header);
+          if (cookie) jar.addCookies([cookie]);
+        }
+      }
+    }
+  }
+  return settings.interceptor?.afterSyncResponse?.({ window, request, response }) ?? response;
+}
+// The PropertySymbol shim can import fetch before the Window registry has
+// finished evaluating the extension cycle. Hoist this installation slot.
+var fetchContext;
+
 // --- install -----------------------------------------------------------------
 
 /**
@@ -1407,11 +1470,12 @@ async function sendFetch(ctx, windowFacade, surface, request, transport) {
  *
  * `window.fetch` is a shared prototype method (like happy-dom's class method);
  * the constructors are per-window subclasses minted by the accessors and
- * cached by the native document handle, so every window owns its own
+ * cached by the Window, so every window owns its own
  * `Headers`/`Request`/`Response`/`AbortController`/`AbortSignal` constructors
  * and `new window.Request(…)` resolves against the owning window.
  */
 export function install(ctx) {
+  fetchContext ??= ctx;
   // `writable: true` matches happy-dom's class-method descriptor: instance
   // assignment (`window.fetch = customFn`) shadows the prototype method, which
   // the Browser page surface (and the vendored integration tests) rely on.

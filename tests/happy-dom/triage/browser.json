@@ -5,12 +5,12 @@
     {
       "file": "browser/Browser.test.ts",
       "status": "skip",
-      "reason": "internal-only-no-public-surface (三问可差分: waitUntilComplete()/abort() 断言 page.evaluate 调度真实定时器后 mainFrame.window 的终态, 依赖宿主异步任务追踪; mad-dom Browser 不追踪定时任务(waitUntilComplete 仅等导航、abort 为空操作), settings 形状(timer.maxTimeout/navigator.userAgent)亦与 happy-dom 默认值不同)"
+      "reason": "depends-on-unenabled-surface: DefaultBrowserSettings has no mapped src shim; public Browser settings, waiting, abort and close are covered by browser-lifecycle-parity.test.js"
     },
     {
       "file": "browser/BrowserContext.test.ts",
-      "status": "skip",
-      "reason": "depends-on-unenabled-surface: 7/9 tests pass, but 'Closes the context' needs page.console + cookieContainer/document.cookie and 'Waits for all pages to complete' needs timer-tracking waitUntilComplete — console/cookie machinery belongs to the lightweight/css-fetch waves (T08/T09) and is not implemented"
+      "status": "enabled",
+      "ledgerId": "hc-hdunit-browser-browsercontext"
     },
     {
       "file": "browser/BrowserFrame.test.ts",

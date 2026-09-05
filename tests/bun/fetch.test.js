@@ -61,6 +61,7 @@ describe("fetch export shapes (T46)", () => {
       "Headers",
       "Request",
       "Response",
+      "fetchScriptSync",
       "install",
       "isHeaderForbidden",
       "seam",

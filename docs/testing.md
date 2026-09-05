@@ -33,9 +33,8 @@ test("adds a list item", () => {
 ```
 
 Save as `list.test.js`, then run `bun test list.test.js`. Keep tests using the
-shared `window` variable sequential. Explicitly clear timers and disconnect
-observers your test creates before teardown; [cleanup](/async#cleanup) currently
-has alpha limitations.
+shared `window` variable sequential. Use `happyDOM.close()` to cancel owned work and disconnect observers during
+teardown; see [cleanup](/async#cleanup).
 
 A fresh Window also gives each test fresh storage and a custom-element
 registry. Reusing a Window requires resetting more than `body.innerHTML`:
