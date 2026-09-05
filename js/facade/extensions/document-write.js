@@ -90,7 +90,7 @@ function evaluateScript(windowFacade, settings, script) {
 
 // Evaluates every `<script>` the parse produced, in document order, when the
 // window's happy-dom settings enable JavaScript evaluation.
-function evaluateScripts(windowFacade, root) {
+export function evaluateScripts(windowFacade, root) {
   const settings = windowFacade.happyDOM?.settings ?? null;
   if (settings === null || !settings.enableJavaScriptEvaluation) return;
   for (const script of root.querySelectorAll("script")) {

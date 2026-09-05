@@ -1,5 +1,7 @@
 import { createContext, runInContext } from "node:vm";
 
+import { windowTasks } from "../window-tasks.js";
+
 import { Window } from "../window.js";
 
 // `Window` timer / task-scheduling / script-evaluation facade extension (T47).
@@ -96,77 +98,12 @@ export function evalContextOf(windowFacade) {
 }
 
 function ensureAsyncState(windowFacade) {
-  const docHandle = ctx.documentContext.handleOf(windowFacade.document);
-  let state = WINDOW_ASYNC.get(docHandle);
-  if (state === undefined) {
-    state = {
-      timeouts: new Set(),
-      intervals: new Set(),
-      rafs: new Set(),
-      listeners: new Map(),
-      // Timer id → resolver of the promise registered with
-      // `window.happyDOM.registerPending` for that timer. `waitUntilComplete`
-      // drains those promises, so a timer keeps the window "busy" until it
-      // fires or is cancelled (happy-dom AsyncTaskManager start/endTimer
-      // parity).
-      pendingResolvers: new Map(),
-      finalized: false,
-    };
-    WINDOW_ASYNC.set(docHandle, state);
-    if (!state.finalized) {
-      state.finalized = true;
-      // When the window facade is collected, clear every still-pending timer
-      // so no callback fires into the void. The held value is the async state
-      // — a container of timer ids and listeners that never references the
-      // native document — so the registration cannot keep the window or its
-      // document alive; the unregister token is the native document handle.
-      windowCleanup.register(windowFacade, state, docHandle);
-    }
+  let state = WINDOW_ASYNC.get(windowFacade);
+  if (!state) {
+    state = { listeners: new Map(), loopStacks: new Map() };
+    WINDOW_ASYNC.set(windowFacade, state);
   }
   return state;
-}
-
-// Clears every pending timer of a collected window.
-const windowCleanup = new FinalizationRegistry((state) => {
-  for (const id of state.timeouts) globalThis.clearTimeout(id);
-  for (const id of state.intervals) globalThis.clearInterval(id);
-  for (const id of state.rafs) globalThis.clearImmediate(id);
-  for (const resolvePending of state.pendingResolvers.values()) resolvePending();
-  state.timeouts.clear();
-  state.intervals.clear();
-  state.rafs.clear();
-  state.pendingResolvers.clear();
-});
-
-// Registers a timer's completion promise with the owning window's
-// `happyDOM.waitUntilComplete` drain loop (the non-enumerable `registerPending`
-// seam). Defensive: a window facade without the happyDOM surface (the
-// structural mock-ctx re-install path) simply schedules without tracking.
-function registerPendingOnWindow(windowFacade, promise) {
-  const happyDOM = windowFacade.happyDOM;
-  if (happyDOM !== null && happyDOM !== undefined && typeof happyDOM.registerPending === "function") {
-    happyDOM.registerPending(promise);
-  }
-}
-
-// Mints the promise a scheduled timer registers with `waitUntilComplete` and
-// records its resolver so firing / cancellation settles it.
-function trackPending(state, id) {
-  let resolvePending;
-  const pending = new Promise((resolve) => {
-    resolvePending = resolve;
-  });
-  state.pendingResolvers.set(id, resolvePending);
-  return pending;
-}
-
-// Settles and drops the pending promise of a timer that fired or was cancelled.
-function settlePending(state, id) {
-  const resolvePending = state.pendingResolvers.get(id);
-  if (resolvePending !== undefined) {
-    state.pendingResolvers.delete(id);
-    resolvePending();
-  }
 }
 
 // --- error propagation -------------------------------------------------------
@@ -202,8 +139,7 @@ export class ErrorEvent {
  * never becomes an uncaught host error — exactly like the baseline.
  */
 export function dispatchWindowError(windowFacade, error) {
-  const docHandle = ctx.documentContext.handleOf(windowFacade.document);
-  const state = WINDOW_ASYNC.get(docHandle);
+  const state = WINDOW_ASYNC.get(windowFacade);
   if (state === undefined) return;
   const entries = state.listeners.get("error");
   if (entries === undefined || entries.length === 0) return;
@@ -239,77 +175,91 @@ function invokeWrapped(windowFacade, callback, args) {
 
 // --- timers ------------------------------------------------------------------
 
-function scheduleTimeout(windowFacade, callback, delay, args) {
-  const state = ensureAsyncState(windowFacade);
-  const windowRef = new WeakRef(windowFacade);
-  const id = globalThis.setTimeout(() => {
-    state.timeouts.delete(id);
-    // Settle before the callback so a synchronously rescheduling callback can
-    // register fresh pending work before the drain loop's next iteration reads
-    // the pending queue.
-    settlePending(state, id);
-    const current = windowRef.deref();
-    if (current === undefined) return;
-    invokeWrapped(current, callback, args);
-  }, delay);
-  state.timeouts.add(id);
-  registerPendingOnWindow(windowFacade, trackPending(state, id));
-  return id;
+// Captured scheduler policy matches the baseline's behavior under fake timers.
+const HOST = {
+  setTimeout: globalThis.setTimeout.bind(globalThis),
+  setInterval: globalThis.setInterval.bind(globalThis),
+  setImmediate: globalThis.setImmediate.bind(globalThis),
+  clearTimeout: globalThis.clearTimeout.bind(globalThis),
+  clearImmediate: globalThis.clearImmediate.bind(globalThis),
+  queueMicrotask: globalThis.queueMicrotask.bind(globalThis),
+};
+const TIMER_TASKS = new WeakMap();
+
+function loopPrevented(window, kind) {
+  const option = window.happyDOM.settings.timer.preventTimerLoops;
+  if (!option) return false;
+  const stacks = ensureAsyncState(window).loopStacks;
+  const stack = new Error().stack;
+  const count = stacks.get(stack) ?? 0;
+  stacks.set(stack, count + 1);
+  return count >= (option === true ? 1 : (option[kind] ?? 1));
 }
 
-function scheduleInterval(windowFacade, callback, delay, args) {
-  const state = ensureAsyncState(windowFacade);
-  const windowRef = new WeakRef(windowFacade);
-  let id;
-  id = globalThis.setInterval(() => {
-    const current = windowRef.deref();
-    if (current === undefined) {
-      globalThis.clearInterval(id);
-      state.intervals.delete(id);
-      settlePending(state, id);
-      return;
-    }
-    let result;
+function clearTimer(owner, id, immediate = false) {
+  (immediate ? HOST.clearImmediate : HOST.clearTimeout)(id);
+  owner.timers.delete(id);
+  const token = TIMER_TASKS.get(id);
+  if (token) { TIMER_TASKS.delete(id); owner.end(token); }
+}
+
+// This helper receives only a weak window reference; host callbacks never
+// close over the strong scheduling call's Window argument.
+function startTimer(windowRef, owner, callback, args, delay, kind, maxIterations = -1) {
+  let iterations = 0;
+  const scheduler = kind === "interval" ? HOST.setInterval : kind === "raf" ? HOST.setImmediate : HOST.setTimeout;
+  const id = scheduler(() => {
+    if (kind !== "interval") clearTimer(owner, id, kind === "raf");
+    const window = windowRef.deref();
+    if (!window || owner.closed) { clearTimer(owner, id, kind === "raf"); return; }
     try {
-      result = callback(...args);
-    } catch (error) {
-      globalThis.clearInterval(id);
-      state.intervals.delete(id);
-      settlePending(state, id);
-      dispatchWindowError(current, error);
-      return;
-    }
-    if (result instanceof Promise) {
-      result.catch((error) => {
-        globalThis.clearInterval(id);
-        state.intervals.delete(id);
-        settlePending(state, id);
-        dispatchWindowError(current, error);
-      });
+      const settings = window.happyDOM.settings;
+      const capture = !settings.disableErrorCapturing && settings.errorCapture === "tryAndCatch";
+      const invoke = () => callback(...(kind === "raf" ? [performance.now()] : args));
+      if (capture) {
+        let result;
+        try { result = invoke(); }
+        catch (error) {
+          if (kind === "interval") clearTimer(owner, id);
+          dispatchWindowError(window, error);
+        }
+        if (result instanceof Promise) result.catch((error) => {
+          if (kind === "interval") clearTimer(owner, id);
+          if (!owner.closed) dispatchWindowError(window, error);
+        });
+      } else invoke();
+    } finally {
+      if (kind === "interval" && maxIterations !== -1 && iterations++ >= maxIterations) clearTimer(owner, id);
     }
   }, delay);
-  state.intervals.add(id);
-  // An interval stays pending until it is cleared (happy-dom keeps a running
-  // interval as an active async task, so `waitUntilComplete` does not resolve
-  // while it runs — the documented "may get stuck" behavior).
-  registerPendingOnWindow(windowFacade, trackPending(state, id));
+  owner.timers.set(id, kind === "raf");
+  TIMER_TASKS.set(id, owner.start(() => {
+    (kind === "raf" ? HOST.clearImmediate : HOST.clearTimeout)(id);
+    TIMER_TASKS.delete(id);
+  }));
   return id;
 }
 
-function scheduleAnimationFrame(windowFacade, callback) {
-  const state = ensureAsyncState(windowFacade);
-  const windowRef = new WeakRef(windowFacade);
-  let id;
-  id = globalThis.setImmediate(() => {
-    state.rafs.delete(id);
-    settlePending(state, id);
-    const current = windowRef.deref();
-    if (current === undefined) return;
-    invokeWrapped(current, callback, [globalThis.performance.now()]);
-  });
-  state.rafs.add(id);
-  registerPendingOnWindow(windowFacade, trackPending(state, id));
-  return id;
+function scheduleTimeout(window, callback, delay, args) {
+  const owner = windowTasks(window);
+  if (owner.closed || loopPrevented(window, "timeout")) return {};
+  const max = window.happyDOM.settings.timer.maxTimeout;
+  return startTimer(new WeakRef(window), owner, callback, args, max !== -1 && delay > max ? max : delay, "timeout");
+}
+
+function scheduleInterval(window, callback, delay, args) {
+  const owner = windowTasks(window);
+  if (owner.closed) return {};
+  const settings = window.happyDOM.settings.timer;
+  return startTimer(new WeakRef(window), owner, callback, args,
+    settings.maxIntervalTime !== -1 && delay > settings.maxIntervalTime ? settings.maxIntervalTime : delay,
+    "interval", settings.maxIntervalIterations);
+}
+
+function scheduleAnimationFrame(window, callback) {
+  const owner = windowTasks(window);
+  if (owner.closed || loopPrevented(window, "requestAnimationFrame")) return {};
+  return startTimer(new WeakRef(window), owner, callback, [], 0, "raf");
 }
 
 // --- eval --------------------------------------------------------------------
@@ -444,11 +394,7 @@ export function install(extensionCtx) {
   });
 
   installCtx.defineMethod(Window.prototype, "clearTimeout", function clearTimeout(id) {
-    const docHandle = ctx.documentContext.handleOf(this.document);
-    const state = WINDOW_ASYNC.get(docHandle);
-    state?.timeouts.delete(id);
-    if (state !== undefined) settlePending(state, id);
-    globalThis.clearTimeout(id);
+    clearTimer(windowTasks(this), id, false);
   });
 
   installCtx.defineMethod(Window.prototype, "setInterval", function setInterval(callback, delay = 0, ...args) {
@@ -456,11 +402,7 @@ export function install(extensionCtx) {
   });
 
   installCtx.defineMethod(Window.prototype, "clearInterval", function clearInterval(id) {
-    const docHandle = ctx.documentContext.handleOf(this.document);
-    const state = WINDOW_ASYNC.get(docHandle);
-    state?.intervals.delete(id);
-    if (state !== undefined) settlePending(state, id);
-    globalThis.clearInterval(id);
+    clearTimer(windowTasks(this), id, false);
   });
 
   installCtx.defineMethod(Window.prototype, "requestAnimationFrame", function requestAnimationFrame(callback) {
@@ -468,19 +410,19 @@ export function install(extensionCtx) {
   });
 
   installCtx.defineMethod(Window.prototype, "cancelAnimationFrame", function cancelAnimationFrame(id) {
-    const docHandle = ctx.documentContext.handleOf(this.document);
-    const state = WINDOW_ASYNC.get(docHandle);
-    state?.rafs.delete(id);
-    if (state !== undefined) settlePending(state, id);
-    globalThis.clearImmediate(id);
+    clearTimer(windowTasks(this), id, true);
   });
 
   installCtx.defineMethod(Window.prototype, "queueMicrotask", function queueMicrotask(callback) {
+    const owner = windowTasks(this);
+    if (owner.closed) return;
     const windowRef = new WeakRef(this);
-    globalThis.queueMicrotask(() => {
-      const current = windowRef.deref();
-      if (current === undefined) return;
-      invokeWrapped(current, callback, []);
+    let aborted = false;
+    const token = owner.start(() => { aborted = true; });
+    HOST.queueMicrotask(() => {
+      owner.end(token);
+      const window = windowRef.deref();
+      if (window && !aborted && !owner.closed) invokeWrapped(window, callback, []);
     });
   });
 
@@ -514,8 +456,7 @@ export function install(extensionCtx) {
 
   installCtx.defineMethod(Window.prototype, "removeEventListener", function removeEventListener(type, listener) {
     if (listener == null) return;
-    const docHandle = ctx.documentContext.handleOf(this.document);
-    const state = WINDOW_ASYNC.get(docHandle);
+    const state = WINDOW_ASYNC.get(this);
     if (state === undefined) return;
     const entries = state.listeners.get(String(type));
     if (entries === undefined) return;
@@ -529,8 +470,7 @@ export function install(extensionCtx) {
         "Failed to execute 'dispatchEvent' on 'EventTarget': parameter 1 is not of type 'Event'.",
       );
     }
-    const docHandle = ctx.documentContext.handleOf(this.document);
-    const state = WINDOW_ASYNC.get(docHandle);
+    const state = WINDOW_ASYNC.get(this);
     if (state === undefined) return true;
     const entries = state.listeners.get(event.type);
     if (entries === undefined || entries.length === 0) return true;

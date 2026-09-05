@@ -44,6 +44,8 @@
 // The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
 // tests/bun/seam.test.js pins that shape.
 
+import { windowTasks } from "./window-tasks.js";
+import { createBrowserSettings } from "./browser-settings.js";
 import { loadNative } from "../native-loader.js";
 
 import { Document } from "./document.js";
@@ -639,7 +641,7 @@ function computeWindowSettings(options) {
 // none). Not part of the module export surface — the public `window.js` shape
 // is pinned by the T22B export test.
 function windowSettings(windowFacade) {
-  return weakMapGet(WINDOW_SETTINGS, windowFacade) ?? computeWindowSettings({});
+  return windowFacade.happyDOM?.settings ?? weakMapGet(WINDOW_SETTINGS, windowFacade) ?? computeWindowSettings({});
 }
 
 // Per-window constructor options accessor exposed through the facade `ctx` for
@@ -704,6 +706,7 @@ export class Window {
       // handles carry a real constructor class, so a wrong native handle —
       // e.g. a DocumentHandle — never matches here and keeps throwing below).
       options = nativeHandle;
+      if (options.settings) createBrowserSettings(options.settings);
       nativeHandle = loadNative().createWindow();
     }
     if (!isWindowHandle(nativeHandle)) {
@@ -734,6 +737,10 @@ defineAccessor(Window.prototype, "document", function getDocument() {
   const documentFacade = wrap(documentHandle);
   weakMapSet(DOC_TO_WINDOW, documentFacade, new WeakRef(this));
   return documentFacade;
+}, undefined);
+
+defineAccessor(Window.prototype, "closed", function closed() {
+  return windowTasks(this).closed;
 }, undefined);
 
 // Window viewport surface (happy-dom parity): the four viewport dimensions and
@@ -784,6 +791,7 @@ defineAccessor(Window.prototype, "devicePixelRatio", function devicePixelRatio()
 defineMethod(Window.prototype, "destroy", function destroy() {
   const windowHandle = weakMapGet(WIN_HANDLES, this);
   const documentHandle = weakMapGet(WIN_DOCUMENT_HANDLES, this);
+  windowTasks(this).abort(true);
   windowHandle.destroy();
   if (documentHandle !== undefined) {
     releaseNodeDocumentState(getDocState(documentHandle));

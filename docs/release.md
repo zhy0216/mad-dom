@@ -169,10 +169,11 @@ dry-run by default; execution requires `--no-dry-run` + `MAD_DOM_ALLOW_PUBLISH=1
   reason T50 is recorded as partial until those CI runs complete. See
   [docs/stable-gate-report.md](./stable-gate-report.md).
 
-## Compatibility rate (T50)
+## Historical compatibility rate (T50)
 
-The locked happy-dom baseline (`20.11.11` @ `64e2c774…`, ADR-0002 §1) is at
-**100% pass** in the compatibility ledger (43/43 entries, zero known-gap /
-not-applicable) and the WPT subset is tracked separately as a measurement
-(39.8%). Full per-suite numbers and upstream attribution:
+At the T50 checkpoint, the locked happy-dom baseline (`20.11.11` @
+`64e2c774…`, ADR-0002 §1) had **43/43 passing ledger entries**, with zero
+known-gap / not-applicable entries. Its independent WPT measurement was
+39.8%. These are historical figures; current recorded coverage and known
+behavior gaps are described in
 [docs/compat-report.md](./compat-report.md).

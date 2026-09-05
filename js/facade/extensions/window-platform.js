@@ -75,7 +75,9 @@ import { Document } from "../document.js";
 import { Window } from "../window.js";
 import { Event } from "./events.js";
 import { Clipboard, Permissions, URL as FacadeURL } from "./lightweight.js";
-import { disconnectAllObservers } from "./mutation-observer.js";
+import { disconnectWindowObservers } from "./mutation-observer.js";
+import { windowTasks } from "../window-tasks.js";
+import { createBrowserSettings, defaultUserAgent } from "../browser-settings.js";
 import { VirtualConsole, VirtualConsolePrinter } from "./virtual-console.js";
 
 export const seam = Object.freeze({
@@ -104,172 +106,23 @@ const STORAGE_DATA = Symbol("mad-dom-storage-data");
 const STATE = Symbol("mad-dom-platform-state");
 const LIST = Symbol("mad-dom-history-list");
 
-// The locked happy-dom version this facade calibrates to. The userAgent string
-// embeds it so the observable value matches the baseline byte for byte.
-const HAPPY_DOM_VERSION = "20.11.11";
-
-// --- detached-window browser settings (happy-dom DefaultBrowserSettings) -------
-
-// The default browser settings happy-dom gives a detached window
-// (`BrowserSettingsFactory.createSettings` over `DefaultBrowserSettings`),
-// calibrated field for field against the locked baseline — including the
-// `navigator.userAgent` default that embeds the platform / arch / version and
-// the `timer` / `debug` `-1` sentinel defaults.
-function defaultBrowserSettings() {
-  return {
-    disableJavaScriptEvaluation: false,
-    enableJavaScriptEvaluation: false,
-    disableJavaScriptFileLoading: false,
-    disableCSSFileLoading: false,
-    enableImageFileLoading: false,
-    disableIframePageLoading: false,
-    disableComputedStyleRendering: false,
-    handleDisabledFileLoadingAsSuccess: false,
-    disableErrorCapturing: false,
-    errorCapture: "tryAndCatch",
-    enableFileSystemHttpRequests: false,
-    suppressCodeGenerationFromStringsWarning: false,
-    suppressInsecureJavaScriptEnvironmentWarning: false,
-    timer: {
-      maxTimeout: -1,
-      maxIntervalTime: -1,
-      maxIntervalIterations: -1,
-      preventTimerLoops: false,
-    },
-    fetch: {
-      disableSameOriginPolicy: false,
-      disableStrictSSL: false,
-      interceptor: null,
-      requestHeaders: null,
-      virtualServers: null,
-    },
-    module: {
-      resolveNodeModules: null,
-      urlResolver: null,
-      disableCache: false,
-    },
-    navigation: {
-      disableMainFrameNavigation: false,
-      disableChildFrameNavigation: false,
-      disableChildPageNavigation: false,
-      disableFallbackToSetURL: false,
-      crossOriginPolicy: "anyOrigin",
-      beforeContentCallback: null,
-    },
-    navigator: {
-      userAgent: defaultUserAgent(),
-      maxTouchPoints: 0,
-    },
-    device: {
-      prefersColorScheme: "light",
-      prefersReducedMotion: "no-preference",
-      mediaType: "screen",
-      forcedColors: "none",
-    },
-    debug: {
-      traceWaitUntilComplete: -1,
-    },
-    viewport: {
-      width: 1024,
-      height: 768,
-      devicePixelRatio: 1,
-    },
-    canvasAdapter: null,
-  };
-}
-
-// happy-dom `BrowserSettingsFactory.validate` parity: unknown keys and
-// wrong-typed scalar values throw with the baseline messages.
-function validateBrowserSettings(target, source, parentNamespace) {
-  for (const key of Object.keys(source)) {
-    if (target[key] === undefined) {
-      const namespace = parentNamespace ? parentNamespace + "." + key : key;
-      throw new Error(`Unknown browser setting "${namespace}"`);
-    }
-    if (typeof target[key] === "object" && !Array.isArray(target[key]) && target[key] !== null) {
-      const namespace = parentNamespace ? parentNamespace + "." + key : key;
-      if (typeof source[key] !== "object" || Array.isArray(source[key]) || source[key] === null) {
-        throw new Error(`Browser setting "${namespace}" cannot be null`);
-      }
-      validateBrowserSettings(target[key], source[key], namespace);
-    } else {
-      if (
-        (typeof target[key] === "boolean" ||
-          typeof target[key] === "number" ||
-          typeof target[key] === "string") &&
-        typeof source[key] !== typeof target[key]
-      ) {
-        const isValidPreventTimerLoops =
-          key === "preventTimerLoops" && typeof source[key] === "object" && source[key] !== null;
-        if (!isValidPreventTimerLoops) {
-          const namespace = parentNamespace ? parentNamespace + "." + key : key;
-          throw new Error(`Browser setting "${namespace}" must be of type "${typeof target[key]}"`);
-        }
-      }
-    }
-  }
-}
-
-// happy-dom `BrowserSettingsFactory.createSettings` parity: the defaults merged
-// with the given settings, section by section.
-function createBrowserSettings(settings) {
-  const defaults = defaultBrowserSettings();
-  if (settings) {
-    validateBrowserSettings(defaults, settings);
-  }
-  return {
-    ...defaults,
-    ...settings,
-    navigation: { ...defaults.navigation, ...settings?.navigation },
-    navigator: { ...defaults.navigator, ...settings?.navigator },
-    timer: { ...defaults.timer, ...settings?.timer },
-    fetch: { ...defaults.fetch, ...settings?.fetch },
-    module: { ...defaults.module, ...settings?.module },
-    device: { ...defaults.device, ...settings?.device },
-    debug: { ...defaults.debug, ...settings?.debug },
-    viewport: { ...defaults.viewport, ...settings?.viewport },
-    canvasAdapter: settings?.canvasAdapter ?? defaults.canvasAdapter,
-  };
-}
-
-// The `window.happyDOM` detached-window API (T48 closure): the happy-dom
-// surface for test-driving a window from the outside. `waitUntilComplete`
-// drains every pending task registered through the internal `registerPending`
-// seam (navigation promises opened by `window.open`, timer work, …) and
-// resolves once no new work appears; `setURL` / `abort` / `cancelAsync` /
-// `close` are the happy-dom-shaped no-op / lifecycle stubs the facade surface
-// requires. Each window gets its own (non-frozen) instance so extension
-// modules can attach the DetachedWindowAPI surface (`settings`,
-// `virtualConsolePrinter`, `setViewport`) and register pending work.
-const HAPPY_DOM_PENDING = Symbol("mad-dom-happydom-pending");
-
-// Creates the per-window `window.happyDOM` detached-window API (the happy-dom
-// `DetachedWindowAPI` surface). `settings` exposes the per-window happy-dom
-// browser settings through `settingsAccess` (the same object the `Navigator`
-// reads `navigator.userAgent` / `maxTouchPoints` from; a browser page may
-// replace it with the browser's own settings through the setter);
-// `virtualConsolePrinter` is the per-window printer the default `window.console`
-// writes into — exposed through a getter/setter so a browser page can repoint
-// its frame window's printer at the page's printer; `setViewport` mutates the
-// window's viewport state in place through the facade `ctx` viewport seam
-// (happy-dom `BrowserPage.setViewport` parity, including the `resize` event on
-// an actual size change).
+// Detached and Browser windows share the same resource owner.
 function createHappyDOMApi(ctx, windowFacade, settingsAccess) {
   const api = {
-    async waitUntilComplete() {
-      for (;;) {
-        const pending = api[HAPPY_DOM_PENDING].splice(0);
-        if (pending.length === 0) return;
-        await Promise.allSettled(pending);
-      }
+    waitUntilComplete() {
+      return windowTasks(windowFacade).waitUntilComplete();
     },
     whenAsyncComplete() {
       return this.waitUntilComplete();
     },
-    async abort() {},
-    async cancelAsync() {},
-    async close() {
-      disconnectAllObservers();
+    abort() {
+      return windowTasks(windowFacade).abort();
+    },
+    cancelAsync() {
+      return this.abort();
+    },
+    close() {
+      return closeWindow(windowFacade);
     },
     setURL(url) {
       windowFacade.location.href = String(url);
@@ -299,14 +152,9 @@ function createHappyDOMApi(ctx, windowFacade, settingsAccess) {
       this.setViewport({ height });
     },
     registerPending(promise) {
-      api[HAPPY_DOM_PENDING].push(Promise.resolve(promise));
+      return windowTasks(windowFacade).track(promise);
     },
   };
-  Object.defineProperty(api, HAPPY_DOM_PENDING, {
-    value: [],
-    enumerable: false,
-    configurable: true,
-  });
   Object.defineProperty(api, "registerPending", {
     enumerable: false,
     configurable: true,
@@ -341,6 +189,23 @@ function createHappyDOMApi(ctx, windowFacade, settingsAccess) {
   });
   return api;
 }
+
+// A closed Window retains an empty, readable DOM until its last wrapper is
+// collected. Native destroy() remains the explicit arena-invalidation API.
+export function closeWindow(window) {
+  const owner = windowTasks(window);
+  if (owner.closed) return owner.waitUntilComplete();
+  const pending = owner.abort(true);
+  disconnectWindowObservers(window);
+  window.document.parseHtml("");
+  return pending;
+}
+
+export function setWindowCookieContainer(window, container) {
+  COOKIE_CONTAINERS.set(cookieContext.documentContext.handleOf(window.document), container);
+}
+const COOKIE_CONTAINERS = new WeakMap();
+let cookieContext;
 
 // --- Location / History shared state ----------------------------------------
 
@@ -750,11 +615,7 @@ export class History {
 
 // --- Navigator ----------------------------------------------------------------
 
-function defaultUserAgent() {
-  const platform = process.platform;
-  const label = platform.charAt(0).toUpperCase() + platform.slice(1);
-  return `Mozilla/5.0 (X11; ${label} ${process.arch}) AppleWebKit/537.36 (KHTML, like Gecko) HappyDOM/${HAPPY_DOM_VERSION}`;
-}
+
 
 class MimeTypeArray {
   constructor(mimeTypes) {
@@ -1208,13 +1069,15 @@ export function fetchCookieJar(nativeDocumentHandle) {
   if (state === null) return null;
   return {
     readCookies(url, clientSide) {
-      return cookiesToString(getCookies(state.cookies, url, clientSide));
+      return cookiesToString(COOKIE_CONTAINERS.get(nativeDocumentHandle)?.getCookies(url, clientSide) ?? getCookies(state.cookies, url, clientSide));
     },
     parseCookie(url, cookieString) {
       return stringToCookie(url, cookieString);
     },
     addCookies(incoming) {
-      addCookies(state.cookies, incoming);
+      const container = COOKIE_CONTAINERS.get(nativeDocumentHandle);
+      if (container) container.addCookies(incoming);
+      else addCookies(state.cookies, incoming);
     },
   };
 }
@@ -1227,6 +1090,7 @@ export function fetchCookieJar(nativeDocumentHandle) {
  * of the facade surface).
  */
 export function install(ctx) {
+  cookieContext ??= ctx;
   // Window surface.
   ctx.defineAccessor(Window.prototype, "location", function getLocation() {
     return platformOfDocument(nativeDocumentOfWindow(ctx, this))?.location ?? null;
@@ -1271,16 +1135,7 @@ export function install(ctx) {
     return globalThis.DOMException;
   }, undefined);
 
-  // `window.happyDOM` (T48 closure): the detached-window API surface happy-dom
-  // exposes for test-driving a window. `waitUntilComplete()` drains pending
-  // tasks registered through `registerPending` (and then resolves after the
-  // final microtask checkpoint), so a caller awaiting it observes the DOM
-  // effects of navigation and timer work. The per-window instance adds
-  // happy-dom's `setURL` (a simulated initial navigation), which the
-  // URL-reflecting element accessors (`cite` / `href` / `src`) resolve
-  // against; `close()` disconnects the window's MutationObservers (happy-dom
-  // closes a window's observers when it is closed), then keeps the window
-  // usable.
+  // Lazily mint the detached control API; task state lives in window-tasks.
   const HAPPY_DOM_PER_WINDOW = new WeakMap();
   ctx.defineAccessor(Window.prototype, "happyDOM", function getHappyDOM() {
     const windowFacade = this;
@@ -1350,13 +1205,13 @@ export function install(ctx) {
   ctx.defineAccessor(Document.prototype, "cookie", function getCookie() {
     const state = platformOfDocument(ctx.documentContext.handleOf(this));
     if (state === null) return "";
-    return cookiesToString(getCookies(state.cookies, state.location, true));
+    return fetchCookieJar(ctx.documentContext.handleOf(this)).readCookies(state.location, true);
   }, function setCookie(value) {
     const state = platformOfDocument(ctx.documentContext.handleOf(this));
     if (state === null) return;
     const cookie = stringToCookie(state.location, value);
     if (cookie) {
-      addCookies(state.cookies, [cookie]);
+      fetchCookieJar(ctx.documentContext.handleOf(this)).addCookies([cookie]);
     }
   });
 }

@@ -97,6 +97,10 @@ import { Event, MouseEvent } from "./events.js";
 import { dispatchWindowError, ensureWindowEval, evalContextOf } from "./timers.js";
 import { VirtualConsoleLogLevelEnum, VirtualConsolePrinter } from "./virtual-console.js";
 import { Window } from "../window.js";
+import { createBrowserSettings } from "../browser-settings.js";
+import { windowTasks } from "../window-tasks.js";
+import { closeWindow, setWindowCookieContainer } from "./window-platform.js";
+import { evaluateScripts } from "./document-write.js";
 
 // The virtual console surface is shared with the Window side
 // (js/facade/extensions/virtual-console.js); re-exported here so the package
@@ -370,6 +374,7 @@ async function virtualServerResponse(virtualServers, requestURL, locationOrigin)
 export class BrowserFrame {
   #page = null;
   #window = null;
+  #owner = null;
   #closed = false;
   #registeredNodes = [];
   #pendingNav = 0;
@@ -381,11 +386,27 @@ export class BrowserFrame {
 
   constructor(page) {
     this.#page = page;
-    this.#window = new Window();
+    this.#window = new Window({ settings: page.context.browser.settings });
+    this.#owner = windowTasks(this.#window);
     WINDOW_TO_FRAME.set(this.#window, this);
     // Register the stable per-document node handles for the anchor default
     // action lookup (see FRAME_OF_NODE); held strongly so the native weak
     // wrapper cache keeps the same JS objects alive for the walk-up match.
+    this.#registeredNodes = this.#registerDocumentNodes();
+  }
+
+  #replaceWindow(url) {
+    const previous = this.#window;
+    for (const wrapper of this.#registeredNodes) FRAME_OF_NODE.delete(ctx.documentContext.handleOf(wrapper));
+    WINDOW_TO_FRAME.delete(previous);
+    unobserveWindow(this.#page.context.browser, previous);
+    const closing = closeWindow(previous);
+    this.#window = new Window({ url, settings: this.#page.context.browser.settings });
+    this.#owner = windowTasks(this.#window);
+    this.#owner.track(closing);
+    WINDOW_TO_FRAME.set(this.#window, this);
+    configureFrameWindow(this.#page, this.#window);
+    observeWindow(this.#page.context.browser, this.#window);
     this.#registeredNodes = this.#registerDocumentNodes();
   }
 
@@ -595,6 +616,7 @@ export class BrowserFrame {
 
   async #navigate(url, options = {}) {
     const { goToOptions = null, disableHistory = false, method = "GET", formData = null } = options;
+    if (this.#closed) throw new Error('The frame has been destroyed, the "window" property is not set.');
     const targetURL = resolveFrameURL(this.url, url);
 
     // Hash navigation: same document, only the fragment changes — record a
@@ -623,11 +645,19 @@ export class BrowserFrame {
       return null;
     }
 
-    // JavaScript protocol: happy-dom evaluates the code when JavaScript
-    // evaluation is enabled; mad-dom does not evaluate navigation scripts, so
-    // the navigation is a no-op (no URL change, no history entry — the same
-    // early exit happy-dom takes before history management).
     if (targetURL.protocol === "javascript:") {
+      if (this.#page.context.browser.settings.enableJavaScriptEvaluation) {
+        const window = this.#window;
+        const owner = this.#owner;
+        await new Promise((resolve) => {
+          const token = owner.start(resolve);
+          window.requestAnimationFrame(() => {
+            try { window.eval(targetURL.href.slice("javascript:".length)); }
+            catch (error) { dispatchWindowError(window, error); }
+            finally { owner.end(token); resolve(); }
+          });
+        });
+      }
       return null;
     }
 
@@ -644,82 +674,55 @@ export class BrowserFrame {
       });
     }
 
-    // About protocol: no fetch — the document resets to the empty skeleton
-    // (happy-dom replaces the window with a fresh empty one).
+    if (!["about:", "http:", "https:", "data:"].includes(targetURL.protocol)) return null;
+    this.#replaceWindow(targetURL.href);
+    const window = this.#window;
+    const owner = this.#owner;
+    const beforeContent = () => {
+      goToOptions?.beforeContentCallback?.(window);
+      this.#page.context.browser.settings.navigation.beforeContentCallback?.(window);
+    };
     if (targetURL.protocol === "about:") {
-      this.#writeHTML("");
-      this.#setURL(targetURL.href);
+      beforeContent();
       this.#flushNavWaiters();
       return null;
     }
 
-    // Only http(s) navigations reach the fetch path (the historical mad-dom
-    // boundary for other protocols).
-    if (targetURL.protocol !== "http:" && targetURL.protocol !== "https:") {
-      return null;
-    }
-
     this.#pendingNav++;
-    this.#navCompletionPromise = new Promise((resolve) => {
-      this.#navCompletionResolve = resolve;
-    });
+    this.#navCompletionPromise = new Promise((resolve) => { this.#navCompletionResolve = resolve; });
+    const controller = new window.AbortController();
+    const token = owner.start(() => controller.abort(new DOMException("The operation was aborted.", "AbortError")));
+    // A navigation timeout covers the response body as well as the headers.
+    const timeoutId = setTimeout(() => controller.abort(new DOMException("The operation was aborted. Request timed out.", "TimeoutError")), goToOptions?.timeout ?? 30000);
     try {
-      const response = await this.#fetchTopLevel(targetURL.href, goToOptions);
-      this.#setURL(response.url || targetURL.href);
+      const response = await this.#fetchTopLevel(window, targetURL.href, goToOptions, controller.signal, method, formData);
       const html = await response.text();
+      controller.signal.throwIfAborted();
+      if (window !== this.#window || this.#closed) throw new DOMException("The operation was aborted.", "AbortError");
+      this.#setURL(response.url || targetURL.href);
+      beforeContent();
       this.#writeHTML(html);
       return response;
     } finally {
+      clearTimeout(timeoutId);
+      owner.end(token);
       this.#pendingNav--;
       this.#flushNavWaiters();
     }
   }
 
-  // The top-level fetch: virtual servers first (the local filesystem serves
-  // the response), then the host fetch with the happy-dom `goto` option
-  // semantics (`hard` sends `Cache-Control: no-cache`, `timeout` — default
-  // 30s — aborts with a `TimeoutError` DOMException).
-  async #fetchTopLevel(requestURL, goToOptions) {
-    const virtual = await virtualServerResponse(
-      this.#virtualServers(),
-      requestURL,
-      this.#window.location.origin,
-    );
+  async #fetchTopLevel(window, requestURL, options, signal, method, formData) {
+    const virtual = await virtualServerResponse(this.#page.context.browser.settings.fetch.virtualServers, requestURL, window.location.origin);
+    signal.throwIfAborted();
     if (virtual !== null) return virtual;
-
-    const headers = {};
-    if (goToOptions?.headers != null) {
-      const source = goToOptions.headers;
-      if (typeof source.forEach === "function") {
-        source.forEach((value, key) => {
-          headers[key] = value;
-        });
-      } else if (typeof source === "object") {
-        Object.assign(headers, source);
-      }
-    }
-    if (goToOptions?.hard) {
-      headers["Cache-Control"] = "no-cache";
-    }
-
-    const timeout = goToOptions?.timeout ?? 30000;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort(new DOMException("The operation was aborted. Request timed out.", "TimeoutError"));
-    }, timeout);
-    try {
-      return await globalThis.fetch(requestURL, {
-        redirect: "follow",
-        headers,
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  }
-
-  #virtualServers() {
-    return this.#page?.context?.browser?.settings?.fetch?.virtualServers ?? null;
+    const headers = new window.Headers(options?.headers);
+    if (options?.hard) headers.set("Cache-Control", "no-cache");
+    return window.fetch(requestURL, {
+      redirect: "follow", headers, signal, method,
+      body: formData ?? undefined,
+      referrer: options?.referrer,
+      referrerPolicy: options?.referrerPolicy ?? "origin",
+    });
   }
 
   // Records a history entry on the frame history and keeps the frame window's
@@ -748,7 +751,7 @@ export class BrowserFrame {
     if (href === null || href === undefined) return;
     const raw = String(href).trim();
     if (raw === "" || raw.startsWith("javascript:") || raw.startsWith("data:")) return;
-    void this.#navigate(raw);
+    void this.#navigate(raw).catch((error) => dispatchWindowError(this.#window, error));
   }
 
   // Writes a fetched / set document through the native full-document parser
@@ -762,6 +765,7 @@ export class BrowserFrame {
     }
     document.parseHtml(String(html));
     this.#registeredNodes = this.#registerDocumentNodes();
+    evaluateScripts(this.#window, document);
   }
 
   #flushNavWaiters() {
@@ -775,10 +779,7 @@ export class BrowserFrame {
   }
 
   waitUntilComplete() {
-    if (this.#pendingNav > 0) {
-      return this.#navCompletionPromise.then(() => Promise.resolve());
-    }
-    return Promise.resolve();
+    return this.#owner.waitUntilComplete();
   }
 
   waitForNavigation() {
@@ -788,7 +789,7 @@ export class BrowserFrame {
     return new Promise((resolve) => this.#navWaiters.push(resolve));
   }
 
-  async abort() {}
+  abort() { return this.#owner.abort(); }
 
   async close() {
     if (this.#closed) return;
@@ -797,7 +798,12 @@ export class BrowserFrame {
       FRAME_OF_NODE.delete(ctx.documentContext.handleOf(wrapper));
     }
     this.#registeredNodes = [];
-    WINDOW_TO_FRAME.delete(this.#window);
+    const window = this.#window;
+    WINDOW_TO_FRAME.delete(window);
+    this.#navWaiters = [];
+    this.#openerFrame = null;
+    await closeWindow(window);
+    this.#window = { closed: true };
   }
 
   /**
@@ -826,26 +832,10 @@ export class BrowserFrame {
  * `devicePixelRatio` read through it — the happy-dom parity where
  * `BrowserWindow.innerWidth` resolves to `page.viewport.width`.
  */
-export class BrowserPage {
-  #context = null;
-  #mainFrame = null;
-  #closed = false;
-  #viewport = null;
-
-  constructor(context) {
-    this.#context = context;
-    this.#mainFrame = new BrowserFrame(this);
-    this.virtualConsolePrinter = new VirtualConsolePrinter();
-    const settingsViewport = context.browser.settings.viewport ?? {};
-    this.#viewport = {
-      width: settingsViewport.width ?? 1024,
-      height: settingsViewport.height ?? 768,
-      devicePixelRatio: settingsViewport.devicePixelRatio ?? 1,
-    };
+function configureFrameWindow(page, windowFacade) {
     // The frame window viewport reads through the page viewport (instance
     // accessors shadow the Window prototype's constructor-viewport ones).
-    const windowFacade = this.#mainFrame.window;
-    const viewport = this.#viewport;
+    const viewport = page.viewport;
     for (const [property, key] of [
       ["innerWidth", "width"],
       ["innerHeight", "height"],
@@ -868,16 +858,36 @@ export class BrowserPage {
     // page's printer. Wiring both here keeps the frame window's
     // `document.write` script gating and its console surface on the browser's
     // state.
-    this.#mainFrame.window.happyDOM.settings = context.browser.settings;
-    this.#mainFrame.window.happyDOM.virtualConsolePrinter = this.virtualConsolePrinter;
+    windowFacade.happyDOM.settings = page.context.browser.settings;
+    windowFacade.happyDOM.virtualConsolePrinter = page.virtualConsolePrinter;
     // The single print path: every window `error` event (process-level capture
     // and contained timer/script errors alike) lands in the virtual console.
-    this.#mainFrame.window.addEventListener("error", (event) => {
-      this.virtualConsolePrinter.print({
+    windowFacade.addEventListener("error", (event) => {
+      page.virtualConsolePrinter.print({
         level: VirtualConsoleLogLevelEnum.error,
         message: formatErrorEntry(event.error),
       });
     });
+  setWindowCookieContainer(windowFacade, page.context.cookieContainer);
+}
+
+export class BrowserPage {
+  #context = null;
+  #mainFrame = null;
+  #closed = false;
+  #viewport = null;
+
+  constructor(context) {
+    this.#context = context;
+    this.#mainFrame = new BrowserFrame(this);
+    this.virtualConsolePrinter = new VirtualConsolePrinter();
+    const settingsViewport = context.browser.settings.viewport ?? {};
+    this.#viewport = {
+      width: settingsViewport.width ?? 1024,
+      height: settingsViewport.height ?? 768,
+      devicePixelRatio: settingsViewport.devicePixelRatio ?? 1,
+    };
+    configureFrameWindow(this, this.#mainFrame.window);
   }
 
   get mainFrame() {
@@ -969,7 +979,7 @@ export class BrowserPage {
     }
   }
 
-  async abort() {}
+  abort() { return this.#mainFrame.abort(); }
 
   async close() {
     if (this.#closed) return;
@@ -1017,88 +1027,23 @@ export class BrowserContext {
 
   async close() {
     if (this.#closed) return;
+    if (this.#browser.contexts[0] === this) throw new Error('Cannot close the default context. Use `browser.close()` to close the browser instead.');
     this.#closed = true;
-    for (const page of [...this.pages]) {
-      await page.close();
-    }
+    await Promise.all(this.pages.slice().map((page) => page.close()));
+    const index = this.#browser.contexts.indexOf(this);
+    if (index !== -1) this.#browser.contexts.splice(index, 1);
     // happy-dom parity: closing a context clears its cookie store.
     this.cookieContainer.clearCookies();
   }
 
   async waitUntilComplete() {
-    for (const page of [...this.pages]) {
-      await page.waitUntilComplete();
-    }
+    await Promise.all(this.pages.map((page) => page.waitUntilComplete()));
   }
 
-  async abort() {}
+  async abort() { await Promise.all(this.pages.slice().map((page) => page.abort())); }
 }
 
 // --- Browser ------------------------------------------------------------------
-
-const DEFAULT_SETTINGS = Object.freeze({
-  disableJavaScriptEvaluation: false,
-  enableJavaScriptEvaluation: false,
-  disableJavaScriptFileLoading: false,
-  disableCSSFileLoading: false,
-  enableImageFileLoading: false,
-  disableComputedStyleRendering: false,
-  handleDisabledFileLoadingAsSuccess: false,
-  suppressCodeGenerationFromStringsWarning: false,
-  suppressInsecureJavaScriptEnvironmentWarning: false,
-  timer: Object.freeze({
-    maxTimeout: 2147483647,
-    maxIntervalTime: 2147483647,
-    maxIntervalIterations: Infinity,
-    preventTimerLoops: false,
-  }),
-  fetch: Object.freeze({
-    disableSameOriginPolicy: false,
-    disableStrictSSL: false,
-    interceptor: null,
-    requestHeaders: null,
-    virtualServers: null,
-  }),
-  module: Object.freeze({ resolveNodeModules: null, urlResolver: null, disableCache: false }),
-  disableErrorCapturing: false,
-  errorCapture: BrowserErrorCaptureEnum.tryAndCatch,
-  enableFileSystemHttpRequests: false,
-  disableIframePageLoading: false,
-  navigation: Object.freeze({
-    disableMainFrameNavigation: false,
-    disableChildFrameNavigation: false,
-    disableChildPageNavigation: false,
-    disableFallbackToSetURL: false,
-    crossOriginPolicy: "anyOrigin",
-    beforeContentCallback: null,
-  }),
-  navigator: Object.freeze({ userAgent: "", maxTouchPoints: 0 }),
-  device: Object.freeze({
-    prefersColorScheme: "",
-    prefersReducedMotion: "",
-    mediaType: "",
-    forcedColors: "",
-  }),
-  debug: Object.freeze({ traceWaitUntilComplete: false }),
-  viewport: Object.freeze({ width: 1024, height: 768, devicePixelRatio: 1 }),
-  canvasAdapter: null,
-});
-
-function mergeSettings(settings) {
-  const given = settings ?? {};
-  return {
-    ...DEFAULT_SETTINGS,
-    ...given,
-    timer: { ...DEFAULT_SETTINGS.timer, ...given.timer },
-    fetch: { ...DEFAULT_SETTINGS.fetch, ...given.fetch },
-    module: { ...DEFAULT_SETTINGS.module, ...given.module },
-    navigation: { ...DEFAULT_SETTINGS.navigation, ...given.navigation },
-    navigator: { ...DEFAULT_SETTINGS.navigator, ...given.navigator },
-    device: { ...DEFAULT_SETTINGS.device, ...given.device },
-    debug: { ...DEFAULT_SETTINGS.debug, ...given.debug },
-    viewport: { ...DEFAULT_SETTINGS.viewport, ...given.viewport },
-  };
-}
 
 // Browser → its exception observer (null when errorCapture is not
 // processLevel). Keyed outside the class so the page/context classes can reach
@@ -1122,7 +1067,7 @@ export class Browser {
   #closed = false;
 
   constructor(options = {}) {
-    this.settings = mergeSettings(options.settings);
+    this.settings = createBrowserSettings(options.settings);
     this.console = options.console ?? null;
     OBSERVERS.set(
       this,
@@ -1134,6 +1079,7 @@ export class Browser {
   }
 
   get defaultContext() {
+    if (!this.contexts.length) throw new Error("No default context. The browser has been closed.");
     return this.contexts[0];
   }
 
@@ -1146,6 +1092,7 @@ export class Browser {
   }
 
   newIncognitoContext() {
+    if (!this.contexts.length) throw new Error("No default context. The browser has been closed.");
     const context = new BrowserContext(this);
     this.contexts.push(context);
     return context;
@@ -1154,18 +1101,17 @@ export class Browser {
   async close() {
     if (this.#closed) return;
     this.#closed = true;
-    for (const context of [...this.contexts]) {
-      await context.close();
-    }
+    const contexts = this.contexts;
+    this.contexts = [];
+    await Promise.all(contexts.map((context) => context.close()));
   }
 
   async waitUntilComplete() {
-    for (const context of [...this.contexts]) {
-      await context.waitUntilComplete();
-    }
+    if (!this.contexts.length) throw new Error("No default context. The browser has been closed.");
+    await Promise.all(this.contexts.map((context) => context.waitUntilComplete()));
   }
 
-  async abort() {}
+  async abort() { await Promise.all(this.contexts.slice().map((context) => context.abort())); }
 }
 
 // --- window.open (mirrors happy-dom WindowPageOpenUtility) -------------------

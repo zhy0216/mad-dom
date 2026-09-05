@@ -55,10 +55,11 @@ const RECORD_HANDLES = new WeakMap();
 // callback's second argument must be the very object the caller constructed).
 const OBSERVER_OWNERS = new WeakMap();
 
-// Every native observer handle minted by the facade. `happyDOM.close()` walks
-// this set to disconnect the window's observers (happy-dom disconnects an
-// observer when its window closes), matching the vendored suite.
-const ALL_OBSERVER_HANDLES = new Set();
+// Only active observers are retained, by their construction Window. The
+// observed target may belong to a different Window.
+const WINDOW_OBSERVERS = new WeakMap();
+const OBSERVER_WINDOWS = new WeakMap();
+const WINDOW_CONSTRUCTORS = new WeakMap();
 
 // The `ctx` handed to `install`; captured so the wrapped callback and the
 // record accessors can mint facade wrappers.
@@ -214,27 +215,17 @@ export class MutationObserver {
       };
       handle = loadNative().createMutationObserver(wrapped);
       OBSERVER_OWNERS.set(handle, this);
-      ALL_OBSERVER_HANDLES.add(handle);
+
     }
     OBSERVER_HANDLES.set(this, handle);
   }
 }
 
-/**
- * Disconnects every observer minted by the facade.
- *
- * happy-dom disconnects an observer when its window is closed; the facade's
- * `happyDOM.close()` (window-platform) calls this to mirror that lifecycle.
- */
-export function disconnectAllObservers() {
-  for (const handle of ALL_OBSERVER_HANDLES) {
-    try {
-      handle.disconnect();
-    } catch {
-      // The document may already be destroyed; disconnecting is then a no-op.
-    }
-  }
-  ALL_OBSERVER_HANDLES.clear();
+export function disconnectWindowObservers(window) {
+  const handles = WINDOW_OBSERVERS.get(window);
+  if (!handles) return;
+  for (const handle of handles) handle.disconnect();
+  handles.clear();
 }
 
 /**
@@ -281,6 +272,8 @@ export class MutationRecord {
  * Registers the two handle types, exposes `window.MutationObserver`, and
  * registers the delivery scheduler that arms the per-listener microtasks.
  */
+const BaseMutationObserver = MutationObserver;
+
 export function install(extensionCtx) {
   // Capture the facade-provided `ctx` once, on the real facade install. The
   // structural test re-drives `installExtensions` with a plain mock ctx
@@ -299,7 +292,18 @@ export function install(extensionCtx) {
   });
   installCtx.registerHandleType("MutationRecordHandle", (handle) => new MutationRecord(handle));
   installCtx.defineAccessor(Window.prototype, "MutationObserver", function getMutationObserver() {
-    return MutationObserver;
+    let constructor = WINDOW_CONSTRUCTORS.get(this);
+    if (!constructor) {
+      const windowRef = new WeakRef(this);
+      constructor = class MutationObserver extends BaseMutationObserver {
+        constructor(callback) {
+          super(callback);
+          OBSERVER_WINDOWS.set(this, windowRef);
+        }
+      };
+      WINDOW_CONSTRUCTORS.set(this, constructor);
+    }
+    return constructor;
   }, undefined);
 
   installCtx.defineMethod(MutationObserver.prototype, "observe", function observe(target, options) {
@@ -319,6 +323,8 @@ export function install(extensionCtx) {
         throw new TypeError(`Node.observe requires a genuine Node facade wrapper`);
       }
     }
+    const window = OBSERVER_WINDOWS.get(this)?.deref() ?? ctx.windowFacadeOfDocument(target.ownerDocument ?? target);
+    if (window?.closed) return;
     const resolved = resolveObserverOptions(options);
     const handle = OBSERVER_HANDLES.get(this);
     handle.observe(
@@ -331,10 +337,19 @@ export function install(extensionCtx) {
       resolved.characterDataOldValue,
       resolved.attributeFilter,
     );
+    if (window) {
+      let handles = WINDOW_OBSERVERS.get(window);
+      if (!handles) WINDOW_OBSERVERS.set(window, handles = new Set());
+      handles.add(handle);
+      if (!OBSERVER_WINDOWS.has(this)) OBSERVER_WINDOWS.set(this, new WeakRef(window));
+    }
   });
 
   installCtx.defineMethod(MutationObserver.prototype, "disconnect", function disconnect() {
-    OBSERVER_HANDLES.get(this).disconnect();
+    const handle = OBSERVER_HANDLES.get(this);
+    handle.disconnect();
+    const window = OBSERVER_WINDOWS.get(this)?.deref();
+    if (window) WINDOW_OBSERVERS.get(window)?.delete(handle);
   });
 
   installCtx.defineMethod(MutationObserver.prototype, "takeRecords", function takeRecords() {

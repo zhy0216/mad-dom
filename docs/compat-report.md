@@ -1,8 +1,11 @@
 # Compatibility report
 
 mad-dom targets drop-in parity with happy-dom, measured against a single
-locked baseline: **happy-dom 20.11.11**. Every number on this page is
-reproducible with the commands shown.
+locked baseline: **happy-dom 20.11.11**. The figures below are repository
+coverage records; use the commands shown to reproduce or refresh each track.
+Run them from a source checkout after `bun install --frozen-lockfile` and
+`bun run dev:build`. Set `MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node"` when
+you need to guarantee that the freshly built native module is used.
 
 ## The contract: 100%
 
@@ -10,16 +13,26 @@ The core of compatibility is a black-box differential suite: every scenario
 runs against both engines in isolated processes and the observable results are
 compared verbatim.
 
-- **180 / 180 scenarios match happy-dom exactly (100%)**
-- **Zero known gaps** — no skipped, expected-fail or unexplained entries
+- **180 / 180 differential scenarios are recorded as passing (100%)**
+- No `known-gap` or `not-applicable` entries in that recorded contract
 
 ```sh
 bun run compat:differential
 ```
 
-Tracked around the differential suite are further checks — type-level API
-checks and ported upstream tests — currently at **448 / 448 pass with zero
-known gaps**.
+The ledger records **448 / 448 entries as passing**, split as follows:
+
+| Track | Recorded entries | Meaning |
+| --- | ---: | --- |
+| `diff` | 180 | Differential scenarios |
+| `types` | 10 | Type-level checks |
+| `up` | 147 | Ported upstream checks |
+| `hdunit` | 111 | Upstream-unit coverage bookkeeping |
+
+Ledger entries are not interchangeable with individual test assertions or
+fully passing upstream files. In particular, the `hdunit` bookkeeping does
+not mean the full upstream suite passes. Inspect the recorded status with
+`bun run compat:ledger:report`; `bun run compat:ledger` performs validation.
 
 ## The bigger picture: the happy-dom unit suite
 
@@ -33,7 +46,7 @@ suite — 298 test files — and gave every file an explicit state:
 | Declared expected-fail | 22 | 7% |
 | Skipped, with a recorded reason | 208 | 70% |
 
-Nothing is silently missing: every file is accounted for. Reproduce:
+Every vendored file has a triage state. Regenerate the coverage report with:
 
 ```sh
 bun run compat:hdunit:report
@@ -50,9 +63,32 @@ the happy-dom conclusions above.
 bun run wpt:json
 ```
 
-## In short
+## Known behavior gaps outside the recorded contract
 
-If a behavior is covered by the contract, it matches happy-dom 20.11.11
-today. If it isn't covered yet, it is declared — as a known skip or an
-expected-fail, never as a silent absence. The status is alpha either way; see
-the [quick start](/quick-start).
+A passing contract verifies its assertions; it does not prove all behaviors
+of a named API. The documentation review identified gaps in cancellation,
+cleanup ownership, task waiting, script execution on navigation, and settings
+wiring. They are recorded in the
+[Browser lifecycle and settings repair plan](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/plan.md).
+The existing ledger has not yet been expanded to cover these findings.
+
+For current behavior, see [Async work and cleanup](/async),
+[Configuration](/configuration), and [Browser](/browser). For example,
+`happyDOM.abort()` currently does not cancel pending work, and `goto()` does
+not execute downloaded page scripts.
+
+## Which checks to use
+
+| Question | Check |
+| --- | --- |
+| Do selected public observations match the pinned engine? | `bun run compat:differential` |
+| Do the declared types satisfy the tracked contract? | `bun run compat:types` |
+| Are ledger and triage records consistent? | `bun run compat:ledger`, `bun run compat:hdunit:validate` |
+| How much of the vendored unit suite is enabled? | `bun run compat:hdunit:report` |
+| How does the separate WPT subset behave? | `bun run wpt:json` |
+| Are the benchmark workloads correct and faster? | `bun run bench:dom` — see [Performance](/performance) |
+
+Benchmark validity, type coverage, upstream-file coverage, and standards
+conformance answer different questions. For a migration, run your application's
+own assertions too; the [migration guide](/migration) identifies the paths
+that need particular attention.

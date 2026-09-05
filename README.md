@@ -2,13 +2,17 @@
 
 > Not happy. Just native.
 
-**A native DOM for Bun, written in Rust, with a happy-dom-compatible API.**
+**A fast native DOM for Bun, written in Rust, with a happy-dom-style API.**
+
+**2.83× faster core DOM work · 1.57× faster test workflows** in the recorded
+2026-09-05 source-build comparison with happy-dom 20.11.11. See the benchmark
+conditions and full results below.
 
 [Documentation](https://zhy0216.github.io/mad-dom/) ·
 [Examples](docs/examples.md) · [Performance](docs/performance.md)
 
 ```sh
-bun add -d mad-dom
+bun add -d mad-dom@next
 ```
 
 ## Start with one import
@@ -21,6 +25,37 @@ bun add -d mad-dom
 Use familiar APIs — `Window`, `Browser`, `GlobalWindow`, `window.document` —
 under `bun test`. Run your own suite after changing the import; compatibility
 is measured against a defined contract and the package is still alpha.
+
+```js
+import { Window } from "mad-dom";
+
+const window = new Window({ url: "https://app.example/" });
+try {
+  window.document.body.innerHTML = "<button>Save</button>";
+  const button = window.document.querySelector("button");
+  button.addEventListener("click", () => { button.textContent = "Saved"; });
+  button.click();
+  console.log(button.textContent); // Saved
+} finally {
+  window.destroy();
+}
+```
+
+`destroy()` explicitly releases the native document. For async tests, finish
+requests and clear timers before teardown; see [cleanup](docs/async.md#cleanup).
+
+## What you can do
+
+- Parse and serialize HTML, query selectors, traverse live collections, and mutate trees.
+- Test events, form values and validation, template clones, and DOM snapshots.
+- Work with custom elements, shadow roots, slots, and MutationObserver.
+- Use Window timers, Fetch, URL/history/storage APIs, and virtual console output.
+- Load server-rendered HTML through Browser pages and inspect their documents.
+
+MAD DOM provides DOM behavior without visual layout or painting. Guides:
+[Getting started](docs/quick-start.md) · [Bun & Testing Library](docs/testing.md) ·
+[DOM](docs/dom.md) · [Window](docs/window.md) · [Browser](docs/browser.md) ·
+[Migration](docs/migration.md) · [Configuration](docs/configuration.md).
 
 The repository includes two copies of happy-dom's integration tests with
 matching assertions and an engine import swap. The shared Bun runner and
@@ -51,6 +86,11 @@ and async observers were slower. See the [full phase tables and measurement
 limits](docs/performance.md), [methodology](benchmark/README.md) and
 [raw samples](benchmark/results/2026-09-05-dom.json).
 
+The lifecycle scenario times the current alpha close path, whose cleanup is
+incomplete relative to happy-dom. Its result contributes to the workflow
+aggregate. The [performance page](docs/performance.md) explains this limitation;
+cleanup fixes will require re-measurement.
+
 Reproduce from a source checkout:
 
 ```sh
@@ -77,13 +117,16 @@ MAD DOM tracks the happy-dom API against a **locked happy-dom baseline** and
 verifies it with a black-box differential suite — currently **100% pass** on
 the compatibility contract. Full numbers: [docs/compat-report.md](docs/compat-report.md).
 
-## Platforms
+## Support matrix
 
 Per-platform binaries ship as optional npm packages (`@mad-dom/platform-*`) —
-nothing to compile, `bun add` just works.
+no Rust compiler is needed when a matching binary is available. Requires
+Bun >= 1.4.0; the measured Linux glibc floor is 2.39.
 
 - **Available now (alpha):** macOS arm64 / x64, Linux x64 / arm64 (glibc)
 - **Coming in beta:** Windows x64, Linux musl
+
+[Platform packages, source builds, and loader troubleshooting](docs/platforms.md).
 
 ## Status
 

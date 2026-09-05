@@ -1,5 +1,10 @@
 # Performance
 
+**2.83× faster core DOM work. 1.57× faster test workflows.** These are the
+aggregate results of the source-build run below, with matching workload checks
+for both engines. Parsing was 3.19× faster, serialization 4.98×, and mutation
+churn 8.59× in the same run. The full tables include every measured phase.
+
 mad-dom is compared with **happy-dom 20.11.11** using the same deterministic
 DOM workloads through each engine's public API. The benchmark covers
 **16 core phases** and **13 test workflows**, including actual
@@ -110,6 +115,13 @@ every scenario with matching case counts and SHA-256 result fingerprints.
 mad-dom had lower medians in 8 of 13 scenarios. Shared-window fixture
 lifecycle, Testing Library events and labels, keyed reconciliation and async
 observers were slower. The aggregate includes all five.
+
+The `windowLifecycle` result measures the current alpha's `happyDOM.close()`
+path, which performs less cleanup than happy-dom's close. The benchmark checks
+the scenario's DOM results, not full cancellation or resource-release parity.
+This matters to that scenario and to the 1.57× workflow aggregate, which includes
+it. [Lifecycle fixes are planned](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/plan.md);
+their completed implementation will need a new measurement.
 
 Fixture mounting, querying, interaction, result reads and DOM cleanup are
 timed. Only `windowLifecycle` also times Window construction and

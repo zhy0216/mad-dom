@@ -49,6 +49,7 @@
 
 import { Buffer } from "node:buffer";
 
+import { windowTasks } from "../window-tasks.js";
 import { Window } from "../window.js";
 import { fetchCookieJar } from "./window-platform.js";
 import { isFormData, serializeFormData } from "./form-data.js";
@@ -1177,26 +1178,95 @@ function fetchSurface(ctx, windowFacade) {
 
 // --- window.fetch ------------------------------------------------------------
 
-function toNativeSignal(signal) {
-  const NativeAbortController = globalThis.AbortController;
-  if (signal.aborted) {
-    const controller = new NativeAbortController();
-    controller.abort(signal.reason);
-    return controller.signal;
-  }
-  const controller = new NativeAbortController();
-  const onAbort = () => {
-    controller.abort(signal.reason);
-    signal.removeEventListener("abort", onAbort);
+// Keep ownership until the transport reaches EOF, even if the caller has not
+// consumed the body yet. Happy DOM also drains network bodies eagerly.
+function ownedBody(stream, owner, controller, cleanup) {
+  if (!stream) { cleanup(); return null; }
+  const reader = stream.getReader();
+  let output, ended = false;
+  const finish = () => {
+    if (ended) return;
+    ended = true;
+    controller.signal.removeEventListener("abort", abort);
+    owner.end(token);
+    cleanup();
   };
-  signal.addEventListener("abort", onAbort);
-  return controller.signal;
+  const abort = () => {
+    if (ended) return;
+    output.error(controller.signal.reason);
+    void reader.cancel(controller.signal.reason).catch(() => {});
+    finish();
+  };
+  const token = owner.start(() => controller.abort(new DOMException("The operation was aborted.", "AbortError")));
+  controller.signal.addEventListener("abort", abort, { once: true });
+  return new ReadableStream({
+    start(target) {
+      output = target;
+      if (controller.signal.aborted) { abort(); return; }
+      void (async () => {
+        try {
+          while (!ended) {
+            const { done, value } = await reader.read();
+            if (ended) return;
+            if (done) { output.close(); break; }
+            output.enqueue(value);
+          }
+        } catch (error) { if (!ended) output.error(error); }
+        finally { finish(); reader.releaseLock(); }
+      })();
+    },
+    cancel(reason) {
+      finish();
+      return reader.cancel(reason);
+    },
+  });
 }
 
 async function fetchImpl(ctx, windowFacade, url, init) {
+  const owner = windowTasks(windowFacade);
+  if (owner.closed) throw new windowFacade.DOMException("Failed to execute 'fetch' on 'Window': The window is closed.", "InvalidStateError");
   const surface = fetchSurface(ctx, windowFacade);
   const request = new surface.Request(url, init);
+  const controller = new globalThis.AbortController();
+  const onAbort = () => controller.abort(request.signal.reason);
+  request.signal.addEventListener("abort", onAbort);
+  if (request.signal.aborted) onAbort();
+  const cleanup = () => request.signal.removeEventListener("abort", onAbort);
+  const token = owner.start(() => controller.abort(new windowFacade.DOMException("The operation was aborted.", "AbortError")));
+  let rejectAbort;
+  const aborted = new Promise((_, reject) => { rejectAbort = reject; });
+  const cancel = () => rejectAbort(controller.signal.reason);
+  controller.signal.addEventListener("abort", cancel, { once: true });
+  if (controller.signal.aborted) cancel();
+  const transport = { owner, controller, cleanup, bodyOwned: false };
+  try {
+    return await Promise.race([sendFetch(ctx, windowFacade, surface, request, transport), aborted]);
+  } finally {
+    owner.end(token);
+    controller.signal.removeEventListener("abort", cancel);
+    if (!transport.bodyOwned) cleanup();
+  }
+}
 
+async function sendFetch(ctx, windowFacade, surface, request, transport) {
+  const settings = windowFacade.happyDOM.settings.fetch;
+  for (const header of settings.requestHeaders ?? []) {
+    // Preserve the pinned baseline's (unusual) string-prefix direction.
+    if (!header.url || (typeof header.url === "string" ? header.url.startsWith(request.url) : request.url.match(header.url))) {
+      for (const [key, value] of Object.entries(header.headers)) request.headers.set(key, value);
+    }
+  }
+  const interceptor = settings.interceptor;
+  const afterResponse = async (response) => {
+    const replacement = await interceptor?.afterAsyncResponse?.({ request, response, window: windowFacade });
+    transport.controller.signal.throwIfAborted();
+    return replacement instanceof Response ? replacement : response;
+  };
+  if (interceptor?.beforeAsyncRequest) {
+    const response = await interceptor.beforeAsyncRequest({ request, window: windowFacade });
+    transport.controller.signal.throwIfAborted();
+    if (response instanceof Response) return response;
+  }
   // happy-dom's `fetch` is `async … { return await new Fetch({url, init}).send() }`:
   // the Request is built synchronously (a construction error rejects the
   // returned promise without a microtask hop) and the send itself is reached
@@ -1205,6 +1275,7 @@ async function fetchImpl(ctx, windowFacade, url, init) {
   // fetch reaction — identical to the baseline (T46 differential gate).
   await Promise.resolve();
 
+  transport.controller.signal.throwIfAborted();
   if (request.signal.aborted) {
     if (request.signal.reason !== undefined) {
       throw request.signal.reason;
@@ -1222,9 +1293,9 @@ async function fetchImpl(ctx, windowFacade, url, init) {
 
   if (protocol === "data:") {
     const result = parseDataURI(request.url);
-    return new surface.Response(result.buffer, {
+    return afterResponse(new surface.Response(result.buffer, {
       headers: { "Content-Type": result.type },
-    });
+    }));
   }
 
   // Security check for "https" to "http" requests (mirrors happy-dom Fetch).
@@ -1285,9 +1356,11 @@ async function fetchImpl(ctx, windowFacade, url, init) {
       headers: plainHeaders,
       body: request.body ?? undefined,
       redirect: request.redirect,
-      signal: toNativeSignal(request.signal),
+      signal: transport.controller.signal,
+      ...(settings.disableStrictSSL ? { tls: { rejectUnauthorized: false } } : {}),
     });
   } catch (error) {
+    if (transport.controller.signal.aborted) throw transport.controller.signal.reason;
     if (request.signal.aborted) {
       throw request.signal.reason !== undefined
         ? request.signal.reason
@@ -1303,17 +1376,19 @@ async function fetchImpl(ctx, windowFacade, url, init) {
   for (const [key, value] of nativeResponse.headers) {
     responseHeaders[key] = value;
   }
-  const response = new surface.Response(nativeResponse.body, {
+  transport.controller.signal.throwIfAborted();
+  transport.bodyOwned = true;
+  const response = new surface.Response(ownedBody(nativeResponse.body, transport.owner, transport.controller, transport.cleanup), {
     status: nativeResponse.status,
     statusText: nativeResponse.statusText,
     headers: responseHeaders,
   });
-  response.url = request.url;
+  response.url = nativeResponse.url || request.url;
   response.redirected = nativeResponse.redirected;
 
   // `Set-Cookie` response headers update the per-window cookie jar (mirrors
   // happy-dom's FetchResponseHeaderUtility).
-  if (jar) {
+  if (jar && (request.credentials === "include" || (request.credentials === "same-origin" && !isCORS))) {
     for (const header of nativeResponse.headers.getSetCookie()) {
       const cookie = jar.parseCookie(requestURL, header);
       if (cookie) {
@@ -1322,7 +1397,7 @@ async function fetchImpl(ctx, windowFacade, url, init) {
     }
   }
 
-  return response;
+  return afterResponse(response);
 }
 
 // --- install -----------------------------------------------------------------

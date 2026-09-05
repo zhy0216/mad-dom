@@ -1,164 +1,83 @@
-# Examples
+# Examples and recipes
 
-A quick tour of the mad-dom API. Every snippet here is lifted from the
-runnable scripts in [`examples/`](https://github.com/zhy0216/mad-dom/tree/main/examples),
-so it reflects the real surface — not a guess. Swap in `from "mad-dom"` and run.
+Start with a recipe for the job you want to do. The guide examples use Bun and
+public mad-dom APIs, and include setup, expected output, and cleanup.
 
-## Window & document
+## Find a recipe
 
-`Window` is the entry point. Create one, reach for `document`, and mutate the
-DOM the way you would in a browser.
+| Goal | Example |
+| --- | --- |
+| Create a document and run the first test | [Quick start](/quick-start) |
+| Use a fresh fixture in `bun test` | [Test hooks](/testing#a-fresh-window-per-test) |
+| Query by role/label and dispatch an input event | [DOM Testing Library](/testing#dom-testing-library) |
+| Load a module that expects a global document | [Bun preload](/testing#modules-that-expect-dom-globals) |
+| Extract text and serialize HTML | [Parsing](/dom#parse-and-serialize-html) |
+| Understand live collections and node identity | [Collections](/dom#live-collections-and-static-results) |
+| Build a tree with a DocumentFragment | [Tree updates](/dom#build-and-update-a-tree) |
+| Validate and submit a form | [Forms](/dom#forms) |
+| Clone repeated cards from a template | [Templates](/web-components#clone-a-template) |
+| Register a custom element or inspect slots | [Web components](/web-components) |
+| Wait for a timer or a DOM mutation | [Async work](/async) |
+| Fetch JSON from a local server | [Fetch](/async#fetch-and-cancellation) |
+| Execute a controlled inline script | [Script execution](/async#script-execution) |
+| Load server-rendered HTML | [Browser navigation](/browser#navigation) |
+| Map a fixture directory to a URL | [Virtual servers](/browser#serve-a-directory-through-a-virtual-url) |
+| Inspect application logs | [Virtual console](/window#console-output) |
+| Change location, history, or viewport | [Window](/window) |
 
-```js
-import { Window } from "mad-dom";
+## Rewrite an HTML document
 
-const window = new Window({ url: "https://localhost:8080" });
-const document = window.document;
-
-document.body.innerHTML = '<div class="container"></div>';
-
-const container = document.querySelector(".container");
-const button = document.createElement("button");
-container.appendChild(button);
-
-// "<div class="container"><button></button></div>"
-console.log(document.body.innerHTML);
-
-window.close();
-```
-
-Reading text back is just `textContent`:
-
-```js
-console.log(document.querySelector("button").textContent);
-```
-
-## Query & events
-
-`querySelector` returns the first matching element (or `null`);
-`querySelectorAll` returns them all. Events follow the standard
-add / dispatch flow.
+This complete script extracts article titles, marks matching articles, and
+prints the updated HTML. It needs no network or script evaluation:
 
 ```js
 import { Window } from "mad-dom";
 
 const window = new Window();
-const document = window.document;
-
-document.body.innerHTML = '<div id="mid"><span id="leaf">leaf</span></div>';
-const leaf = document.getElementById("leaf");
-
-leaf.addEventListener("click", (event) => {
-  console.log("clicked", event.target.textContent);
-});
-
-leaf.dispatchEvent(new window.Event("click", { bubbles: true }));
-
-window.close();
+try {
+  const document = window.document;
+  document.body.innerHTML = `
+    <main>
+      <article data-kind="guide"><h2>Getting started</h2></article>
+      <article data-kind="reference"><h2>Window API</h2></article>
+    </main>
+  `;
+  const titles = Array.from(document.querySelectorAll("article h2"),
+    (heading) => heading.textContent);
+  for (const article of document.querySelectorAll('[data-kind="guide"]')) {
+    article.classList.add("featured");
+  }
+  console.log(titles); // [ "Getting started", "Window API" ]
+  console.log(document.querySelector("article").className); // featured
+  console.log(document.querySelector("main").outerHTML);
+} finally {
+  window.destroy();
+}
 ```
 
-Listeners fire in registration order, `dispatchEvent` returns `false` only when
-a cancelable event was default-prevented, and `stopPropagation()` /
-`stopImmediatePropagation()` work as expected.
+## Repository example pairs
 
-## Browser & pages
+The repository's
+[`examples/` directory](https://github.com/zhy0216/mad-dom/tree/main/examples)
+contains 55 mad-dom scripts and corresponding `.happy-dom.mjs` versions adapted
+from upstream wiki examples. They cover Window, Browser, pages, frames,
+console printers, cookies, settings, and server-side DOM use.
 
-Reach for `Browser` when you want pages, navigation and a real document per
-frame. Set `url` and `content` directly, or `goto()` a page.
-
-```js
-import { Browser } from "mad-dom";
-
-const browser = new Browser();
-const page = browser.newPage();
-
-page.url = "https://example.com";
-page.content = "<html><body>Hello world!</body></html>";
-
-// "Hello world!"
-console.log(page.mainFrame.document.body.textContent);
-
-await browser.close();
-```
-
-For live navigation, `page.goto(url)` loads a document and
-`page.mainFrame.document` reads it back.
-
-## GlobalWindow
-
-`GlobalWindow` runs `document.write` with JavaScript evaluation enabled, so
-inline scripts execute and land on the global object.
-
-```js
-import { GlobalWindow } from "mad-dom";
-
-const window = new GlobalWindow({
-  settings: { enableJavaScriptEvaluation: true },
-});
-
-window.document.write(`
-  <script>
-    globalThis.helloWorld = 'Hello world!';
-  </script>
-`);
-
-// "Hello world!"
-console.log(global.helloWorld);
-
-await window.happyDOM.close();
-```
-
-## window.happyDOM
-
-Every `Window` exposes a `happyDOM` handle for lifecycle control.
-
-Wait for all async work (fetch, timers) to drain before asserting:
-
-```js
-import { Window } from "mad-dom";
-
-const window = new Window({
-  settings: { enableJavaScriptEvaluation: true },
-});
-
-window.document.write(`
-  <script>
-    setTimeout(() => { document.body.innerHTML = "Hello World!"; }, 10);
-  </script>
-`);
-
-await window.happyDOM.waitUntilComplete();
-
-// "Hello World!"
-console.log(window.document.body.innerHTML);
-
-await window.happyDOM.close();
-```
-
-Set the viewport dimensions:
-
-```js
-import { Window } from "mad-dom";
-
-const window = new Window();
-
-window.happyDOM.setViewport({ width: 1920, height: 1080, devicePixelRatio: 2 });
-
-// 1920
-console.log(window.innerWidth);
-
-await window.happyDOM.close();
-```
-
-## Where to go next
-
-The snippets above are the tip of it. [`examples/`](https://github.com/zhy0216/mad-dom/tree/main/examples)
-holds **55 runnable scripts** — Window, Browser, pages, frames, cookies, the
-detached-window API — and each one ships with a `.happy-dom.mjs` twin, so you
-can diff mad-dom against happy-dom side by side.
-
-Run any of them directly:
+From a **source checkout**, install dependencies and build the native module:
 
 ```sh
-bun examples/wiki-browser.mad-dom.mjs
+bun install --frozen-lockfile
+bun run dev:build
+MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun examples/wiki-getting-started.mad-dom.mjs
+bun examples/wiki-getting-started.happy-dom.mjs
 ```
+
+Choose the matching pair to compare an API on both engines. Some examples need
+external services or local fixture files, and some illustrate accepted settings
+whose behavior remains incomplete. They are reference examples, not a blanket
+compatibility claim. See [Configuration](/configuration) and
+[Migration](/migration) before using those paths in tests.
+
+The npm package does not include the repository's `examples/`, benchmarks, or
+build scripts. Copy a standalone guide snippet into your own project and run
+it with `bun filename.mjs`.
