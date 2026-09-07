@@ -6,7 +6,7 @@ default_agent: codex
 
 | 文件 | 优先级 | 难度 | agent | 模型 / 推理强度 | 说明 |
 | --- | --- | --- | --- | --- | --- |
-| `01-capability-matrix-and-benchmarks.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 建立 Bun FFI/JSC/GC/IO capability matrix 和 N-API 对照基准 |
+| ~~`01-capability-matrix-and-benchmarks.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Bun FFI/JSC/GC/IO capability matrix 和 N-API 对照基准 |
 | ~~`02-ffi-abi-and-native-fast-path.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Rust C ABI/FFI cdylib、token/batch/snapshot/serialization 快路径与边界测试 |
 | `03-bun-ffi-loader-and-facade.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 在 Bun 中加载 FFI、做 capability probe、接入 facade 并回退 Node-API |
 | `04-memory-gc-and-external-buffers.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 完成外部 buffer 所有权、deallocator、GC/finalizer/affinity 安全门禁 |
@@ -26,7 +26,7 @@ default_agent: codex
 6. `06-latest-bun-ci-and-release-policy.md`（依赖 01、03；可与 04、05 并行）
 7. `07-integration-and-regression-gate.md`（依赖 03、04、05、06）
 
-02 已归档于 `done/02-ffi-abi-and-native-fast-path.md`。FFI ABI v1 与
+01、02 已归档于 `done/`（capability matrix/benchmark 与 FFI ABI v1）。FFI ABI v1 与
 Node-API 共用同一 cdylib；未通过 capability probe 时继续使用 Node-API。
 
 ## 依赖与并行
