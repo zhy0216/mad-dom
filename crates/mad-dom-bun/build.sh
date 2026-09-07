@@ -17,9 +17,9 @@ cd "$repo_root/crates/mad-dom-bun"
 cargo build --release -p mad-dom-bun
 
 case "$(uname -s)" in
-  Darwin) lib="$repo_root/target/release/libmad_dom_bun.dylib" ;;
-  Linux) lib="$repo_root/target/release/libmad_dom_bun.so" ;;
-  MINGW* | MSYS* | CYGWIN*) lib="$repo_root/target/release/mad_dom_bun.dll" ;;
+  Darwin) lib="$repo_root/target/release/libmad_dom_bun.dylib"; ffi_name="mad-dom-ffi.dylib" ;;
+  Linux) lib="$repo_root/target/release/libmad_dom_bun.so"; ffi_name="mad-dom-ffi.so" ;;
+  MINGW* | MSYS* | CYGWIN*) lib="$repo_root/target/release/mad_dom_bun.dll"; ffi_name="mad-dom-ffi.dll" ;;
   *)
     echo "dev build: unsupported platform $(uname -s)" >&2
     exit 1
@@ -34,4 +34,7 @@ fi
 mkdir -p "$repo_root/build"
 rm -f "$repo_root/build/mad-dom.node"
 cp "$lib" "$repo_root/build/mad-dom.node"
-echo "dev build: wrote $repo_root/build/mad-dom.node"
+# Keep one inode for both loaders: the C ABI registry belongs to the loaded
+# Node-API image, so a byte-for-byte copy would create a disconnected registry.
+ln -sfn mad-dom.node "$repo_root/build/$ffi_name"
+echo "dev build: wrote $repo_root/build/mad-dom.node and $repo_root/build/$ffi_name (same image)"

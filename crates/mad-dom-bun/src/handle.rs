@@ -206,6 +206,8 @@ impl Drop for EpochView {
 /// (the `Drop for NodeHandle` path); see [`SharedDocument::wrap_node`] for
 /// the "collected but not yet finalized" window semantics.
 pub(crate) struct SharedDocument {
+    /// Weak, thread-local C ABI registration; never owns JS memory or the DOM.
+    pub(crate) ffi: crate::ffi::Registration,
     document: Mutex<Option<LiveDocument>>,
     /// Fast terminal lifecycle bit used to preserve destroyed-document error
     /// precedence before token lookup and epoch-view allocation.
@@ -631,7 +633,7 @@ impl SharedDocument {
     /// one on first exposure. The token table is independent of the weak
     /// Node-API wrapper cache: a facade node can therefore exist without a
     /// native class object and materialize that object only on demand.
-    fn token_for(&self, id: NodeId) -> u32 {
+    pub(crate) fn token_for(&self, id: NodeId) -> u32 {
         self.enable_tokens();
         let mut tokens = self
             .tokens
@@ -691,7 +693,7 @@ impl SharedDocument {
     /// Compatibility array form for callers that cannot consume a contiguous
     /// range. Registration remains shared with the allocation-free range
     /// companion so both APIs preserve identical token ordering.
-    fn tokens_for_fresh(&self, ids: &[NodeId]) -> Vec<u32> {
+    pub(crate) fn tokens_for_fresh(&self, ids: &[NodeId]) -> Vec<u32> {
         let start = self.register_tokens_for_fresh(ids);
         (0..ids.len())
             .map(|offset| {
@@ -757,7 +759,7 @@ impl SharedDocument {
     /// Resolves a document-local primitive token back to the opaque Core id.
     /// Callers still delegate to Core afterwards, so stale/adopted ids retain
     /// the existing structured lifecycle errors.
-    fn id_for_token(&self, token: u32) -> Option<NodeId> {
+    pub(crate) fn id_for_token(&self, token: u32) -> Option<NodeId> {
         self.tokens
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -1225,6 +1227,7 @@ impl DocumentHandle {
         LIVE_DOCUMENT_COUNT.fetch_add(1, Ordering::SeqCst);
         Self {
             shared: Arc::new(SharedDocument {
+                ffi: crate::ffi::Registration::default(),
                 document: Mutex::new(Some(LiveDocument {
                     document: Document::new(),
                 })),
@@ -1413,6 +1416,7 @@ impl DocumentHandle {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         *guard = None;
         self.shared.destroyed.store(true, Ordering::Relaxed);
+        self.shared.ffi.invalidate();
         drop(guard);
         self.shared
             .wrappers
@@ -2324,10 +2328,8 @@ mod tests {
     /// a [`DocumentHandle`] must run exclusively against the others. Serialize
     /// them with a shared test mutex to keep the counter assertions
     /// deterministic.
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
-
     fn lock() -> std::sync::MutexGuard<'static, ()> {
-        TEST_LOCK
+        crate::DOCUMENT_TEST_LOCK
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }

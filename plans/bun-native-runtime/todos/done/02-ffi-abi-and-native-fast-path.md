@@ -35,3 +35,21 @@ agent: inherit
 ### 前置依赖
 
 依赖 `01-capability-matrix-and-benchmarks.md` 的 ABI、capability 和第一阶段入口决策。
+
+## 完成记录
+
+- Rust `ffi` module exports ABI v1 (`mad_dom_ffi_abi_version`) and capability bits
+  for query, preorder/child snapshots, token batches, caller-owned serialization,
+  and text/attribute reads. It is in the same cdylib as Node-API.
+- `DocumentHandle.ffiContext()` supplies owner/generation/root-token credentials;
+  all C entries validate affinity, lifecycle, token ownership and Core arena
+  generation. Pointer inputs are borrowed for one call and outputs report exact
+  required capacity with stable status codes.
+- Rust FFI tests cover real parse/query/traversal/serialization workloads,
+  wrong owner/generation/document, stale tokens, destroy, panic containment,
+  UTF-8, alignment, empty buffers, capacity atomicity and batch null semantics.
+- Bun capability probe now loads and checks every exported symbol. The boundary
+  benchmark runs comparable Node-API and FFI rows when the same image is present;
+  missing FFI remains an explicit Node-API fallback.
+- Validation: `cargo fmt --check`, workspace clippy/test, Bun capability probe,
+  Bun FFI workload test and boundary benchmark passed on Bun 1.4.2 / Rust 1.93.1.

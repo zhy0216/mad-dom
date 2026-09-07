@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 // Same-input Node-API versus candidate bun:ffi boundary benchmark (T1).
 //
-// T2 owns the FFI cdylib. Until it is present, this benchmark reports an
-// explicit unavailable FFI row and measures the current Node-API path. It
-// never fills a missing FFI result with a guessed number.
+// The FFI row is loaded only when the T2 cdylib passes its ABI probe. A
+// missing/incompatible library remains an explicit unavailable row; this
+// benchmark never fills a missing FFI result with a guessed number.
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -190,21 +190,110 @@ function runWorkload(native, id, options) {
   }
 }
 
-function probeFfiCandidate(env) {
+async function probeFfiCandidate(env) {
   if (/^(1|true|yes)$/i.test(String(env.MAD_DOM_FFI_DISABLED ?? ""))) {
     return unavailable("MAD_DOM_FFI_DISABLED is set", { mode: "disabled", contract: FFI_CONTRACT });
   }
-  const configured = env.MAD_DOM_FFI_PATH ? resolve(process.cwd(), env.MAD_DOM_FFI_PATH) : null;
+  const suffix = process.platform === "darwin" ? "dylib" : process.platform === "win32" ? "dll" : "so";
+  const defaultPath = resolve(process.cwd(), "build", `mad-dom-ffi.${suffix}`);
+  const configured = env.MAD_DOM_FFI_PATH ? resolve(process.cwd(), env.MAD_DOM_FFI_PATH) : existsSync(defaultPath) ? defaultPath : null;
   if (!configured) {
-    return unavailable("no MAD_DOM_FFI_PATH; T2 cdylib is not installed", { contract: FFI_CONTRACT });
+    return unavailable("no FFI artifact; Node-API remains the active path", { contract: FFI_CONTRACT });
   }
   if (!existsSync(configured)) {
     return unavailable("MAD_DOM_FFI_PATH does not exist", { path: configured, contract: FFI_CONTRACT });
   }
-  return unavailable(
-    "candidate cdylib is present but no T2 adapter is available in this benchmark",
-    { path: configured, contract: FFI_CONTRACT },
-  );
+  try {
+    const ffi = await import("bun:ffi");
+    const library = ffi.dlopen(configured, {
+      [FFI_CONTRACT.symbols.abiVersion]: { args: [], returns: "u32" },
+      [FFI_CONTRACT.symbols.capabilities]: { args: [], returns: "u32" },
+      [FFI_CONTRACT.symbols.querySnapshot]: { args: ["u32", "u32", "u32", "buffer", "u32", "ptr", "u32", "ptr"], returns: "i32" },
+      [FFI_CONTRACT.symbols.preorderSnapshot]: { args: ["u32", "u32", "u32", "ptr", "u32", "ptr"], returns: "i32" },
+      [FFI_CONTRACT.symbols.serialize]: { args: ["u32", "u32", "u32", "u32", "ptr", "u32", "ptr"], returns: "i32" },
+      mad_dom_ffi_create_elements: { args: ["u32", "u32", "buffer", "u32", "u32", "ptr", "u32", "ptr"], returns: "i32" },
+    });
+    const abiVersion = library.symbols[FFI_CONTRACT.symbols.abiVersion]();
+    const capabilities = library.symbols[FFI_CONTRACT.symbols.capabilities]();
+    if (abiVersion !== FFI_CONTRACT.abiVersion) {
+      return unavailable(`FFI ABI mismatch: expected ${FFI_CONTRACT.abiVersion}, got ${abiVersion}`, {
+        path: configured, mode: "abi-mismatch", contract: FFI_CONTRACT,
+      });
+    }
+    return { status: "available", path: configured, abiVersion, capabilities, contract: FFI_CONTRACT, library };
+  } catch (error) {
+    return unavailable(error?.message ?? String(error), { path: configured, contract: FFI_CONTRACT });
+  }
+}
+
+function runFfiWorkload(ffi, native, id, options) {
+  if (ffi.status !== "available") return unavailable(ffi.reason ?? "FFI library unavailable");
+  const document = native.createDocument();
+  const symbols = ffi.library.symbols;
+  const query = symbols[FFI_CONTRACT.symbols.querySnapshot];
+  const preorder = symbols[FFI_CONTRACT.symbols.preorderSnapshot];
+  const serialize = symbols[FFI_CONTRACT.symbols.serialize];
+  const selector = new TextEncoder().encode("span[data-index]");
+  const fixtureCount = id === "large-document.snapshot" ? options.largeDocumentSize : options.batchSize;
+  const fixture = htmlFixture(fixtureCount);
+  try {
+    const context = document.ffiContext();
+    const owner = context[0];
+    const generation = context[1];
+    const root = context[2];
+    const output = new Uint32Array(Math.max(3, options.largeDocumentSize * 2 + 3));
+    const written = new Uint32Array(1);
+    const bytes = new Uint8Array(Math.max(256, fixture.length * 2));
+    const byteWritten = new Uint32Array(1);
+    const name = new TextEncoder().encode("span");
+    if (id === "boundary.single-call" || id === "token.batch") {
+      const count = id === "boundary.single-call" ? 1 : options.batchSize;
+      const op = () => {
+        const code = ffi.library.symbols.mad_dom_ffi_create_elements
+          ? ffi.library.symbols.mad_dom_ffi_create_elements(owner, generation, name, name.length, count, output, output.length, written)
+          : -1;
+        if (code !== 0) throw new Error(`FFI create_elements status ${code}`);
+        return output;
+      };
+      return measured(op, (value) => ({ passed: value instanceof Uint32Array && written[0] === count, length: written[0] }), options.iterations, count);
+    }
+    document.parseHtml(fixture);
+    if (id === "query.snapshot" || id === "large-document.snapshot") {
+      const expected = fixtureCount;
+      const op = () => {
+        const code = query(owner, generation, root, selector, selector.length, output, output.length, written);
+        if (code !== 0) throw new Error(`FFI query status ${code}`);
+        return output;
+      };
+      return measured(op, (value) => ({ passed: value instanceof Uint32Array && written[0] === expected * 2 + 1, words: written[0] }),
+        id === "large-document.snapshot" ? Math.min(options.iterations, 128) : options.iterations);
+    }
+    const mainSelector = new TextEncoder().encode("main");
+    const mainCode = query(owner, generation, root, mainSelector, mainSelector.length, output, output.length, written);
+    if (mainCode !== 0 || written[0] < 3) throw new Error(`FFI setup query status ${mainCode}`);
+    const main = output[1];
+    if (id === "serialize.string") {
+      const op = () => {
+        const code = serialize(owner, generation, main, 0, bytes, bytes.length, byteWritten);
+        if (code !== 0) throw new Error(`FFI serialize status ${code}`);
+        return bytes;
+      };
+      return measured(op, (value) => ({ passed: value instanceof Uint8Array && new TextDecoder().decode(value.subarray(0, byteWritten[0])).includes('data-bench="t1"'), bytes: byteWritten[0] }), options.iterations);
+    }
+    if (id === "snapshot.bytes") {
+      const op = () => {
+        const code = preorder(owner, generation, main, output, output.length, written);
+        if (code !== 0) throw new Error(`FFI preorder status ${code}`);
+        return output;
+      };
+      return measured(op, (value) => ({ passed: value instanceof Uint32Array && written[0] >= 3, words: written[0] }), options.iterations);
+    }
+    return unavailable(`unknown workload: ${id}`);
+  } catch (error) {
+    return unavailable(error?.message ?? String(error), { errorName: error?.name ?? "Error" });
+  } finally {
+    destroy(document);
+  }
 }
 
 function fallbackWorkloads(reason) {
@@ -257,17 +346,23 @@ export async function runBenchmark({
   }
   forceGc();
 
-  const ffi = probeFfiCandidate(env);
+  const ffi = await probeFfiCandidate(env);
+  const ffiWorkloads = ffi.status === "available" && nodeApi.status === "measured"
+    ? Object.fromEntries(workloads.map((id) => [id, runFfiWorkload(ffi, loadNative(), id, {
+      iterations: safeIterations, batchSize: safeBatchSize, largeDocumentSize: safeLargeDocumentSize,
+    })]))
+    : fallbackWorkloads(ffi.reason ?? "FFI library unavailable");
   const comparisons = Object.fromEntries(workloads.map((id) => [id, {
     sameInput: true,
     nodeApi: nodeApi.workloads?.[id] ?? unavailable("Node-API result missing"),
-    ffi,
-    comparable: nodeApi.workloads?.[id]?.status === "measured" && ffi.status === "measured",
+    ffi: ffiWorkloads[id],
+    comparable: nodeApi.workloads?.[id]?.status === "measured" && ffiWorkloads[id]?.status === "measured",
   }]));
   const measuredCount = Object.values(nodeApi.workloads ?? {}).filter((result) => result.status === "measured").length;
+  const ffiMeasuredCount = Object.values(ffiWorkloads).filter((result) => result.status === "measured").length;
   return {
     schema: BENCHMARK_SCHEMA,
-    status: measuredCount > 0 ? "measured-node-api-only" : "unavailable",
+    status: measuredCount === 0 ? "unavailable" : ffiMeasuredCount > 0 ? "measured-comparable" : "measured-node-api-only",
     runtime: { name: "bun", version: globalThis.Bun?.version ?? process.versions?.bun ?? null },
     input: {
       iterations: safeIterations,
@@ -275,7 +370,7 @@ export async function runBenchmark({
       largeDocumentSize: safeLargeDocumentSize,
       fixture: "same fixture and iteration counts are supplied to both paths",
     },
-    paths: { nodeApi, ffi },
+    paths: { nodeApi, ffi: { ...ffi, workloads: ffiWorkloads } },
     comparisons,
     validation: {
       resultChecks: "each measured workload reports validation.passed; unavailable paths are explicit",

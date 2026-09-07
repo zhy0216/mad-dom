@@ -80,7 +80,11 @@ mod affinity;
 mod api;
 mod error;
 mod extensions;
+pub mod ffi;
 mod handle;
+
+#[cfg(test)]
+pub(crate) static DOCUMENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 pub use api::{abi_version, binding_identity, create_document, live_document_count};
 

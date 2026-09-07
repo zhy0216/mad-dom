@@ -1,6 +1,6 @@
 # ADR-0008：Bun capability matrix and boundary benchmark
 
-- Status: accepted for T1
+- Status: accepted for T1/T2
 - Date: 2026-09-06
 - Scope: `plans/bun-native-runtime/todos/01-capability-matrix-and-benchmarks.md`
 
@@ -8,9 +8,9 @@
 
 The Bun-specific channel is additive and capability-gated. The existing
 Node-API binding remains the object, wrapper-identity, error and lifecycle
-path. A future `bun:ffi` cdylib may carry packed data operations where one
-call can replace many per-node crossings; it must expose an independent ABI
-version and capability bitset before the facade uses it.
+path. The same `mad-dom-bun` cdylib now carries packed data operations where
+one call can replace many per-node crossings; it exposes an independent ABI
+version and capability bitset before a Bun caller uses it.
 
 The T1 probe is `scripts/bun-capability-probe.mjs`. It records public Bun
 capabilities as `available`, `disabled` or `unavailable` data and exits
@@ -85,5 +85,7 @@ bun run bench:bun-native:selftest
 ```
 
 Build the Node-API artifact first when measured native rows are desired:
-`bun run dev:build`. T2 will add the FFI cdylib and loader adapter without
-changing the schemas or the fallback semantics established here.
+`bun run dev:build`. T2's C ABI symbols are exported by that same image; the
+ABI details and pointer contract are in
+`crates/mad-dom-bun/src/ffi/ABI.md`, with no change to these schemas or the
+Node-API fallback semantics.

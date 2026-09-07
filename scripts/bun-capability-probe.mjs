@@ -14,8 +14,8 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 export const CAPABILITY_SCHEMA = "mad-dom/bun-capabilities/1";
 
 // This is the contract proposed by T1 for the additive bun:ffi channel. The
-// Rust symbols are implemented by T2; keeping the names here makes the probe
-// and the future loader agree without pretending that the library exists yet.
+// These names are the stable T2 symbols. Keeping them in the probe makes the
+// capability report verify the exact library that the Node-API loader uses.
 export const FFI_CONTRACT = Object.freeze({
   abiVersion: 1,
   byteOrder: "native",
@@ -36,7 +36,10 @@ export const FFI_CONTRACT = Object.freeze({
     capabilities: "mad_dom_ffi_capabilities",
     querySnapshot: "mad_dom_ffi_query_snapshot",
     preorderSnapshot: "mad_dom_ffi_preorder_snapshot",
+    childSnapshot: "mad_dom_ffi_child_tokens",
     serialize: "mad_dom_ffi_serialize",
+    createElements: "mad_dom_ffi_create_elements",
+    readBatch: "mad_dom_ffi_read_batch",
   }),
 });
 
@@ -162,19 +165,17 @@ async function probeFfi(env) {
     };
   }
 
-  const candidatePath = env.MAD_DOM_FFI_PATH ? resolve(String(env.MAD_DOM_FFI_PATH)) : null;
+  const defaultPath = join(ROOT, "build", `mad-dom-ffi.${ffi.suffix ?? (process.platform === "darwin" ? "dylib" : process.platform === "win32" ? "dll" : "so")}`);
+  const candidatePath = env.MAD_DOM_FFI_PATH
+    ? resolve(String(env.MAD_DOM_FFI_PATH))
+    : existsSync(defaultPath) ? defaultPath : null;
   const candidate = candidatePath
     ? existsSync(candidatePath)
-      ? {
-          status: "configured",
-          path: candidatePath,
-          probe: "deferred-to-ABI-loader",
-          reason: "T2 FFI cdylib is not loaded by the T1 observation probe",
-        }
+      ? probeFfiLibrary(ffi, candidatePath)
       : { status: "unavailable", path: candidatePath, reason: "configured path does not exist" }
     : {
         status: "unavailable",
-        reason: "no MAD_DOM_FFI_PATH; the Node-API binding remains the active path",
+          reason: "no FFI artifact; the Node-API binding remains the active path",
       };
 
   return {
@@ -188,6 +189,51 @@ async function probeFfi(env) {
     contract: FFI_CONTRACT,
     candidate,
   };
+}
+
+function probeFfiLibrary(ffi, path) {
+  if (!callable(ffi?.dlopen)) {
+    return { status: "unavailable", path, reason: "bun:ffi.dlopen is unavailable" };
+  }
+  try {
+    const ptr = "ptr";
+    const library = ffi.dlopen(path, {
+      [FFI_CONTRACT.symbols.abiVersion]: { args: [], returns: "u32" },
+      [FFI_CONTRACT.symbols.capabilities]: { args: [], returns: "u32" },
+      [FFI_CONTRACT.symbols.querySnapshot]: {
+        args: ["u32", "u32", "u32", "buffer", "u32", ptr, "u32", ptr], returns: "i32",
+      },
+      [FFI_CONTRACT.symbols.preorderSnapshot]: {
+        args: ["u32", "u32", "u32", ptr, "u32", ptr], returns: "i32",
+      },
+      [FFI_CONTRACT.symbols.childSnapshot]: {
+        args: ["u32", "u32", "u32", ptr, "u32", ptr], returns: "i32",
+      },
+      [FFI_CONTRACT.symbols.serialize]: {
+        args: ["u32", "u32", "u32", "u32", ptr, "u32", ptr], returns: "i32",
+      },
+      [FFI_CONTRACT.symbols.createElements]: {
+        args: ["u32", "u32", "buffer", "u32", "u32", ptr, "u32", ptr], returns: "i32",
+      },
+      [FFI_CONTRACT.symbols.readBatch]: {
+        args: ["u32", "u32", "buffer", "u32", "u32", ptr, "u32", ptr], returns: "i32",
+      },
+    });
+    const abiVersion = library.symbols[FFI_CONTRACT.symbols.abiVersion]();
+    const capabilities = library.symbols[FFI_CONTRACT.symbols.capabilities]();
+    return {
+      status: abiVersion === FFI_CONTRACT.abiVersion ? "available" : "mismatch",
+      path,
+      abiVersion,
+      expectedAbiVersion: FFI_CONTRACT.abiVersion,
+      capabilities,
+      expectedCapabilities: Object.values(FFI_CONTRACT.capabilityBits).reduce((all, bit) => all | bit, 0),
+      symbols: Object.values(FFI_CONTRACT.symbols).filter((symbol) =>
+        Object.prototype.hasOwnProperty.call(library.symbols, symbol)),
+    };
+  } catch (error) {
+    return { status: "unavailable", path, reason: error?.message ?? String(error) };
+  }
 }
 
 function matrixSemantics(currentVersion, baselineVersion, ffi) {
@@ -214,7 +260,8 @@ function matrixSemantics(currentVersion, baselineVersion, ffi) {
     },
     ffiUnavailable: {
       meaning: "bun:ffi or the candidate cdylib is absent",
-      observed: ffi.status === "unavailable" || ffi.candidate?.status === "unavailable",
+      observed: ffi.status === "unavailable" || ffi.status === "mismatch" ||
+        ffi.candidate?.status === "unavailable" || ffi.candidate?.status === "mismatch",
       expectedPath: "node-api",
     },
   };

@@ -111,6 +111,15 @@ matching and serialization. A JavaScript facade exposes the API through a
 Node-API binding. Lazy node wrappers and mutation-aware caches reduce repeat
 boundary calls; wrappers and caches also contribute to process memory use.
 
+On Bun, the same native image also exports an optional versioned `bun:ffi`
+data path for batched query/preorder snapshots and caller-owned serialization
+buffers. `DocumentHandle.ffiContext()` supplies a document-local owner,
+generation and root token; stale, foreign or destroyed credentials return
+stable status codes. The facade keeps Node-API as the lifecycle and wrapper
+fallback. `bun run dev:build` creates `build/mad-dom-ffi.<dylib|so|dll>` as a
+same-image link, and `MAD_DOM_FFI_PATH` can point the capability probe or
+boundary benchmark at it.
+
 ## Compatibility
 
 MAD DOM tracks the happy-dom API against a **locked happy-dom baseline** and
