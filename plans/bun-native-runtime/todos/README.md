@@ -10,7 +10,7 @@ default_agent: codex
 | ~~`02-ffi-abi-and-native-fast-path.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Rust C ABI/FFI cdylib、token/batch/snapshot/serialization 快路径与边界测试 |
 | `03-bun-ffi-loader-and-facade.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 在 Bun 中加载 FFI、做 capability probe、接入 facade 并回退 Node-API |
 | `04-memory-gc-and-external-buffers.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 完成外部 buffer 所有权、deallocator、GC/finalizer/affinity 安全门禁 |
-| `05-bun-host-io.md` | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | 迁移文件、进程、virtual server 和同步 fetch 的 Bun 宿主路径 |
+| ~~`05-bun-host-io.md`~~ | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | ✅ 已完成 · virtual server/sync fetch/checksums 迁移 Bun IO，capability-gated 回退与行为/性能/校验和对照 |
 | `06-latest-bun-ci-and-release-policy.md` | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | 增加 latest/baseline CI、版本 capability 文档和发布回退策略 |
 | `07-integration-and-regression-gate.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 集成全部通道，运行全量校验、兼容性、WPT、安装 smoke 和 benchmark |
 
@@ -28,6 +28,9 @@ default_agent: codex
 
 01、02 已归档于 `done/`（capability matrix/benchmark 与 FFI ABI v1）。FFI ABI v1 与
 Node-API 共用同一 cdylib；未通过 capability probe 时继续使用 Node-API。
+05 已归档于 `done/05-bun-host-io.md`。宿主 IO 迁移按 capability 门控
+（`MAD_DOM_BUN_IO_DISABLED` 强制回退），迁移前后字节/格式/退出码与
+性能对照见 `scripts/bench-bun-io.mjs`（schema `mad-dom/bun-host-io-bench/1`）。
 
 ## 依赖与并行
 

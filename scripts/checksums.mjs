@@ -15,19 +15,55 @@
 // line sorted by filename; the filename carries the package name + version
 // (npm tarball convention), which is the ADR-0005 §7 "package name + version +
 // sha256" contract.
+//
+// Host IO (T5): tarball reads, manifest reads and manifest writes go through
+// `Bun.file`/`Bun.write` when the host-IO capability is available, and
+// hashing through `Bun.CryptoHasher`; node:fs/node:crypto stay as the
+// fallback. Each capability is probed independently, so a partial host (file
+// read without CryptoHasher, or vice versa) still lands on the working
+// implementation instead of crashing. Digest bytes, manifest format, console
+// messages and exit codes are identical on every combination.
 
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { bunHostIO } from "../js/facade/bun-host-io.js";
+
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_MANIFEST = join(REPO_ROOT, "build", "SHASUMS256.txt");
 
-function sha256(filePath) {
+// Both hashing branches consume a Buffer so they are interchangeable: node
+// crypto rejects a raw ArrayBuffer, and a Buffer is a valid CryptoHasher
+// input.
+async function readBytes(filePath) {
+  if (bunHostIO("file")) {
+    return Buffer.from(await Bun.file(filePath).arrayBuffer());
+  }
+  return readFileSync(filePath);
+}
+
+async function sha256(filePath) {
+  const bytes = await readBytes(filePath);
+  if (bunHostIO("CryptoHasher")) {
+    return new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
+  }
   const hash = createHash("sha256");
-  hash.update(readFileSync(filePath));
+  hash.update(bytes);
   return hash.digest("hex");
+}
+
+async function readManifestText(manifest) {
+  return bunHostIO("file") ? await Bun.file(manifest).text() : readFileSync(manifest, "utf8");
+}
+
+async function writeManifestText(manifest, contents) {
+  if (bunHostIO("write")) {
+    await Bun.write(manifest, contents);
+  } else {
+    writeFileSync(manifest, contents);
+  }
 }
 
 function tarballs(dir) {
@@ -36,15 +72,18 @@ function tarballs(dir) {
     .sort();
 }
 
-function generate(dir, manifest) {
-  const entries = tarballs(dir).map((name) => `${sha256(join(dir, name))}  ${name}`);
-  writeFileSync(manifest, `${entries.join("\n")}\n`);
+async function generate(dir, manifest) {
+  const entries = [];
+  for (const name of tarballs(dir)) {
+    entries.push(`${await sha256(join(dir, name))}  ${name}`);
+  }
+  await writeManifestText(manifest, `${entries.join("\n")}\n`);
   return { count: entries.length, manifest };
 }
 
-function verify(dir, manifest) {
+async function verify(dir, manifest) {
   const expected = new Map();
-  for (const line of readFileSync(manifest, "utf8").split("\n")) {
+  for (const line of (await readManifestText(manifest)).split("\n")) {
     const match = line.match(/^([0-9a-f]{64})\s\s(.+\.tgz)$/);
     if (match) expected.set(match[2], match[1]);
   }
@@ -57,7 +96,7 @@ function verify(dir, manifest) {
       problems.push(`missing tarball: ${name}`);
       continue;
     }
-    const got = sha256(filePath);
+    const got = await sha256(filePath);
     if (got !== want) problems.push(`checksum mismatch for ${name}: want ${want}, got ${got}`);
   }
   return { entries: expected.size, problems };
@@ -75,10 +114,10 @@ try {
   const manifest = flag === -1 ? DEFAULT_MANIFEST : resolve(rest[flag + 1]);
 
   if (subcommand === "generate") {
-    const { count } = generate(dir, manifest);
+    const { count } = await generate(dir, manifest);
     console.log(`checksums: wrote ${count} entry(ies) to ${manifest}`);
   } else {
-    const { entries, problems } = verify(dir, manifest);
+    const { entries, problems } = await verify(dir, manifest);
     if (problems.length > 0) {
       console.error(`checksums: ${problems.length} problem(s) across ${entries} manifest entry(ies):`);
       for (const problem of problems) console.error(`  - ${problem}`);
