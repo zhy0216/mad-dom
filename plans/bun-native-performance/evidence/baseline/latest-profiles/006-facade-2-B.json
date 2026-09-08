@@ -1,0 +1,3258 @@
+{
+  "id": "006-facade-2-B",
+  "side": "B",
+  "position": 1,
+  "config": {
+    "root": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b",
+    "image": {
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+      "sha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96",
+      "bytes": 3866672,
+      "dev": 64784,
+      "inode": 2104807
+    },
+    "source": {
+      "root": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b",
+      "sourceSha": "efaa64b3b9d90cf1988d8092d7de08e97e929630",
+      "productionSha256": "119652fe7235e5116a21adbb547e288ba6e31768e34c7ce59cb306936ad65fda",
+      "lockSha256": "ca3827dae797c2697e507de835366ca953e81ce31234e8de763f6b0bfdc6204b",
+      "domWorkloadSha256": "659d912c62373970e22409ac20dd8d9d390956dd5718c875fa1d1a34a13ff1fc"
+    },
+    "bun": {
+      "path": "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+      "sha256": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c",
+      "bytes": 79500640,
+      "dev": 64769,
+      "inode": 1087116,
+      "version": "1.4.2",
+      "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
+    },
+    "suite": "facade",
+    "ffi": "on",
+    "sizes": [
+      1
+    ],
+    "iterations": 32,
+    "runs": 9,
+    "diagnostic": false,
+    "metadataPath": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-01-balanced-baseline/plans/bun-native-performance/evidence/baseline/latest-profiles/006-facade-2-B.metadata.json",
+    "pathAudit": {
+      "file": "audit-B-facade.json",
+      "sha256": "1a5f04e4a8e49bbb30fe3b7cae83d00d5dd0df99d9eeee3b8cf11505df5d7085"
+    },
+    "observedPaths": {
+      "1": {
+        "query.small.cold": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.querySnapshot"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.querySnapshot": 1
+            },
+            {
+              "adapter.querySnapshot": 1
+            },
+            {
+              "adapter.querySnapshot": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "query.small.hot": {
+          "evidence": "audit-B-facade",
+          "channels": [],
+          "callsPerRound": [
+            {},
+            {},
+            {}
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed zero boundary calls (hot public cache hit)"
+        },
+        "query.large.cold": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.querySnapshot"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.querySnapshot": 1
+            },
+            {
+              "adapter.querySnapshot": 1
+            },
+            {
+              "adapter.querySnapshot": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "query.large.hot": {
+          "evidence": "audit-B-facade",
+          "channels": [],
+          "callsPerRound": [
+            {},
+            {},
+            {}
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed zero boundary calls (hot public cache hit)"
+        },
+        "child.cold": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.childSnapshot"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.childSnapshot": 1
+            },
+            {
+              "adapter.childSnapshot": 1
+            },
+            {
+              "adapter.childSnapshot": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "preorder.cold": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "NodeAPI.materializeNodeToken",
+            "adapter.preorderSnapshot"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.preorderSnapshot": 1,
+              "NodeAPI.materializeNodeToken": 512
+            },
+            {
+              "adapter.preorderSnapshot": 1,
+              "NodeAPI.materializeNodeToken": 512
+            },
+            {
+              "adapter.preorderSnapshot": 1,
+              "NodeAPI.materializeNodeToken": 512
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "child.grow-shrink": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.childSnapshot"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.childSnapshot": 1
+            },
+            {
+              "adapter.childSnapshot": 1
+            },
+            {
+              "adapter.childSnapshot": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "preorder.grow-shrink": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "NodeAPI.materializeNodeToken",
+            "adapter.preorderSnapshot"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.preorderSnapshot": 1,
+              "NodeAPI.materializeNodeToken": 8
+            },
+            {
+              "adapter.preorderSnapshot": 1,
+              "NodeAPI.materializeNodeToken": 8
+            },
+            {
+              "adapter.preorderSnapshot": 1,
+              "NodeAPI.materializeNodeToken": 8
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "innerHTML.ascii": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.serialize"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "innerHTML.unicode": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.serialize"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "outerHTML.ascii": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.serialize"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "outerHTML.unicode": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.serialize"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "innerHTML.grow-shrink": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.serialize"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "outerHTML.grow-shrink": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.serialize"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            },
+            {
+              "adapter.serialize": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "create.1": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "NodeAPI.createElementToken"
+          ],
+          "callsPerRound": [
+            {
+              "NodeAPI.createElementToken": 1
+            },
+            {
+              "NodeAPI.createElementToken": 1
+            },
+            {
+              "NodeAPI.createElementToken": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "create.8": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.createElements"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.createElements": 1
+            },
+            {
+              "adapter.createElements": 1
+            },
+            {
+              "adapter.createElements": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "create.32": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.createElements"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.createElements": 1
+            },
+            {
+              "adapter.createElements": 1
+            },
+            {
+              "adapter.createElements": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "create.128": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.createElements"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.createElements": 1
+            },
+            {
+              "adapter.createElements": 1
+            },
+            {
+              "adapter.createElements": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        },
+        "create.256": {
+          "evidence": "audit-B-facade",
+          "channels": [
+            "adapter.createElements"
+          ],
+          "callsPerRound": [
+            {
+              "adapter.createElements": 1
+            },
+            {
+              "adapter.createElements": 1
+            },
+            {
+              "adapter.createElements": 1
+            }
+          ],
+          "operationsPerRound": 1,
+          "selection": "observed calls in independent audit"
+        }
+      }
+    }
+  },
+  "command": [
+    "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+    "--cpu-prof",
+    "--cpu-prof-dir",
+    "/tmp/mad-dom-bun-performance-01/profiles/latest/006-facade-2-B",
+    "--cpu-prof-name",
+    "006-facade-2-B.cpuprofile",
+    "--preload",
+    "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-01-balanced-baseline/benchmark/bun-performance/preload.mjs",
+    "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-01-balanced-baseline/benchmark/bun-performance/worker.mjs"
+  ],
+  "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b",
+  "before": {
+    "at": "2026-09-08T10:22:23.482Z",
+    "loadavg": [
+      2.92,
+      2.42,
+      2.44
+    ],
+    "cpuCount": 8,
+    "cpuModel": "AMD EPYC Processor",
+    "freeMemory": 15089700864,
+    "totalMemory": 16760184832,
+    "kernel": "6.8.0-31-generic",
+    "cpuPressure": "some avg10=0.03 avg60=0.31 avg300=0.67 total=1587511437\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+    "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=8535739\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=5049291",
+    "cpuStat": [
+      "cpu  4849481 17 1236518 25963179 103706 0 63752 241 0 0"
+    ],
+    "competingProcesses": [
+      "    PID    PPID COMMAND         %CPU %MEM",
+      "   4960       1 herdr            6.2  0.2",
+      "1525943 1216844 codex            4.1  1.3",
+      "1528025   84182 sshd             4.0  0.0",
+      " 913505  913038 codex            1.6  1.6",
+      " 910842  910345 codex            1.4  1.4",
+      "1201601 1201062 codex            1.3  1.3",
+      "     17       2 rcu_preempt      0.1  0.0",
+      "1525704 1525661 sshd             0.0  0.0",
+      "1517203       2 kworker/u64:7-e  0.0  0.0",
+      "    306       2 jbd2/vda1-8      0.0  0.0",
+      "1516865       2 kworker/u64:4-e  0.0  0.0",
+      "     74       2 kcompactd0       0.0  0.0",
+      "1523664       2 kworker/u64:2-e  0.0  0.0",
+      "1527143       1 fwupd            0.0  0.2",
+      "1523291 1057120 bun              0.0  0.3"
+    ]
+  },
+  "after": {
+    "at": "2026-09-08T10:28:12.200Z",
+    "loadavg": [
+      2.07,
+      2.4,
+      2.43
+    ],
+    "cpuCount": 8,
+    "cpuModel": "AMD EPYC Processor",
+    "freeMemory": 15201554432,
+    "totalMemory": 16760184832,
+    "kernel": "6.8.0-31-generic",
+    "cpuPressure": "some avg10=0.20 avg60=0.58 avg300=1.09 total=1594634375\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+    "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=8535739\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=5049291",
+    "cpuStat": [
+      "cpu  4925848 17 1243590 26156517 103789 0 63974 244 0 0"
+    ],
+    "competingProcesses": [
+      "    PID    PPID COMMAND         %CPU %MEM",
+      "1529690 1523291 ps               100  0.0",
+      "   4960       1 herdr            6.2  0.2",
+      "1525943 1216844 codex            2.5  1.3",
+      " 913505  913038 codex            1.6  1.6",
+      " 910842  910345 codex            1.4  1.4",
+      "1201601 1201062 codex            1.2  1.3",
+      "     17       2 rcu_preempt      0.1  0.0",
+      "1525704 1525661 sshd             0.1  0.0",
+      "    306       2 jbd2/vda1-8      0.0  0.0",
+      "1517203       2 kworker/u64:7-e  0.0  0.0",
+      "1528914       2 kworker/u64:3-e  0.0  0.0",
+      "1525705 1525704 herdr            0.0  0.0",
+      "1516865       2 kworker/u64:4-e  0.0  0.0",
+      "     74       2 kcompactd0       0.0  0.0",
+      "1528281       2 kworker/u64:0-e  0.0  0.0"
+    ]
+  },
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSha256": "6c8e1f084b17c5a1b04d31cb96a54e5a69de5bea802687a9273160158880203c",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr": "",
+  "report": {
+    "schema": "mad-dom/bun-performance/1/hotspots",
+    "suite": "facade",
+    "engine": "mad-dom",
+    "runs": 9,
+    "host": {
+      "bun": "1.4.2",
+      "os": "linux",
+      "arch": "x64"
+    },
+    "sizes": [
+      1
+    ],
+    "results": [
+      {
+        "size": 1,
+        "workload": {
+          "runs": 9,
+          "iterations": 32,
+          "cases": {
+            "query.small.cold": {
+              "name": "query.small.cold",
+              "size": 1,
+              "iterations": 32,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.small.hot": {
+              "name": "query.small.hot",
+              "size": 1,
+              "iterations": 32,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.cold": {
+              "name": "query.large.cold",
+              "size": 1,
+              "iterations": 32,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.hot": {
+              "name": "query.large.hot",
+              "size": 1,
+              "iterations": 32,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.cold": {
+              "name": "child.cold",
+              "size": 1,
+              "iterations": 32,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.cold": {
+              "name": "preorder.cold",
+              "size": 1,
+              "iterations": 32,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.grow-shrink": {
+              "name": "child.grow-shrink",
+              "size": 1,
+              "iterations": 32,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.grow-shrink": {
+              "name": "preorder.grow-shrink",
+              "size": 1,
+              "iterations": 32,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.ascii": {
+              "name": "innerHTML.ascii",
+              "size": 1,
+              "iterations": 32,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "516182fb2dabc9883018e154a9e5b58129b8d531112d6cc6e57805b74b501354",
+              "inputUtf8Bytes": 35620,
+              "innerUtf8Bytes": 35620,
+              "outerUtf8Bytes": 35639,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.unicode": {
+              "name": "innerHTML.unicode",
+              "size": 1,
+              "iterations": 32,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.ascii": {
+              "name": "outerHTML.ascii",
+              "size": 1,
+              "iterations": 32,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "516182fb2dabc9883018e154a9e5b58129b8d531112d6cc6e57805b74b501354",
+              "inputUtf8Bytes": 35620,
+              "innerUtf8Bytes": 35620,
+              "outerUtf8Bytes": 35639,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.unicode": {
+              "name": "outerHTML.unicode",
+              "size": 1,
+              "iterations": 32,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.grow-shrink": {
+              "name": "innerHTML.grow-shrink",
+              "size": 1,
+              "iterations": 32,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.grow-shrink": {
+              "name": "outerHTML.grow-shrink",
+              "size": 1,
+              "iterations": 32,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.1": {
+              "name": "create.1",
+              "size": 1,
+              "iterations": 32,
+              "count": 1,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.8": {
+              "name": "create.8",
+              "size": 1,
+              "iterations": 32,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.32": {
+              "name": "create.32",
+              "size": 1,
+              "iterations": 32,
+              "count": 32,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.128": {
+              "name": "create.128",
+              "size": 1,
+              "iterations": 32,
+              "count": 128,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.256": {
+              "name": "create.256",
+              "size": 1,
+              "iterations": 32,
+              "count": 256,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            }
+          }
+        },
+        "phases": {
+          "query.small.cold": {
+            "status": "passed",
+            "samples": [
+              1.0246569999999906,
+              1.2171580000000404,
+              0.8073410000000081,
+              0.6102810000000432,
+              0.6433440000000132,
+              0.6566779999999994,
+              0.7873130000000401,
+              1.219270999999992,
+              0.7229229999999802
+            ],
+            "warmupSamples": [
+              2.9582840000000488,
+              1.7103309999999965
+            ],
+            "medianMs": 0.7873130000000401,
+            "minMs": 0.6102810000000432,
+            "p90Ms": 1.219270999999992,
+            "madMs": 0.14396900000002688,
+            "expectedPath": "facade FFI query_snapshot/querySelectorAllTokens -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.querySnapshot"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.querySnapshot": 1
+                },
+                {
+                  "adapter.querySnapshot": 1
+                },
+                {
+                  "adapter.querySnapshot": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "query.small.hot": {
+            "status": "passed",
+            "samples": [
+              0.11004600000001119,
+              0.10907399999996414,
+              0.14246700000001056,
+              0.12638600000002498,
+              0.2915060000000267,
+              0.1928299999999581,
+              0.2246709999999439,
+              0.15053199999999833,
+              0.1681939999999713
+            ],
+            "warmupSamples": [
+              0.11553500000002259,
+              0.11396300000001247
+            ],
+            "medianMs": 0.15053199999999833,
+            "minMs": 0.10907399999996414,
+            "p90Ms": 0.2915060000000267,
+            "madMs": 0.04048599999998714,
+            "expectedPath": "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [],
+              "callsPerRound": [
+                {},
+                {},
+                {}
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed zero boundary calls (hot public cache hit)"
+            }
+          },
+          "query.large.cold": {
+            "status": "passed",
+            "samples": [
+              22.76950099999999,
+              23.741039999999884,
+              23.96588900000006,
+              23.111621000000014,
+              23.195168000000194,
+              24.607922000000144,
+              19.429752000000008,
+              21.62595100000044,
+              20.483644999999797
+            ],
+            "warmupSamples": [
+              18.928865000000087,
+              21.054403000000093
+            ],
+            "medianMs": 23.111621000000014,
+            "minMs": 19.429752000000008,
+            "p90Ms": 24.607922000000144,
+            "madMs": 0.8542680000000473,
+            "expectedPath": "facade FFI query_snapshot/querySelectorAllTokens -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.querySnapshot"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.querySnapshot": 1
+                },
+                {
+                  "adapter.querySnapshot": 1
+                },
+                {
+                  "adapter.querySnapshot": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "query.large.hot": {
+            "status": "passed",
+            "samples": [
+              0.7236539999998968,
+              0.49379399999997986,
+              0.7107699999996839,
+              0.6042500000003201,
+              0.8227679999999964,
+              0.5726720000002388,
+              0.5032810000002428,
+              0.5468039999996108,
+              0.6480129999999917
+            ],
+            "warmupSamples": [
+              0.6025270000000091,
+              0.5289000000002488
+            ],
+            "medianMs": 0.6042500000003201,
+            "minMs": 0.49379399999997986,
+            "p90Ms": 0.8227679999999964,
+            "madMs": 0.10096900000007736,
+            "expectedPath": "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [],
+              "callsPerRound": [
+                {},
+                {},
+                {}
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed zero boundary calls (hot public cache hit)"
+            }
+          },
+          "child.cold": {
+            "status": "passed",
+            "samples": [
+              11.131186999999954,
+              11.404367000000093,
+              18.13755399999991,
+              10.777243999999882,
+              12.653615000001082,
+              10.880687000000762,
+              10.840421999999307,
+              7.815703000000212,
+              9.438921000000846
+            ],
+            "warmupSamples": [
+              12.463851000000432,
+              12.707847000000584
+            ],
+            "medianMs": 10.880687000000762,
+            "minMs": 7.815703000000212,
+            "p90Ms": 18.13755399999991,
+            "madMs": 0.5236799999993309,
+            "expectedPath": "facade FFI child_tokens/childNodesTokens -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.childSnapshot"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.childSnapshot": 1
+                },
+                {
+                  "adapter.childSnapshot": 1
+                },
+                {
+                  "adapter.childSnapshot": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "preorder.cold": {
+            "status": "passed",
+            "samples": [
+              149.49299000000065,
+              134.53591400000005,
+              138.33424100000047,
+              188.14728999999897,
+              126.87205600000016,
+              128.72533199999998,
+              107.05966699999954,
+              137.94022300000142,
+              148.21542899999986
+            ],
+            "warmupSamples": [
+              162.34489500000018,
+              142.66916200000014
+            ],
+            "medianMs": 137.94022300000142,
+            "minMs": 107.05966699999954,
+            "p90Ms": 188.14728999999897,
+            "madMs": 10.275205999998434,
+            "expectedPath": "facade FFI preorder_snapshot/preorderTokenSnapshot -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "NodeAPI.materializeNodeToken",
+                "adapter.preorderSnapshot"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.preorderSnapshot": 1,
+                  "NodeAPI.materializeNodeToken": 512
+                },
+                {
+                  "adapter.preorderSnapshot": 1,
+                  "NodeAPI.materializeNodeToken": 512
+                },
+                {
+                  "adapter.preorderSnapshot": 1,
+                  "NodeAPI.materializeNodeToken": 512
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "child.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.715648000001238,
+              0.6695330000002286,
+              0.8727120000003197,
+              0.5189700000009907,
+              0.7674760000008973,
+              0.4991540000009991,
+              0.6848309999986668,
+              0.5285780000012892,
+              0.5625220000001718
+            ],
+            "warmupSamples": [
+              0.7863900000011199,
+              0.7316690000006929
+            ],
+            "medianMs": 0.6695330000002286,
+            "minMs": 0.4991540000009991,
+            "p90Ms": 0.8727120000003197,
+            "madMs": 0.10701100000005681,
+            "expectedPath": "facade FFI child_tokens/childNodesTokens -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.childSnapshot"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.childSnapshot": 1
+                },
+                {
+                  "adapter.childSnapshot": 1
+                },
+                {
+                  "adapter.childSnapshot": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "preorder.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              6.854975999995077,
+              5.133514000001014,
+              7.947960999998031,
+              6.671752999995078,
+              4.632657000001927,
+              7.726866999997583,
+              5.199007000002894,
+              4.525296999992861,
+              4.863851000001887
+            ],
+            "warmupSamples": [
+              4.586351000005379,
+              6.659761000002618
+            ],
+            "medianMs": 5.199007000002894,
+            "minMs": 4.525296999992861,
+            "p90Ms": 7.947960999998031,
+            "madMs": 0.6737100000100327,
+            "expectedPath": "facade FFI preorder_snapshot/preorderTokenSnapshot -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "NodeAPI.materializeNodeToken",
+                "adapter.preorderSnapshot"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.preorderSnapshot": 1,
+                  "NodeAPI.materializeNodeToken": 8
+                },
+                {
+                  "adapter.preorderSnapshot": 1,
+                  "NodeAPI.materializeNodeToken": 8
+                },
+                {
+                  "adapter.preorderSnapshot": 1,
+                  "NodeAPI.materializeNodeToken": 8
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "innerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              14.59186100000079,
+              10.93194300000323,
+              11.119284000000334,
+              11.71797399999923,
+              10.63838499999838,
+              10.937344000005396,
+              12.137830000006943,
+              11.08274500000698,
+              10.80650799999421
+            ],
+            "warmupSamples": [
+              11.838430000003427,
+              10.740485999995144
+            ],
+            "medianMs": 11.08274500000698,
+            "minMs": 10.63838499999838,
+            "p90Ms": 14.59186100000079,
+            "madMs": 0.2762370000127703,
+            "expectedPath": "facade FFI serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.serialize"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "innerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              13.288633000003756,
+              15.04630200000247,
+              13.447199999995064,
+              15.7545769999997,
+              16.681170000010752,
+              15.844924999997602,
+              16.059877000006963,
+              12.510586000003968,
+              12.92721700000402
+            ],
+            "warmupSamples": [
+              19.31461699999636,
+              13.039388000004692
+            ],
+            "medianMs": 15.04630200000247,
+            "minMs": 12.510586000003968,
+            "p90Ms": 16.681170000010752,
+            "madMs": 1.5991020000074059,
+            "expectedPath": "facade FFI serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.serialize"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "outerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              12.723005000007106,
+              11.734574999994948,
+              10.972429000001284,
+              11.362639999992098,
+              10.738050999992993,
+              10.922125000011874,
+              11.504904999979772,
+              16.4128989999881,
+              10.506236999994144
+            ],
+            "warmupSamples": [
+              11.809636000005412,
+              10.954866000000038
+            ],
+            "medianMs": 11.362639999992098,
+            "minMs": 10.506236999994144,
+            "p90Ms": 16.4128989999881,
+            "madMs": 0.44051499998022337,
+            "expectedPath": "facade FFI serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.serialize"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "outerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              12.90328200001386,
+              17.742035000002943,
+              12.377427999977954,
+              16.380919000017457,
+              12.339877999998862,
+              14.13073799997801,
+              11.627825000003213,
+              15.020122000016272,
+              13.26440799998818
+            ],
+            "warmupSamples": [
+              13.309762999997474,
+              14.137942000001203
+            ],
+            "medianMs": 13.26440799998818,
+            "minMs": 11.627825000003213,
+            "p90Ms": 17.742035000002943,
+            "madMs": 0.9245299999893177,
+            "expectedPath": "facade FFI serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.serialize"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "innerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.4759899999771733,
+              0.5335569999879226,
+              0.6113640000112355,
+              0.525882999994792,
+              0.6008039999869652,
+              0.6278150000143796,
+              0.49503699998604134,
+              0.5927490000030957,
+              0.5335090000007767
+            ],
+            "warmupSamples": [
+              0.5508310000004712,
+              0.4966290000011213
+            ],
+            "medianMs": 0.5335569999879226,
+            "minMs": 0.4759899999771733,
+            "p90Ms": 0.6278150000143796,
+            "madMs": 0.057567000010749325,
+            "expectedPath": "facade FFI serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.serialize"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "outerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.5290600000007544,
+              0.5521439999865834,
+              0.5744050000212155,
+              0.5825089999998454,
+              0.6291269999928772,
+              0.5986700000066776,
+              0.6086389999836683,
+              0.5215460000035819,
+              0.5819980000087526
+            ],
+            "warmupSamples": [
+              0.4924509999982547,
+              0.6156209999753628
+            ],
+            "medianMs": 0.5819980000087526,
+            "minMs": 0.5215460000035819,
+            "p90Ms": 0.6291269999928772,
+            "madMs": 0.026640999974915758,
+            "expectedPath": "facade FFI serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.serialize"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                },
+                {
+                  "adapter.serialize": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "create.1": {
+            "status": "passed",
+            "samples": [
+              0.5021399999968708,
+              0.5522930000151973,
+              0.34384400001727045,
+              0.3430219999863766,
+              0.34569799999007955,
+              0.3882959999900777,
+              0.4183119999943301,
+              0.35782999999355525,
+              0.3438229999737814
+            ],
+            "warmupSamples": [
+              0.5334780000266619,
+              0.5993610000004992
+            ],
+            "medianMs": 0.35782999999355525,
+            "minMs": 0.3430219999863766,
+            "p90Ms": 0.5522930000151973,
+            "madMs": 0.014808000007178634,
+            "expectedPath": "public createElement -> tier 1 -> Node-API scalar -> canonical wrappers",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "NodeAPI.createElementToken"
+              ],
+              "callsPerRound": [
+                {
+                  "NodeAPI.createElementToken": 1
+                },
+                {
+                  "NodeAPI.createElementToken": 1
+                },
+                {
+                  "NodeAPI.createElementToken": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "create.8": {
+            "status": "passed",
+            "samples": [
+              1.1400340000109281,
+              1.302177000005031,
+              1.0461770000110846,
+              1.0462780000234488,
+              1.0374009999795817,
+              0.9869659999967553,
+              1.3644530000165105,
+              1.1446230000001378,
+              1.4835049999528565
+            ],
+            "warmupSamples": [
+              1.6121259999927133,
+              1.4587179999798536
+            ],
+            "medianMs": 1.1400340000109281,
+            "minMs": 0.9869659999967553,
+            "p90Ms": 1.4835049999528565,
+            "madMs": 0.10263300003134646,
+            "expectedPath": "public createElement -> tier 8 -> FFI exact token array -> canonical wrappers",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.createElements"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.createElements": 1
+                },
+                {
+                  "adapter.createElements": 1
+                },
+                {
+                  "adapter.createElements": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "create.32": {
+            "status": "passed",
+            "samples": [
+              2.342633000051137,
+              2.7279339999658987,
+              2.373130999971181,
+              2.251351999992039,
+              2.3354590000235476,
+              2.49197400000412,
+              2.4117419999674894,
+              2.304362000024412,
+              2.928168000013102
+            ],
+            "warmupSamples": [
+              2.2506899999571033,
+              2.2923590000136755
+            ],
+            "medianMs": 2.373130999971181,
+            "minMs": 2.251351999992039,
+            "p90Ms": 2.928168000013102,
+            "madMs": 0.06876899994676933,
+            "expectedPath": "public createElement -> tier 32 -> FFI exact token array -> canonical wrappers",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.createElements"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.createElements": 1
+                },
+                {
+                  "adapter.createElements": 1
+                },
+                {
+                  "adapter.createElements": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "create.128": {
+            "status": "passed",
+            "samples": [
+              6.899509000009857,
+              6.344158999971114,
+              6.755318000039551,
+              6.753956999978982,
+              6.856398000032641,
+              9.791078999987803,
+              6.396828000026289,
+              6.753105000010692,
+              6.3298630000208504
+            ],
+            "warmupSamples": [
+              6.978417000034824,
+              6.378413999977056
+            ],
+            "medianMs": 6.753956999978982,
+            "minMs": 6.3298630000208504,
+            "p90Ms": 9.791078999987803,
+            "madMs": 0.1455520000308752,
+            "expectedPath": "public createElement -> tier 128 -> FFI exact token array -> canonical wrappers",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.createElements"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.createElements": 1
+                },
+                {
+                  "adapter.createElements": 1
+                },
+                {
+                  "adapter.createElements": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          },
+          "create.256": {
+            "status": "passed",
+            "samples": [
+              11.652472000045236,
+              12.549158999987412,
+              12.54596199997468,
+              12.322976999974344,
+              12.343844999966677,
+              12.128082000010181,
+              12.90507500001695,
+              12.431117999949493,
+              11.248496000014711
+            ],
+            "warmupSamples": [
+              11.328955000033602,
+              11.803474999964237
+            ],
+            "medianMs": 12.343844999966677,
+            "minMs": 11.248496000014711,
+            "p90Ms": 12.90507500001695,
+            "madMs": 0.20531400002073497,
+            "expectedPath": "public createElement -> tier 256 -> FFI exact token array -> canonical wrappers",
+            "observedPath": {
+              "evidence": "audit-B-facade",
+              "channels": [
+                "adapter.createElements"
+              ],
+              "callsPerRound": [
+                {
+                  "adapter.createElements": 1
+                },
+                {
+                  "adapter.createElements": 1
+                },
+                {
+                  "adapter.createElements": 1
+                }
+              ],
+              "operationsPerRound": 1,
+              "selection": "observed calls in independent audit"
+            }
+          }
+        },
+        "checks": {
+          "query.small.cold": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "e28222568d3c01d9057a14d1273f855694e872486e30b3f28572726b4dc452f7"
+          },
+          "query.small.hot": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "e28222568d3c01d9057a14d1273f855694e872486e30b3f28572726b4dc452f7"
+          },
+          "query.large.cold": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "e3c57f3b4848fb1c105198d6721b9f87027542fd9fdeceff486819fac2736029"
+          },
+          "query.large.hot": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "e3c57f3b4848fb1c105198d6721b9f87027542fd9fdeceff486819fac2736029"
+          },
+          "child.cold": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "e3c57f3b4848fb1c105198d6721b9f87027542fd9fdeceff486819fac2736029"
+          },
+          "preorder.cold": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "cc2635abdbc90d4999e28d8a15133cc62234beaed17b1fc2bb7e983523c8825c"
+          },
+          "child.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "e28222568d3c01d9057a14d1273f855694e872486e30b3f28572726b4dc452f7"
+          },
+          "preorder.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "a31aeeaed06694fde5f4189f5d562de3380ba382720479e78ae28e05af733603"
+          },
+          "innerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              }
+            ],
+            "fingerprint": "22cb1d625feeb93784052781673826f170ef676eace9c8cf9bc6475ad2ebeb60"
+          },
+          "innerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 32,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              }
+            ],
+            "fingerprint": "85c3a733f39990a2c37699cbcb16ec007a18f0bd7e07deefc061517746d81df4"
+          },
+          "outerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              }
+            ],
+            "fingerprint": "04292d99ea832cba20320756e07a446d10a61aa96172cec92ee2372caf7b4a99"
+          },
+          "outerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 32,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              }
+            ],
+            "fingerprint": "af5694fd5fb1dff117687c5b20036373df2499befe0ad48ac226813b6ac89c71"
+          },
+          "innerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 32,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              }
+            ],
+            "fingerprint": "6e55cf97d6cb6dbf1444bdb28b83a734a6d23c7000e398529fff91e190202fb8"
+          },
+          "outerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 32,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              }
+            ],
+            "fingerprint": "cd135c92eab45ba3fc435bfde61049ff736717838ef15ae5cc04346ceb6f10b0"
+          },
+          "create.1": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1daa3a964ab692f5e8d53975997c69b70ff2467005f22afa569f0c892da96616"
+          },
+          "create.8": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "e28222568d3c01d9057a14d1273f855694e872486e30b3f28572726b4dc452f7"
+          },
+          "create.32": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "80ffb5f6bb689d317dd222c8ab3c3fe421ca4ba2ad40706537d3456cc5190af2"
+          },
+          "create.128": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "4547f668c22124c3a1eb4064559d988a894d6b2021a8af281a338beb2c8d48bb"
+          },
+          "create.256": {
+            "rounds": [
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 32,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "3dc4ca6591d242cd1a30d0b4c375d23b25129d1ae1effaac93fe9c9533111c80"
+          }
+        },
+        "valid": true,
+        "memory": {
+          "rss": 1957982208,
+          "heapTotal": 527758336,
+          "heapUsed": 667122783,
+          "external": 205497090,
+          "arrayBuffers": 417724
+        }
+      }
+    ],
+    "valid": true
+  },
+  "metadata": {
+    "runtime": {
+      "bunVersion": "1.4.2",
+      "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "platform": {
+        "platform": "linux",
+        "arch": "x64",
+        "libc": "gnu"
+      },
+      "expectedAbis": {
+        "nodeApi": 1,
+        "ffi": 1
+      },
+      "nodeApi": {
+        "status": "available",
+        "abiVersion": 1,
+        "path": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node"
+      },
+      "ffi": {
+        "status": "available",
+        "path": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+        "abiVersion": 1,
+        "advertisedCapabilities": 31,
+        "capabilities": 31,
+        "expectedAbiVersion": 1,
+        "expectedCapabilities": 31,
+        "symbols": [
+          "mad_dom_ffi_query_snapshot",
+          "mad_dom_ffi_preorder_snapshot",
+          "mad_dom_ffi_child_tokens",
+          "mad_dom_ffi_serialize",
+          "mad_dom_ffi_create_elements",
+          "mad_dom_ffi_read_batch"
+        ],
+        "missing": []
+      }
+    },
+    "executable": {
+      "path": "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+      "sha256": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c",
+      "bytes": 79500640,
+      "dev": 64769,
+      "inode": 1087116
+    },
+    "source": {
+      "root": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b",
+      "sourceSha": "efaa64b3b9d90cf1988d8092d7de08e97e929630",
+      "productionSha256": "119652fe7235e5116a21adbb547e288ba6e31768e34c7ce59cb306936ad65fda",
+      "domWorkloadSha256": "659d912c62373970e22409ac20dd8d9d390956dd5718c875fa1d1a34a13ff1fc",
+      "lockSha256": "ca3827dae797c2697e507de835366ca953e81ce31234e8de763f6b0bfdc6204b"
+    },
+    "artifact": {
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+      "sha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96",
+      "bytes": 3866672,
+      "dev": 64784,
+      "inode": 2104807
+    },
+    "overrides": {
+      "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+      "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+      "MAD_DOM_FFI_DISABLED": "0"
+    },
+    "libc": "2.39",
+    "rustToolchain": "[toolchain]\nchannel = \"1.93.1\"\nprofile = \"minimal\"\ncomponents = [\"clippy\", \"rustfmt\"]",
+    "handshake": "passed real document query + full UTF-8 serialization; same Node-API/FFI image"
+  }
+}

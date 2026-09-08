@@ -19,7 +19,7 @@ medium：Codex / `gpt-6-astra` / `xhigh`。启动时逐任务显式传模型、�
 
 | 文件 | 优先级 | 难度 | agent | 模型 / Codex 推理强度 | 说明 |
 | --- | --- | --- | --- | --- | --- |
-| `01-balanced-baseline.md` | P0 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | 建立有效对照、三层成本 profiles、冻结源码与 artifact baseline |
+| `done/01-balanced-baseline.md` | P0 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | 已完成：公共 runner、完整 ABBA/profiles 与不可变 reference；待协调器复核集成 |
 | `02-native-snapshot-packing.md` | P1 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | ABI v1 不变，减少 Rust snapshot 中间 Vec/复制 |
 | `03-ffi-adapter-performance.md` | P1 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | 有界 buffer 复用、编码解码与公开 facade 路径选择 |
 | `04-checksum-io-performance.md` | P1 | medium | inherit → codex（继承默认） | `gpt-6-astra` / `xhigh` | 减少 checksum 目录扫描，评估有界 IO 并补真实 workload |
@@ -27,7 +27,7 @@ medium：Codex / `gpt-6-astra` / `xhigh`。启动时逐任务显式传模型、�
 
 ## 文件
 
-1. [01-balanced-baseline.md](01-balanced-baseline.md)
+1. [done/01-balanced-baseline.md](done/01-balanced-baseline.md) — 已完成；[逐条验收证据](../evidence/baseline/README.md)
 2. [02-native-snapshot-packing.md](02-native-snapshot-packing.md) — 依赖 01-balanced-baseline
 3. [03-ffi-adapter-performance.md](03-ffi-adapter-performance.md) — 依赖 01-balanced-baseline
 4. [04-checksum-io-performance.md](04-checksum-io-performance.md) — 依赖 01-balanced-baseline
@@ -66,3 +66,23 @@ artifact SHA256、命令、顺序、退出码、完整样本与 correctness 指�
 依赖完成、专项测试通过且仓库 `bun run validate` 通过后，协调器再独立复验和合入。
 
 手动续跑：`$herdr-finish-plan bun-native-performance`；执行偏好已保存于此。
+
+## 01 交接 · 2026-09-08
+
+01 的正式/补充采样及独立 profile 已结束，T1/T2/T3 全部通过，以单个本地任务
+commit 交接；未执行集成。02/03/04 在协调器复核并集成 01 后复用公共 runner，
+继续遵守各自文件所有权。完整说明见 [baseline evidence](../evidence/baseline/README.md)。
+
+冻结 reference：
+`/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b`，
+detached source `efaa64b3b9d90cf1988d8092d7de08e97e929630`；原生 image SHA256
+`2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96`。
+[manifest](../evidence/baseline/reference-manifest.json) 与
+[复用步骤](../evidence/baseline/reference-reuse.md) 记录两个 Bun executable/revision、
+完整 source/artifact hashes、独立 build/target 和 source comparison 命令。
+reference、专用运行时和外部 profile 均保留至 05 完成，不能重建 reference。
+
+后续优先级依据 [实际结果](../evidence/baseline/findings.md)：03 先完整 serializer
+再 query 的 adapter/路径选择，创建池尚无稳定公开收益；02 先检查 preorder
+packing，再 query/child，保留未知 descriptor 的 wrapper 分类与 ABI v1 ownership。
+共享 VM 噪声和无定论项已保留，05 仍按原阈值独立验收。
