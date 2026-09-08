@@ -41,8 +41,9 @@ means null. All `written` values are element/byte counts, never capacities.
 Input buffers are borrowed only for the synchronous call. Outputs are written
 only into caller-owned buffers. A call first writes the required size to
 `written`; if capacity is insufficient it returns `2` and writes no output
-elements. Null pointers are valid only with a zero count. Output and `written`
-must be disjoint and aligned. The caller must keep all allocations mapped and
+elements. Null pointers are valid only with a zero count. Input, output and `written`
+must be mutually disjoint and correctly aligned (overlap is rejected before
+creating any Rust borrow). The caller must keep all allocations mapped and
 unchanged for the duration of the call.
 
 Status numbers are independent from Node-API's JavaScript error strings:
@@ -56,3 +57,61 @@ Status numbers are independent from Node-API's JavaScript error strings:
 lookup. A foreign/unregistered token is `INVALID_TOKEN`; an arena generation
 failure is `STALE_TOKEN`; a destroyed document always wins precedence. Every
 entry catches Rust panics and returns `PANIC`, so no unwind crosses C ABI.
+
+## Memory protocol (task 04)
+
+- Core state belongs to the document Arc and its Core NodeId generations.
+  Explicit destroy drops the arena and wrapper/token/epoch-container capacities
+  synchronously, without GC. Retained handles own an inert document shell.
+- FFI input is borrowed for one synchronous call only. The JS adapter reads
+  intrinsic TypedArray lengths, validates u32 scalars without coercion, and
+  rejects shared, resizable or detached backing stores. Direct C callers must
+  provide valid allocation sizes and forbid concurrent mutation/detach/free.
+- Every FFI output is copied into caller-owned storage. Returned bytes remain
+  readable after document destroy, further FFI calls, transfer or GC; tokens
+  within that storage still require live owner/generation validation for use.
+  Rust temporary Vec/String values drop on every return/unwind path.
+- Node-API typed-array outputs can use napi-rs's external ArrayBuffer finalizer;
+  they own separate Vec allocations and never point into the document arena.
+
+`written` is defined on OK and BUFFER_TOO_SMALL, and must be ignored on other
+errors. It contains the exact number of produced/required elements (bytes for
+byte outputs), never capacity. Insufficient capacity produces no output and no
+creation/token-registry mutation. Read-only calls can retry within the loader's
+4,000,000-word / 64,000,000-byte budgets. Read protocol anomalies return the
+Node-API fallback signal. Creation uses an exact, single-shot allocation of
+0..4096 token words; a success reporting any other length throws, since a
+fallback after successful mutation would create a second batch.
+
+### External-buffer capability boundary
+
+ABI v1 exports **no FFI external allocator/deallocator capability**. Bun does
+have a public `toArrayBuffer(bytes, offset, length, context, callback)` API (and
+a fourth-argument callback overload), as documented in its
+[FFI memory management contract](https://bun.com/docs/runtime/ffi#memory-management).
+The native callback spike passed on Bun 1.4.0 and 1.4.2; see
+[ADR-0009](../../../../adr/0009-bun-ffi-memory-and-gc-protocol.md).
+
+Any future external output needs a distinct allocation lease carrying owner,
+lifetime generation, original base pointer, length, capacity, offset and
+exactly-once release state. Reject stale credentials for access, but **do not
+skip cleanup because the document has been destroyed**. A live JS view must
+retain its allocation independently of the document. The measured callback
+pointer includes the byte offset; free the original base from the lease.
+An atomic release guard is insufficient if its metadata is already freed or
+its slot reused. Context metadata and callback library lifetime need their own
+reclamation protocol. The test-only static tombstones are not production ABI.
+No GC callback may enter JS, touch a thread-affine DOM, or depend on Bun.gc().
+
+### Lifecycle diagnostics
+
+`DocumentHandle.memoryDiagnostics()` returns a fresh JS `number[]`:
+`[liveDocuments, ffiRegistrations, wrapperCacheEntries]`. The first and third
+are **process-wide** atomic lifecycle counts, including Workers; the second
+counts the **calling thread's** FFI registrations. The snapshot is not atomic
+across fields/threads and is not an allocation-byte counter. Values are JS
+numbers (exact integers up to Number.MAX_SAFE_INTEGER), without u32 truncation.
+The affinity-checked method works after destroy. Registrations are lazy on
+first `ffiContext()` and remain until the last ownership Arc drops; wrapper
+entries include pending finalizers and are cleared eagerly at destroy. These
+diagnostics never determine business correctness.

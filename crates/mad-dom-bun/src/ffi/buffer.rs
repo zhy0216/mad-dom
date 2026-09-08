@@ -42,6 +42,20 @@ pub(super) struct Output<T> {
 }
 
 impl<T: Copy> Output<T> {
+    // Validate before creating any Rust borrow. In particular, create_elements
+    // writes `written` while its borrowed UTF-8 name is still in use.
+    pub(super) fn validate_input<U>(&self, pointer: *const U, count: u32) -> Result<()> {
+        let (start, end) = range(pointer, count)?;
+        for (other_start, other_end) in
+            [range(self.pointer, self.capacity)?, range(self.written, 1)?]
+        {
+            if start < other_end && other_start < end {
+                return Err(Status::InvalidArgument);
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn new(pointer: *mut T, capacity: u32, written: *mut u32) -> Result<Self> {
         let (start, end) = range(pointer, capacity)?;
         let (len_start, len_end) = range(written, 1)?;

@@ -9,7 +9,7 @@ default_agent: codex
 | ~~`01-capability-matrix-and-benchmarks.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Bun FFI/JSC/GC/IO capability matrix 和 N-API 对照基准 |
 | ~~`02-ffi-abi-and-native-fast-path.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Rust C ABI/FFI cdylib、token/batch/snapshot/serialization 快路径与边界测试 |
 | ~~`03-bun-ffi-loader-and-facade.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Bun FFI loader/probe、按能力位 facade 快路径、Node-API fallback 与平台布局 |
-| `04-memory-gc-and-external-buffers.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 完成外部 buffer 所有权、deallocator、GC/finalizer/affinity 安全门禁 |
+| ~~`04-memory-gc-and-external-buffers.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · caller-owned buffer/lifetime 修复；baseline/latest native deallocator spike、GC/Worker 隔离、内存压测与完整 validate |
 | ~~`05-bun-host-io.md`~~ | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | ✅ 已完成 · virtual server/sync fetch/checksums 迁移 Bun IO，capability-gated 回退与行为/性能/校验和对照 |
 | `06-latest-bun-ci-and-release-policy.md` | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | 增加 latest/baseline CI、版本 capability 文档和发布回退策略 |
 | `07-integration-and-regression-gate.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 集成全部通道，运行全量校验、兼容性、WPT、安装 smoke 和 benchmark |
@@ -21,7 +21,7 @@ default_agent: codex
 1. `01-capability-matrix-and-benchmarks.md`
 2. `02-ffi-abi-and-native-fast-path.md`（依赖 01）
 3. `03-bun-ffi-loader-and-facade.md`（依赖 01、02）
-4. `04-memory-gc-and-external-buffers.md`（依赖 02、03）
+4. `done/04-memory-gc-and-external-buffers.md`（依赖 02、03；已完成，验收记录与 capability 限制见归档）
 5. `05-bun-host-io.md`（依赖 01；可与 02、04、06 并行）
 6. `06-latest-bun-ci-and-release-policy.md`（依赖 01、03；可与 04、05 并行）
 7. `07-integration-and-regression-gate.md`（依赖 03、04、05、06）

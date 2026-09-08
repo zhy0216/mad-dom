@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isNativeAvailable, liveDocumentCount } from "../../index.js";
+import { isNativeAvailable } from "../../index.js";
 
 // T23A native node creation and navigation contract tests.
 //
@@ -47,17 +47,6 @@ function loadNative() {
     (explicit && (isAbsolute(explicit) ? explicit : resolve(process.cwd(), explicit))) ||
     fileURLToPath(new URL("../../build/mad-dom.node", import.meta.url));
   return createRequire(import.meta.url)(path);
-}
-
-function drainEventLoop() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-// Runs a synchronous GC and drains one macrotask so napi finalizers fire (Bun
-// defers them to the next event-loop turn, documented in ADR-0003).
-async function collectGarbage() {
-  Bun.gc(true);
-  await drainEventLoop();
 }
 
 function thrown(fn) {
@@ -182,6 +171,26 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
       "takeCustomElementReactions",
       "upgradeCustomElements",
     ]);
+  });
+
+  test("memoryDiagnostics is an additive numeric array and remains usable after destroy", () => {
+    const doc = native.createDocument();
+    const before = doc.memoryDiagnostics();
+    expect(Array.isArray(before)).toBe(true);
+    expect(before).toHaveLength(3);
+    for (const value of before) expect(Number.isSafeInteger(value) && value >= 0).toBe(true);
+    expect(before[0]).toBe(native.liveDocumentCount());
+    const retained = doc.createElement("div");
+    const context = doc.ffiContext();
+    expect(doc.ffiContext()).toEqual(context);
+    expect(doc.memoryDiagnostics()).toEqual([before[0], before[1] + 1, before[2] + 1]);
+    doc.destroy();
+    doc.destroy();
+    expect(doc.memoryDiagnostics()).toEqual([before[0] - 1, before[1] + 1, before[2]]);
+    before.fill(0xffffffff); // diagnostics are copies, not exposed atomics
+    expect(doc.memoryDiagnostics()[0]).toBe(native.liveDocumentCount());
+    expect(() => retained.nodeName()).toThrow(/DOCUMENT_DESTROYED/);
+    expect(() => doc.ffiContext()).toThrow(/DOCUMENT_DESTROYED/);
   });
 
   test("createElement / createText mint detached Element and Text with frozen type and name", () => {
@@ -389,37 +398,20 @@ describe.skipIf(!nativeAvailable)("native node creation and navigation contract 
     expect(thrown(() => div.childNodes()).code).toBe("ERR_MAD_DOM_DOCUMENT_DESTROYED");
   });
 
-  test("a lone node wrapper keeps its document's arena alive under GC", async () => {
-    await collectGarbage();
-    const before = liveDocumentCount();
-
-    let survivor = null;
-    // Reads run in their own function frame (same frame-isolation rationale as
-    // gc.test.js): JSC scans the machine stack conservatively, so an inline
-    // native call leaves stale register/spill copies that would keep the
-    // wrapper alive past the explicit drop below.
-    const spawn = () => {
-      const doc = native.createDocument();
-      const ul = doc.createElement("ul");
-      doc.appendChild(ul, doc.createElement("li"));
-      survivor = ul.firstChild();
-    };
-    const readSurvivor = (wrapper) => ({
-      type: wrapper.nodeType(),
-      name: wrapper.nodeName(),
-      parentName: wrapper.parentNode().nodeName(),
+  test("a lone node wrapper keeps its document's arena alive under GC", () => {
+    // Other suites may leave deferred finalizers pending. A child process
+    // gives this ownership assertion its own exact baseline, on the same Bun
+    // and native image as the parent, instead of weakening the live count.
+    const fixture = fileURLToPath(new URL("./fixtures/native-gc-lifetime.mjs", import.meta.url));
+    const result = Bun.spawnSync([process.execPath, fixture], {
+      env: { ...process.env, MAD_DOM_NATIVE_PATH: process.env.MAD_DOM_NATIVE_PATH ?? resolve("build/mad-dom.node") },
+      stdout: "pipe", stderr: "pipe",
     });
-
-    spawn();
-    await collectGarbage();
-
-    // The document wrapper is collected; the lone node wrapper keeps its
-    // document's arena alive — and it stays fully readable.
-    expect(liveDocumentCount()).toBe(before + 1);
-    expect(readSurvivor(survivor)).toEqual({ type: 1, name: "li", parentName: "ul" });
-
-    survivor = null;
-    await collectGarbage();
-    expect(liveDocumentCount()).toBe(before);
+    expect(result.exitCode, result.stderr.toString()).toBe(0);
+    const report = JSON.parse(result.stdout.toString());
+    expect(report.bunVersion).toBe(Bun.version);
+    expect(report.baseline).toEqual([0, 0, 0]);
+    expect(report.retained).toEqual([1, 1, 1]);
+    expect(report.released).toEqual(report.baseline);
   });
 });

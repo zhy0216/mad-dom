@@ -29,6 +29,8 @@ import {
 // checkout still passes `npm run validate`.
 
 const nativeAvailable = isNativeAvailable();
+const diagnostics = nativeAvailable ? createDocument() : null;
+diagnostics?.destroy();
 
 function drainEventLoop() {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -124,7 +126,7 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
     doc.destroy();
   });
 
-  test("reads in the collected-but-not-yet-finalized window re-mint instead of returning undefined", () => {
+  test("reads in the collected-but-not-yet-finalized window re-mint instead of returning undefined", async () => {
     // Bun defers napi finalizers to the next event-loop turn, so right after
     // a synchronous GC a collected wrapper's cache entry is still present but
     // stale ("collected but not yet finalized"). wrap_node must detect the
@@ -156,6 +158,13 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
     expect(fresh.nodeName()).toBe("li");
     // The re-minted wrapper has stable identity for subsequent reads.
     expect(read(parent)).toBe(fresh);
+
+    const entries = diagnostics.memoryDiagnostics()[2];
+    await collectGarbage();
+    // A late finalizer for the old mint must neither evict nor decrement the
+    // replacement entry. Node-API remains the identity authority after FFI.
+    expect(read(parent)).toBe(fresh);
+    expect(diagnostics.memoryDiagnostics()[2]).toBe(entries);
 
     doc.destroy();
   });
@@ -202,6 +211,7 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
   test("GC pressure: no document leak and collected wrappers stay collectable", async () => {
     await collectGarbage();
     const before = liveDocumentCount();
+    const wrapperCacheBaseline = diagnostics.memoryDiagnostics()[2];
 
     let recycled = null;
     // One full scenario per iteration, in its own function frame (same
@@ -244,6 +254,10 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
     await collectGarbage();
     expect(recycled.deref()).toBeUndefined();
     expect(liveDocumentCount()).toBe(before);
+    // Deterministic counter proof (memory-protocol task 04): the per-document
+    // weak wrapper cache must be back to its baseline after the churn — no
+    // residual wrapper-cache entry survives the destroy + GC cycle.
+    expect(diagnostics.memoryDiagnostics()[2]).toBe(wrapperCacheBaseline);
   });
 
   test("cross-document wrappers never share identity on the same slot", () => {
@@ -262,5 +276,80 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
 
     docA.destroy();
     docB.destroy();
+  });
+
+  test("explicit destroy is the deterministic, GC-independent free path", async () => {
+    await collectGarbage();
+    const before = liveDocumentCount();
+    const ffiBefore = diagnostics.memoryDiagnostics()[1];
+    const wrapperCacheBaseline = diagnostics.memoryDiagnostics()[2];
+
+    // destroy() must release the Core document synchronously. This assertion
+    // is what makes the memory protocol independent of Bun.gc()/finalizer
+    // timing: business correctness never waits for a GC.
+    const spawn = () => {
+      const doc = createDocument();
+      doc.createElement("ul");
+      doc.destroy();
+    };
+    spawn();
+    expect(liveDocumentCount()).toBe(before);
+
+    // The node wrapper cache drains eagerly at destroy, too (its entries are
+    // cleared with the document), so even a wrapper that was never collected
+    // cannot linger as a cache entry.
+    expect(diagnostics.memoryDiagnostics()[2]).toBe(wrapperCacheBaseline);
+
+    await collectGarbage();
+    expect(liveDocumentCount()).toBe(before);
+    expect(diagnostics.memoryDiagnostics()[1]).toBe(ffiBefore);
+    expect(diagnostics.memoryDiagnostics()[2]).toBe(wrapperCacheBaseline);
+  });
+
+  test("abandoned documents are reclaimed through the deferred napi finalizer", async () => {
+    await collectGarbage();
+    const before = liveDocumentCount();
+
+    // Create and abandon a document: nothing but the (weak) document wrapper
+    // cache and this file's counters reference it after the helper frame dies.
+    const spawn = () => {
+      const doc = createDocument();
+      const div = doc.createElement("div");
+      doc.appendChild(div, doc.createText("x"));
+    };
+    spawn();
+    await collectGarbage();
+    expect(liveDocumentCount()).toBe(before);
+  });
+
+  test("FinalizationRegistry observes wrapper reclamation (no strong cache pin)", async () => {
+    await collectGarbage();
+    const doc = createDocument();
+    let finalized = false;
+    const registry = new FinalizationRegistry(() => {
+      finalized = true;
+    });
+
+    const spawn = () => {
+      const parent = doc.createElement("ul");
+      const child = doc.createElement("li");
+      doc.appendChild(parent, child);
+      // While alive the cached wrapper is the very object just returned.
+      expect(parent.firstChild()).toBe(child);
+      registry.register(child, "child");
+    };
+    spawn();
+
+    // A wrapper nobody references must be collected and finalized like any
+    // ordinary JS object; the weak wrapper cache is not a strong pin. The
+    // FinalizationRegistry callback is not required to run on a fixed turn, so
+    // poll a bounded number of GC rounds.
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await collectGarbage();
+      if (finalized) break;
+    }
+    expect(finalized).toBe(true);
+
+    doc.destroy();
   });
 });

@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dlopen } from "bun:ffi";
 import { createDocument, isNativeAvailable } from "../../index.js";
 
 // T21 safety-boundary fixtures. They exercise the production binding through
@@ -24,6 +27,30 @@ import { createDocument, isNativeAvailable } from "../../index.js";
 // checkout still passes `npm run validate`.
 
 const nativeAvailable = isNativeAvailable();
+const FFI_ARTIFACT = resolve(process.env.MAD_DOM_FFI_PATH ?? process.env.MAD_DOM_NATIVE_PATH ?? "build/mad-dom.node");
+let ffiLibrary;
+const ffiArtifactAvailable = existsSync(FFI_ARTIFACT);
+
+// Loads the FFI child-snapshot symbol exactly like the loader does, returning
+// a status code from the frozen C ABI (0 OK, 3 INVALID_DOCUMENT, …).
+function ffiChildTokens(owner, generation, root) {
+  const lib = ffiLibrary ??= dlopen(FFI_ARTIFACT, {
+    mad_dom_ffi_child_tokens: {
+      args: ["u32", "u32", "u32", "ptr", "u32", "ptr"],
+      returns: "i32",
+    },
+  });
+  const out = new Uint32Array(4);
+  const written = new Uint32Array(1);
+  return lib.symbols.mad_dom_ffi_child_tokens(
+    owner,
+    generation,
+    root,
+    out,
+    out.length,
+    written,
+  );
+}
 
 function thrown(fn) {
   try {
@@ -199,5 +226,81 @@ describe.skipIf(!nativeAvailable)("native safety boundary (T21)", () => {
     expect(result.error.message).toContain("nodeName is not a function");
 
     doc.destroy();
+  });
+
+  test("live Workers reject foreign FFI owners and report the correct counter scopes", async () => {
+    if (!ffiArtifactAvailable) return;
+    Bun.gc(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const local = createDocument();
+    const marker = local.createElement("local");
+    const localContext = Array.from(local.ffiContext());
+    expect(ffiChildTokens(...localContext)).toBe(0);
+    const before = local.memoryDiagnostics();
+    const entry = fileURLToPath(new URL("../../index.js", import.meta.url));
+    const source = `
+      import { createDocument } from ${JSON.stringify(entry)};
+      import { dlopen } from "bun:ffi";
+      const diagnostics = createDocument();
+      diagnostics.destroy();
+      let docs = [], nodes = [], lib;
+      self.onmessage = async ({ data }) => {
+        try {
+          if (data.action === "create") {
+            const before = diagnostics.memoryDiagnostics();
+            lib = dlopen(data.path, {
+              mad_dom_ffi_child_tokens: {
+                args: ["u32", "u32", "u32", "ptr", "u32", "ptr"], returns: "i32",
+              },
+            });
+            docs = [createDocument(), createDocument()];
+            nodes = docs.map((doc) => doc.createElement("worker"));
+            const contexts = docs.map((doc) => Array.from(doc.ffiContext()));
+            const call = (ctx) => lib.symbols.mad_dom_ffi_child_tokens(
+              ...ctx, new Uint32Array(4), 4, new Uint32Array(1),
+            );
+            self.postMessage({ ok: true, before, contexts,
+              counters: diagnostics.memoryDiagnostics(),
+              ownStatus: call(contexts[0]), foreignStatus: call(data.context) });
+          } else {
+            for (const doc of docs) doc.destroy();
+            const destroyed = diagnostics.memoryDiagnostics();
+            docs = []; nodes = [];
+            for (let i = 0; i < 4; i++) {
+              Bun.gc(true); await new Promise((resolve) => setTimeout(resolve, 0));
+            }
+            self.postMessage({ ok: true, destroyed, after: diagnostics.memoryDiagnostics() });
+          }
+        } catch (error) { self.postMessage({ ok: false, error: String(error) }); }
+      };
+    `;
+    const worker = new Worker(new URL("data:text/javascript," + encodeURIComponent(source)), { type: "module" });
+    const exchange = (data) => new Promise((resolve, reject) => {
+      worker.onmessage = (event) => resolve(event.data);
+      worker.onerror = (event) => reject(new Error(String(event.message)));
+      worker.postMessage(data);
+    });
+    try {
+      const ready = await exchange({ action: "create", path: FFI_ARTIFACT, context: localContext });
+      expect(ready.ok).toBe(true);
+      expect(ready.before[1]).toBe(0);
+      expect(ready.counters).toEqual([before[0] + 2, 2, before[2] + 2]);
+      expect(local.memoryDiagnostics()).toEqual([before[0] + 2, before[1], before[2] + 2]);
+      expect(ready.ownStatus).toBe(0);
+      expect(ready.foreignStatus).toBe(3);
+      // Both Worker documents are still alive when the main thread replays
+      // their credentials, so a teardown registry miss cannot fake affinity.
+      for (const context of ready.contexts) expect(ffiChildTokens(...context)).toBe(3);
+      const released = await exchange({ action: "release" });
+      expect(released.ok).toBe(true);
+      expect(released.destroyed).toEqual([before[0], 2, before[2]]);
+      expect(released.after).toEqual([before[0], 0, before[2]]);
+      expect(local.memoryDiagnostics()).toEqual(before);
+      expect(marker.nodeName()).toBe("local");
+      expect(ffiChildTokens(...localContext)).toBe(0);
+    } finally {
+      await worker.terminate();
+      local.destroy();
+    }
   });
 });

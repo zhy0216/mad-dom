@@ -569,6 +569,123 @@ fn registry_does_not_pin_documents_and_rejects_other_threads() {
 }
 
 #[test]
+fn registration_count_tracks_lazy_owner_lifecycle() {
+    let _guard = lock();
+    // The test lock serializes with the other registry tests, so this thread
+    // starts with a clean, deterministic count regardless of test order.
+    let baseline = registration_count();
+    {
+        // No owner is minted until the first ffiContext request, so merely
+        // creating a document never grows the FFI registry.
+        let doc = DocumentHandle::new();
+        assert_eq!(registration_count(), baseline);
+        let shared = doc.shared().clone();
+        // The first context() mints and registers exactly one owner...
+        let [first, generation] = shared.ffi.context(&shared);
+        assert_eq!(registration_count(), baseline + 1);
+        // ...and later context reads reuse it instead of leaking a second
+        // registration per call (the FFI context is a per-document credential,
+        // not a per-call lease).
+        let [second, same_generation] = shared.ffi.context(&shared);
+        assert_eq!(first, second);
+        assert_eq!(generation, same_generation);
+        assert_eq!(registration_count(), baseline + 1);
+        // destroy alone keeps the registration: destroyed documents stay owned
+        // by the handle, so a stale FFI call still resolves to Destroyed
+        // instead of an ambiguous registry miss.
+        doc.destroy_inner();
+        assert_eq!(registration_count(), baseline + 1);
+    }
+    // Dropping the last ownership Arc unregisters the owner deterministically
+    // (no GC involved): the registry holds only Weak references and never pins
+    // a document.
+    assert_eq!(registration_count(), baseline);
+}
+
+#[test]
+fn wrapper_cache_counter_returns_to_baseline_after_destroy() {
+    let _guard = lock();
+    // Without a JS runtime no wrapper can be minted (WeakReference needs an
+    // Env), so the strong invariant tested here is the pure destroy side: a
+    // destroy of an empty cache must never drive the process-wide counter
+    // negative, and a freshly created document contributes nothing.
+    let baseline = crate::handle::live_wrapper_cache_entries();
+    let doc = DocumentHandle::new();
+    doc.destroy_inner();
+    assert_eq!(crate::handle::live_wrapper_cache_entries(), baseline);
+    drop(doc);
+    assert_eq!(crate::handle::live_wrapper_cache_entries(), baseline);
+}
+
+#[test]
+fn input_cannot_alias_output_or_written_even_during_capacity_probe() {
+    let _guard = lock();
+    let f = Fixture::new();
+    let mut words = [u32::from_ne_bytes(*b"span"); 8];
+    let original = words;
+    let mut len = 99;
+    unsafe {
+        // A name overlapping written would be mutated while Rust still
+        // borrows it as &str. Reject before borrowing, even with zero capacity.
+        assert_eq!(
+            mad_dom_ffi_create_elements(
+                f.owner,
+                1,
+                words.as_ptr().cast(),
+                4,
+                1,
+                null_mut(),
+                0,
+                words.as_mut_ptr(),
+            ),
+            1
+        );
+        assert_eq!(
+            mad_dom_ffi_create_elements(
+                f.owner,
+                1,
+                words.as_ptr().cast(),
+                4,
+                1,
+                words.as_mut_ptr(),
+                8,
+                &mut len,
+            ),
+            1
+        );
+        assert_eq!(
+            mad_dom_ffi_query_snapshot(
+                f.owner,
+                1,
+                f.root,
+                words.as_ptr().cast(),
+                4,
+                words.as_mut_ptr(),
+                8,
+                &mut len,
+            ),
+            1
+        );
+        assert_eq!(
+            mad_dom_ffi_read_batch(
+                f.owner,
+                1,
+                words.as_ptr(),
+                1,
+                0,
+                null_mut(),
+                0,
+                words.as_mut_ptr(),
+            ),
+            1
+        );
+    }
+    assert_eq!(words, original);
+    assert_eq!(len, 99);
+    assert_eq!(f.query("span"), [0]); // no partial creation
+}
+
+#[test]
 fn panic_boundary_contains_unwind_and_poisoned_document_recovers() {
     let _guard = lock();
     let f = Fixture::new();

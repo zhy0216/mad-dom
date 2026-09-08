@@ -1,0 +1,3505 @@
+{
+  "schema": "mad-dom/ffi-memory-evidence/1",
+  "recordedAtUtc": "2026-09-08T02:06:56.003176+00:00",
+  "sourceBase": "4093c79ebe5ee25404d9f6954202af83223f39c2",
+  "inheritedWip": "85742758755966fc8a61f6e4284445320c892ccf",
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "libc": "glibc 2.39",
+    "rust": "1.93.1",
+    "cc": "GCC 13.3.0",
+    "cargoBuildJobs": 3,
+    "hostCpuCount": 8,
+    "sharedHost": true
+  },
+  "nativeImage": {
+    "path": "build/mad-dom.node",
+    "ffiPath": "build/mad-dom.node",
+    "sameImage": true,
+    "sha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96"
+  },
+  "baselineArchiveSha256": "2d03fb5fb83ac8b567aca0a281b2ce1a1a19d488f56c2968d88c3f25e92fe452",
+  "latestOfficialRelease": {
+    "tag_name": "bun-v1.4.2",
+    "published_at": "2026-09-05T05:55:48Z",
+    "html_url": "https://github.com/oven-sh/bun/releases/tag/bun-v1.4.2"
+  },
+  "sources": [
+    "https://api.github.com/repos/oven-sh/bun/releases/latest",
+    "https://bun.com/docs/runtime/ffi#memory-management",
+    "https://bun.sh/reference/bun/jsc"
+  ],
+  "limitations": [
+    "Measured Linux x64 binaries only; no production FFI external-buffer capability.",
+    "GC/finalizer observations are measurements, not scheduling guarantees.",
+    "Lifecycle counts are not a malloc byte ledger; finite RSS/heap samples do not prove all possible workloads leak-free.",
+    "The external prototype retains a bounded static tombstone table and pins its callback library until process exit.",
+    "Benchmarks ran on a shared 8-CPU host and do not establish a portable performance gain."
+  ],
+  "lanes": {
+    "baseline": {
+      "version": "1.4.0",
+      "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+      "validation": {
+        "command": "bun run validate",
+        "exitCode": 0,
+        "rustTestsPassed": 691,
+        "bunTestsPassed": 1127,
+        "bunTestsFailed": 0,
+        "types": "PASS",
+        "ledger": {
+          "entries": 449,
+          "realPairScenarios": 180,
+          "regressions": 0
+        },
+        "hdunitTriage": {
+          "registeredFiles": 298,
+          "regressions": 0
+        },
+        "wptHarnessTestsPassed": 5,
+        "finalHarnessRecheck": {
+          "command": "bun test tests/bun/ffi-memory.test.js",
+          "passed": 9,
+          "failed": 0
+        },
+        "note": "Full validate passed before the final benchmark baseline-timing refinement; the refined memory harness, both benchmarks, external spike and four stress lanes were then checked again.",
+        "finalRelatedRecheck": {
+          "command": "bun test tests/bun/ffi-memory.test.js tests/bun/gc.test.js tests/bun/safety.test.js tests/bun/native-node-contract.test.js tests/bun/ffi-loader.test.js tests/bun/ffi-fast-path.test.js tests/bun/ffi-facade-hot-path.test.js tests/bun/lazy-token-fast-path.test.js tests/bun/native.test.js",
+          "passed": 86,
+          "failed": 0,
+          "expectCalls": 1802
+        }
+      },
+      "externalSpike": {
+        "schema": "mad-dom/ffi-memory-spike/1",
+        "bunVersion": "1.4.0",
+        "bunRevision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+        "platform": "linux",
+        "arch": "x64",
+        "externalArrayBuffer": {
+          "status": "verified",
+          "productionEnabled": false,
+          "overloads": [
+            {
+              "overload": "context-and-callback",
+              "owner": 1,
+              "generation": 1,
+              "length": 32,
+              "capacity": 64,
+              "offset": 8,
+              "syncReleased": 1,
+              "afterMacrotask": 1,
+              "callbacks": 1,
+              "callbackOffset": 8,
+              "finalizationRegistry": true,
+              "retainedAcrossGcAndDestroy": true,
+              "staleGenerationRejected": true
+            },
+            {
+              "overload": "callback-fourth-argument",
+              "owner": 2,
+              "generation": 1,
+              "length": 32,
+              "capacity": 64,
+              "offset": 0,
+              "syncReleased": 1,
+              "afterMacrotask": 1,
+              "callbacks": 1,
+              "callbackOffset": 0,
+              "finalizationRegistry": true,
+              "retainedAcrossGcAndDestroy": true,
+              "staleGenerationRejected": true
+            }
+          ],
+          "samples": [
+            {
+              "round": 0,
+              "allocations": 34,
+              "frees": 34,
+              "callbacks": 34,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 53673984,
+              "heapTotal": 4539392,
+              "heapUsed": 4211336,
+              "external": 1426760,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 1,
+              "allocations": 66,
+              "frees": 66,
+              "callbacks": 66,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 53907456,
+              "heapTotal": 4539392,
+              "heapUsed": 4234225,
+              "external": 1443937,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 2,
+              "allocations": 98,
+              "frees": 98,
+              "callbacks": 98,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 53997568,
+              "heapTotal": 4539392,
+              "heapUsed": 4234740,
+              "external": 1443956,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 3,
+              "allocations": 130,
+              "frees": 130,
+              "callbacks": 130,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 54001664,
+              "heapTotal": 4539392,
+              "heapUsed": 4235124,
+              "external": 1443956,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 4,
+              "allocations": 162,
+              "frees": 162,
+              "callbacks": 162,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 53977088,
+              "heapTotal": 4539392,
+              "heapUsed": 4235355,
+              "external": 1443995,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 5,
+              "allocations": 194,
+              "frees": 194,
+              "callbacks": 194,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 54968320,
+              "heapTotal": 4539392,
+              "heapUsed": 4239404,
+              "external": 1447404,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 6,
+              "allocations": 226,
+              "frees": 226,
+              "callbacks": 226,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 54599680,
+              "heapTotal": 4555776,
+              "heapUsed": 4251096,
+              "external": 1458360,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 7,
+              "allocations": 258,
+              "frees": 258,
+              "callbacks": 258,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 54652928,
+              "heapTotal": 4555776,
+              "heapUsed": 4256988,
+              "external": 1464012,
+              "arrayBuffers": 0
+            }
+          ],
+          "final": {
+            "allocations": 258,
+            "frees": 258,
+            "callbacks": 258,
+            "duplicateReleasesSuppressed": 2,
+            "invalidCallbacks": 0,
+            "liveBytes": 0,
+            "foreignThreadCallbacks": 0
+          }
+        },
+        "jscPrivateApi": {
+          "status": "discovery-only",
+          "defaultPath": false,
+          "exportedSymbols": {
+            "JSObjectMakeArrayBufferWithBytesNoCopy": false,
+            "JSObjectMake": false,
+            "JSGlobalContextCreate": false
+          },
+          "publicModuleExports": [
+            "callerSourceOrigin",
+            "codeCoverageForFile",
+            "default",
+            "describe",
+            "describeArray",
+            "deserialize",
+            "drainMicrotasks",
+            "edenGC",
+            "estimateShallowMemoryUsageOf",
+            "fullGC",
+            "gcAndSweep",
+            "generateHeapSnapshotForDebugging",
+            "getProtectedObjects",
+            "getRandomSeed",
+            "heapSize",
+            "heapStats",
+            "isRope",
+            "jscDescribe",
+            "jscDescribeArray",
+            "memoryUsage",
+            "noFTL",
+            "noInline",
+            "noOSRExitFuzzing",
+            "numberOfDFGCompiles",
+            "optimizeNextInvocation",
+            "percentAvailableMemoryInUse",
+            "profile",
+            "releaseWeakRefs",
+            "reoptimizationRetryCount",
+            "samplingProfilerStackTraces",
+            "serialize",
+            "setRandomSeed",
+            "setTimeZone",
+            "setTimezone",
+            "startRemoteDebugger",
+            "startSamplingProfiler",
+            "totalCompileTime"
+          ],
+          "reason": "No public Bun API supplies its live JSContextRef for custom DOM wrappers; symbol visibility alone cannot establish VM, rooting, affinity, or finalizer ownership."
+        }
+      },
+      "stress": {
+        "enabled": {
+          "status": "ok",
+          "bunVersion": "1.4.0",
+          "bunRevision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "platform": "linux",
+          "arch": "x64",
+          "ffiMethods": [
+            "querySnapshot",
+            "preorderSnapshot",
+            "childSnapshot",
+            "serialize",
+            "createElements",
+            "readBatch"
+          ],
+          "ffiCalls": {
+            "querySnapshot": 4020,
+            "preorderSnapshot": 4020,
+            "childSnapshot": 6030,
+            "serialize": 6030,
+            "createElements": 10050,
+            "readBatch": 2010
+          },
+          "rounds": 20,
+          "windowsPerRound": 100,
+          "counterScopes": {
+            "docs": "process",
+            "ffiRegistrations": "calling-thread",
+            "wrapperCacheEntries": "process"
+          },
+          "counters": {
+            "baseline": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "after": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "deltas": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            }
+          },
+          "samples": [
+            {
+              "round": 0,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 74518528,
+              "heapTotal": 4717568,
+              "heapUsed": 5217433,
+              "external": 2329705,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 1,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82157568,
+              "heapTotal": 4750336,
+              "heapUsed": 5360769,
+              "external": 2465793,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 2,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 80474112,
+              "heapTotal": 4750336,
+              "heapUsed": 5369818,
+              "external": 2473946,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 3,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 86773760,
+              "heapTotal": 4750336,
+              "heapUsed": 5396930,
+              "external": 2500706,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 4,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 81965056,
+              "heapTotal": 4750336,
+              "heapUsed": 5407343,
+              "external": 2509871,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 5,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 81965056,
+              "heapTotal": 4750336,
+              "heapUsed": 5421687,
+              "external": 2523639,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 6,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82096128,
+              "heapTotal": 4750336,
+              "heapUsed": 5425552,
+              "external": 2527120,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 7,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82001920,
+              "heapTotal": 4815872,
+              "heapUsed": 5449807,
+              "external": 2549215,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 8,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82317312,
+              "heapTotal": 4766720,
+              "heapUsed": 5488428,
+              "external": 2586796,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 9,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83177472,
+              "heapTotal": 4750336,
+              "heapUsed": 5494981,
+              "external": 2593493,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 10,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82448384,
+              "heapTotal": 4750336,
+              "heapUsed": 5497456,
+              "external": 2595536,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 11,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82714624,
+              "heapTotal": 4750336,
+              "heapUsed": 5510837,
+              "external": 2608789,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 12,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83038208,
+              "heapTotal": 4750336,
+              "heapUsed": 5523957,
+              "external": 2621557,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 13,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82845696,
+              "heapTotal": 4750336,
+              "heapUsed": 5524085,
+              "external": 2621557,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 14,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82939904,
+              "heapTotal": 4750336,
+              "heapUsed": 5564949,
+              "external": 2662293,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 15,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83054592,
+              "heapTotal": 4750336,
+              "heapUsed": 5566549,
+              "external": 2663541,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 16,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83103744,
+              "heapTotal": 4750336,
+              "heapUsed": 5564820,
+              "external": 2661908,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 17,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83234816,
+              "heapTotal": 4750336,
+              "heapUsed": 5565051,
+              "external": 2661787,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 18,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83365888,
+              "heapTotal": 4750336,
+              "heapUsed": 5565051,
+              "external": 2661883,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 19,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83496960,
+              "heapTotal": 4750336,
+              "heapUsed": 5565179,
+              "external": 2661883,
+              "arrayBuffers": 0
+            }
+          ],
+          "heapGrowthMb": 0.8209381103515625,
+          "rssGrowthMb": 16.6484375,
+          "finalizerTiming": {
+            "timing": "deferred",
+            "baseline": 0,
+            "afterCreate": 1,
+            "afterSyncGc": 1,
+            "afterDrain": 0
+          }
+        },
+        "disabled": {
+          "status": "ok",
+          "bunVersion": "1.4.0",
+          "bunRevision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "platform": "linux",
+          "arch": "x64",
+          "ffiMethods": [],
+          "ffiCalls": {},
+          "rounds": 20,
+          "windowsPerRound": 100,
+          "counterScopes": {
+            "docs": "process",
+            "ffiRegistrations": "calling-thread",
+            "wrapperCacheEntries": "process"
+          },
+          "counters": {
+            "baseline": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "after": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "deltas": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            }
+          },
+          "samples": [
+            {
+              "round": 0,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 69083136,
+              "heapTotal": 4630528,
+              "heapUsed": 4935556,
+              "external": 2103924,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 1,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76955648,
+              "heapTotal": 4646912,
+              "heapUsed": 5064362,
+              "external": 2226826,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 2,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 78786560,
+              "heapTotal": 4646912,
+              "heapUsed": 5090924,
+              "external": 2251820,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 3,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82878464,
+              "heapTotal": 4646912,
+              "heapUsed": 5122323,
+              "external": 2282643,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 4,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 79757312,
+              "heapTotal": 4646912,
+              "heapUsed": 5133729,
+              "external": 2292801,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 5,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 81063936,
+              "heapTotal": 4646912,
+              "heapUsed": 5140473,
+              "external": 2299193,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 6,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 81195008,
+              "heapTotal": 4663296,
+              "heapUsed": 5144210,
+              "external": 2302546,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 7,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 81719296,
+              "heapTotal": 4663296,
+              "heapUsed": 5179801,
+              "external": 2335513,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 8,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 80130048,
+              "heapTotal": 4663296,
+              "heapUsed": 5211256,
+              "external": 2365672,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 9,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 80797696,
+              "heapTotal": 4663296,
+              "heapUsed": 5214065,
+              "external": 2368337,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 10,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 80334848,
+              "heapTotal": 4646912,
+              "heapUsed": 5214273,
+              "external": 2368337,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 11,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82432000,
+              "heapTotal": 4646912,
+              "heapUsed": 5229601,
+              "external": 2383313,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 12,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82644992,
+              "heapTotal": 4646912,
+              "heapUsed": 5242369,
+              "external": 2395729,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 13,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82395136,
+              "heapTotal": 4646912,
+              "heapUsed": 5242497,
+              "external": 2395729,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 14,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82657280,
+              "heapTotal": 4646912,
+              "heapUsed": 5242625,
+              "external": 2395729,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 15,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83705856,
+              "heapTotal": 4646912,
+              "heapUsed": 5284265,
+              "external": 2437017,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 16,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83476480,
+              "heapTotal": 4646912,
+              "heapUsed": 5283185,
+              "external": 2436593,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 17,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83116032,
+              "heapTotal": 4646912,
+              "heapUsed": 5281880,
+              "external": 2435160,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 18,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82984960,
+              "heapTotal": 4646912,
+              "heapUsed": 5282008,
+              "external": 2435160,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 19,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 83173376,
+              "heapTotal": 4646912,
+              "heapUsed": 5282136,
+              "external": 2435160,
+              "arrayBuffers": 0
+            }
+          ],
+          "heapGrowthMb": 0.7058753967285156,
+          "rssGrowthMb": 17.53515625,
+          "finalizerTiming": {
+            "timing": "deferred",
+            "baseline": 0,
+            "afterCreate": 1,
+            "afterSyncGc": 1,
+            "afterDrain": 0
+          }
+        }
+      },
+      "ffiGcBenchmark": {
+        "schema": "mad-dom-ffi-gc-bench/1",
+        "runtime": {
+          "bunVersion": "1.4.0",
+          "bunRevision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "platform": "linux",
+          "arch": "x64"
+        },
+        "memoryEvidence": {
+          "status": "ok",
+          "bunVersion": "1.4.0",
+          "bunRevision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "platform": "linux",
+          "arch": "x64",
+          "ffiMethods": [
+            "querySnapshot",
+            "preorderSnapshot",
+            "childSnapshot",
+            "serialize",
+            "createElements",
+            "readBatch"
+          ],
+          "ffiCalls": {
+            "querySnapshot": 500,
+            "preorderSnapshot": 500,
+            "childSnapshot": 750,
+            "serialize": 750,
+            "createElements": 1250,
+            "readBatch": 250
+          },
+          "rounds": 8,
+          "windowsPerRound": 30,
+          "counterScopes": {
+            "docs": "process",
+            "ffiRegistrations": "calling-thread",
+            "wrapperCacheEntries": "process"
+          },
+          "counters": {
+            "baseline": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "after": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "deltas": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            }
+          },
+          "samples": [
+            {
+              "round": 0,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 120115200,
+              "heapTotal": 10489856,
+              "heapUsed": 5126378,
+              "external": 2236986,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 1,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 123072512,
+              "heapTotal": 10506240,
+              "heapUsed": 5192600,
+              "external": 2296920,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 2,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 123305984,
+              "heapTotal": 10490880,
+              "heapUsed": 5259762,
+              "external": 2356722,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 3,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 123105280,
+              "heapTotal": 10506240,
+              "heapUsed": 5271088,
+              "external": 2366176,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 4,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 125464576,
+              "heapTotal": 10506240,
+              "heapUsed": 5338352,
+              "external": 2428592,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 5,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 124178432,
+              "heapTotal": 10522624,
+              "heapUsed": 5347952,
+              "external": 2437616,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 6,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 129421312,
+              "heapTotal": 10522624,
+              "heapUsed": 5413432,
+              "external": 2502040,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 7,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 130469888,
+              "heapTotal": 10522624,
+              "heapUsed": 5413321,
+              "external": 2502249,
+              "arrayBuffers": 0
+            }
+          ],
+          "heapGrowthMb": 0.6221799850463867,
+          "rssGrowthMb": 14.23046875,
+          "finalizerTiming": {
+            "timing": "deferred",
+            "baseline": 0,
+            "afterCreate": 1,
+            "afterSyncGc": 1,
+            "afterDrain": 0
+          }
+        },
+        "metrics": {
+          "ffi_create_element_ops_s": 319363.4626306385,
+          "ffi_batch_append_ops_s": 544.4633993327324,
+          "wrapper_identity_hit_rate": 1,
+          "gc_release_hit_rate": 1,
+          "gc_memory_growth_mb": -22.55078125,
+          "memory_counter_docs_delta": 0,
+          "memory_counter_ffi_registrations_delta": 0,
+          "memory_counter_wrapper_cache_delta": 0,
+          "ffi_churn_rss_growth_mb": 14.23046875
+        }
+      },
+      "boundaryBenchmark": {
+        "schema": "mad-dom/bun-native-boundary-bench/1",
+        "status": "measured-comparable",
+        "runtime": {
+          "name": "bun",
+          "version": "1.4.0"
+        },
+        "input": {
+          "iterations": 1000,
+          "batchSize": 32,
+          "largeDocumentSize": 512,
+          "fixture": "same fixture and iteration counts are supplied to both paths"
+        },
+        "paths": {
+          "nodeApi": {
+            "status": "measured",
+            "workloads": {
+              "boundary.single-call": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 1.292982000000002,
+                  "boundaryCostNs": 1292.982000000002,
+                  "operationsPerSecond": 773405.9716221868,
+                  "rssBeforeBytes": 28442624,
+                  "rssAfterBytes": 33816576,
+                  "rssDeltaBytes": 5373952,
+                  "heapUsedBeforeBytes": 1587200,
+                  "heapUsedAfterBytes": 1769472,
+                  "allocationEstimateBytes": 182272
+                },
+                "validation": {
+                  "passed": true,
+                  "type": "number"
+                }
+              },
+              "token.batch": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 32000,
+                  "operationUnits": 32,
+                  "elapsedMs": 12.960417,
+                  "boundaryCostNs": 12960.417,
+                  "operationsPerSecond": 2469056.3582946444,
+                  "rssBeforeBytes": 34041856,
+                  "rssAfterBytes": 45002752,
+                  "rssDeltaBytes": 10960896,
+                  "heapUsedBeforeBytes": 1769472,
+                  "heapUsedAfterBytes": 2293760,
+                  "allocationEstimateBytes": 524288
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 32
+                }
+              },
+              "query.snapshot": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 13.238858,
+                  "boundaryCostNs": 13238.858,
+                  "operationsPerSecond": 75535.21610398722,
+                  "rssBeforeBytes": 35745792,
+                  "rssAfterBytes": 36401152,
+                  "rssDeltaBytes": 655360,
+                  "heapUsedBeforeBytes": 2342912,
+                  "heapUsedAfterBytes": 2884608,
+                  "allocationEstimateBytes": 541696
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 32
+                }
+              },
+              "serialize.string": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 6.486029000000002,
+                  "boundaryCostNs": 6486.029000000002,
+                  "operationsPerSecond": 154177.54068012952,
+                  "rssBeforeBytes": 36401152,
+                  "rssAfterBytes": 39153664,
+                  "rssDeltaBytes": 2752512,
+                  "heapUsedBeforeBytes": 2884608,
+                  "heapUsedAfterBytes": 3081216,
+                  "allocationEstimateBytes": 196608
+                },
+                "validation": {
+                  "passed": true,
+                  "bytes": 1193
+                }
+              },
+              "snapshot.bytes": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 2.460809999999995,
+                  "boundaryCostNs": 2460.809999999995,
+                  "operationsPerSecond": 406370.2601988784,
+                  "rssBeforeBytes": 39546880,
+                  "rssAfterBytes": 40595456,
+                  "rssDeltaBytes": 1048576,
+                  "heapUsedBeforeBytes": 3098624,
+                  "heapUsedAfterBytes": 3395584,
+                  "allocationEstimateBytes": 296960
+                },
+                "validation": {
+                  "passed": true,
+                  "words": 67
+                }
+              },
+              "large-document.snapshot": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 128,
+                  "calls": 128,
+                  "operations": 128,
+                  "operationUnits": 1,
+                  "elapsedMs": 24.059963000000003,
+                  "boundaryCostNs": 187968.46093750003,
+                  "operationsPerSecond": 5320.04143148516,
+                  "rssBeforeBytes": 41644032,
+                  "rssAfterBytes": 42692608,
+                  "rssDeltaBytes": 1048576,
+                  "heapUsedBeforeBytes": 3461120,
+                  "heapUsedAfterBytes": 4340736,
+                  "allocationEstimateBytes": 879616
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 512
+                }
+              }
+            }
+          },
+          "ffi": {
+            "status": "available",
+            "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-04-memory-gc/build/mad-dom.node",
+            "abiVersion": 1,
+            "capabilities": 31,
+            "contract": {
+              "abiVersion": 1,
+              "byteOrder": "native",
+              "capabilityBits": {
+                "querySnapshot": 1,
+                "preorderSnapshot": 2,
+                "tokenBatch": 4,
+                "serializeIntoBuffer": 8,
+                "attributeTextBatch": 16
+              },
+              "ownership": {
+                "input": "caller-owned; native reads only during the synchronous call",
+                "output": "caller-owned TypedArray first; external ArrayBuffer only with a deallocator",
+                "generation": "document-local monotonic generation and owner token"
+              },
+              "symbols": {
+                "abiVersion": "mad_dom_ffi_abi_version",
+                "capabilities": "mad_dom_ffi_capabilities",
+                "querySnapshot": "mad_dom_ffi_query_snapshot",
+                "preorderSnapshot": "mad_dom_ffi_preorder_snapshot",
+                "childSnapshot": "mad_dom_ffi_child_tokens",
+                "serialize": "mad_dom_ffi_serialize",
+                "createElements": "mad_dom_ffi_create_elements",
+                "readBatch": "mad_dom_ffi_read_batch"
+              }
+            },
+            "library": {},
+            "workloads": {
+              "boundary.single-call": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 0.5895599999999916,
+                  "boundaryCostNs": 589.5599999999916,
+                  "operationsPerSecond": 1696180.2021847041,
+                  "rssBeforeBytes": 46100480,
+                  "rssAfterBytes": 46231552,
+                  "rssDeltaBytes": 131072,
+                  "heapUsedBeforeBytes": 973199,
+                  "heapUsedAfterBytes": 973199,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 1
+                }
+              },
+              "token.batch": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 32000,
+                  "operationUnits": 32,
+                  "elapsedMs": 11.886705000000006,
+                  "boundaryCostNs": 11886.705000000005,
+                  "operationsPerSecond": 2692083.298104898,
+                  "rssBeforeBytes": 46231552,
+                  "rssAfterBytes": 58302464,
+                  "rssDeltaBytes": 12070912,
+                  "heapUsedBeforeBytes": 973199,
+                  "heapUsedAfterBytes": 973199,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 32
+                }
+              },
+              "query.snapshot": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 7.103260000000006,
+                  "boundaryCostNs": 7103.260000000006,
+                  "operationsPerSecond": 140780.4303939317,
+                  "rssBeforeBytes": 57495552,
+                  "rssAfterBytes": 57090048,
+                  "rssDeltaBytes": -405504,
+                  "heapUsedBeforeBytes": 973199,
+                  "heapUsedAfterBytes": 973199,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "words": 65
+                }
+              },
+              "serialize.string": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 5.066130999999999,
+                  "boundaryCostNs": 5066.130999999999,
+                  "operationsPerSecond": 197389.28977557042,
+                  "rssBeforeBytes": 57090048,
+                  "rssAfterBytes": 57090048,
+                  "rssDeltaBytes": 0,
+                  "heapUsedBeforeBytes": 973199,
+                  "heapUsedAfterBytes": 973199,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "bytes": 1193
+                }
+              },
+              "snapshot.bytes": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 1.6471130000000045,
+                  "boundaryCostNs": 1647.1130000000044,
+                  "operationsPerSecond": 607122.8871364607,
+                  "rssBeforeBytes": 57352192,
+                  "rssAfterBytes": 57352192,
+                  "rssDeltaBytes": 0,
+                  "heapUsedBeforeBytes": 973199,
+                  "heapUsedAfterBytes": 973199,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "words": 131
+                }
+              },
+              "large-document.snapshot": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 128,
+                  "calls": 128,
+                  "operations": 128,
+                  "operationUnits": 1,
+                  "elapsedMs": 11.47171999999999,
+                  "boundaryCostNs": 89622.81249999993,
+                  "operationsPerSecond": 11157.873448794087,
+                  "rssBeforeBytes": 57352192,
+                  "rssAfterBytes": 57352192,
+                  "rssDeltaBytes": 0,
+                  "heapUsedBeforeBytes": 973199,
+                  "heapUsedAfterBytes": 973199,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "words": 1025
+                }
+              }
+            }
+          }
+        },
+        "comparisons": {
+          "boundary.single-call": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 1.292982000000002,
+                "boundaryCostNs": 1292.982000000002,
+                "operationsPerSecond": 773405.9716221868,
+                "rssBeforeBytes": 28442624,
+                "rssAfterBytes": 33816576,
+                "rssDeltaBytes": 5373952,
+                "heapUsedBeforeBytes": 1587200,
+                "heapUsedAfterBytes": 1769472,
+                "allocationEstimateBytes": 182272
+              },
+              "validation": {
+                "passed": true,
+                "type": "number"
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 0.5895599999999916,
+                "boundaryCostNs": 589.5599999999916,
+                "operationsPerSecond": 1696180.2021847041,
+                "rssBeforeBytes": 46100480,
+                "rssAfterBytes": 46231552,
+                "rssDeltaBytes": 131072,
+                "heapUsedBeforeBytes": 973199,
+                "heapUsedAfterBytes": 973199,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "length": 1
+              }
+            },
+            "comparable": true
+          },
+          "token.batch": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 32000,
+                "operationUnits": 32,
+                "elapsedMs": 12.960417,
+                "boundaryCostNs": 12960.417,
+                "operationsPerSecond": 2469056.3582946444,
+                "rssBeforeBytes": 34041856,
+                "rssAfterBytes": 45002752,
+                "rssDeltaBytes": 10960896,
+                "heapUsedBeforeBytes": 1769472,
+                "heapUsedAfterBytes": 2293760,
+                "allocationEstimateBytes": 524288
+              },
+              "validation": {
+                "passed": true,
+                "length": 32
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 32000,
+                "operationUnits": 32,
+                "elapsedMs": 11.886705000000006,
+                "boundaryCostNs": 11886.705000000005,
+                "operationsPerSecond": 2692083.298104898,
+                "rssBeforeBytes": 46231552,
+                "rssAfterBytes": 58302464,
+                "rssDeltaBytes": 12070912,
+                "heapUsedBeforeBytes": 973199,
+                "heapUsedAfterBytes": 973199,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "length": 32
+              }
+            },
+            "comparable": true
+          },
+          "query.snapshot": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 13.238858,
+                "boundaryCostNs": 13238.858,
+                "operationsPerSecond": 75535.21610398722,
+                "rssBeforeBytes": 35745792,
+                "rssAfterBytes": 36401152,
+                "rssDeltaBytes": 655360,
+                "heapUsedBeforeBytes": 2342912,
+                "heapUsedAfterBytes": 2884608,
+                "allocationEstimateBytes": 541696
+              },
+              "validation": {
+                "passed": true,
+                "length": 32
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 7.103260000000006,
+                "boundaryCostNs": 7103.260000000006,
+                "operationsPerSecond": 140780.4303939317,
+                "rssBeforeBytes": 57495552,
+                "rssAfterBytes": 57090048,
+                "rssDeltaBytes": -405504,
+                "heapUsedBeforeBytes": 973199,
+                "heapUsedAfterBytes": 973199,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "words": 65
+              }
+            },
+            "comparable": true
+          },
+          "serialize.string": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 6.486029000000002,
+                "boundaryCostNs": 6486.029000000002,
+                "operationsPerSecond": 154177.54068012952,
+                "rssBeforeBytes": 36401152,
+                "rssAfterBytes": 39153664,
+                "rssDeltaBytes": 2752512,
+                "heapUsedBeforeBytes": 2884608,
+                "heapUsedAfterBytes": 3081216,
+                "allocationEstimateBytes": 196608
+              },
+              "validation": {
+                "passed": true,
+                "bytes": 1193
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 5.066130999999999,
+                "boundaryCostNs": 5066.130999999999,
+                "operationsPerSecond": 197389.28977557042,
+                "rssBeforeBytes": 57090048,
+                "rssAfterBytes": 57090048,
+                "rssDeltaBytes": 0,
+                "heapUsedBeforeBytes": 973199,
+                "heapUsedAfterBytes": 973199,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "bytes": 1193
+              }
+            },
+            "comparable": true
+          },
+          "snapshot.bytes": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 2.460809999999995,
+                "boundaryCostNs": 2460.809999999995,
+                "operationsPerSecond": 406370.2601988784,
+                "rssBeforeBytes": 39546880,
+                "rssAfterBytes": 40595456,
+                "rssDeltaBytes": 1048576,
+                "heapUsedBeforeBytes": 3098624,
+                "heapUsedAfterBytes": 3395584,
+                "allocationEstimateBytes": 296960
+              },
+              "validation": {
+                "passed": true,
+                "words": 67
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 1.6471130000000045,
+                "boundaryCostNs": 1647.1130000000044,
+                "operationsPerSecond": 607122.8871364607,
+                "rssBeforeBytes": 57352192,
+                "rssAfterBytes": 57352192,
+                "rssDeltaBytes": 0,
+                "heapUsedBeforeBytes": 973199,
+                "heapUsedAfterBytes": 973199,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "words": 131
+              }
+            },
+            "comparable": true
+          },
+          "large-document.snapshot": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 128,
+                "calls": 128,
+                "operations": 128,
+                "operationUnits": 1,
+                "elapsedMs": 24.059963000000003,
+                "boundaryCostNs": 187968.46093750003,
+                "operationsPerSecond": 5320.04143148516,
+                "rssBeforeBytes": 41644032,
+                "rssAfterBytes": 42692608,
+                "rssDeltaBytes": 1048576,
+                "heapUsedBeforeBytes": 3461120,
+                "heapUsedAfterBytes": 4340736,
+                "allocationEstimateBytes": 879616
+              },
+              "validation": {
+                "passed": true,
+                "length": 512
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 128,
+                "calls": 128,
+                "operations": 128,
+                "operationUnits": 1,
+                "elapsedMs": 11.47171999999999,
+                "boundaryCostNs": 89622.81249999993,
+                "operationsPerSecond": 11157.873448794087,
+                "rssBeforeBytes": 57352192,
+                "rssAfterBytes": 57352192,
+                "rssDeltaBytes": 0,
+                "heapUsedBeforeBytes": 973199,
+                "heapUsedAfterBytes": 973199,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "words": 1025
+              }
+            },
+            "comparable": true
+          }
+        },
+        "validation": {
+          "resultChecks": "each measured workload reports validation.passed; unavailable paths are explicit",
+          "noSyntheticFfiMetrics": true
+        }
+      }
+    },
+    "latest": {
+      "version": "1.4.2",
+      "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "validation": {
+        "command": "bun run validate",
+        "exitCode": 0,
+        "rustTestsPassed": 691,
+        "bunTestsPassed": 1127,
+        "bunTestsFailed": 0,
+        "types": "PASS",
+        "ledger": {
+          "entries": 449,
+          "realPairScenarios": 180,
+          "regressions": 0
+        },
+        "hdunitTriage": {
+          "registeredFiles": 298,
+          "regressions": 0
+        },
+        "wptHarnessTestsPassed": 5,
+        "finalHarnessRecheck": {
+          "command": "bun test tests/bun/ffi-memory.test.js",
+          "passed": 9,
+          "failed": 0
+        },
+        "note": "Full validate passed before the final benchmark baseline-timing refinement; the refined memory harness, both benchmarks, external spike and four stress lanes were then checked again.",
+        "finalRelatedRecheck": {
+          "command": "bun test tests/bun/ffi-memory.test.js tests/bun/gc.test.js tests/bun/safety.test.js tests/bun/native-node-contract.test.js tests/bun/ffi-loader.test.js tests/bun/ffi-fast-path.test.js tests/bun/ffi-facade-hot-path.test.js tests/bun/lazy-token-fast-path.test.js tests/bun/native.test.js",
+          "passed": 86,
+          "failed": 0,
+          "expectCalls": 1802
+        }
+      },
+      "externalSpike": {
+        "schema": "mad-dom/ffi-memory-spike/1",
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": "linux",
+        "arch": "x64",
+        "externalArrayBuffer": {
+          "status": "verified",
+          "productionEnabled": false,
+          "overloads": [
+            {
+              "overload": "context-and-callback",
+              "owner": 1,
+              "generation": 1,
+              "length": 32,
+              "capacity": 64,
+              "offset": 8,
+              "syncReleased": 1,
+              "afterMacrotask": 1,
+              "callbacks": 1,
+              "callbackOffset": 8,
+              "finalizationRegistry": true,
+              "retainedAcrossGcAndDestroy": true,
+              "staleGenerationRejected": true
+            },
+            {
+              "overload": "callback-fourth-argument",
+              "owner": 2,
+              "generation": 1,
+              "length": 32,
+              "capacity": 64,
+              "offset": 0,
+              "syncReleased": 1,
+              "afterMacrotask": 1,
+              "callbacks": 1,
+              "callbackOffset": 0,
+              "finalizationRegistry": true,
+              "retainedAcrossGcAndDestroy": true,
+              "staleGenerationRejected": true
+            }
+          ],
+          "samples": [
+            {
+              "round": 0,
+              "allocations": 34,
+              "frees": 34,
+              "callbacks": 34,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 50958336,
+              "heapTotal": 4115456,
+              "heapUsed": 3694827,
+              "external": 1227643,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 1,
+              "allocations": 66,
+              "frees": 66,
+              "callbacks": 66,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 51150848,
+              "heapTotal": 4115456,
+              "heapUsed": 3716228,
+              "external": 1245092,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 2,
+              "allocations": 98,
+              "frees": 98,
+              "callbacks": 98,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 51130368,
+              "heapTotal": 4115456,
+              "heapUsed": 3716733,
+              "external": 1245101,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 3,
+              "allocations": 130,
+              "frees": 130,
+              "callbacks": 130,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 51138560,
+              "heapTotal": 4131840,
+              "heapUsed": 3717117,
+              "external": 1245101,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 4,
+              "allocations": 162,
+              "frees": 162,
+              "callbacks": 162,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 51175424,
+              "heapTotal": 4131840,
+              "heapUsed": 3717345,
+              "external": 1245137,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 5,
+              "allocations": 194,
+              "frees": 194,
+              "callbacks": 194,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 52092928,
+              "heapTotal": 4131840,
+              "heapUsed": 3721394,
+              "external": 1248546,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 6,
+              "allocations": 226,
+              "frees": 226,
+              "callbacks": 226,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 52355072,
+              "heapTotal": 4148224,
+              "heapUsed": 3733096,
+              "external": 1259512,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 7,
+              "allocations": 258,
+              "frees": 258,
+              "callbacks": 258,
+              "duplicateReleasesSuppressed": 2,
+              "invalidCallbacks": 0,
+              "liveBytes": 0,
+              "foreignThreadCallbacks": 0,
+              "rss": 51531776,
+              "heapTotal": 4131840,
+              "heapUsed": 3738978,
+              "external": 1265154,
+              "arrayBuffers": 0
+            }
+          ],
+          "final": {
+            "allocations": 258,
+            "frees": 258,
+            "callbacks": 258,
+            "duplicateReleasesSuppressed": 2,
+            "invalidCallbacks": 0,
+            "liveBytes": 0,
+            "foreignThreadCallbacks": 0
+          }
+        },
+        "jscPrivateApi": {
+          "status": "discovery-only",
+          "defaultPath": false,
+          "exportedSymbols": {
+            "JSObjectMakeArrayBufferWithBytesNoCopy": false,
+            "JSObjectMake": false,
+            "JSGlobalContextCreate": false
+          },
+          "publicModuleExports": [
+            "callerSourceOrigin",
+            "codeCoverageForFile",
+            "default",
+            "describe",
+            "describeArray",
+            "deserialize",
+            "drainMicrotasks",
+            "edenGC",
+            "estimateShallowMemoryUsageOf",
+            "fullGC",
+            "gcAndSweep",
+            "generateHeapSnapshotForDebugging",
+            "getProtectedObjects",
+            "getRandomSeed",
+            "heapSize",
+            "heapStats",
+            "isRope",
+            "jscDescribe",
+            "jscDescribeArray",
+            "memoryUsage",
+            "noFTL",
+            "noInline",
+            "noOSRExitFuzzing",
+            "numberOfDFGCompiles",
+            "optimizeNextInvocation",
+            "percentAvailableMemoryInUse",
+            "profile",
+            "releaseWeakRefs",
+            "reoptimizationRetryCount",
+            "samplingProfilerStackTraces",
+            "serialize",
+            "setRandomSeed",
+            "setTimeZone",
+            "setTimezone",
+            "startRemoteDebugger",
+            "startSamplingProfiler",
+            "totalCompileTime"
+          ],
+          "reason": "No public Bun API supplies its live JSContextRef for custom DOM wrappers; symbol visibility alone cannot establish VM, rooting, affinity, or finalizer ownership."
+        }
+      },
+      "stress": {
+        "enabled": {
+          "status": "ok",
+          "bunVersion": "1.4.2",
+          "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "platform": "linux",
+          "arch": "x64",
+          "ffiMethods": [
+            "querySnapshot",
+            "preorderSnapshot",
+            "childSnapshot",
+            "serialize",
+            "createElements",
+            "readBatch"
+          ],
+          "ffiCalls": {
+            "querySnapshot": 4020,
+            "preorderSnapshot": 4020,
+            "childSnapshot": 6030,
+            "serialize": 6030,
+            "createElements": 10050,
+            "readBatch": 2010
+          },
+          "rounds": 20,
+          "windowsPerRound": 100,
+          "counterScopes": {
+            "docs": "process",
+            "ffiRegistrations": "calling-thread",
+            "wrapperCacheEntries": "process"
+          },
+          "counters": {
+            "baseline": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "after": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "deltas": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            }
+          },
+          "samples": [
+            {
+              "round": 0,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 71401472,
+              "heapTotal": 4313088,
+              "heapUsed": 4659447,
+              "external": 2095783,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 1,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 81092608,
+              "heapTotal": 4345856,
+              "heapUsed": 4816910,
+              "external": 2245614,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 2,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 82399232,
+              "heapTotal": 4329472,
+              "heapUsed": 4842481,
+              "external": 2270065,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 3,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 85159936,
+              "heapTotal": 4329472,
+              "heapUsed": 4865471,
+              "external": 2292703,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 4,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 85540864,
+              "heapTotal": 4329472,
+              "heapUsed": 4884372,
+              "external": 2310132,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 5,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 85536768,
+              "heapTotal": 4329472,
+              "heapUsed": 4898780,
+              "external": 2323964,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 6,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 85663744,
+              "heapTotal": 4329472,
+              "heapUsed": 4902709,
+              "external": 2327509,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 7,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 85786624,
+              "heapTotal": 4395008,
+              "heapUsed": 4926964,
+              "external": 2349604,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 8,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 85782528,
+              "heapTotal": 4329472,
+              "heapUsed": 4966577,
+              "external": 2388177,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 9,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 85913600,
+              "heapTotal": 4329472,
+              "heapUsed": 4973722,
+              "external": 2394906,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 10,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 86040576,
+              "heapTotal": 4329472,
+              "heapUsed": 4976293,
+              "external": 2397045,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 11,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 86032384,
+              "heapTotal": 4329472,
+              "heapUsed": 4990122,
+              "external": 2410746,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 12,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 86286336,
+              "heapTotal": 4329472,
+              "heapUsed": 5003370,
+              "external": 2423642,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 13,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 86151168,
+              "heapTotal": 4329472,
+              "heapUsed": 5003498,
+              "external": 2423642,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 14,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 87195648,
+              "heapTotal": 4329472,
+              "heapUsed": 5046250,
+              "external": 2466266,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 15,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 87191552,
+              "heapTotal": 4329472,
+              "heapUsed": 5047850,
+              "external": 2467514,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 16,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 87175168,
+              "heapTotal": 4329472,
+              "heapUsed": 5046122,
+              "external": 2465882,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 17,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 87699456,
+              "heapTotal": 4329472,
+              "heapUsed": 5047153,
+              "external": 2466785,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 18,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 87691264,
+              "heapTotal": 4329472,
+              "heapUsed": 5049328,
+              "external": 2468832,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 19,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 87822336,
+              "heapTotal": 4329472,
+              "heapUsed": 5049456,
+              "external": 2468832,
+              "arrayBuffers": 0
+            }
+          ],
+          "heapGrowthMb": 0.8264484405517578,
+          "rssGrowthMb": 21.89453125,
+          "finalizerTiming": {
+            "timing": "deferred",
+            "baseline": 0,
+            "afterCreate": 1,
+            "afterSyncGc": 1,
+            "afterDrain": 0
+          }
+        },
+        "disabled": {
+          "status": "ok",
+          "bunVersion": "1.4.2",
+          "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "platform": "linux",
+          "arch": "x64",
+          "ffiMethods": [],
+          "ffiCalls": {},
+          "rounds": 20,
+          "windowsPerRound": 100,
+          "counterScopes": {
+            "docs": "process",
+            "ffiRegistrations": "calling-thread",
+            "wrapperCacheEntries": "process"
+          },
+          "counters": {
+            "baseline": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "after": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "deltas": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            }
+          },
+          "samples": [
+            {
+              "round": 0,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 70254592,
+              "heapTotal": 4243456,
+              "heapUsed": 4407958,
+              "external": 1895862,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 1,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76632064,
+              "heapTotal": 4515840,
+              "heapUsed": 4509321,
+              "external": 1985705,
+              "arrayBuffers": 200
+            },
+            {
+              "round": 2,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 75497472,
+              "heapTotal": 4259840,
+              "heapUsed": 4580838,
+              "external": 2061110,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 3,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 79241216,
+              "heapTotal": 4259840,
+              "heapUsed": 4599086,
+              "external": 2079006,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 4,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 80076800,
+              "heapTotal": 4259840,
+              "heapUsed": 4610492,
+              "external": 2089164,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 5,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76152832,
+              "heapTotal": 4259840,
+              "heapUsed": 4617300,
+              "external": 2095620,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 6,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76177408,
+              "heapTotal": 4276224,
+              "heapUsed": 4619773,
+              "external": 2099165,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 7,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76693504,
+              "heapTotal": 4276224,
+              "heapUsed": 4657284,
+              "external": 2134084,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 8,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 75399168,
+              "heapTotal": 4276224,
+              "heapUsed": 4685459,
+              "external": 2161235,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 9,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76435456,
+              "heapTotal": 4276224,
+              "heapUsed": 4690684,
+              "external": 2166012,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 10,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 75563008,
+              "heapTotal": 4259840,
+              "heapUsed": 4690892,
+              "external": 2166012,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 11,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 75956224,
+              "heapTotal": 4259840,
+              "heapUsed": 4705548,
+              "external": 2180988,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 12,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76668928,
+              "heapTotal": 4276224,
+              "heapUsed": 4718316,
+              "external": 2193404,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 13,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76238848,
+              "heapTotal": 4276224,
+              "heapUsed": 4718444,
+              "external": 2193404,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 14,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76484608,
+              "heapTotal": 4276224,
+              "heapUsed": 4718444,
+              "external": 2193276,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 15,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76136448,
+              "heapTotal": 4276224,
+              "heapUsed": 4761972,
+              "external": 2236452,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 16,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76341248,
+              "heapTotal": 4276224,
+              "heapUsed": 4761452,
+              "external": 2236028,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 17,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76341248,
+              "heapTotal": 4276224,
+              "heapUsed": 4760147,
+              "external": 2234595,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 18,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76345344,
+              "heapTotal": 4276224,
+              "heapUsed": 4760275,
+              "external": 2234595,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 19,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 76378112,
+              "heapTotal": 4276224,
+              "heapUsed": 4760403,
+              "external": 2234595,
+              "arrayBuffers": 0
+            }
+          ],
+          "heapGrowthMb": 0.7064037322998047,
+          "rssGrowthMb": 14.48828125,
+          "finalizerTiming": {
+            "timing": "deferred",
+            "baseline": 0,
+            "afterCreate": 1,
+            "afterSyncGc": 1,
+            "afterDrain": 0
+          }
+        }
+      },
+      "ffiGcBenchmark": {
+        "schema": "mad-dom-ffi-gc-bench/1",
+        "runtime": {
+          "bunVersion": "1.4.2",
+          "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "platform": "linux",
+          "arch": "x64"
+        },
+        "memoryEvidence": {
+          "status": "ok",
+          "bunVersion": "1.4.2",
+          "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "platform": "linux",
+          "arch": "x64",
+          "ffiMethods": [
+            "querySnapshot",
+            "preorderSnapshot",
+            "childSnapshot",
+            "serialize",
+            "createElements",
+            "readBatch"
+          ],
+          "ffiCalls": {
+            "querySnapshot": 500,
+            "preorderSnapshot": 500,
+            "childSnapshot": 750,
+            "serialize": 750,
+            "createElements": 1250,
+            "readBatch": 250
+          },
+          "rounds": 8,
+          "windowsPerRound": 30,
+          "counterScopes": {
+            "docs": "process",
+            "ffiRegistrations": "calling-thread",
+            "wrapperCacheEntries": "process"
+          },
+          "counters": {
+            "baseline": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "after": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            },
+            "deltas": {
+              "docs": 0,
+              "ffiRegistrations": 0,
+              "wrapperCacheEntries": 0
+            }
+          },
+          "samples": [
+            {
+              "round": 0,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 114626560,
+              "heapTotal": 10118144,
+              "heapUsed": 4597790,
+              "external": 2030174,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 1,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 118423552,
+              "heapTotal": 10101760,
+              "heapUsed": 4656612,
+              "external": 2085332,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 2,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 117649408,
+              "heapTotal": 10135552,
+              "heapUsed": 4703872,
+              "external": 2123712,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 3,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 118030336,
+              "heapTotal": 10134528,
+              "heapUsed": 4715022,
+              "external": 2133166,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 4,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 119558144,
+              "heapTotal": 10134528,
+              "heapUsed": 4779283,
+              "external": 2192355,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 5,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 117714944,
+              "heapTotal": 10134528,
+              "heapUsed": 4809598,
+              "external": 2223310,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 6,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 123080704,
+              "heapTotal": 10134528,
+              "heapUsed": 4879058,
+              "external": 2291938,
+              "arrayBuffers": 0
+            },
+            {
+              "round": 7,
+              "extraGcRounds": 0,
+              "counters": {
+                "docs": 0,
+                "ffiRegistrations": 0,
+                "wrapperCacheEntries": 0
+              },
+              "rss": 119156736,
+              "heapTotal": 10134528,
+              "heapUsed": 4884858,
+              "external": 2297386,
+              "arrayBuffers": 0
+            }
+          ],
+          "heapGrowthMb": 0.6166925430297852,
+          "rssGrowthMb": 8.0625,
+          "finalizerTiming": {
+            "timing": "deferred",
+            "baseline": 0,
+            "afterCreate": 1,
+            "afterSyncGc": 1,
+            "afterDrain": 0
+          }
+        },
+        "metrics": {
+          "ffi_create_element_ops_s": 269163.83160215995,
+          "ffi_batch_append_ops_s": 428.7867622206531,
+          "wrapper_identity_hit_rate": 1,
+          "gc_release_hit_rate": 1,
+          "gc_memory_growth_mb": -15.125,
+          "memory_counter_docs_delta": 0,
+          "memory_counter_ffi_registrations_delta": 0,
+          "memory_counter_wrapper_cache_delta": 0,
+          "ffi_churn_rss_growth_mb": 8.0625
+        }
+      },
+      "boundaryBenchmark": {
+        "schema": "mad-dom/bun-native-boundary-bench/1",
+        "status": "measured-comparable",
+        "runtime": {
+          "name": "bun",
+          "version": "1.4.2"
+        },
+        "input": {
+          "iterations": 1000,
+          "batchSize": 32,
+          "largeDocumentSize": 512,
+          "fixture": "same fixture and iteration counts are supplied to both paths"
+        },
+        "paths": {
+          "nodeApi": {
+            "status": "measured",
+            "workloads": {
+              "boundary.single-call": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 1.1165960000000013,
+                  "boundaryCostNs": 1116.5960000000011,
+                  "operationsPerSecond": 895579.0635108838,
+                  "rssBeforeBytes": 26869760,
+                  "rssAfterBytes": 32505856,
+                  "rssDeltaBytes": 5636096,
+                  "heapUsedBeforeBytes": 1350656,
+                  "heapUsedAfterBytes": 1531904,
+                  "allocationEstimateBytes": 181248
+                },
+                "validation": {
+                  "passed": true,
+                  "type": "number"
+                }
+              },
+              "token.batch": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 32000,
+                  "operationUnits": 32,
+                  "elapsedMs": 12.284602999999999,
+                  "boundaryCostNs": 12284.602999999997,
+                  "operationsPerSecond": 2604886.783887115,
+                  "rssBeforeBytes": 32727040,
+                  "rssAfterBytes": 44019712,
+                  "rssDeltaBytes": 11292672,
+                  "heapUsedBeforeBytes": 1531904,
+                  "heapUsedAfterBytes": 2056192,
+                  "allocationEstimateBytes": 524288
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 32
+                }
+              },
+              "query.snapshot": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 12.508037999999999,
+                  "boundaryCostNs": 12508.038,
+                  "operationsPerSecond": 79948.58985877722,
+                  "rssBeforeBytes": 34709504,
+                  "rssAfterBytes": 35758080,
+                  "rssDeltaBytes": 1048576,
+                  "heapUsedBeforeBytes": 2088960,
+                  "heapUsedAfterBytes": 2614272,
+                  "allocationEstimateBytes": 525312
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 32
+                }
+              },
+              "serialize.string": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 6.130308999999997,
+                  "boundaryCostNs": 6130.3089999999975,
+                  "operationsPerSecond": 163123.9143083979,
+                  "rssBeforeBytes": 35758080,
+                  "rssAfterBytes": 37986304,
+                  "rssDeltaBytes": 2228224,
+                  "heapUsedBeforeBytes": 2614272,
+                  "heapUsedAfterBytes": 2810880,
+                  "allocationEstimateBytes": 196608
+                },
+                "validation": {
+                  "passed": true,
+                  "bytes": 1193
+                }
+              },
+              "snapshot.bytes": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 2.395183000000003,
+                  "boundaryCostNs": 2395.1830000000027,
+                  "operationsPerSecond": 417504.63325766707,
+                  "rssBeforeBytes": 37986304,
+                  "rssAfterBytes": 39428096,
+                  "rssDeltaBytes": 1441792,
+                  "heapUsedBeforeBytes": 2811904,
+                  "heapUsedAfterBytes": 3141632,
+                  "allocationEstimateBytes": 329728
+                },
+                "validation": {
+                  "passed": true,
+                  "words": 67
+                }
+              },
+              "large-document.snapshot": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 128,
+                  "calls": 128,
+                  "operations": 128,
+                  "operationUnits": 1,
+                  "elapsedMs": 23.160725999999997,
+                  "boundaryCostNs": 180943.17187499997,
+                  "operationsPerSecond": 5526.597050541508,
+                  "rssBeforeBytes": 40476672,
+                  "rssAfterBytes": 41394176,
+                  "rssDeltaBytes": 917504,
+                  "heapUsedBeforeBytes": 3190784,
+                  "heapUsedAfterBytes": 4070400,
+                  "allocationEstimateBytes": 879616
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 512
+                }
+              }
+            }
+          },
+          "ffi": {
+            "status": "available",
+            "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-04-memory-gc/build/mad-dom.node",
+            "abiVersion": 1,
+            "capabilities": 31,
+            "contract": {
+              "abiVersion": 1,
+              "byteOrder": "native",
+              "capabilityBits": {
+                "querySnapshot": 1,
+                "preorderSnapshot": 2,
+                "tokenBatch": 4,
+                "serializeIntoBuffer": 8,
+                "attributeTextBatch": 16
+              },
+              "ownership": {
+                "input": "caller-owned; native reads only during the synchronous call",
+                "output": "caller-owned TypedArray first; external ArrayBuffer only with a deallocator",
+                "generation": "document-local monotonic generation and owner token"
+              },
+              "symbols": {
+                "abiVersion": "mad_dom_ffi_abi_version",
+                "capabilities": "mad_dom_ffi_capabilities",
+                "querySnapshot": "mad_dom_ffi_query_snapshot",
+                "preorderSnapshot": "mad_dom_ffi_preorder_snapshot",
+                "childSnapshot": "mad_dom_ffi_child_tokens",
+                "serialize": "mad_dom_ffi_serialize",
+                "createElements": "mad_dom_ffi_create_elements",
+                "readBatch": "mad_dom_ffi_read_batch"
+              }
+            },
+            "library": {},
+            "workloads": {
+              "boundary.single-call": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 0.5331510000000037,
+                  "boundaryCostNs": 533.1510000000037,
+                  "operationsPerSecond": 1875641.2348471503,
+                  "rssBeforeBytes": 44146688,
+                  "rssAfterBytes": 44277760,
+                  "rssDeltaBytes": 131072,
+                  "heapUsedBeforeBytes": 716165,
+                  "heapUsedAfterBytes": 716165,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 1
+                }
+              },
+              "token.batch": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 32000,
+                  "operationUnits": 32,
+                  "elapsedMs": 10.413291999999998,
+                  "boundaryCostNs": 10413.291999999998,
+                  "operationsPerSecond": 3072995.552223063,
+                  "rssBeforeBytes": 44277760,
+                  "rssAfterBytes": 57122816,
+                  "rssDeltaBytes": 12845056,
+                  "heapUsedBeforeBytes": 716165,
+                  "heapUsedAfterBytes": 716165,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "length": 32
+                }
+              },
+              "query.snapshot": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 6.830320999999998,
+                  "boundaryCostNs": 6830.320999999998,
+                  "operationsPerSecond": 146406.00346601577,
+                  "rssBeforeBytes": 57122816,
+                  "rssAfterBytes": 57122816,
+                  "rssDeltaBytes": 0,
+                  "heapUsedBeforeBytes": 716165,
+                  "heapUsedAfterBytes": 716165,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "words": 65
+                }
+              },
+              "serialize.string": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 5.122694999999993,
+                  "boundaryCostNs": 5122.694999999993,
+                  "operationsPerSecond": 195209.74799397608,
+                  "rssBeforeBytes": 57122816,
+                  "rssAfterBytes": 55685120,
+                  "rssDeltaBytes": -1437696,
+                  "heapUsedBeforeBytes": 716165,
+                  "heapUsedAfterBytes": 716165,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "bytes": 1193
+                }
+              },
+              "snapshot.bytes": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 1000,
+                  "calls": 1000,
+                  "operations": 1000,
+                  "operationUnits": 1,
+                  "elapsedMs": 1.5914590000000004,
+                  "boundaryCostNs": 1591.4590000000005,
+                  "operationsPerSecond": 628354.2334423945,
+                  "rssBeforeBytes": 55816192,
+                  "rssAfterBytes": 55816192,
+                  "rssDeltaBytes": 0,
+                  "heapUsedBeforeBytes": 716165,
+                  "heapUsedAfterBytes": 716165,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "words": 131
+                }
+              },
+              "large-document.snapshot": {
+                "status": "measured",
+                "metrics": {
+                  "iterations": 128,
+                  "calls": 128,
+                  "operations": 128,
+                  "operationUnits": 1,
+                  "elapsedMs": 11.34825099999999,
+                  "boundaryCostNs": 88658.21093749993,
+                  "operationsPerSecond": 11279.271140548452,
+                  "rssBeforeBytes": 54431744,
+                  "rssAfterBytes": 54165504,
+                  "rssDeltaBytes": -266240,
+                  "heapUsedBeforeBytes": 716165,
+                  "heapUsedAfterBytes": 716165,
+                  "allocationEstimateBytes": 0
+                },
+                "validation": {
+                  "passed": true,
+                  "words": 1025
+                }
+              }
+            }
+          }
+        },
+        "comparisons": {
+          "boundary.single-call": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 1.1165960000000013,
+                "boundaryCostNs": 1116.5960000000011,
+                "operationsPerSecond": 895579.0635108838,
+                "rssBeforeBytes": 26869760,
+                "rssAfterBytes": 32505856,
+                "rssDeltaBytes": 5636096,
+                "heapUsedBeforeBytes": 1350656,
+                "heapUsedAfterBytes": 1531904,
+                "allocationEstimateBytes": 181248
+              },
+              "validation": {
+                "passed": true,
+                "type": "number"
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 0.5331510000000037,
+                "boundaryCostNs": 533.1510000000037,
+                "operationsPerSecond": 1875641.2348471503,
+                "rssBeforeBytes": 44146688,
+                "rssAfterBytes": 44277760,
+                "rssDeltaBytes": 131072,
+                "heapUsedBeforeBytes": 716165,
+                "heapUsedAfterBytes": 716165,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "length": 1
+              }
+            },
+            "comparable": true
+          },
+          "token.batch": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 32000,
+                "operationUnits": 32,
+                "elapsedMs": 12.284602999999999,
+                "boundaryCostNs": 12284.602999999997,
+                "operationsPerSecond": 2604886.783887115,
+                "rssBeforeBytes": 32727040,
+                "rssAfterBytes": 44019712,
+                "rssDeltaBytes": 11292672,
+                "heapUsedBeforeBytes": 1531904,
+                "heapUsedAfterBytes": 2056192,
+                "allocationEstimateBytes": 524288
+              },
+              "validation": {
+                "passed": true,
+                "length": 32
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 32000,
+                "operationUnits": 32,
+                "elapsedMs": 10.413291999999998,
+                "boundaryCostNs": 10413.291999999998,
+                "operationsPerSecond": 3072995.552223063,
+                "rssBeforeBytes": 44277760,
+                "rssAfterBytes": 57122816,
+                "rssDeltaBytes": 12845056,
+                "heapUsedBeforeBytes": 716165,
+                "heapUsedAfterBytes": 716165,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "length": 32
+              }
+            },
+            "comparable": true
+          },
+          "query.snapshot": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 12.508037999999999,
+                "boundaryCostNs": 12508.038,
+                "operationsPerSecond": 79948.58985877722,
+                "rssBeforeBytes": 34709504,
+                "rssAfterBytes": 35758080,
+                "rssDeltaBytes": 1048576,
+                "heapUsedBeforeBytes": 2088960,
+                "heapUsedAfterBytes": 2614272,
+                "allocationEstimateBytes": 525312
+              },
+              "validation": {
+                "passed": true,
+                "length": 32
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 6.830320999999998,
+                "boundaryCostNs": 6830.320999999998,
+                "operationsPerSecond": 146406.00346601577,
+                "rssBeforeBytes": 57122816,
+                "rssAfterBytes": 57122816,
+                "rssDeltaBytes": 0,
+                "heapUsedBeforeBytes": 716165,
+                "heapUsedAfterBytes": 716165,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "words": 65
+              }
+            },
+            "comparable": true
+          },
+          "serialize.string": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 6.130308999999997,
+                "boundaryCostNs": 6130.3089999999975,
+                "operationsPerSecond": 163123.9143083979,
+                "rssBeforeBytes": 35758080,
+                "rssAfterBytes": 37986304,
+                "rssDeltaBytes": 2228224,
+                "heapUsedBeforeBytes": 2614272,
+                "heapUsedAfterBytes": 2810880,
+                "allocationEstimateBytes": 196608
+              },
+              "validation": {
+                "passed": true,
+                "bytes": 1193
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 5.122694999999993,
+                "boundaryCostNs": 5122.694999999993,
+                "operationsPerSecond": 195209.74799397608,
+                "rssBeforeBytes": 57122816,
+                "rssAfterBytes": 55685120,
+                "rssDeltaBytes": -1437696,
+                "heapUsedBeforeBytes": 716165,
+                "heapUsedAfterBytes": 716165,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "bytes": 1193
+              }
+            },
+            "comparable": true
+          },
+          "snapshot.bytes": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 2.395183000000003,
+                "boundaryCostNs": 2395.1830000000027,
+                "operationsPerSecond": 417504.63325766707,
+                "rssBeforeBytes": 37986304,
+                "rssAfterBytes": 39428096,
+                "rssDeltaBytes": 1441792,
+                "heapUsedBeforeBytes": 2811904,
+                "heapUsedAfterBytes": 3141632,
+                "allocationEstimateBytes": 329728
+              },
+              "validation": {
+                "passed": true,
+                "words": 67
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 1000,
+                "calls": 1000,
+                "operations": 1000,
+                "operationUnits": 1,
+                "elapsedMs": 1.5914590000000004,
+                "boundaryCostNs": 1591.4590000000005,
+                "operationsPerSecond": 628354.2334423945,
+                "rssBeforeBytes": 55816192,
+                "rssAfterBytes": 55816192,
+                "rssDeltaBytes": 0,
+                "heapUsedBeforeBytes": 716165,
+                "heapUsedAfterBytes": 716165,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "words": 131
+              }
+            },
+            "comparable": true
+          },
+          "large-document.snapshot": {
+            "sameInput": true,
+            "nodeApi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 128,
+                "calls": 128,
+                "operations": 128,
+                "operationUnits": 1,
+                "elapsedMs": 23.160725999999997,
+                "boundaryCostNs": 180943.17187499997,
+                "operationsPerSecond": 5526.597050541508,
+                "rssBeforeBytes": 40476672,
+                "rssAfterBytes": 41394176,
+                "rssDeltaBytes": 917504,
+                "heapUsedBeforeBytes": 3190784,
+                "heapUsedAfterBytes": 4070400,
+                "allocationEstimateBytes": 879616
+              },
+              "validation": {
+                "passed": true,
+                "length": 512
+              }
+            },
+            "ffi": {
+              "status": "measured",
+              "metrics": {
+                "iterations": 128,
+                "calls": 128,
+                "operations": 128,
+                "operationUnits": 1,
+                "elapsedMs": 11.34825099999999,
+                "boundaryCostNs": 88658.21093749993,
+                "operationsPerSecond": 11279.271140548452,
+                "rssBeforeBytes": 54431744,
+                "rssAfterBytes": 54165504,
+                "rssDeltaBytes": -266240,
+                "heapUsedBeforeBytes": 716165,
+                "heapUsedAfterBytes": 716165,
+                "allocationEstimateBytes": 0
+              },
+              "validation": {
+                "passed": true,
+                "words": 1025
+              }
+            },
+            "comparable": true
+          }
+        },
+        "validation": {
+          "resultChecks": "each measured workload reports validation.passed; unavailable paths are explicit",
+          "noSyntheticFfiMetrics": true
+        }
+      }
+    }
+  },
+  "documentationBuild": {
+    "command": "bun run docs:build",
+    "bunVersion": "1.4.2",
+    "exitCode": 0,
+    "deadLinkCheck": "enabled (default)",
+    "generatedSourceLinksVerified": {
+      "adr": "https://github.com/zhy0216/mad-dom/blob/main/adr/0009-bun-ffi-memory-and-gc-protocol.md",
+      "abi": "https://github.com/zhy0216/mad-dom/blob/main/crates/mad-dom-bun/src/ffi/ABI.md",
+      "evidence": "https://github.com/zhy0216/mad-dom/blob/main/docs/ffi-memory-evidence.json"
+    },
+    "evidenceCopiedToDist": false,
+    "note": "VitePress does not copy the source JSON into dist; the rendered page links to the GitHub source, as for the ADR and ABI. Full validate was not repeated for this final documentation-only change."
+  }
+}

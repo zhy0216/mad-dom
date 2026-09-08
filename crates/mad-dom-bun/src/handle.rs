@@ -118,6 +118,19 @@ use crate::extensions::mutation_observer_api::{
 /// Number of documents currently alive (created minus destroyed / collected).
 static LIVE_DOCUMENT_COUNT: AtomicU64 = AtomicU64::new(0);
 
+/// Process-wide entries across every per-document weak wrapper cache. Diagnostic
+/// only (memory-protocol task 04): it lets the GC/finalizer tests and the
+/// FFI memory benchmark prove that a bounded create/read/destroy churn never
+/// grows the wrapper cache — entries return to their baseline once wrappers are
+/// collected (or destroyed documents clear their map), independently of RSS
+/// noise. The count mirrors the sum of each [`SharedDocument::wrappers`] map
+/// size: it is incremented only when a fresh entry is inserted (an overwrite
+/// re-mint keeps the map size), decremented when [`Drop for NodeHandle`] evicts
+/// its own entry, and decremented by the cleared length in
+/// [`DocumentHandle::destroy_inner`]. Entries may await a deferred finalizer;
+/// this is a map-entry count, not a count of reachable JavaScript wrappers.
+static LIVE_WRAPPER_CACHE_ENTRIES: AtomicU64 = AtomicU64::new(0);
+
 /// Process-wide source for primitive node tokens. Tokens are resolved only by
 /// their owning document, while unique values ensure that accidentally using
 /// one with another document cannot alias an unrelated local node.
@@ -138,6 +151,12 @@ fn reserve_node_tokens(count: usize) -> u32 {
 /// tests.
 pub(crate) fn live_document_count() -> u64 {
     LIVE_DOCUMENT_COUNT.load(Ordering::SeqCst)
+}
+
+/// Returns [`LIVE_WRAPPER_CACHE_ENTRIES`]. Diagnostic for the FFI memory /
+/// GC churn tests (see the counter's own documentation).
+pub(crate) fn live_wrapper_cache_entries() -> u64 {
+    LIVE_WRAPPER_CACHE_ENTRIES.load(Ordering::SeqCst)
 }
 
 /// Wraps the Core [`Document`] so its drop is observable through
@@ -574,14 +593,11 @@ impl SharedDocument {
         self.epoch_has_raw_views.store(false, Ordering::Relaxed);
         self.attribute_epoch_has_raw_views
             .store(false, Ordering::Relaxed);
-        self.epoch_views
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clear();
-        self.attribute_epoch_views
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clear();
+        for views in [&self.epoch_views, &self.attribute_epoch_views] {
+            *views
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = Vec::new();
+        }
     }
 
     pub(crate) fn epoch_value(&self) -> i32 {
@@ -904,10 +920,17 @@ impl SharedDocument {
             .load(Ordering::Relaxed)
             .then(|| self.token_for(id));
         stamp_wrapper_kind(env, value, kind, name, namespace, token)?;
-        self.wrappers
+        let previous = self
+            .wrappers
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .insert(id, (weak, stamp));
+        // A fresh entry grows the cache; a re-mint overwrite (the stale
+        // "collected but not yet finalized" window) keeps the map size, so only
+        // a fresh insert moves the diagnostic counter.
+        if previous.is_none() {
+            LIVE_WRAPPER_CACHE_ENTRIES.fetch_add(1, Ordering::Relaxed);
+        }
         Ok(value)
     }
 
@@ -1418,18 +1441,30 @@ impl DocumentHandle {
         self.shared.destroyed.store(true, Ordering::Relaxed);
         self.shared.ffi.invalidate();
         drop(guard);
-        self.shared
-            .wrappers
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clear();
+        {
+            let mut wrappers = self
+                .shared
+                .wrappers
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let cleared = wrappers.len();
+            // Release capacity as well as entries even when a JS wrapper keeps
+            // this destroyed SharedDocument alive for an arbitrarily long time.
+            *wrappers = HashMap::new();
+            // Every cleared entry is gone for good: this document can never
+            // mint again (all operations fail destroyed), so its diagnostic
+            // counter contribution is released eagerly — destroy is the
+            // deterministic, GC-independent free path.
+            if cleared != 0 {
+                LIVE_WRAPPER_CACHE_ENTRIES.fetch_sub(cleared as u64, Ordering::Relaxed);
+            }
+        }
         let mut tokens = self
             .shared
             .tokens
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        tokens.ids.clear();
-        tokens.by_id.clear();
+        *tokens = NodeTokens::default();
         drop(tokens);
         // Structural epoch: destroy is the one state change that never runs
         // through `with_document` (the document is already gone), so mark the
@@ -1954,13 +1989,21 @@ impl Drop for NodeHandle {
     /// identity never bleeds across reused arena slots once Core enables slot
     /// recycling.
     fn drop(&mut self) {
-        let mut guard = self
-            .shared
-            .wrappers
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if matches!(guard.get(&self.id), Some((_, stamp)) if *stamp == self.stamp) {
-            guard.remove(&self.id);
+        let removed = {
+            let mut guard = self
+                .shared
+                .wrappers
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if matches!(guard.get(&self.id), Some((_, stamp)) if *stamp == self.stamp) {
+                guard.remove(&self.id);
+                true
+            } else {
+                false
+            }
+        };
+        if removed {
+            LIVE_WRAPPER_CACHE_ENTRIES.fetch_sub(1, Ordering::Relaxed);
         }
     }
 }
@@ -2607,6 +2650,40 @@ mod tests {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .is_empty());
+    }
+
+    #[test]
+    fn destroy_releases_buffer_capacities_with_a_retained_handle() {
+        let _guard = lock();
+        let doc = DocumentHandle::new();
+        let retained = wrap(&doc, doc.create_element_inner("div").unwrap());
+        for _ in 0..4096 {
+            let id = doc.create_element_inner("span").unwrap();
+            doc.shared.token_for(id);
+        }
+        doc.shared.wrappers.lock().unwrap().reserve(4096);
+        doc.shared.epoch_views.lock().unwrap().reserve(4096);
+        doc.shared
+            .attribute_epoch_views
+            .lock()
+            .unwrap()
+            .reserve(4096);
+        assert!(doc.shared.tokens.lock().unwrap().ids.capacity() >= 4096);
+        doc.destroy_inner();
+        doc.destroy_inner();
+        assert!(matches!(
+            retained.node_name_inner(),
+            Err(BindingError::Destroyed)
+        ));
+        let tokens = doc.shared.tokens.lock().unwrap();
+        assert_eq!(tokens.ids.capacity(), 0);
+        assert_eq!(tokens.by_id.capacity(), 0);
+        assert_eq!(doc.shared.wrappers.lock().unwrap().capacity(), 0);
+        assert_eq!(doc.shared.epoch_views.lock().unwrap().capacity(), 0);
+        assert_eq!(
+            doc.shared.attribute_epoch_views.lock().unwrap().capacity(),
+            0
+        );
     }
 
     #[test]

@@ -6,6 +6,12 @@
 //! registry holds only thread-local Weak references. Node-API owns lifecycle,
 //! wrappers and callbacks; FFI never retains caller pointers or calls JS.
 //!
+//! All outputs are copies into caller-owned buffers. No native-owned (external)
+//! ArrayBuffer crosses this ABI in v1. Bun exposes a native deallocator hook,
+//! but copies avoid tying DOM storage or library lifetime to a GC callback. The full
+//! memory protocol (ownership classes, capacity/length rules, exactly-once
+//! deallocator rule and lifecycle diagnostics) is in `ffi/ABI.md`.
+//!
 //! See `ABI.md` for signatures, errors, packed layouts and pointer preconditions.
 
 mod buffer;
@@ -82,6 +88,19 @@ thread_local! {
 }
 static NEXT_OWNER: AtomicU64 = AtomicU64::new(1);
 
+/// Number of documents currently registered in the *calling thread's* FFI
+/// owner registry. Diagnostic only (memory-protocol task 04): a document is
+/// registered lazily on its first `ffiContext()` call and unregistered when
+/// its last ownership `Arc` drops (never on `destroy()` alone — destroyed
+/// documents stay registered while a handle keeps them alive, so their FFI
+/// entries are still owned). The registry is thread-local, so this count is a
+/// deterministic, calling-thread lifecycle signal for the GC churn tests and the
+/// memory benchmark: after a bounded create→context→destroy→collect churn it
+/// must return to its baseline without relying on RSS measurements.
+pub(crate) fn registration_count() -> usize {
+    DOCUMENTS.with(|docs| docs.borrow().len())
+}
+
 pub(crate) struct Registration {
     owner: Cell<u32>,
     generation: Cell<u32>,
@@ -137,6 +156,24 @@ impl DocumentHandle {
             .map_err(|err| err.into_napi(&env))?;
         let [owner, generation] = self.shared().ffi.context(self.shared());
         Ok(vec![owner, generation, self.shared().token_for(root)].into())
+    }
+
+    /// Read-only memory/lifecycle diagnostics (memory-protocol task 04).
+    ///
+    /// Returns a JS number array `[liveDocuments, ffiRegistrations,
+    /// wrapperCacheEntries]`. Documents and cache entries are process-wide
+    /// atomics (including Workers); FFI registrations are calling-thread local.
+    /// These are lifecycle counts, not allocation/byte counters. The snapshot
+    /// is not atomic across fields/threads. It remains valid after destroy,
+    /// on the owning thread, and never drives production correctness.
+    #[napi(catch_unwind)]
+    pub fn memory_diagnostics(&self, env: Env) -> napi::Result<(f64, f64, f64)> {
+        check_affinity(self.shared(), &env)?;
+        Ok((
+            crate::handle::live_document_count() as f64,
+            registration_count() as f64,
+            crate::handle::live_wrapper_cache_entries() as f64,
+        ))
     }
 }
 
@@ -210,6 +247,7 @@ entry! {
         selector: *const u8, selector_len: u32, out: *mut u32, capacity: u32, written: *mut u32) {
         let shared = document(owner, generation)?;
         let output = Output::new(out, capacity, written)?;
+        output.validate_input(selector, selector_len)?;
         let selector = unsafe { utf8(selector, selector_len)? };
         let nodes = read(&shared, |doc| {
             let scope = node(&shared, doc, scope)?;
@@ -282,6 +320,7 @@ entry! {
         name_len: u32, count: u32, out: *mut u32, capacity: u32, written: *mut u32) {
         let shared = document(owner, generation)?;
         let output = Output::new(out, capacity, written)?;
+        output.validate_input(name, name_len)?;
         let name = unsafe { utf8(name, name_len)? };
         if count > 4096 { return Err(Status::InvalidArgument); }
         // Capacity failure is side-effect free: retry cannot leak detached nodes.
@@ -300,8 +339,9 @@ entry! {
         count: u32, field: u32, out: *mut u8, capacity: u32, written: *mut u32) {
         let shared = document(owner, generation)?;
         let output = Output::new(out, capacity, written)?;
-        let tokens = unsafe { input(tokens, count)? };
         if field > 2 || count > 4096 { return Err(Status::InvalidArgument); }
+        output.validate_input(tokens, count)?;
+        let tokens = unsafe { input(tokens, count)? };
         let bytes = read(&shared, |doc| {
             let mut bytes = Vec::new();
             for &token in tokens {

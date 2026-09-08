@@ -9,14 +9,14 @@
 //
 // Outputs a `mad-dom-ffi-gc-bench/1` JSON document that scripts/bench.mjs
 // merges with the core bench and gates against bench/baseline.json. Requires
-// the native dev artifact (npm run dev:build); without it the script exits 2
+// the native dev artifact (bun run dev:build); without it the script exits 2
 // so the bench driver can report the gap instead of fabricating numbers.
 //
 // Usage:
-//   bun scripts/bench-ffi-gc.mjs [--json]
+//   bun scripts/bench-ffi-gc.mjs [--json] [--require-ffi]
 import { isNativeAvailable, createDocument, liveDocumentCount } from "../index.js";
 
-const JSON_MODE = process.argv.includes("--json");
+import { memoryDigest } from "../tests/bun/fixtures/ffi-memory-digest.mjs";
 
 function now() {
   return performance.now();
@@ -123,7 +123,7 @@ async function benchMemoryCurve() {
 
 async function main() {
   if (!isNativeAvailable()) {
-    console.error("bench-ffi-gc: native binding unavailable (run npm run dev:build first)");
+    console.error("bench-ffi-gc: native binding unavailable (run bun run dev:build first)");
     process.exit(2);
   }
 
@@ -131,15 +131,30 @@ async function main() {
   const identity = benchWrapperIdentity();
   const gc = await benchGcRelease();
   const memory = await benchMemoryCurve();
+  const ffiMemory = await memoryDigest();
+  if (process.argv.includes("--require-ffi") && ffiMemory.ffiMethods.length !== 6) {
+    throw new Error("FFI-enabled benchmark requires all six mounted data operations");
+  }
+
+  if (identity.identityHitRate !== 1 || gc.released !== 1) throw new Error("identity/GC benchmark validation failed");
 
   const report = {
     schema: "mad-dom-ffi-gc-bench/1",
+    runtime: { bunVersion: Bun.version, bunRevision: Bun.revision, platform: process.platform, arch: process.arch },
+    memoryEvidence: ffiMemory,
     metrics: {
       ffi_create_element_ops_s: ffi.createSingle,
       ffi_batch_append_ops_s: ffi.batchAppend,
       wrapper_identity_hit_rate: identity.identityHitRate,
       gc_release_hit_rate: gc.released,
       gc_memory_growth_mb: memory.growthMb,
+      // Deterministic release counters (memory-protocol task 04). The gate's
+      // existing gc_memory_growth_mb remains the RSS smoke bound. Zero here
+      // proves tracked owners/cache entries drained, not arbitrary malloc bytes.
+      memory_counter_docs_delta: ffiMemory.counters.deltas.docs,
+      memory_counter_ffi_registrations_delta: ffiMemory.counters.deltas.ffiRegistrations,
+      memory_counter_wrapper_cache_delta: ffiMemory.counters.deltas.wrapperCacheEntries,
+      ffi_churn_rss_growth_mb: ffiMemory.rssGrowthMb,
     },
   };
   console.log(JSON.stringify(report, null, 2));

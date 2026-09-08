@@ -513,7 +513,7 @@ describe("real differential (happy-dom vs mad-dom)", () => {
     });
     expect(madRecord.values["replace-length-delta"]).toEqual({ type: "number", value: 0 });
     expect(madRecord.values["hist-scroll-restoration"]).toEqual({ type: "string", value: "auto" });
-    expect(madRecord.values["nav-platform"]).toEqual({ type: "string", value: "X11; Darwin arm64" });
+    expect(madRecord.values["nav-platform"]).toEqual(scenario.sides["happy-dom"].record.values["nav-platform"]);
     expect(madRecord.values["nav-languages"]).toEqual({
       type: "array",
       items: [

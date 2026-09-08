@@ -441,7 +441,37 @@ function ffiContextValues(context) {
   if (context === null || context === undefined || context.length < 3) {
     throw ffiError(1, "ffiContext");
   }
-  return [context[0] >>> 0, context[1] >>> 0, context[2] >>> 0];
+  return [0, 1, 2].map((index) => ffiU32(context[index], "ffiContext"));
+}
+
+function ffiU32(value, operation) {
+  if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) throw ffiError(1, operation);
+  return value;
+}
+
+const typedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype);
+const typedArrayLength = Object.getOwnPropertyDescriptor(typedArrayPrototype, "length").get;
+const typedArrayBuffer = Object.getOwnPropertyDescriptor(typedArrayPrototype, "buffer").get;
+const arrayBufferResizable = Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, "resizable")?.get;
+
+// Read the actual view length, never a user-shadowed `.length`. Shared or
+// resizable stores cannot satisfy Rust's immutable call-long borrow contract.
+// Validate every scalar before borrowing, so no FFI argument coercion can run
+// user code that detaches an already-validated input.
+function ffiInput(view, Type, operation) {
+  if (!(view instanceof Type)) throw ffiError(1, operation);
+  const buffer = typedArrayBuffer.call(view);
+  if (!(buffer instanceof ArrayBuffer) || arrayBufferResizable?.call(buffer)) throw ffiError(1, operation);
+  try {
+    new Uint8Array(buffer, 0, 0); // throws for a detached backing store
+  } catch {
+    throw ffiError(1, operation);
+  }
+  return [view, ffiU32(typedArrayLength.call(view), operation)];
+}
+
+function ffiBytes(value, operation) {
+  return ffiInput(typeof value === "string" ? new TextEncoder().encode(value) : value, Uint8Array, operation);
 }
 
 // Sanity ceiling for a single caller-owned output buffer. Exceeding it is not
@@ -460,6 +490,13 @@ const FFI_MAX_OUTPUT_BYTES = 64_000_000;
 // facade caller. Genuine native error statuses (destroyed document, stale or
 // foreign token, syntax, …) still throw so the taxonomy stays identical to the
 // Node-API path the workload digest compares against.
+//
+// Length protocol: native writes the exact element count on OK or
+// BUFFER_TOO_SMALL; other errors leave it unspecified. The latter carries the size (the
+// next capacity) and OK carries the produced size. This loader never trusts a
+// reported length beyond `capacity`, and never grows past
+// FFI_MAX_OUTPUT_WORDS / FFI_MAX_OUTPUT_BYTES; both violations fall back to
+// Node-API instead of allocating from an untrusted count.
 function outputWords(call, operation) {
   let capacity = 256;
   for (let attempt = 0; attempt !== 8; attempt += 1) {
@@ -498,14 +535,46 @@ function outputBytes(call, operation) {
   return undefined;
 }
 
+// Creation is single-shot with exact capacity. Native capacity failures are
+// side-effect free; a malformed success may already have mutated the document
+// and must throw instead of retrying through either channel.
+function outputWordsExact(call, operation, requiredWords) {
+  const required = ffiU32(requiredWords, operation);
+  if (required > 4096) throw ffiError(1, operation);
+  const output = new Uint32Array(required);
+  const written = new Uint32Array(1);
+  const status = call(output, required, written);
+  if (status === FFI_STATUS.OK) {
+    // Success may already have mutated the document. A malformed result must
+    // throw: falling back here would create a second batch of detached nodes.
+    if (written[0] !== required) throw ffiError(1, `${operation}: invalid output length`);
+    return output;
+  }
+  // BUFFER_TOO_SMALL on a correctly sized buffer is a protocol anomaly: report
+  // the Node-API fallback signal rather than calling the mutating entry again.
+  if (status === FFI_STATUS.BUFFER_TOO_SMALL) return undefined;
+  throw ffiError(status, operation);
+}
+
 function openFfiSymbols(ffi, path, names, declarations = FFI_SYMBOL_DECLARATIONS) {
   const definitions = {};
   for (const name of names) definitions[name] = declarations[name];
   return ffi.dlopen(path, definitions);
 }
 
-function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilities, forcedMissing) {  const symbols = {};
+function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilities, forcedMissing) {
+  const symbols = {};
   const missing = [];
+  // Every dlopen handle backing a resolved symbol must stay referenced for as
+  // long as the adapter is alive. The raw C function pointers on
+  // `library.symbols` are only valid while their shared object stays mapped;
+  // Bun's Library is a GC object, so dropping every per-symbol handle would
+  // make symbol validity depend on Bun's (unspecified) unload timing. Keeping
+  // the handles on the adapter — which the loader report pins for the process
+  // lifetime — removes that dependency. `.close()` is never called: the image
+  // is the same `.node` the Node-API loader keeps loaded anyway, so the OS
+  // reclaims it at process exit.
+  const libraries = [baseLibrary];
   const candidates = Object.entries(FFI_SYMBOL_BITS);
   for (const [name, bit] of candidates) {
     if ((advertisedCapabilities & bit) === 0) {
@@ -526,6 +595,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
       const symbol = library.symbols[openName];
       if (typeof symbol !== "function") throw new Error(`symbol ${openName} is not callable`);
       symbols[name] = symbol;
+      libraries.push(library);
     } catch (error) {
       missing.push({ name, reason: error?.message ?? String(error) });
     }
@@ -550,17 +620,23 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
     advertisedCapabilities,
     symbols: Object.freeze(symbols),
   };
+  // Non-enumerable pin so the live handles never serialize (the public
+  // capability report strips `adapter` anyway) and never become GC-able while
+  // any resolved symbol could still be called.
+  Object.defineProperty(adapter, "libraries", { value: libraries, enumerable: false });
   if (symbols[FFI_SYMBOLS.querySnapshot] !== undefined) {
     adapter.querySnapshot = function querySnapshot(context, scopeToken, selector) {
       const [owner, generation, scope] = ffiContextValues(context);
-      const bytes = typeof selector === "string" ? new TextEncoder().encode(selector) : selector;
+      const root = ffiU32(scopeToken ?? scope, "query snapshot");
+      const [bytes, length] = ffiBytes(selector, "query snapshot");
       const symbol = symbols[FFI_SYMBOLS.querySnapshot];
-      return outputWords((out, capacity, written) => symbol(owner, generation, scopeToken ?? scope, bytes, bytes.length, out, capacity, written), "query snapshot");
+      return outputWords((out, capacity, written) => symbol(owner, generation, root, bytes, length, out, capacity, written), "query snapshot");
     };
   }
   if (symbols[FFI_SYMBOLS.preorderSnapshot] !== undefined) {
     adapter.preorderSnapshot = function preorderSnapshot(context, rootToken) {
       const [owner, generation] = ffiContextValues(context);
+      ffiU32(rootToken, "preorder snapshot");
       const symbol = symbols[FFI_SYMBOLS.preorderSnapshot];
       return outputWords((out, capacity, written) => symbol(owner, generation, rootToken, out, capacity, written), "preorder snapshot");
     };
@@ -568,6 +644,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
   if (symbols[FFI_SYMBOLS.childSnapshot] !== undefined) {
     adapter.childSnapshot = function childSnapshot(context, rootToken) {
       const [owner, generation] = ffiContextValues(context);
+      ffiU32(rootToken, "child snapshot");
       const symbol = symbols[FFI_SYMBOLS.childSnapshot];
       return outputWords((out, capacity, written) => symbol(owner, generation, rootToken, out, capacity, written), "child snapshot");
     };
@@ -575,6 +652,8 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
   if (symbols[FFI_SYMBOLS.serialize] !== undefined) {
     adapter.serialize = function serialize(context, rootToken, mode = 0) {
       const [owner, generation] = ffiContextValues(context);
+      ffiU32(rootToken, "serialize");
+      ffiU32(mode, "serialize");
       const symbol = symbols[FFI_SYMBOLS.serialize];
       return outputBytes((out, capacity, written) => symbol(owner, generation, rootToken, mode, out, capacity, written), "serialize");
     };
@@ -582,17 +661,30 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
   if (symbols[FFI_SYMBOLS.createElements] !== undefined) {
     adapter.createElements = function createElements(context, name, count) {
       const [owner, generation] = ffiContextValues(context);
-      const bytes = typeof name === "string" ? new TextEncoder().encode(name) : name;
+      ffiU32(count, "create elements");
+      const [bytes, length] = ffiBytes(name, "create elements");
       const symbol = symbols[FFI_SYMBOLS.createElements];
-      return outputWords((out, capacity, written) => symbol(owner, generation, bytes, bytes.length, count, out, capacity, written), "create elements");
+      // createElements mints `count` detached elements: it must never be
+      // repeated by a retry loop (each successful call allocates a fresh
+      // batch), so it uses the single-shot exact-capacity helper instead of the
+      // growing outputWords retry. One token word per created element.
+      return outputWordsExact(
+        (out, capacity, written) => symbol(owner, generation, bytes, length, count, out, capacity, written),
+        "create elements",
+        count,
+      );
     };
   }
   if (symbols[FFI_SYMBOLS.readBatch] !== undefined) {
     adapter.readBatch = function readBatch(context, tokens, field) {
       const [owner, generation] = ffiContextValues(context);
-      const input = tokens instanceof Uint32Array ? tokens : Uint32Array.from(tokens ?? []);
+      ffiU32(field, "read batch");
+      const [input, length] = ffiInput(
+        tokens instanceof Uint32Array ? tokens : Uint32Array.from(tokens ?? [], (token) => ffiU32(token, "read batch")),
+        Uint32Array, "read batch",
+      );
       const symbol = symbols[FFI_SYMBOLS.readBatch];
-      return outputBytes((out, capacity, written) => symbol(owner, generation, input, input.length, field, out, capacity, written), "read batch");
+      return outputBytes((out, capacity, written) => symbol(owner, generation, input, length, field, out, capacity, written), "read batch");
     };
   }
   return { reportStatus, adapter, symbols: Object.keys(symbols), missing, baseLibrary };
