@@ -64,7 +64,9 @@ it is intentionally not a second copied library because the FFI document
 registry is owned by the Node-API image. `MAD_DOM_FFI_DISABLED=1` forces the
 Node-API path. Missing FFI, an ABI mismatch, and a partial capability bitset
 are reported as capability data and fall back per operation without changing
-the public facade or wrapper identity.
+the public facade or wrapper identity. The metadata field is a build
+observation; runtime probing of the same Node-API image remains authoritative.
+A Node-API-only package can omit `madDomFfi` and still load successfully.
 
 An installed npm package does not contain the development build artifact.
 For local source comparisons, select the freshly built artifact explicitly so
@@ -72,8 +74,9 @@ an installed platform package cannot take precedence.
 
 ## Build from source
 
-From a repository checkout, use Bun `1.4.0`, Rust `1.93.1`, and the native build
-tools for your host:
+From a repository checkout, use a supported Bun, Rust `1.93.1`, and native
+build tools for your host. `.bun-version` (`1.4.0`) reproduces the baseline;
+the latest CI lane resolves current stable Bun separately:
 
 ```sh
 bun install --frozen-lockfile
@@ -133,3 +136,30 @@ When reporting a problem, include the mad-dom version, Bun version, OS/CPU/libc,
 full error, whether `MAD_DOM_NATIVE_PATH` is set, and a small runnable
 reproduction. For a compatibility difference, include the expected output from
 the pinned happy-dom baseline.
+
+## Bun capability diagnostics
+
+| Result | Meaning and action |
+| --- | --- |
+| FFI `available` / `partial` | Independent FFI ABI passed; use only the reported operations. Missing operations retain Node-API behavior. |
+| FFI `disabled` | `MAD_DOM_FFI_DISABLED=1` explicitly selected Node-API. This is an intentional setting. |
+| FFI `unavailable` | Experimental `bun:ffi`, its symbols, or an FFI artifact cannot load. Node-API remains usable if its binary loads. A latest Bun capability loss appears here with its reason. |
+| FFI `mismatch` / `MAD_DOM_FFI_ABI_MISMATCH` | Optional FFI ABI differs; affected operations fall back. Check the main/platform pair and explicit FFI path. |
+| `MAD_DOM_ABI_MISMATCH` | Required Node-API object ABI differs. DOM construction fails until the matching native binary is installed. |
+| `MAD_DOM_UNSUPPORTED_PLATFORM` | The required platform binary is missing, unsupported, or cannot load. Disabling FFI cannot supply that binary. |
+| `MAD_DOM_METADATA_MISMATCH` in release/smoke | Package versions, ABI declarations, capability level, or image layout disagree. Rebuild a matching pair before release. |
+
+For source diagnostics, run `bun run report:runtime`; it records actual Bun
+version/revision, platform/libc, both ABIs, loader capability results, and the
+public API capability matrix even after a native load failure. Installed
+packages include the same observation helper:
+
+```js
+import { runtimeObservation } from './node_modules/mad-dom/js/runtime-metadata.js';
+console.log(JSON.stringify(runtimeObservation(), null, 2));
+```
+
+Include this report with failures on latest Bun. `api-present-unverified`
+for the external ArrayBuffer deallocator means the API exists; it does not
+claim that callback lifetime or ownership safety was exercised. Default
+buffers are caller-owned; memory/GC verification is recorded separately.

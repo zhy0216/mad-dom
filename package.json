@@ -75,7 +75,9 @@
     "compat:hdunit:validate": "bun tests/happy-dom/validate-triage.mjs",
     "compat:hdunit:report": "bun tests/happy-dom/report.mjs",
     "compat:hdunit:report:baseline": "bun tests/happy-dom/report.mjs --record-baseline",
-    "compat:hdunit:test": "bun tests/happy-dom/adapter/run-compat-hdunit-test.mjs"
+    "compat:hdunit:test": "bun tests/happy-dom/adapter/run-compat-hdunit-test.mjs",
+    "report:runtime": "bun scripts/runtime-metadata.mjs",
+    "test:release": "bun test tests/bun/release-metadata.test.js"
   },
   "keywords": [
     "bun",
@@ -101,5 +103,13 @@
     "react-dom": "19.2.8",
     "typescript": "5.9.3",
     "vitepress": "^1.6.4"
+  },
+  "madDomRuntime": {
+    "schema": 1,
+    "packageVersion": "0.0.1-alpha.3",
+    "nodeApiAbiVersion": 1,
+    "ffiAbiVersion": 1,
+    "ffiCapabilities": 31,
+    "ffiRequired": false
   }
 }

@@ -10,6 +10,7 @@
 // Usage:
 //   bun scripts/build-platform-package.mjs [--triple <triple>] [--version <v>]
 //                                          [--out <dir>] [--no-build]
+//                                          [--artifact <native-image>]
 //
 //   --triple    Rust target triple (default: the host triple, from `rustc -vV`).
 //               Cross triples require the target installed; a missing target
@@ -20,6 +21,8 @@
 //               track exactly, ADR-0005 §5).
 //   --out       output root (default: <repo>/build/platform).
 //   --no-build  reuse an existing cargo artifact instead of recompiling.
+//   --artifact  package an existing image for local rehearsal, without a
+//               Cargo build. The payload must load on this runner for probing.
 //
 // Prints the assembled package path on success.
 
@@ -27,6 +30,8 @@ import { existsSync, copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSyn
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { runtimeContract, runtimeObservation, validatePackageMetadata } from "../js/runtime-metadata.js";
 
 import {
   TRIPLE_MATRIX,
@@ -39,7 +44,7 @@ import {
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function parseArgs(argv) {
-  const args = { triple: null, version: null, out: null, noBuild: false };
+  const args = { triple: null, version: null, out: null, noBuild: false, artifact: null };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case "--triple":
@@ -52,6 +57,10 @@ function parseArgs(argv) {
         args.out = argv[++i];
         break;
       case "--no-build":
+        args.noBuild = true;
+        break;
+      case "--artifact":
+        args.artifact = resolve(argv[++i]);
         args.noBuild = true;
         break;
       default:
@@ -98,7 +107,7 @@ function main() {
     }
   }
 
-  const artifact = join(REPO_ROOT, "target", triple, "release", cdylibOutputName(triple));
+  const artifact = args.artifact ?? join(REPO_ROOT, "target", triple, "release", cdylibOutputName(triple));
   if (!existsSync(artifact)) {
     throw new Error(`expected cdylib at ${artifact} but it was not produced`);
   }
@@ -111,6 +120,29 @@ function main() {
 
   copyFileSync(artifact, join(pkgDir, binaryName));
 
+  // Probe the actual payload in its own process. A cross-built artifact must
+  // be runnable on this host; never invent measured ABI/capability metadata.
+  const probeEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+    !key.startsWith("MAD_DOM_TEST_") && !["MAD_DOM_NATIVE_PATH", "MAD_DOM_FFI_PATH"].includes(key)));
+  const binaryPath = join(pkgDir, binaryName);
+  const probe = spawnSync(process.execPath, ["scripts/runtime-metadata.mjs", "--require-native"], {
+    cwd: REPO_ROOT, encoding: "utf8",
+    env: { ...probeEnv, MAD_DOM_NATIVE_PATH: binaryPath, MAD_DOM_FFI_PATH: binaryPath },
+  });
+  if (probe.status !== 0) throw new Error(`payload probe failed; use a runner that can load ${triple}:\n${probe.stdout}\n${probe.stderr}`);
+  const observed = JSON.parse(probe.stdout);
+  if (resolve(observed.nodeApi.path) !== resolve(binaryPath)) throw new Error("payload probe loaded another native image");
+  const { path: _nodePath, ...nodeApi } = observed.nodeApi;
+  const { path: _ffiPath, ...ffi } = observed.ffi;
+  const ffiEnabled = ["available", "partial"].includes(ffi.status) && ffi.capabilities > 0;
+  const contract = runtimeContract(version);
+  const madDomBuild = {
+    bunVersion: observed.bunVersion, bunRevision: observed.bunRevision,
+    platform: observed.platform, nodeApi, ffi,
+    capabilityLevel: ffiEnabled ? (ffi.status === "available" && ffi.capabilities === contract.ffiCapabilities ? "ffi" : "ffi-partial") : "node-api-only",
+    binarySha256: createHash("sha256").update(readFileSync(binaryPath)).digest("hex"),
+  };
+
   const libcField = meta.libc === null ? {} : { libc: [meta.libc === "gnu" ? "glibc" : "musl"] };
   const packageJson = {
     name: pkgName,
@@ -120,7 +152,9 @@ function main() {
     // The FFI channel deliberately points at the same image as Node-API.
     // Duplicating a cdylib would create a second thread-local document
     // registry, so the package carries one binary and records its dual use.
-    madDomFfi: `./${binaryName}`,
+    ...(ffiEnabled ? { madDomFfi: `./${binaryName}` } : {}),
+    madDomRuntime: contract,
+    madDomBuild,
     os: [meta.os],
     cpu: [meta.arch],
     ...libcField,
@@ -128,6 +162,7 @@ function main() {
     license: "MIT",
     publishConfig: { access: "public" },
   };
+  validatePackageMetadata({ name: "mad-dom", version, madDomRuntime: contract, optionalDependencies: { [pkgName]: version } }, packageJson);
   writeFileSync(join(pkgDir, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`);
 
   copyFileSync(join(REPO_ROOT, "LICENSE"), join(pkgDir, "LICENSE"));
@@ -148,5 +183,6 @@ try {
   main();
 } catch (error) {
   console.error(`build-platform-package: ${error.message}`);
+  console.error(JSON.stringify(runtimeObservation(), null, 2));
   process.exit(1);
 }

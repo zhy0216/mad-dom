@@ -11,7 +11,7 @@ default_agent: codex
 | ~~`03-bun-ffi-loader-and-facade.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Bun FFI loader/probe、按能力位 facade 快路径、Node-API fallback 与平台布局 |
 | ~~`04-memory-gc-and-external-buffers.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · caller-owned buffer/lifetime 修复；baseline/latest native deallocator spike、GC/Worker 隔离、内存压测与完整 validate |
 | ~~`05-bun-host-io.md`~~ | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | ✅ 已完成 · virtual server/sync fetch/checksums 迁移 Bun IO，capability-gated 回退与行为/性能/校验和对照 |
-| `06-latest-bun-ci-and-release-policy.md` | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | 增加 latest/baseline CI、版本 capability 文档和发布回退策略 |
+| ~~`06-latest-bun-ci-and-release-policy.md`~~ | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | ✅ 已完成 · latest/baseline CI、发布元数据 u32 校验、真实 fallback tarball smoke；rebase 04 后两版完整 validate 与最终专项通过 |
 | `07-integration-and-regression-gate.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 集成全部通道，运行全量校验、兼容性、WPT、安装 smoke 和 benchmark |
 
 模型与推理强度按 `herdr-finish-plan` 的共享分发规则解析；todo 使用 `agent: inherit`，继承本队列的 Codex 默认值。
@@ -23,11 +23,11 @@ default_agent: codex
 3. `03-bun-ffi-loader-and-facade.md`（依赖 01、02）
 4. `done/04-memory-gc-and-external-buffers.md`（依赖 02、03；已完成，验收记录与 capability 限制见归档）
 5. `05-bun-host-io.md`（依赖 01；可与 02、04、06 并行）
-6. `06-latest-bun-ci-and-release-policy.md`（依赖 01、03；可与 04、05 并行）
+6. `done/06-latest-bun-ci-and-release-policy.md`（依赖 01、03；已完成，串行整合与最终验收见归档）
 7. `07-integration-and-regression-gate.md`（依赖 03、04、05、06）
 
-01、02、03、05 已归档于 `done/`（capability matrix/benchmark、FFI ABI v1、
-Bun FFI loader/facade 与宿主 IO）。FFI ABI v1 与 Node-API 共用同一 cdylib；
+01—06 已归档于 `done/`（capability matrix/benchmark、FFI ABI v1、
+Bun FFI loader/facade、memory/GC、宿主 IO 与 latest CI/release policy）。FFI ABI v1 与 Node-API 共用同一 cdylib；
 未通过 capability probe 时继续使用 Node-API，partial capability 按入口独立
 回退。05 宿主 IO 迁移按 capability 门控（`MAD_DOM_BUN_IO_DISABLED` 强制回退），
 迁移前后字节/格式/退出码与性能对照见 `scripts/bench-bun-io.mjs`

@@ -34,6 +34,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
 import { TRIPLE_MATRIX, platformPackageName, stagePlatformNames } from "./platform-matrix.mjs";
+import { runtimeContract, runtimeObservation, validatePackageMetadata } from "../js/runtime-metadata.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_OUT = join(REPO_ROOT, "build", "release");
@@ -68,6 +69,8 @@ function parseArgs(argv) {
 }
 
 function run(cmd, args, opts = {}) {
+  if (cmd === "npm") args = [...args, "--registry=https://registry.npmjs.org"];
+  if (cmd === "bun") cmd = process.execPath;
   const proc = spawnSync(cmd, args, { cwd: REPO_ROOT, stdio: opts.silent ? "pipe" : "inherit", encoding: "utf8" });
   if (proc.status !== 0) {
     throw new Error(`${cmd} ${args.join(" ")} failed (exit ${proc.status})${proc.stderr ? `: ${proc.stderr}` : ""}`);
@@ -102,14 +105,14 @@ function installedTargets() {
 function buildPlatforms(stage, version, outDir, noBuild) {
   const platformDir = join(outDir, "platform");
   const platformTarballs = [];
-  const host = hostTriple();
-  const installed = installedTargets();
+  const host = noBuild ? null : hostTriple();
+  const installed = noBuild ? new Set() : installedTargets();
   for (const triple of Object.keys(TRIPLE_MATRIX)) {
     const meta = TRIPLE_MATRIX[triple];
     if (stage === "alpha" && (meta.phase === 2 || meta.os === "win32")) continue;
     const pkgName = platformPackageName(meta);
     const pkgDir = join(platformDir, pkgName);
-    if (!existsSync(join(pkgDir, "package.json")) && !noBuild) {
+    if (!noBuild) {
       if (!installed.has(triple) && triple !== host) {
         console.warn(
           `release: skipping ${triple} (target not installed on this host; the CI matrix builds it on a native runner)`,
@@ -128,8 +131,17 @@ function buildPlatforms(stage, version, outDir, noBuild) {
       console.warn(`release: skipping ${pkgName} (not built on this host; CI builds it per platform)`);
       continue;
     }
+    const platform = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8"));
+    const main = { name: "mad-dom", version, madDomRuntime: runtimeContract(version), optionalDependencies: { [pkgName]: version } };
+    if (platform.name !== pkgName) throw new Error(`MAD_DOM_METADATA_MISMATCH: expected ${pkgName}, got ${platform.name}`);
+    validatePackageMetadata(main, platform);
+    const binary = join(pkgDir, platform.main);
+    const digest = createHash("sha256").update(readFileSync(binary)).digest("hex");
+    if (digest !== platform.madDomBuild.binarySha256) throw new Error(`MAD_DOM_METADATA_MISMATCH: ${pkgName} binary checksum changed since probe`);
+    const nativeFiles = readdirSync(pkgDir).filter((name) => /\.(node|so|dylib|dll)$/.test(name));
+    if (nativeFiles.length !== 1) throw new Error(`MAD_DOM_METADATA_MISMATCH: ${pkgName} must ship exactly one native image`);
     const tgz = packPackage(pkgDir, version, join(outDir, "tgz"), pkgName);
-    platformTarballs.push({ pkgName, tgz, triple });
+    platformTarballs.push({ pkgName, tgz, triple, runtime: platform.madDomRuntime, build: platform.madDomBuild });
   }
   return platformTarballs;
 }
@@ -151,6 +163,7 @@ function stageMainPackage(stage, version, outDir, shippedPlatformNames) {
   const stagedPkg = {
     ...pkg,
     version,
+    madDomRuntime: runtimeContract(version),
     sideEffects: true,
     optionalDependencies,
     scripts: undefined,
@@ -159,6 +172,7 @@ function stageMainPackage(stage, version, outDir, shippedPlatformNames) {
   };
   delete stagedPkg.scripts;
   delete stagedPkg.devDependencies;
+  validatePackageMetadata(stagedPkg);
   writeFileSync(join(staging, "package.json"), `${JSON.stringify(stagedPkg, null, 2)}\n`);
 
   const tgz = packPackage(staging, version, join(outDir, "tgz"), "mad-dom");
@@ -189,7 +203,7 @@ function printPlan(args, platformTarballs, shipped, tgzDir) {
     `  3. npm publish --provenance --tag ${tag} mad-dom@${args.version}   (main package LAST; refuses to run if step 2 fails)`,
   );
   plan.push("");
-  plan.push(`Checksums: build/SHASUMS256.txt over ${tgzCount} tarball(s).`);
+  plan.push(`Checksums: ${join(dirname(tgzDir), "SHASUMS256.txt")} over ${tgzCount} tarball(s).`);
   plan.push(`Rollback: bun scripts/release-rollback.mjs --tag ${tag} --version ${args.version} --last-healthy <v>`);
   console.log(plan.join("\n"));
 }
@@ -239,14 +253,28 @@ function main() {
   const outDir = resolve(args.out);
   const pkg = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8"));
   args.version = args.version ?? pkg.version;
+  validatePackageMetadata(pkg);
+
+  // The manifest describes exactly this rehearsal, never stale tarballs from
+  // a previous version or a wider release stage.
+  rmSync(join(outDir, "tgz"), { recursive: true, force: true });
 
   const shipped = stagePlatformNames(args.stage);
   const platformTarballs = buildPlatforms(args.stage, args.version, outDir, args.noBuild);
+  if (args.command === "publish" && !args.dryRun && platformTarballs.length !== shipped.length) {
+    throw new Error("release: refusing an incomplete platform matrix before publishing any package");
+  }
   const { tgz: mainTgz } = stageMainPackage(args.stage, args.version, outDir, shipped);
 
   const tgzDir = join(outDir, "tgz");
   run("bun", ["scripts/checksums.mjs", "generate", tgzDir, "--out", join(outDir, "SHASUMS256.txt")]);
   run("bun", ["scripts/checksums.mjs", "verify", tgzDir, "--manifest", join(outDir, "SHASUMS256.txt")]);
+  writeFileSync(join(outDir, "runtime-metadata.json"), JSON.stringify({
+    version: args.version, stage: args.stage, runtime: runtimeContract(args.version),
+    rehearsalBunVersion: Bun.version, baseline: readFileSync(join(REPO_ROOT, ".bun-version"), "utf8").trim(),
+    completePlatformMatrix: platformTarballs.length === shipped.length,
+    platforms: platformTarballs.map(({ pkgName, triple, runtime, build }) => ({ pkgName, triple, runtime, build })),
+  }, null, 2) + "\n");
 
   printPlan(args, platformTarballs, shipped, tgzDir);
 
@@ -267,5 +295,6 @@ try {
   main();
 } catch (error) {
   console.error(`release: ${error.message}`);
+  console.error(JSON.stringify(runtimeObservation(), null, 2));
   process.exit(1);
 }

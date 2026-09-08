@@ -12,8 +12,10 @@
 
 ## CI
 
-- `.github/workflows/ci.yml` 与 `release.yml` 用 `oven-sh/setup-bun@v2` + `.bun-version` 固定 Bun 版本，
-  Rust 固定 1.93.1（`rust-toolchain.toml`）。
+- Bun 版本分三层：`package.json.engines.bun` 是最低支持版本；`.bun-version`（当前 1.4.0）是可复现 baseline；
+  CI latest lane 与 release 用 `oven-sh/setup-bun@v2` 显式 `bun-version: latest`，不得用 baseline 代替 latest。
+  baseline lane 单独用 `bun-version-file: .bun-version`；记录实际 Bun version/revision、平台/libc、Node-API ABI、FFI ABI 与 capability。
+  Rust 固定 1.93.1（`rust-toolchain.toml`）。历史 benchmark 的实测 Bun 版本保持原样；FFI 缺失时允许 Node-API fallback。
 - 坑：若 `node_modules/@mad-dom/` 下有残留空目录时执行 `bun install`，`bun.lock` 会被写成
   `file:node_modules/@mad-dom/platform-*` 条目，clean checkout（CI）会直接 install 失败。
   重新生成锁文件前先 `rm -rf node_modules/@mad-dom bun.lock`。

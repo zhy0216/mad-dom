@@ -163,7 +163,15 @@ last measured round and `peak` is not an OS high-water mark.
 
 ## Reproduce from source
 
-Use a repository checkout with Bun `1.4.0` and Rust `1.93.1`:
+To reproduce the dated measurements, use the `.bun-version` baseline
+(Bun `1.4.0`) and Rust `1.93.1`. The support floor is `engines.bun >=1.4.0`;
+CI separately validates dynamically resolved latest stable Bun. Preserve the
+actual `Bun.version` in every new benchmark report; baseline and latest
+results must be compared with their runtime and capability settings recorded.
+Neither historical timing results nor an API-presence probe verify external
+ArrayBuffer ownership safety. Caller-owned buffers remain the default.
+
+From a repository checkout:
 
 ```sh
 bun install --frozen-lockfile

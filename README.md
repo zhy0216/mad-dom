@@ -157,7 +157,13 @@ but don't run production on it yet.
 - [Compatibility report](docs/compat-report.md) · [Release manual](docs/release.md)
 - [Safety notes](crates/mad-dom-core/SAFETY.md) — the core is `#![forbid(unsafe_code)]`
 
-Development: Bun `1.4.0` + Rust `1.93.1`; `bun run validate` runs the full gate.
+Development: Rust `1.93.1`; Bun `>=1.4.0` is the support floor.
+`.bun-version` (`1.4.0`) is the reproducible baseline. CI also resolves the
+latest stable Bun independently on every run; releases require both lanes.
+`bun run validate` runs the repository gate (prepare with
+`bun run compat:hdunit:rewrite` on a fresh checkout). See the
+[version and release policy](docs/release.md#bun-version-policy) for actual
+version/capability reports and installation smoke coverage.
 
 ## License
 

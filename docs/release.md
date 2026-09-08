@@ -8,16 +8,35 @@ matrix and the runtime error contract live in the [README](https://github.com/zh
 stable-gate verification evidence (compat rate, safety suite, benchmarks,
 install smoke) is in [docs/stable-gate-report.md](./stable-gate-report.md).
 
-## Toolchain pins
+## Bun version policy
 
-- Rust: `1.93.1` ([rust-toolchain.toml](https://github.com/zhy0216/mad-dom/blob/main/rust-toolchain.toml)); Bun:
-  `1.4.0` (`.bun-version`).
-- Every release build starts from a clean checkout with these pins and the
-  `release` profile (ADR-0005 §1, §3). Never reuse a local `target/` artifact
-  for a release build.
-- The binding is a Node-API cdylib; `panic = unwind` must never be switched to
-  `panic = abort` for any target (ADR-0005 §1, §3; it is the `catch_unwind`
-  boundary).
+| Role | Selection | Meaning |
+| --- | --- | --- |
+| Minimum supported | `package.json.engines.bun >=1.4.0` | Runtime floor, independent from either native ABI |
+| Reproducible baseline | `.bun-version`, currently `1.4.0` | Regression diagnosis and dated benchmark reproduction |
+| Latest verification | `setup-bun@v2` with explicit `bun-version: latest` | Resolve stable Bun on each CI/release run; record the installed version/revision |
+
+The latest and baseline CI lanes both run check, Rust fmt/clippy/tests, native
+build and capability/native tests, compat/types/ledger/hdunit, WPT,
+integration, benchmark sanity, documentation, release draft/checksums and
+real tarball install smoke. Release requires this reusable CI workflow before
+building platform artifacts on latest Bun. A failed correctness gate blocks
+release; an unavailable optional FFI capability alone does not. Fix a latest
+regression or retain Node-API fallback; do not silently pin latest to baseline.
+
+On 2026-09-07, the official [stable release](https://github.com/oven-sh/bun/releases/tag/bun-v1.4.2)
+was `1.4.2` (published 2026-09-05). Local verification uses that actual version
+and baseline `1.4.0`; this dated fact is not a CI pin. The action's
+[input resolution](https://github.com/oven-sh/setup-bun/blob/v2/src/index.ts)
+prioritizes `bun-version` over `bun-version-file` and package metadata.
+We use separate setup steps so the two selections cannot be confused.
+
+Rust remains `1.93.1` (`rust-toolchain.toml`). Release builds start from a
+clean checkout with locked dependencies and the `release` profile; record
+actual Bun version/revision rather than claiming latest is reproducible.
+`panic = unwind` must remain enabled for native panic containment. Historical
+ADR/benchmark Bun measurements remain historical evidence; this policy
+supersedes their earlier requirement to use baseline for every CI/release run.
 
 ## Build
 
@@ -36,6 +55,9 @@ binary (`mad-dom.<os>-<arch>[-<libc>].node`), `package.json` (with
 `os`/`cpu`/`libc`/`main`), `LICENSE` and a short `README.md` (ADR-0005 §5).
 Cross triples require the target installed (`rustup target add <triple>` plus
 a cross linker / musl toolchain); a missing target fails with the cargo error.
+The resulting payload must also load on the packaging runner so its actual
+Node-API ABI and FFI capabilities can be measured. A cross compiler alone is
+not installation evidence; beta musl payloads need a matching libc runtime.
 
 CI matrix: `.github/workflows/release.yml` builds each platform on a native
 runner (musl via `taiki-e/setup-cross-toolchain-action`), runs the install
@@ -96,22 +118,66 @@ right binary. Observed behavior is recorded here:
 
 ## Install smoke (no Cargo environment)
 
-`bun scripts/install-smoke.mjs` installs the packed main + host platform
-tarballs into a clean temp project with `bun add` (no Rust toolchain anywhere
-in the flow) and asserts:
+`bun run smoke:install` installs real main + host tarballs with
+`bun install --frozen-lockfile --ignore-scripts --no-optional` in fresh
+projects. The host tarball is a direct local dependency; registry optional
+packages and inherited `MAD_DOM_*`/native path overrides cannot mask a missing
+binary or select a source artifact. No Cargo build is invoked when both
+paths are supplied:
 
-1. supported platform: `new Window()` + fixed HTML parse + one selector query
-   succeed;
-2. missing platform package: `MAD_DOM_UNSUPPORTED_PLATFORM` with
-   "Reinstall without --no-optional" and the support-matrix anchor;
-3. unsupported platform (`MAD_DOM_TEST_PLATFORM=freebsd`): the same code with
-   "not in the supported matrix";
-4. ABI mismatch (`MAD_DOM_NATIVE_PATH` → fake module): `MAD_DOM_ABI_MISMATCH`
-   naming both ABI versions.
+```sh
+bun run dev:build
+bun run platform:build --artifact build/mad-dom.node --out build/release/platform
+bun run release:draft --no-build
+bun run smoke:install --main-tgz build/release/tgz/mad-dom-0.0.1-alpha.3.tgz --platform-tgz build/release/tgz/mad-dom-platform-linux-x64-gnu-0.0.1-alpha.3.tgz
+```
 
-This script is the install-side gate for every released platform and is reused
-by the stable gate (T50). It is run per platform on its native runner in the
-release workflow and on the host in CI.
+Adjust version and host platform in both tarball names to match the draft.
+`--artifact` is for local rehearsal of an already-built payload; hosted release
+builds compile from source. Smoke checks real DOM queries, wrapper identity,
+serialization and destroy under automatic capability selection, explicit FFI
+disabled, and missing FFI. When FFI is available, it also injects a mismatched
+FFI ABI and partial symbols. Required binary absence/unsupported platform and
+Node-API ABI mismatch produce distinct hard errors. Metadata tampering must
+fail before artifacts are reused. `--expect-ffi available` is an optional
+strict local assertion; automatic CI records capability loss and verifies
+fallback instead of making experimental FFI mandatory.
+
+Each smoke writes `runtime-results.json`, including version, platform/libc,
+both ABI results and capability statuses. CI uploads these and the full
+`report:runtime` matrix even after a failed gate.
+
+## Artifact metadata and optional FFI
+
+Main and platform `madDomRuntime` contain the same package version, Node-API
+object ABI, independent FFI ABI, supported capability bitset and
+`ffiRequired: false`. The platform's `madDomBuild` records the actual Bun
+version/revision, platform/libc, Node-API probe, FFI status/bitset, capability
+level (`ffi`, `ffi-partial`, or `node-api-only`) and binary SHA-256.
+`madDomFfi`, when present, equals `main`; the package contains one native image.
+
+Build probes run in an isolated process against that payload. Missing FFI or
+an FFI ABI mismatch does not prevent a verified Node-API package or draft.
+`MAD_DOM_FFI_DISABLED=1 bun run platform:build ...` also rehearses a build
+with only Node-API verified. It omits `madDomFfi` and records the disabled
+observation. This is not a runtime prohibition: if the same image contains
+compatible symbols and Bun later provides FFI, the loader can enable them.
+Use `MAD_DOM_FFI_DISABLED=1` in the application to keep it disabled.
+
+Capability values must be integers within the u32 range before known bits
+are checked; JavaScript bitwise truncation must not accept larger numbers.
+
+Release `--no-build` validates metadata and the recorded binary checksum;
+stale package versions or additional native images fail. The staged main
+version and all optional dependency pins follow `--version`, including the
+workflow input. `runtime-metadata.json` records per-platform observations and
+whether the full stage matrix was present. Draft permits a host-only rehearsal;
+real publish refuses an incomplete stage before publishing any package.
+
+An `api-present-unverified` deallocator report establishes only API presence.
+It does not certify memory ownership safety; default buffers stay caller-owned.
+See [loader diagnostics](/platforms#bun-capability-diagnostics) for capability
+failure, disabled FFI, independent ABI mismatches, and missing platform binary.
 
 ## Publish
 

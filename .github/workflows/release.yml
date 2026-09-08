@@ -40,8 +40,15 @@ permissions:
   contents: read
   id-token: write # npm provenance (ADR-0005 §7)
 
+env:
+  CARGO_BUILD_JOBS: 3
+
 jobs:
+  runtime-validation:
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: runtime-validation
     name: "Build + install smoke: ${{ matrix.platform }}"
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -105,19 +112,29 @@ jobs:
         with:
           target: ${{ matrix.triple }}
 
-      - name: Install pinned Bun version
+      - name: Install latest stable Bun
         if: steps.gate.outputs.skip != 'true'
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version-file: .bun-version
+          bun-version: latest
 
       - name: Install pinned dependencies
         if: steps.gate.outputs.skip != 'true'
         run: bun install --frozen-lockfile
 
+      - name: Resolve release version
+        if: steps.gate.outputs.skip != 'true'
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          version="$(bun -p 'process.env.REQUESTED_VERSION || require("./package.json").version')"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+
       - name: Build the platform package
         if: steps.gate.outputs.skip != 'true'
-        run: bun scripts/build-platform-package.mjs --triple ${{ matrix.triple }}
+        shell: bash
+        run: bun scripts/build-platform-package.mjs --triple ${{ matrix.triple }} --version "$RELEASE_VERSION"
 
       - name: Pack the platform package tarball
         if: steps.gate.outputs.skip != 'true'
@@ -131,8 +148,23 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
-          tgz="build/smoke/mad-dom-platform-${{ matrix.platform }}-$(node -p "require('./package.json').version").tgz"
-          bun scripts/install-smoke.mjs --platform-tgz "$tgz"
+          tgz="build/smoke/mad-dom-platform-${{ matrix.platform }}-${RELEASE_VERSION}.tgz"
+          bun scripts/install-smoke.mjs --platform-tgz "$tgz" --version "$RELEASE_VERSION"
+
+      - name: Record platform runtime diagnostics
+        if: always() && steps.gate.outputs.skip != 'true'
+        shell: bash
+        run: |
+          mkdir -p build/diagnostics
+          bun run report:runtime > build/diagnostics/runtime.json
+      - name: Upload platform smoke evidence
+        if: always() && steps.gate.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.platform }}
+          path: |
+            build/diagnostics/*.json
+            build/smoke/runtime-results.json
 
       - name: Upload platform package
         if: steps.gate.outputs.skip != 'true'
@@ -150,10 +182,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install pinned Bun version
+      - name: Install latest stable Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version-file: .bun-version
+          bun-version: latest
 
       - name: Install pinned dependencies
         run: bun install --frozen-lockfile
@@ -163,14 +195,27 @@ jobs:
         with:
           path: build/release/platform
           merge-multiple: true
+          pattern: platform-*
 
       - name: "Rehearse the release (pack + checksums + ordered plan)"
         env:
+          REQUESTED_VERSION: ${{ inputs.version }}
           MAD_DOM_ALLOW_PUBLISH: ${{ !inputs.dry_run && '1' || '0' }}
         run: |
+          version="$(bun -p 'process.env.REQUESTED_VERSION || require("./package.json").version')"
           stage="${{ inputs.stage || 'alpha' }}"
           if [ "${{ inputs.dry_run }}" = "false" ]; then
-            bun scripts/release.mjs publish --stage "$stage" --no-build --no-dry-run
+            bun scripts/release.mjs publish --stage "$stage" --version "$version" --no-build --no-dry-run
           else
-            bun scripts/release.mjs draft --stage "$stage" --no-build
+            bun scripts/release.mjs draft --stage "$stage" --version "$version" --no-build
           fi
+
+      - name: Upload release draft and checksums
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-draft
+          path: |
+            build/release/runtime-metadata.json
+            build/release/SHASUMS256.txt
+            build/release/tgz/*.tgz
