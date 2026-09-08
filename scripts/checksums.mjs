@@ -89,10 +89,12 @@ async function verify(dir, manifest) {
   }
   if (expected.size === 0) throw new Error(`no manifest entries found in ${manifest}`);
 
+  // Snapshot membership once; retain manifest insertion order for diagnostics.
+  const available = new Set(readdirSync(dir));
   const problems = [];
   for (const [name, want] of expected) {
     const filePath = join(dir, name);
-    if (!readdirSync(dir).includes(name)) {
+    if (!available.has(name)) {
       problems.push(`missing tarball: ${name}`);
       continue;
     }

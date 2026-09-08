@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { runInNewContext } from "node:vm";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,7 +10,7 @@ import { isNativeAvailable, Window } from "../../index.js";
 import { bunHostIO } from "../../js/facade/bun-host-io.js";
 import { virtualServerResponse } from "../../js/facade/virtual-server.js";
 import { runSyncFetchChild, syncFetch, SYNC_FETCH_MAX_OUTPUT_BYTES } from "../../js/facade/sync-fetch.js";
-import { IO_BENCH_SCHEMA, assertBunIOReport, runBunIOBenchmark } from "../../scripts/bench-bun-io.mjs";
+import { IO_BENCH_SCHEMA, assertBunIOReport, runBunIOBenchmark, runChecksumBenchmark, prepareChecksumFixture, validateChecksumFixture } from "../../scripts/bench-bun-io.mjs";
 
 const REPO_ROOT = join(import.meta.dir, "..", "..");
 const CHECKSUMS = join(REPO_ROOT, "scripts", "checksums.mjs");
@@ -627,11 +628,12 @@ describe("checksums CLI host IO (T5)", () => {
     for (const line of lines) expect(line).toMatch(/^[0-9a-f]{64}  .+\.tgz$/);
   });
 
-  const nodeBin = Bun.which("node");
-  test.skipIf(!nodeBin)("the whole node path (no Bun global) produces the same manifest", () => {
-    const node = runChecksums(nodeBin, ["generate", dir, "--out", join(dir, "SHASUMS.node.txt")]);
-    expect(node.status).toBe(0);
-    expect(readFileSync(join(dir, "SHASUMS.node.txt"))).toEqual(readFileSync(manifestBun));
+  test("the capability gate supports a realm with no Bun global", () => {
+    // Bun's own global is nonconfigurable. Keep all CLI processes on the
+    // selected Bun and exercise the missing-global branch in an empty realm.
+    for (const name of ["file", "write", "CryptoHasher"]) {
+      expect(runInNewContext(`const DISABLED_PATTERN = /^(1|true|yes)$/i; (${bunHostIO.toString()})(${JSON.stringify(name)}, {})`)).toBe(false);
+    }
   });
 
   test("verify recomputes every entry on both paths", () => {
@@ -669,6 +671,17 @@ describe("Bun host IO benchmark (T5)", () => {
       expect(report.workloads[id].fallback.validation.passed).toBe(true);
     }
     expect(report.validation.sameWorkloadBothPaths).toBe(true);
+    for (const scenario of ["small", "many", "large"]) for (const operation of ["generate", "verify"]) {
+      const entry = report.workloads[`checksum.${scenario}.${operation}`];
+      expect(entry.comparable).toBe(true);
+      expect(entry.bun.validation).toEqual(entry.fallback.validation);
+    }
+    const missing = structuredClone(report);
+    missing.workloads["checksum.many.verify"].bun.metrics.checksum.internal.samples.pop();
+    expect(() => assertBunIOReport(missing)).toThrow(/checksum samples missing/);
+    const invalidTime = structuredClone(report);
+    invalidTime.workloads["checksum.many.generate"].fallback.metrics.checksum.processSamples[0].elapsedMs = NaN;
+    expect(() => assertBunIOReport(invalidTime)).toThrow(/checksum sample invalid/);
   });
 
   test("assert rejects a measured row whose result validation failed", async () => {
@@ -692,4 +705,185 @@ describe("Bun host IO benchmark (T5)", () => {
     notComparable.workloads["write.file"].bun = { status: "unavailable", reason: "forced" };
     expect(() => assertBunIOReport(notComparable)).toThrow(/not a valid measurement/);
   });
+});
+
+// Task 04: complete shasum bytes, ordered diagnostics and independent fallback.
+describe("checksum release contract", () => {
+  test("all eight file/hash/write capability combinations preserve output and errors", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mad-dom-checksum-contract-"));
+    const manifest = join(dir, "SHASUMS.txt");
+    const preload = join(dir, "capabilities.mjs");
+    const files = new Map([
+      ["z-platform.tgz", Buffer.from([0, 255, 128, 10, 0])],
+      ["a-main.tgz", Buffer.from("你好 café 🦀")],
+      ["m-large.tgz", Buffer.alloc(2 * 1024 * 1024, 37)],
+    ]);
+    const restore = () => { for (const [name, bytes] of files) writeFileSync(join(dir, name), bytes); };
+    const expected = [...files].sort(([a], [b]) => a < b ? -1 : 1).map(([name, bytes]) => `${sha256(bytes)}  ${name}`).join("\n") + "\n";
+    const run = args => spawnSync(process.execPath, ["--preload", preload, CHECKSUMS, ...args], { encoding: "utf8", env: ioEnv("bun") });
+    try {
+      for (let mask = 0; mask < 8; mask++) {
+        writeFileSync(preload, ["file", "CryptoHasher", "write"].map((name, bit) => mask & (1 << bit) ? "" : `Bun.${name} = undefined;`).join("\n"));
+        restore();
+        writeFileSync(join(dir, "ignore.txt"), "ignored");
+        let result = run(["generate", dir, "--out", manifest]);
+        expect(result.status).toBe(0);
+        expect(result.stderr).toBe("");
+        expect(result.stdout).toBe(`checksums: wrote 3 entry(ies) to ${manifest}\n`);
+        expect(readFileSync(manifest, "utf8")).toBe(expected);
+        result = run(["verify", dir, "--manifest", manifest]);
+        expect(result.status).toBe(0);
+        expect(result.stdout).toBe("checksums: OK — all 3 manifest entry(ies) recompute to the same sha256\n");
+        expect(result.stderr).toBe("");
+        // Deliberately non-sorted manifest; duplicate keys retain Map insertion
+        // position and the last digest. All three problems must be reported.
+        writeFileSync(manifest, `${"0".repeat(64)}  z-platform.tgz\n` +
+          ["a-main.tgz", "m-large.tgz", "z-platform.tgz"].map(name => `${sha256(files.get(name))}  ${name}`).join("\n") + "\n");
+        writeFileSync(join(dir, "z-platform.tgz"), "tampered z");
+        rmSync(join(dir, "a-main.tgz"));
+        writeFileSync(join(dir, "m-large.tgz"), "tampered m");
+        result = run(["verify", dir, "--manifest", manifest]);
+        expect(result.status).toBe(1);
+        expect(result.stdout).toBe("");
+        expect(result.stderr).toBe("checksums: 3 problem(s) across 3 manifest entry(ies):\n" +
+          `  - checksum mismatch for z-platform.tgz: want ${sha256(files.get("z-platform.tgz"))}, got ${sha256(Buffer.from("tampered z"))}\n` +
+          "  - missing tarball: a-main.tgz\n" +
+          `  - checksum mismatch for m-large.tgz: want ${sha256(files.get("m-large.tgz"))}, got ${sha256(Buffer.from("tampered m"))}\n`);
+        for (const text of ["", "\nnot a shasum\n", "ABC  file.tgz\n"]) {
+          writeFileSync(manifest, text);
+          const invalid = run(["verify", join(dir, "absent-dir"), "--manifest", manifest]);
+          expect(invalid.status).toBe(1);
+          expect(invalid.stderr).toBe(`checksums: no manifest entries found in ${manifest}\n`);
+        }
+        const missing = run(["verify", dir, "--manifest", join(dir, "missing-manifest")]);
+        expect(missing.status).toBe(1);
+        expect(missing.stderr).toContain("ENOENT");
+        const usage = run([]);
+        expect(usage.status).toBe(2);
+        expect(usage.stderr).toBe("usage: bun scripts/checksums.mjs <generate|verify> <dir> [--out|--manifest <file>]\n");
+        restore();
+        const writeError = run(["generate", dir, "--out", dir]);
+        expect(writeError.status).toBe(1);
+        expect(writeError.stdout).toBe("");
+        expect(writeError.stderr).toContain("checksums:");
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  test("read exceptions still abort at the first unreadable entry", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mad-dom-checksum-errors-"));
+    try {
+      mkdirSync(join(dir, "a-directory.tgz"));
+      writeFileSync(join(dir, "z-last.tgz"), "last");
+      const manifest = join(dir, "manifest.txt");
+      writeFileSync(manifest, `${"0".repeat(64)}  a-directory.tgz\n${"0".repeat(64)}  z-last.tgz\n`);
+      for (const mode of ["bun", "fallback"]) {
+        const result = spawnSync(process.execPath, [CHECKSUMS, "verify", dir, "--manifest", manifest], { encoding: "utf8", env: ioEnv(mode) });
+        expect(result.status).toBe(1);
+        expect(result.stdout).toBe("");
+        expect(result.stderr).toMatch(/EISDIR|Directories cannot be read like files/);
+        expect(result.stderr).not.toContain("checksum mismatch");
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+
+describe("actual checksum benchmark validation", () => {
+  test("checks every byte/file and preserves the whole ordered manifest", async () => {
+    const fixture = await prepareChecksumFixture({ id: "oracle", count: 4, fileSizeBytes: 256 });
+    try {
+      expect((await validateChecksumFixture(fixture)).checkedFiles).toBe(4);
+      const path = join(fixture.dir, fixture.files[0].name);
+      const bytes = readFileSync(path);
+      writeFileSync(path, Buffer.alloc(bytes.length));
+      await expect(validateChecksumFixture(fixture)).rejects.toThrow(/fixture changed/);
+      writeFileSync(path, bytes);
+      writeFileSync(fixture.manifest, fixture.contents.trimEnd().split("\n").reverse().join("\n") + "\n");
+      await expect(validateChecksumFixture(fixture)).rejects.toThrow(/bytes\/order\/digests/);
+    } finally { rmSync(fixture.dir, { recursive: true, force: true }); }
+  });
+
+  test("reruns the real CLI every internal round and preserves startup samples", async () => {
+    const report = await runChecksumBenchmark({ runs: 2, warmup: 2, scenarios: [{ id: "tiny", count: 3, fileSizeBytes: 128 }] });
+    for (const result of Object.values(report.results)) {
+      expect(result.status).toBe("measured");
+      expect(result.internal.samples.length).toBe(4);
+      expect(result.processSamples.length).toBe(4);
+      expect(result.internal.runtime.executable).toBe(process.execPath);
+      expect(result.stdout.split("\n").filter(line => line.startsWith("checksums:")).length).toBe(4);
+      for (const sample of [...result.internal.samples, ...result.processSamples]) {
+        expect(sample.validation.checkedFiles).toBe(3);
+        expect(sample.elapsedMs).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+});
+
+
+test("checksum audit observes one scan and one tarball in flight on both paths", async () => {
+  for (const mode of ["bun", "fallback"]) {
+    const report = await runChecksumBenchmark({ mode, diagnostic: true, runs: 1, warmup: 0,
+      scenarios: [{ id: "audit", count: 16, fileSizeBytes: 128 }] });
+    for (const [id, result] of Object.entries(report.results)) {
+      expect(result.status).toBe("measured");
+      const counts = result.internal.counts;
+      expect(counts.scans).toBe(1);
+      expect(counts.maxInFlightFiles).toBe(1);
+      expect(counts.maxInFlightBytes).toBe(128);
+      expect(counts.inFlightFiles).toBe(0);
+      expect(counts.inFlightBytes).toBe(0);
+      expect(counts.bunHashes).toBe(mode === "bun" ? 16 : 0);
+      expect(counts.nodeHashes).toBe(mode === "fallback" ? 16 : 0);
+      const reads = id.endsWith("verify") ? 17 : 16;
+      expect(counts.bunReads).toBe(mode === "bun" ? reads : 0);
+      expect(counts.nodeReads).toBe(mode === "fallback" ? reads : 0);
+    }
+  }
+});
+
+
+test("empty checksum directories generate the original newline and fail verify", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mad-dom-checksum-empty-"));
+  const manifest = join(dir, "SHASUMS.txt");
+  try {
+    for (const mode of ["bun", "fallback"]) {
+      const generated = spawnSync(process.execPath, [CHECKSUMS, "generate", dir, "--out", manifest], { encoding: "utf8", env: ioEnv(mode) });
+      expect(generated.status).toBe(0);
+      expect(generated.stdout).toBe(`checksums: wrote 0 entry(ies) to ${manifest}\n`);
+      expect(readFileSync(manifest, "utf8")).toBe("\n");
+      const verified = spawnSync(process.execPath, [CHECKSUMS, "verify", dir, "--manifest", manifest], { encoding: "utf8", env: ioEnv(mode) });
+      expect(verified.status).toBe(1);
+      expect(verified.stderr).toBe(`checksums: no manifest entries found in ${manifest}\n`);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// The formal benchmark overwrites an existing valid manifest. This separate
+// untimed oracle must also reject a generator which merely prints success.
+test("checksum generate replaces poisoned manifests and rejects a no-op generator", async () => {
+  const fixture = await prepareChecksumFixture({ id: "write-proof", count: 4, fileSizeBytes: 256 });
+  const noop = join(fixture.dir, "noop.mjs");
+  const checkOutput = cli => {
+    expect(cli.status).toBe(0);
+    expect(cli.stderr).toBe("");
+    expect(cli.stdout).toBe(`checksums: wrote 4 entry(ies) to ${fixture.manifest}\n`);
+  };
+  try {
+    writeFileSync(noop, `console.log(${JSON.stringify(`checksums: wrote 4 entry(ies) to ${fixture.manifest}`)});\n`);
+    for (const mode of ["bun", "fallback"]) {
+      for (const state of ["missing", "poisoned"]) {
+        const reset = () => state === "missing" ? rmSync(fixture.manifest, { force: true }) : writeFileSync(fixture.manifest, "incorrect manifest\n");
+        reset();
+        const args = ["generate", fixture.dir, "--out", fixture.manifest];
+        const generated = spawnSync(process.execPath, [CHECKSUMS, ...args], { encoding: "utf8", env: ioEnv(mode) });
+        checkOutput(generated);
+        expect((await validateChecksumFixture(fixture)).checkedFiles).toBe(4);
+        reset();
+        const fake = spawnSync(process.execPath, [noop, ...args], { encoding: "utf8", env: ioEnv(mode) });
+        checkOutput(fake);
+        await expect(validateChecksumFixture(fixture)).rejects.toThrow();
+      }
+    }
+  } finally { rmSync(fixture.dir, { recursive: true, force: true }); }
 });

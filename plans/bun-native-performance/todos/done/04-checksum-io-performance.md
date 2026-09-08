@@ -1,5 +1,6 @@
 difficulty: medium
 agent: inherit
+status: done
 
 # 04 · checksum 实际 IO 吞吐与扫描优化
 
@@ -57,3 +58,30 @@ T1 实际场景；保持 shasum 格式、文件名排序、stdout/stderr 文案�
 `bun run bench:bun-io:selftest` 通过；`bun run check`、`bun run validate` 通过。
 native tests 构建本 worktree image 并显式覆盖路径。性能采样与其余任务构建/测试
 串行，报告真实 checksum 收益及任何未解决的性能限制。
+
+## 完成记录 · 2026-09-08
+
+T1/T2/T3 及协调器补充的写入 oracle 复核全部完成，以一个本地任务 commit 交接。
+初次交接时未执行 rebase/merge/push/PR，等待协调器独立复核与集成。
+随后协调器明确授权的 rebase 与两版串行复验另见
+[集成证据](../../evidence/task-04/rebase-validation.md)：rebase 已是最新，无冲突；
+两版 host IO 各 44 pass / 513 assertions，0 fail/skip，`check` 均 exit 0。
+复验在单个优先独占窗口完成，源码与 image 未变，本 commit 仅 amend 集成证据。
+
+- [逐条验收与完整命令结果](../../evidence/task-04/acceptance.md)、
+  [证据索引](../../evidence/task-04/README.md)：两版 check、report:runtime、IO/native
+  专项和 selftest、完整 validate 均通过；先生成 hdunit rewritten fixtures。
+- [正式结果与限制](../../evidence/task-04/findings.md)、
+  [原始及补充样本表](../../evidence/task-04/tables.md)：144 个 ABBA worker，全部
+  2 warmup/9 measured，0 失败；保留优化前两版 baseline 和所有补充组。
+- 128 包 verify 目录扫描从 128 次降为 1 次；两版、两种 IO 模式实际 CLI 整进程
+  耗时下降 29.9%–33.7%。生产仍串行；2 文件/8 MiB 有界原型未达到收益预算，已拒绝。
+- [独立写入 probe](../../evidence/task-04/write-proof.json)：删除/毒化 manifest 后，
+  reference/candidate × baseline/latest × Bun/fallback 的 16 次实际 CLI 全部写出正确
+  完整内容；16 次仅打印成功的 no-op 全部被拒绝。正式 generate 窗口明确是覆盖已有
+  manifest，原始样本未重写。最终两版 IO 专项各 44 pass / 513 assertions，0 fail/skip。
+- [最终完整性检查](../../evidence/task-04/integrity.json)：reference 的 1498 tracked
+  files、被测源码和两个独立 image 均未改变；两个 native override 指向各自同一 image。
+
+无未完成验收或 blocker。共享 VM 竞争、暖 page cache、自然 GC、内部模块解析与
+冷进程启动差异、历史 scratch/lifecycle/RSS 限制均保留，不宣称 DOM facade 收益。
