@@ -1,0 +1,1364 @@
+{
+  "schema": "mad-dom/coordinator-integration/1",
+  "recordedAtUtc": "2026-09-08T05:24:44.317435+00:00",
+  "originalBranch": "main",
+  "originalHead": "4093c79ebe5ee25404d9f6954202af83223f39c2",
+  "integratedHead": "6dc400bec1763c399967e8b1c6b8130ab50d4eed",
+  "scope": "Independent local integration of remaining tasks 04, 06 and 07. No push, PR mutation, publish or hosted CI. Agent source/evidence hashes describe the task-07 commit tree; later coordinator documentation is separate.",
+  "tasks": [
+    {
+      "todo": "04-memory-gc-and-external-buffers.md",
+      "commit": "49351d2c346bab2156ac029345f5e95995f379f2",
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "effort": "max",
+      "repositoryGate": "04-integration",
+      "merged": "ff-only",
+      "cleaned": true
+    },
+    {
+      "todo": "06-latest-bun-ci-and-release-policy.md",
+      "commit": "4a90f51bb6f98cbaf4ceab43579fb12da951ef35",
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "effort": "xhigh",
+      "repositoryGate": "06-integration",
+      "merged": "ff-only",
+      "cleaned": true
+    },
+    {
+      "todo": "07-integration-and-regression-gate.md",
+      "commit": "6dc400bec1763c399967e8b1c6b8130ab50d4eed",
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "effort": "max",
+      "repositoryGate": "07-integration",
+      "rebase": "same agent executed git rebase main; no-op, no conflict; both Bun lanes 52 targeted tests passed",
+      "merged": "ff-only",
+      "cleaned": true
+    }
+  ],
+  "bun": {
+    "baseline": {
+      "version": "1.4.0",
+      "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676"
+    },
+    "latestObserved": {
+      "version": "1.4.2",
+      "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
+    }
+  },
+  "nativeImageSha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96",
+  "requiredAcceptance": "PASS: final independent 14-command repository gate (691 Rust, 1194 Bun, types/ledger/hdunit/WPT/native/docs), real main/platform packaging and installed smoke, both original-reference bench:check lanes, integration.",
+  "additionalSensitivity": "NOT ALL PASSED: fixed four native-only controls identify 3 growth cases and miss the first latest case. The helper exited 1. No repeat-until-pass or threshold change. This is a measured limitation of the finite v2 RSS rule, not a promise that arbitrary native leaks are detected.",
+  "knownMiss": {
+    "file": "coordinator-final-native-latest-1.json",
+    "stderr": "coordinator-final-native-latest-1-failure.txt",
+    "retainedBytes": 25165824,
+    "releasedBlocks": 24,
+    "lifecycleAndHeap": "all pass",
+    "rssBlockMediansMiB": [
+      67.623046875,
+      73.515625,
+      85.861328125
+    ],
+    "projectedBlockGrowthBytes": 5142055.384615385,
+    "medianBlockIqrBytes": 5197824,
+    "explanation": "middle block lower-quartile slope is negative; global projected block growth does not exceed median block IQR; peak remains below 2x warm stock. Code follows its stated contract but misses the real retention. Original agent independently recalculated the same result read-only."
+  },
+  "archivedFiles": [
+    "plans/bun-native-runtime/todos/done/01-capability-matrix-and-benchmarks.md",
+    "plans/bun-native-runtime/todos/done/02-ffi-abi-and-native-fast-path.md",
+    "plans/bun-native-runtime/todos/done/03-bun-ffi-loader-and-facade.md",
+    "plans/bun-native-runtime/todos/done/04-memory-gc-and-external-buffers.md",
+    "plans/bun-native-runtime/todos/done/05-bun-host-io.md",
+    "plans/bun-native-runtime/todos/done/06-latest-bun-ci-and-release-policy.md",
+    "plans/bun-native-runtime/todos/done/07-integration-and-regression-gate.md"
+  ],
+  "cleanup": {
+    "taskWorkspacesRemoved": [
+      "wA",
+      "wB",
+      "wD"
+    ],
+    "taskAgentsExited": [
+      "plan-mad-bun-04",
+      "plan-mad-bun-06",
+      "plan-mad-bun-07"
+    ],
+    "taskBranchesAndWorktreesRemaining": [],
+    "otherResources": "untouched",
+    "mainStatusBeforeCoordinatorDocumentation": "clean"
+  },
+  "runs": {
+    "04-integration": {
+      "commands": [
+        {
+          "command": [
+            "bun",
+            "run",
+            "dev:build"
+          ],
+          "exit_code": 0,
+          "seconds": 0.13,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/00.log",
+          "logSha256": "a8c44dbc5a6d8c7b6dd7531f2ea75ca030f867835a4fb723b60d21e70c250f74"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:hdunit:rewrite"
+          ],
+          "exit_code": 0,
+          "seconds": 1.85,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/01.log",
+          "logSha256": "83c208b7242a03883d36ccb700d33286193771660782400ee68a2d9f702fc91b"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.06,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/02.log",
+          "logSha256": "524ba7d8b4e96d68f46db13cd6b74b6d3d4ec045d19a995ccb247565b6a76c3e"
+        },
+        {
+          "command": [
+            "cargo",
+            "fmt",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.45,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/03.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "cargo",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 2.01,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/04.log",
+          "logSha256": "ba54e97377cab4935ee36223101e78ba1911d8c4787d9e062a94949d7ea9aa97"
+        },
+        {
+          "command": [
+            "cargo",
+            "test",
+            "--workspace"
+          ],
+          "exit_code": 0,
+          "seconds": 25.8,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/05.log",
+          "logSha256": "7c3e845f7364f7ecac9ca75c38df39cb3f7c8c6438de675160e96135d2cda6ac"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:types"
+          ],
+          "exit_code": 0,
+          "seconds": 1.67,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/06.log",
+          "logSha256": "c51ab3ade31a128d5a564a20fce1ffcba0864ff8a0069a784201bb2700e46004"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "test"
+          ],
+          "exit_code": 0,
+          "seconds": 203.7,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/07.log",
+          "logSha256": "a51910b2e22fe8a31045d9803f97a4928e2a2a45549894345f5897cc6dbab83c"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:ledger"
+          ],
+          "exit_code": 0,
+          "seconds": 36.06,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/08.log",
+          "logSha256": "9db104a230311df06791409c3daf7f3d731d2dfdd870fb4e976b15fd96d7c9c1"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:hdunit:validate"
+          ],
+          "exit_code": 0,
+          "seconds": 6.54,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/09.log",
+          "logSha256": "699b4eed183407d1a5b830d3eee6c4bbe26ae072d8110d7abef465ef80ff5bf0"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "wpt:test"
+          ],
+          "exit_code": 0,
+          "seconds": 0.67,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/10.log",
+          "logSha256": "c49f9ba1e687dabffdbb22f42f6be0ae6ae7fe09416511a62959d16f2c7d9596"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "test:native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.11,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/11.log",
+          "logSha256": "d7f568532140275688600a0bb760795cca068970abb19367d1a411986eddd8d1"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "docs:build"
+          ],
+          "exit_code": 0,
+          "seconds": 5.03,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/12.log",
+          "logSha256": "7b460484fbf54c73b3e90f43a18da5229bf78dac89a5c834c85ebf8423954537"
+        },
+        {
+          "command": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.01,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/04-integration/13.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "nonzeroExitCodes": 0
+    },
+    "06-integration": {
+      "commands": [
+        {
+          "command": [
+            "bun",
+            "run",
+            "dev:build"
+          ],
+          "exit_code": 0,
+          "seconds": 0.14,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/00.log",
+          "logSha256": "ac52d00ca1fbecb3aabfbe4fc46fb3ffa884ec8f63a26699c0dfeb8a0d826a67"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:hdunit:rewrite"
+          ],
+          "exit_code": 0,
+          "seconds": 1.94,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/01.log",
+          "logSha256": "83c208b7242a03883d36ccb700d33286193771660782400ee68a2d9f702fc91b"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.06,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/02.log",
+          "logSha256": "524ba7d8b4e96d68f46db13cd6b74b6d3d4ec045d19a995ccb247565b6a76c3e"
+        },
+        {
+          "command": [
+            "cargo",
+            "fmt",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.46,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/03.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "cargo",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 0.16,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/04.log",
+          "logSha256": "59639588a6f1826f129cbcd121edc07279dab94786f5fa5bde6b3439b2e845cc"
+        },
+        {
+          "command": [
+            "cargo",
+            "test",
+            "--workspace"
+          ],
+          "exit_code": 0,
+          "seconds": 24.1,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/05.log",
+          "logSha256": "d0185ed6a50a3f6699903d05bc1e71cdbb8b89dfbd2dc9cc03e9747f6a3ca101"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:types"
+          ],
+          "exit_code": 0,
+          "seconds": 1.95,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/06.log",
+          "logSha256": "c51ab3ade31a128d5a564a20fce1ffcba0864ff8a0069a784201bb2700e46004"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "test"
+          ],
+          "exit_code": 0,
+          "seconds": 202.95,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/07.log",
+          "logSha256": "2a9eefa3a07472b357bc4fd663216794851fb3e1d95f1b6652b9f58eefd731a8"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:ledger"
+          ],
+          "exit_code": 0,
+          "seconds": 36.06,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/08.log",
+          "logSha256": "9db104a230311df06791409c3daf7f3d731d2dfdd870fb4e976b15fd96d7c9c1"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:hdunit:validate"
+          ],
+          "exit_code": 0,
+          "seconds": 6.24,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/09.log",
+          "logSha256": "699b4eed183407d1a5b830d3eee6c4bbe26ae072d8110d7abef465ef80ff5bf0"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "wpt:test"
+          ],
+          "exit_code": 0,
+          "seconds": 0.63,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/10.log",
+          "logSha256": "8fc11ff15205be12e8c6ef6b389a2e20d282330ecb7d8a2073cf6452c7111f81"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "test:native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.11,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/11.log",
+          "logSha256": "3c2c6240d1832b4e885885d8f5729761dc87fc2fb135b9b41a1349a617c8c0d2"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "docs:build"
+          ],
+          "exit_code": 0,
+          "seconds": 5.29,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/12.log",
+          "logSha256": "2cd0d3516a77efeccfb9bf475dabaffad800088d09e6138ec06bf41fc9fa96f0"
+        },
+        {
+          "command": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.01,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-integration/13.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "nonzeroExitCodes": 0
+    },
+    "06-release": {
+      "commands": [
+        {
+          "command": [
+            "bun",
+            "run",
+            "report:runtime",
+            "--require-native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.02,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-release/00.log",
+          "logSha256": "be4d4574299b29e22748149d9b2bfd7fc54c8923a80ddbd94fa9c86f3ee0797b"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "probe:bun:selftest"
+          ],
+          "exit_code": 0,
+          "seconds": 0.02,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-release/01.log",
+          "logSha256": "b6f11415ad5cbe31f007774ec5d386bf3d01717cff6bfa33a5185fd4c684571a"
+        },
+        {
+          "command": [
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-06-latest-policy/build/tools/actionlint",
+            ".github/workflows/ci.yml",
+            ".github/workflows/release.yml"
+          ],
+          "exit_code": 0,
+          "seconds": 0.01,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-release/02.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "platform:build",
+            "--artifact",
+            "build/mad-dom.node",
+            "--out",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-06-latest-policy/build/coordinator-release/platform"
+          ],
+          "exit_code": 0,
+          "seconds": 0.1,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-release/03.log",
+          "logSha256": "801a0084769926cec475bb933f8a3dce3b570fff9c81e843b38b29aa15ee9002"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "release:draft",
+            "--no-build",
+            "--out",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-06-latest-policy/build/coordinator-release"
+          ],
+          "exit_code": 0,
+          "seconds": 1.24,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-release/04.log",
+          "logSha256": "51005600574eca03eee4a78e31d72f043e330295cd5a363d67637556e61164b2"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "checksums",
+            "verify",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-06-latest-policy/build/coordinator-release/tgz",
+            "--manifest",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-06-latest-policy/build/coordinator-release/SHASUMS256.txt"
+          ],
+          "exit_code": 0,
+          "seconds": 0.03,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-release/05.log",
+          "logSha256": "023d557ad75b3db40f643e3079dce01f7b9bb0aafa76368ba544a615b3cfb95f"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "smoke:install",
+            "--out",
+            "build/coordinator-smoke",
+            "--main-tgz",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-06-latest-policy/build/coordinator-release/tgz/mad-dom-0.0.1-alpha.3.tgz",
+            "--platform-tgz",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-06-latest-policy/build/coordinator-release/tgz/mad-dom-platform-linux-x64-gnu-0.0.1-alpha.3.tgz",
+            "--expect-ffi",
+            "available"
+          ],
+          "exit_code": 0,
+          "seconds": 0.6,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/06-release/06.log",
+          "logSha256": "1b1931d895679bfb466ee5d94f860e61ffdac6636312f4e607a7e6eff7e07f1f"
+        }
+      ],
+      "nonzeroExitCodes": 0
+    },
+    "07-integration": {
+      "commands": [
+        {
+          "command": [
+            "bun",
+            "run",
+            "dev:build"
+          ],
+          "exit_code": 0,
+          "seconds": 0.42,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/00.log",
+          "logSha256": "0d50fcb1fb46c2aeda337d90424d72b3bae75dcf5fce66eca08d2fc6e8804bde"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:hdunit:rewrite"
+          ],
+          "exit_code": 0,
+          "seconds": 1.9,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/01.log",
+          "logSha256": "83c208b7242a03883d36ccb700d33286193771660782400ee68a2d9f702fc91b"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.06,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/02.log",
+          "logSha256": "524ba7d8b4e96d68f46db13cd6b74b6d3d4ec045d19a995ccb247565b6a76c3e"
+        },
+        {
+          "command": [
+            "cargo",
+            "fmt",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.47,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/03.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "cargo",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 0.17,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/04.log",
+          "logSha256": "59639588a6f1826f129cbcd121edc07279dab94786f5fa5bde6b3439b2e845cc"
+        },
+        {
+          "command": [
+            "cargo",
+            "test",
+            "--workspace"
+          ],
+          "exit_code": 0,
+          "seconds": 24.33,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/05.log",
+          "logSha256": "8ab8bf99e102eb67fd8137c1d3d8f0d3b58f213a0f3e80cedecf5f19bd8cadb4"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:types"
+          ],
+          "exit_code": 0,
+          "seconds": 1.61,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/06.log",
+          "logSha256": "c51ab3ade31a128d5a564a20fce1ffcba0864ff8a0069a784201bb2700e46004"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "test"
+          ],
+          "exit_code": 0,
+          "seconds": 204.78,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/07.log",
+          "logSha256": "298b19ab758d24a5b9903fc1e90797c54f5b98088170b2f0a646de3b5a37fb9d"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:ledger"
+          ],
+          "exit_code": 0,
+          "seconds": 37.16,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/08.log",
+          "logSha256": "9db104a230311df06791409c3daf7f3d731d2dfdd870fb4e976b15fd96d7c9c1"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "compat:hdunit:validate"
+          ],
+          "exit_code": 0,
+          "seconds": 6.77,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/09.log",
+          "logSha256": "699b4eed183407d1a5b830d3eee6c4bbe26ae072d8110d7abef465ef80ff5bf0"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "wpt:test"
+          ],
+          "exit_code": 0,
+          "seconds": 0.7,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/10.log",
+          "logSha256": "734d3e81ba1efb12ddbfb37e4eace6557ea9b8b04d69cddaa46b0641d1f7dc11"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "test:native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.13,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/11.log",
+          "logSha256": "83743f0303c425840164cde9e7d8f55528cc3a845f65cd6f626ba2ad3c07eccb"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "docs:build"
+          ],
+          "exit_code": 0,
+          "seconds": 5.49,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/12.log",
+          "logSha256": "9fe093eb5753df2db7d9757e34de950978ffb15786454e94af1eae535ba45d36"
+        },
+        {
+          "command": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 0.01,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-integration/13.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "nonzeroExitCodes": 0
+    },
+    "07-release": {
+      "commands": [
+        {
+          "command": [
+            "bun",
+            "run",
+            "report:runtime",
+            "--require-native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.02,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-release/00.log",
+          "logSha256": "10a5733256b601867e3b582e6ddd00bdccb6f287f9da4a096d4d43b7c4c4b811"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "probe:bun:selftest"
+          ],
+          "exit_code": 0,
+          "seconds": 0.02,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-release/01.log",
+          "logSha256": "b6f11415ad5cbe31f007774ec5d386bf3d01717cff6bfa33a5185fd4c684571a"
+        },
+        {
+          "command": [
+            "/tmp/mad-dom-bun-plan-tools/actionlint",
+            ".github/workflows/ci.yml",
+            ".github/workflows/release.yml"
+          ],
+          "exit_code": 0,
+          "seconds": 0.03,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-release/02.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "platform:build",
+            "--artifact",
+            "build/mad-dom.node",
+            "--out",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-release/platform"
+          ],
+          "exit_code": 0,
+          "seconds": 0.1,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-release/03.log",
+          "logSha256": "1e5fba0bd2e0ded9df5f7c07da016fef0fe05f3d7688d1319548e1f9383fc8d5"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "release:draft",
+            "--no-build",
+            "--out",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-release"
+          ],
+          "exit_code": 0,
+          "seconds": 1.31,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-release/04.log",
+          "logSha256": "460f2f64c956c16b451876b2edf167b6cf1587c063a072dd385943559cdfd4bd"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "checksums",
+            "verify",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-release/tgz",
+            "--manifest",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-release/SHASUMS256.txt"
+          ],
+          "exit_code": 0,
+          "seconds": 0.03,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-release/05.log",
+          "logSha256": "507c8ff6ece73c145fd557572e03540067ef452249d2073d57a1acc80d30c995"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "smoke:install",
+            "--out",
+            "build/coordinator-smoke",
+            "--main-tgz",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-release/tgz/mad-dom-0.0.1-alpha.3.tgz",
+            "--platform-tgz",
+            "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-release/tgz/mad-dom-platform-linux-x64-gnu-0.0.1-alpha.3.tgz",
+            "--expect-ffi",
+            "available"
+          ],
+          "exit_code": 0,
+          "seconds": 0.66,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/07-release/06.log",
+          "logSha256": "cf356d8179d4d474663ccf0689b0a5b60673a15122b35d4a8b510ffe578d7146"
+        }
+      ],
+      "nonzeroExitCodes": 0
+    },
+    "07-extras": {
+      "commands": [
+        {
+          "name": "latest-bench",
+          "command": [
+            "/home/ubuntu/.bun/bin/bun",
+            "run",
+            "bench:check"
+          ],
+          "exit_code": 0,
+          "seconds": 11.39,
+          "stdout": "/tmp/mad-dom-bun-coordinator-checks/07-extras/00-latest-bench.stdout",
+          "stderr": "/tmp/mad-dom-bun-coordinator-checks/07-extras/00-latest-bench.stderr",
+          "stdoutSha256": "c1946b8ff8cd27edee5f2a0d62c39e5ad265dfc613049cbde75d988496688cef",
+          "stderrSha256": "eecca3f080725b395258d898b87b2a2f25b7243ba045b7e6771acc5a4f49989b"
+        },
+        {
+          "name": "baseline-bench",
+          "command": [
+            "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+            "run",
+            "bench:check"
+          ],
+          "exit_code": 0,
+          "seconds": 11.45,
+          "stdout": "/tmp/mad-dom-bun-coordinator-checks/07-extras/01-baseline-bench.stdout",
+          "stderr": "/tmp/mad-dom-bun-coordinator-checks/07-extras/01-baseline-bench.stderr",
+          "stdoutSha256": "971ba612300c58b2d9ec42b98814b25182e6c53b7222e5f25dd7723dcf0412f8",
+          "stderrSha256": "424150de43f90ebf9f285faf111dc2db50ddb01f8c8352224577e3af1c0445d5"
+        },
+        {
+          "name": "latest-integration",
+          "command": [
+            "/home/ubuntu/.bun/bin/bun",
+            "run",
+            "test:integration"
+          ],
+          "exit_code": 0,
+          "seconds": 0.69,
+          "stdout": "/tmp/mad-dom-bun-coordinator-checks/07-extras/02-latest-integration.stdout",
+          "stderr": "/tmp/mad-dom-bun-coordinator-checks/07-extras/02-latest-integration.stderr",
+          "stdoutSha256": "701aea0fcd50c5fff91b467bf5678281ac2f230231d75a0058e5d6b2d94ae25e",
+          "stderrSha256": "1088788840d9bdf2e3e0528d1af5ff416589c4fa5709475a5a66bf85f10a9206"
+        },
+        {
+          "name": "native-control-build",
+          "command": [
+            "cc",
+            "-O2",
+            "-shared",
+            "-fPIC",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "docs/bun-native-runtime-evidence/native-rss-control.c",
+            "-o",
+            "/tmp/mad-dom-bun-coordinator-checks/07-extras/native-rss-control.so"
+          ],
+          "exit_code": 0,
+          "seconds": 0.05,
+          "stdout": "/tmp/mad-dom-bun-coordinator-checks/07-extras/03-native-control-build.stdout",
+          "stderr": "/tmp/mad-dom-bun-coordinator-checks/07-extras/03-native-control-build.stderr",
+          "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "latest-native-control-1",
+          "command": [
+            "/home/ubuntu/.bun/bin/bun",
+            "docs/bun-native-runtime-evidence/native-rss-control.mjs",
+            "/tmp/mad-dom-bun-coordinator-checks/07-extras/native-rss-control.so"
+          ],
+          "exit_code": 1,
+          "seconds": 3.65,
+          "stdout": "/tmp/mad-dom-bun-coordinator-checks/07-extras/04-latest-native-control-1.stdout",
+          "stderr": "/tmp/mad-dom-bun-coordinator-checks/07-extras/04-latest-native-control-1.stderr",
+          "stdoutSha256": "aecaed66fa67c2905c6e15a502b0b8b40d43b511c3f8e975a8e43e8c6f8a5b35",
+          "stderrSha256": "e63dd2a50f2f1c90eec62da6b5c391200beee00bdaa813de03b95bdcd8a9ba6c"
+        },
+        {
+          "name": "latest-native-control-2",
+          "command": [
+            "/home/ubuntu/.bun/bin/bun",
+            "docs/bun-native-runtime-evidence/native-rss-control.mjs",
+            "/tmp/mad-dom-bun-coordinator-checks/07-extras/native-rss-control.so"
+          ],
+          "exit_code": 0,
+          "seconds": 3.76,
+          "stdout": "/tmp/mad-dom-bun-coordinator-checks/07-extras/05-latest-native-control-2.stdout",
+          "stderr": "/tmp/mad-dom-bun-coordinator-checks/07-extras/05-latest-native-control-2.stderr",
+          "stdoutSha256": "e2c88b9a21c9f9d5210648dd0f42fd202ce6cafa1eedd23731d3dc04467b7bce",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "baseline-native-control-1",
+          "command": [
+            "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+            "docs/bun-native-runtime-evidence/native-rss-control.mjs",
+            "/tmp/mad-dom-bun-coordinator-checks/07-extras/native-rss-control.so"
+          ],
+          "exit_code": 0,
+          "seconds": 3.82,
+          "stdout": "/tmp/mad-dom-bun-coordinator-checks/07-extras/06-baseline-native-control-1.stdout",
+          "stderr": "/tmp/mad-dom-bun-coordinator-checks/07-extras/06-baseline-native-control-1.stderr",
+          "stdoutSha256": "a2f959d1883fa720dafc80ba707c1cfd33f53a54380ab14e9f06a118fd770b11",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "baseline-native-control-2",
+          "command": [
+            "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+            "docs/bun-native-runtime-evidence/native-rss-control.mjs",
+            "/tmp/mad-dom-bun-coordinator-checks/07-extras/native-rss-control.so"
+          ],
+          "exit_code": 0,
+          "seconds": 3.49,
+          "stdout": "/tmp/mad-dom-bun-coordinator-checks/07-extras/07-baseline-native-control-2.stdout",
+          "stderr": "/tmp/mad-dom-bun-coordinator-checks/07-extras/07-baseline-native-control-2.stderr",
+          "stdoutSha256": "a319839c5aaebfc2719d80cf282d97b85ea9a84857e30316ca1a0ce3feb34b5e",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "nonzeroExitCodes": 1
+    },
+    "main-runtime-premerge": {
+      "commands": [
+        {
+          "command": [
+            "bun",
+            "run",
+            "dev:build"
+          ],
+          "exit_code": 0,
+          "seconds": 25.18,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/main-runtime-premerge/00.log",
+          "logSha256": "29eb4c73c506c7adaa6b060d3aafc6c9d7a2c4366583b22e4bea6dbf85e66de7"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "test:native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.12,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/main-runtime-premerge/01.log",
+          "logSha256": "a640eee93732cc7f53ea9f1d5f73dfb0098c76e8d4755ba29d6cde35dd0963f8"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "report:runtime",
+            "--require-native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.03,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/main-runtime-premerge/02.log",
+          "logSha256": "ebe24620e609b9804cf1caa3c22f7ca491e283c9109e3978c4baf46bcec1aaca"
+        }
+      ],
+      "nonzeroExitCodes": 0
+    },
+    "main-runtime-final": {
+      "commands": [
+        {
+          "command": [
+            "bun",
+            "run",
+            "test:native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.11,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/main-runtime-final/00.log",
+          "logSha256": "26c40d439b5c5ed836c7759b78abaa08f257ca5702090006f36b847327036685"
+        },
+        {
+          "command": [
+            "bun",
+            "run",
+            "report:runtime",
+            "--require-native"
+          ],
+          "exit_code": 0,
+          "seconds": 0.02,
+          "log": "/tmp/mad-dom-bun-coordinator-checks/main-runtime-final/01.log",
+          "logSha256": "ebe24620e609b9804cf1caa3c22f7ca491e283c9109e3978c4baf46bcec1aaca"
+        }
+      ],
+      "nonzeroExitCodes": 0
+    }
+  },
+  "committedEvidenceSha256": {
+    "coordinator-latest-bench.txt": "c1946b8ff8cd27edee5f2a0d62c39e5ad265dfc613049cbde75d988496688cef",
+    "coordinator-baseline-bench.txt": "971ba612300c58b2d9ec42b98814b25182e6c53b7222e5f25dd7723dcf0412f8",
+    "coordinator-final-native-latest-1.json": "aecaed66fa67c2905c6e15a502b0b8b40d43b511c3f8e975a8e43e8c6f8a5b35",
+    "coordinator-final-native-latest-1-failure.txt": "e63dd2a50f2f1c90eec62da6b5c391200beee00bdaa813de03b95bdcd8a9ba6c",
+    "coordinator-final-native-latest-2.json": "e2c88b9a21c9f9d5210648dd0f42fd202ce6cafa1eedd23731d3dc04467b7bce",
+    "coordinator-final-native-baseline-1.json": "a2f959d1883fa720dafc80ba707c1cfd33f53a54380ab14e9f06a118fd770b11",
+    "coordinator-final-native-baseline-2.json": "a319839c5aaebfc2719d80cf282d97b85ea9a84857e30316ca1a0ce3feb34b5e"
+  },
+  "releaseRuntimeMetadata": {
+    "version": "0.0.1-alpha.3",
+    "stage": "alpha",
+    "runtime": {
+      "schema": 1,
+      "packageVersion": "0.0.1-alpha.3",
+      "nodeApiAbiVersion": 1,
+      "ffiAbiVersion": 1,
+      "ffiCapabilities": 31,
+      "ffiRequired": false
+    },
+    "rehearsalBunVersion": "1.4.2",
+    "baseline": "1.4.0",
+    "completePlatformMatrix": false,
+    "platforms": [
+      {
+        "pkgName": "@mad-dom/platform-linux-x64-gnu",
+        "triple": "x86_64-unknown-linux-gnu",
+        "runtime": {
+          "schema": 1,
+          "packageVersion": "0.0.1-alpha.3",
+          "nodeApiAbiVersion": 1,
+          "ffiAbiVersion": 1,
+          "ffiCapabilities": 31,
+          "ffiRequired": false
+        },
+        "build": {
+          "bunVersion": "1.4.2",
+          "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "platform": {
+            "platform": "linux",
+            "arch": "x64",
+            "libc": "gnu"
+          },
+          "nodeApi": {
+            "status": "available",
+            "abiVersion": 1
+          },
+          "ffi": {
+            "status": "available",
+            "abiVersion": 1,
+            "advertisedCapabilities": 31,
+            "capabilities": 31,
+            "expectedAbiVersion": 1,
+            "expectedCapabilities": 31,
+            "symbols": [
+              "mad_dom_ffi_query_snapshot",
+              "mad_dom_ffi_preorder_snapshot",
+              "mad_dom_ffi_child_tokens",
+              "mad_dom_ffi_serialize",
+              "mad_dom_ffi_create_elements",
+              "mad_dom_ffi_read_batch"
+            ],
+            "missing": []
+          },
+          "capabilityLevel": "ffi",
+          "binarySha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96"
+        }
+      }
+    ]
+  },
+  "installedSmoke": {
+    "bunVersion": "1.4.2",
+    "platform": {
+      "platform": "linux",
+      "arch": "x64",
+      "libc": "gnu"
+    },
+    "results": [
+      {
+        "label": "automatic",
+        "ok": true,
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": {
+          "platform": "linux",
+          "arch": "x64",
+          "libc": "gnu"
+        },
+        "expectedAbis": {
+          "nodeApi": 1,
+          "ffi": 1
+        },
+        "nodeApi": {
+          "status": "available",
+          "abiVersion": 1,
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node"
+        },
+        "ffi": {
+          "status": "available",
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node",
+          "abiVersion": 1,
+          "advertisedCapabilities": 31,
+          "capabilities": 31,
+          "expectedAbiVersion": 1,
+          "expectedCapabilities": 31,
+          "symbols": [
+            "mad_dom_ffi_query_snapshot",
+            "mad_dom_ffi_preorder_snapshot",
+            "mad_dom_ffi_child_tokens",
+            "mad_dom_ffi_serialize",
+            "mad_dom_ffi_create_elements",
+            "mad_dom_ffi_read_batch"
+          ],
+          "missing": []
+        }
+      },
+      {
+        "label": "ffi-disabled",
+        "ok": true,
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": {
+          "platform": "linux",
+          "arch": "x64",
+          "libc": "gnu"
+        },
+        "expectedAbis": {
+          "nodeApi": 1,
+          "ffi": 1
+        },
+        "nodeApi": {
+          "status": "available",
+          "abiVersion": 1,
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node"
+        },
+        "ffi": {
+          "status": "disabled",
+          "reason": "MAD_DOM_FFI_DISABLED is set",
+          "expectedAbiVersion": 1,
+          "expectedCapabilities": 31,
+          "symbols": []
+        }
+      },
+      {
+        "label": "ffi-unavailable",
+        "ok": true,
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": {
+          "platform": "linux",
+          "arch": "x64",
+          "libc": "gnu"
+        },
+        "expectedAbis": {
+          "nodeApi": 1,
+          "ffi": 1
+        },
+        "nodeApi": {
+          "status": "available",
+          "abiVersion": 1,
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node"
+        },
+        "ffi": {
+          "status": "unavailable",
+          "reason": "FFI artifact does not exist: /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/absent-ffi.node",
+          "expectedAbiVersion": 1,
+          "expectedCapabilities": 31,
+          "symbols": [],
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/absent-ffi.node"
+        }
+      },
+      {
+        "label": "ffi-abi-mismatch",
+        "ok": true,
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": {
+          "platform": "linux",
+          "arch": "x64",
+          "libc": "gnu"
+        },
+        "expectedAbis": {
+          "nodeApi": 1,
+          "ffi": 1
+        },
+        "nodeApi": {
+          "status": "available",
+          "abiVersion": 1,
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node"
+        },
+        "ffi": {
+          "status": "mismatch",
+          "reason": "FFI ABI mismatch: expected 1, got 999",
+          "expectedAbiVersion": 1,
+          "expectedCapabilities": 31,
+          "symbols": [],
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node",
+          "abiVersion": 999,
+          "advertisedCapabilities": 31,
+          "code": "MAD_DOM_FFI_ABI_MISMATCH"
+        }
+      },
+      {
+        "label": "ffi-partial",
+        "ok": true,
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": {
+          "platform": "linux",
+          "arch": "x64",
+          "libc": "gnu"
+        },
+        "expectedAbis": {
+          "nodeApi": 1,
+          "ffi": 1
+        },
+        "nodeApi": {
+          "status": "available",
+          "abiVersion": 1,
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node"
+        },
+        "ffi": {
+          "status": "partial",
+          "reason": "one or more advertised FFI capabilities or symbols are unavailable",
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node",
+          "abiVersion": 1,
+          "advertisedCapabilities": 31,
+          "capabilities": 22,
+          "expectedAbiVersion": 1,
+          "expectedCapabilities": 31,
+          "symbols": [
+            "mad_dom_ffi_preorder_snapshot",
+            "mad_dom_ffi_child_tokens",
+            "mad_dom_ffi_create_elements",
+            "mad_dom_ffi_read_batch"
+          ],
+          "missing": [
+            {
+              "name": "mad_dom_ffi_query_snapshot",
+              "reason": "Symbol \"mad_dom_ffi_query_snapshot__missing\" not found in \"/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node\""
+            },
+            {
+              "name": "mad_dom_ffi_serialize",
+              "reason": "Symbol \"mad_dom_ffi_serialize__missing\" not found in \"/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-happy/node_modules/@mad-dom/platform-linux-x64-gnu/mad-dom.linux-x64-gnu.node\""
+            }
+          ]
+        }
+      },
+      {
+        "label": "platform-missing",
+        "ok": false,
+        "code": "MAD_DOM_UNSUPPORTED_PLATFORM",
+        "message": "mad-dom cannot load its native binding for linux/x64/gnu. Tried: \"@mad-dom/platform-linux-x64-gnu\" failed: Cannot find module '@mad-dom/platform-linux-x64-gnu'\nRequire stack:\n- /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-missing/node_modules/mad-dom/js/native-loader.js; \"@mad-dom/platform-linux-x64-musl\" failed: Cannot find module '@mad-dom/platform-linux-x64-musl'\nRequire stack:\n- /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-missing/node_modules/mad-dom/js/native-loader.js. Reinstall without --no-optional (the matching platform package is missing; if this version does not bundle your platform, it is declared but not included). see the \"Support matrix\" section in the README",
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": {
+          "platform": "linux",
+          "arch": "x64",
+          "libc": "gnu"
+        },
+        "expectedAbis": {
+          "nodeApi": 1,
+          "ffi": 1
+        },
+        "nodeApi": {
+          "status": "unavailable",
+          "code": "MAD_DOM_UNSUPPORTED_PLATFORM",
+          "reason": "mad-dom cannot load its native binding for linux/x64/gnu. Tried: \"@mad-dom/platform-linux-x64-gnu\" failed: Cannot find module '@mad-dom/platform-linux-x64-gnu'\nRequire stack:\n- /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-missing/node_modules/mad-dom/js/native-loader.js; \"@mad-dom/platform-linux-x64-musl\" failed: Cannot find module '@mad-dom/platform-linux-x64-musl'\nRequire stack:\n- /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/proj-missing/node_modules/mad-dom/js/native-loader.js. Reinstall without --no-optional (the matching platform package is missing; if this version does not bundle your platform, it is declared but not included). see the \"Support matrix\" section in the README"
+        },
+        "ffi": {
+          "status": "unavailable",
+          "reason": "no FFI artifact was found",
+          "expectedAbiVersion": 1,
+          "expectedCapabilities": 31,
+          "symbols": [],
+          "path": null
+        }
+      },
+      {
+        "label": "platform-unsupported",
+        "ok": false,
+        "code": "MAD_DOM_UNSUPPORTED_PLATFORM",
+        "message": "mad-dom cannot load its native binding: platform freebsd/x64 is not in the supported matrix. see the \"Support matrix\" section in the README",
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": {
+          "platform": "freebsd",
+          "arch": "x64",
+          "libc": null
+        },
+        "expectedAbis": {
+          "nodeApi": 1,
+          "ffi": 1
+        },
+        "nodeApi": {
+          "status": "unavailable",
+          "code": "MAD_DOM_UNSUPPORTED_PLATFORM",
+          "reason": "mad-dom cannot load its native binding: platform freebsd/x64 is not in the supported matrix. see the \"Support matrix\" section in the README"
+        },
+        "ffi": {
+          "status": "unavailable",
+          "reason": "no FFI artifact was found",
+          "expectedAbiVersion": 1,
+          "expectedCapabilities": 31,
+          "symbols": [],
+          "path": null
+        }
+      },
+      {
+        "label": "native-abi-mismatch",
+        "ok": false,
+        "code": "MAD_DOM_ABI_MISMATCH",
+        "message": "mad-dom native binding ABI mismatch: this package expects ABI 1 but the loaded binding reports 999. The main package and the platform package are a mismatched version pair (mixed-version install); reinstall matching versions. see the \"Support matrix\" section in the README",
+        "bunVersion": "1.4.2",
+        "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+        "platform": {
+          "platform": "linux",
+          "arch": "x64",
+          "libc": "gnu"
+        },
+        "expectedAbis": {
+          "nodeApi": 1,
+          "ffi": 1
+        },
+        "nodeApi": {
+          "status": "unavailable",
+          "code": "MAD_DOM_ABI_MISMATCH",
+          "reason": "mad-dom native binding ABI mismatch: this package expects ABI 1 but the loaded binding reports 999. The main package and the platform package are a mismatched version pair (mixed-version install); reinstall matching versions. see the \"Support matrix\" section in the README"
+        },
+        "ffi": {
+          "status": "unavailable",
+          "reason": "FFI library could not be opened: Failed to open library \"/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/fake-abi.cjs\": /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/fake-abi.cjs: file too short",
+          "expectedAbiVersion": 1,
+          "expectedCapabilities": 31,
+          "symbols": [],
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/coordinator-smoke/fake-abi.cjs"
+        }
+      },
+      {
+        "label": "metadata-version",
+        "code": "MAD_DOM_METADATA_MISMATCH"
+      },
+      {
+        "label": "metadata-native-abi",
+        "code": "MAD_DOM_METADATA_MISMATCH"
+      },
+      {
+        "label": "metadata-ffi-abi",
+        "code": "MAD_DOM_METADATA_MISMATCH"
+      },
+      {
+        "label": "metadata-capabilities",
+        "code": "MAD_DOM_METADATA_MISMATCH"
+      },
+      {
+        "label": "metadata-capability-level",
+        "code": "MAD_DOM_METADATA_MISMATCH"
+      },
+      {
+        "label": "metadata-second-image",
+        "code": "MAD_DOM_METADATA_MISMATCH"
+      }
+    ]
+  },
+  "releaseChecksums": "bf19965124746c08048a46150a96b3c8f88d7da3ca0248b564ead8fc9c96ace7  mad-dom-0.0.1-alpha.3.tgz\nb10437ac3aaf1c39f2301057703d4179a290405e25935682694e7dfd7eae3705  mad-dom-platform-linux-x64-gnu-0.0.1-alpha.3.tgz\n",
+  "helperSources": {
+    "mad-dom-bun-coordinator-validate.py": {
+      "sha256": "9b5a62d0e5f4f974c4edc52bef90c38b99b27da9300c76203c2c523fecfb0dfc",
+      "source": "#!/usr/bin/env python3\n\"\"\"Run the plan's independent coordinator gate without changing tracked files.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport shlex\nimport subprocess\nimport sys\nimport time\n\nrepo = Path(sys.argv[1]).resolve()\nlabel = sys.argv[2]\nlog_root = Path('/tmp/mad-dom-bun-coordinator-checks') / label\nlog_root.mkdir(parents=True, exist_ok=True)\nenv = dict(os.environ)\nenv['MAD_DOM_NATIVE_PATH'] = str(repo / 'build/mad-dom.node')\nenv['MAD_DOM_FFI_PATH'] = str(repo / 'build/mad-dom.node')\nenv['CARGO_BUILD_JOBS'] = '3'\nenv.pop('MAD_DOM_FFI_DISABLED', None)\nfor key in list(env):\n    if key.startswith('MAD_DOM_TEST_'):\n        env.pop(key)\ncommands = [\n    ['bun', 'run', 'dev:build'],\n    ['bun', 'run', 'compat:hdunit:rewrite'],\n    ['bun', 'run', 'check'],\n    ['cargo', 'fmt', '--check'],\n    ['cargo', 'clippy', '--workspace', '--all-targets', '--', '-D', 'warnings'],\n    ['cargo', 'test', '--workspace'],\n    ['bun', 'run', 'compat:types'],\n    ['bun', 'run', 'test'],\n    ['bun', 'run', 'compat:ledger'],\n    ['bun', 'run', 'compat:hdunit:validate'],\n    ['bun', 'run', 'wpt:test'],\n    ['bun', 'run', 'test:native'],\n    ['bun', 'run', 'docs:build'],\n    ['git', 'diff', '--check'],\n]\nresults = []\nfor index, command in enumerate(commands):\n    rendered = shlex.join(command)\n    log = log_root / f'{index:02d}.log'\n    print(f'START {rendered}', flush=True)\n    start = time.monotonic()\n    with log.open('w') as output:\n        result = subprocess.run(command, cwd=repo, env=env, stdout=output, stderr=subprocess.STDOUT)\n    item = {'command': command, 'exit_code': result.returncode,\n            'seconds': round(time.monotonic() - start, 2), 'log': str(log)}\n    results.append(item)\n    print(json.dumps(item), flush=True)\n    if result.returncode != 0:\n        print('\\n'.join(log.read_text(errors='replace').splitlines()[-60:]), flush=True)\n    (log_root / 'results.json').write_text(json.dumps(results, indent=2) + '\\n')\n    if result.returncode != 0 and index < 2:\n        break\nprint(f'RESULTS {log_root / \"results.json\"}', flush=True)\nsys.exit(1 if any(item['exit_code'] != 0 for item in results) else 0)\n"
+    },
+    "mad-dom-bun-coordinator-release.py": {
+      "sha256": "210a3e404a818b0f031ad73ce2937e01fc6dd422ace1bcb3e5c8843179cb31c3",
+      "source": "#!/usr/bin/env python3\nimport json\nimport os\nfrom pathlib import Path\nimport shlex\nimport subprocess\nimport sys\nimport time\n\nrepo = Path(sys.argv[1]).resolve()\nlabel = sys.argv[2]\nlogs = Path('/tmp/mad-dom-bun-coordinator-checks') / label\nlogs.mkdir(parents=True, exist_ok=True)\nenv = dict(os.environ)\nenv['MAD_DOM_NATIVE_PATH'] = str(repo / 'build/mad-dom.node')\nenv['MAD_DOM_FFI_PATH'] = str(repo / 'build/mad-dom.node')\nenv.pop('MAD_DOM_FFI_DISABLED', None)\nfor key in list(env):\n    if key.startswith('MAD_DOM_TEST_'):\n        env.pop(key)\nenv['CARGO_BUILD_JOBS'] = '3'\nversion = json.loads((repo / 'package.json').read_text())['version']\nrelease = repo / 'build/coordinator-release'\nactionlint = repo / 'build/tools/actionlint'\nif not actionlint.exists():\n    actionlint = Path('/tmp/mad-dom-bun-plan-tools/actionlint')\ncommands = [\n    ['bun', 'run', 'report:runtime', '--require-native'],\n    ['bun', 'run', 'probe:bun:selftest'],\n    [str(actionlint), '.github/workflows/ci.yml', '.github/workflows/release.yml'],\n    ['bun', 'run', 'platform:build', '--artifact', 'build/mad-dom.node', '--out', str(release / 'platform')],\n    ['bun', 'run', 'release:draft', '--no-build', '--out', str(release)],\n    ['bun', 'run', 'checksums', 'verify', str(release / 'tgz'), '--manifest', str(release / 'SHASUMS256.txt')],\n    ['bun', 'run', 'smoke:install', '--out', 'build/coordinator-smoke',\n     '--main-tgz', str(release / f'tgz/mad-dom-{version}.tgz'),\n     '--platform-tgz', str(release / f'tgz/mad-dom-platform-linux-x64-gnu-{version}.tgz'),\n     '--expect-ffi', 'available'],\n]\nresults = []\nfor index, command in enumerate(commands):\n    print('START ' + shlex.join(command), flush=True)\n    start = time.monotonic()\n    log = logs / f'{index:02d}.log'\n    with log.open('w') as output:\n        result = subprocess.run(command, cwd=repo, env=env, stdout=output, stderr=subprocess.STDOUT)\n    item = {'command': command, 'exit_code': result.returncode,\n            'seconds': round(time.monotonic() - start, 2), 'log': str(log)}\n    results.append(item)\n    print(json.dumps(item), flush=True)\n    (logs / 'results.json').write_text(json.dumps(results, indent=2) + '\\n')\n    if result.returncode:\n        print('\\n'.join(log.read_text(errors='replace').splitlines()[-60:]), flush=True)\n        break\nsys.exit(1 if any(row['exit_code'] for row in results) else 0)\n"
+    },
+    "mad-dom-bun-coordinator-final-extras.py": {
+      "sha256": "f1a0d2266f384210e84e76c250a8585516a693fadc86831f7ba47c3e9b1caf46",
+      "source": "#!/usr/bin/env python3\n\"\"\"Independent task-07 gates; preserve the original local throughput reference.\"\"\"\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport shlex\nimport subprocess\nimport sys\nimport time\n\nrepo = Path(sys.argv[1]).resolve()\nlabel = sys.argv[2]\nlogs = Path('/tmp/mad-dom-bun-coordinator-checks') / label\nlogs.mkdir(parents=True, exist_ok=True)\nreference = Path('/tmp/mad-dom-task06-evidence/bench/baseline.linux-x64.json')\nlocal_reference = repo / 'bench/baseline.linux-x64.json'\nassert local_reference.read_bytes() == reference.read_bytes(), 'original 06 reference must remain unchanged'\nenvironment = dict(os.environ)\nfor key in list(environment):\n    if key.startswith('MAD_DOM_'):\n        environment.pop(key)\nenvironment['MAD_DOM_NATIVE_PATH'] = str(repo / 'build/mad-dom.node')\nenvironment['MAD_DOM_FFI_PATH'] = str(repo / 'build/mad-dom.node')\nenvironment['CARGO_BUILD_JOBS'] = '3'\nlatest = Path('/home/ubuntu/.bun/bin/bun')\nbaseline = Path('/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun')\nhelper = logs / 'native-rss-control.so'\ncommands = [\n    ('latest-bench', latest, [str(latest), 'run', 'bench:check']),\n    ('baseline-bench', baseline, [str(baseline), 'run', 'bench:check']),\n    ('latest-integration', latest, [str(latest), 'run', 'test:integration']),\n    ('native-control-build', latest, ['cc', '-O2', '-shared', '-fPIC', '-Wall', '-Wextra', '-Werror',\n        'docs/bun-native-runtime-evidence/native-rss-control.c', '-o', str(helper)]),\n]\nfor lane, runtime in [('latest', latest), ('baseline', baseline)]:\n    for repetition in range(1, 3):\n        commands.append((f'{lane}-native-control-{repetition}', runtime,\n            [str(runtime), 'docs/bun-native-runtime-evidence/native-rss-control.mjs', str(helper)]))\nresults = []\nfor index, (name, runtime, command) in enumerate(commands):\n    print('START ' + name + ': ' + shlex.join(command), flush=True)\n    env = dict(environment)\n    env['PATH'] = str(runtime.parent) + os.pathsep + env['PATH']\n    start = time.monotonic()\n    stdout = logs / f'{index:02d}-{name}.stdout'\n    stderr = logs / f'{index:02d}-{name}.stderr'\n    with stdout.open('w') as out, stderr.open('w') as err:\n        result = subprocess.run(command, cwd=repo, env=env, stdout=out, stderr=err)\n    row = {'name': name, 'command': command, 'exit_code': result.returncode,\n           'seconds': round(time.monotonic() - start, 2), 'stdout': str(stdout), 'stderr': str(stderr)}\n    results.append(row)\n    print(json.dumps(row), flush=True)\n    (logs / 'results.json').write_text(json.dumps(results, indent=2) + '\\n')\n    if result.returncode:\n        print('\\n'.join(stderr.read_text(errors='replace').splitlines()[-30:]), flush=True)\n        print('\\n'.join(stdout.read_text(errors='replace').splitlines()[-30:]), flush=True)\n    if name == 'native-control-build' and result.returncode:\n        break\nassert local_reference.read_bytes() == reference.read_bytes(), 'benchmark must not replace the preserved reference'\n(logs / 'reference.json').write_text(json.dumps({'path': str(local_reference),\n    'sha256': hashlib.sha256(reference.read_bytes()).hexdigest()}, indent=2) + '\\n')\nsys.exit(1 if any(row['exit_code'] for row in results) else 0)\n"
+    }
+  },
+  "limits": [
+    "Linux x64/glibc only; hosted CI and non-host/musl platforms unverified",
+    "FFI-on latest Core DOM aggregate was 17.8% slower in the task measurements; Bun file writes around 4x slower",
+    "Finite RSS smoke has the demonstrated v2 false negative; prior same-process pressure/FFI-registration diagnostic failure has unresolved attribution",
+    "Caller-owned production buffers remain default; private JSC path disabled; experimental deallocator lease restrictions unchanged"
+  ]
+}

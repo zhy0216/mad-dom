@@ -12,7 +12,7 @@ default_agent: codex
 | ~~`04-memory-gc-and-external-buffers.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · caller-owned buffer/lifetime 修复；baseline/latest native deallocator spike、GC/Worker 隔离、内存压测与完整 validate |
 | ~~`05-bun-host-io.md`~~ | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | ✅ 已完成 · virtual server/sync fetch/checksums 迁移 Bun IO，capability-gated 回退与行为/性能/校验和对照 |
 | ~~`06-latest-bun-ci-and-release-policy.md`~~ | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | ✅ 已完成 · latest/baseline CI、发布元数据 u32 校验、真实 fallback tarball smoke；rebase 04 后两版完整 validate 与最终专项通过 |
-| ~~`07-integration-and-regression-gate.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 本地验收完成 · 两版 691 Rust / 最终 1194 Bun、真实安装 smoke、完整性能/内存证据与 RSS v2 门禁；后续集成由协调器处理 |
+| ~~`07-integration-and-regression-gate.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · rebase、协调器完整门禁、ff-only 合入与资源清理完成；额外 v2 RSS 漏检明确留档 |
 
 模型与推理强度按 `herdr-finish-plan` 的共享分发规则解析；todo 使用 `agent: inherit`，继承本队列的 Codex 默认值。
 
@@ -36,8 +36,9 @@ Bun FFI loader/facade、memory/GC、宿主 IO、latest CI/release policy 与最�
 最终状态与逐条证据见[plan 执行结果](../plan.md#执行结果07-本地验收完成)及
 [07 报告](../../../docs/bun-native-runtime-results.md)。历史失败保留，当前本地规定 gate
 均通过；RSS 使用有独立有界内存/持续增长语义的 v2 合约，不能视为旧 signed-RSS
-门限下的通过。07 的 rebase、协调器独立复验、ff-only 合入、自身最终 hash 与资源清理
-留待协调器另记，不在本任务分支提前宣称完成。
+门限下的通过。07 已由原 agent rebase，协调器独立复验后 ff-only 合入并清理资源。
+追加四次原生增长对照有一次最终 v2 RSS 漏检，未改阈值或重试覆盖；实际提交和限制见
+[协调器最终记录](../../../docs/bun-native-runtime-coordinator-results.md)。
 
 ## 依赖与并行
 

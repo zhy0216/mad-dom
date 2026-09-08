@@ -1,5 +1,11 @@
 # Bun-native integration results
 
+The subsequent [coordinator integration record](./bun-native-runtime-coordinator-results.md)
+confirms all required gates and local integration, and records an additional
+**final v2 RSS false negative** (one of four native-growth controls). The task
+measurements below are the preserved pre-integration checkpoint; they do not
+override that later adverse observation.
+
 Task 07, measured 2026-09-07/08 (UTC), Linux x64/glibc. The final local repository,
 capability, integration, package and benchmark checks pass on Bun baseline 1.4.0
 and observed latest 1.4.2. The memory gate now has an explicit current-run stability

@@ -78,3 +78,8 @@ alpha 或选定 compat/WPT/integration 的结论范围。
 按协调器指令，本任务只形成一个本地 commit，并保持自己的 worktree 干净。验收条件
 中的最终 rebase、原分支 ff-only/工作区与资源清理由协调器后续执行并独立记录，07
 自身实际合入 hash 不写入自身提交；本归档不声称这些协调步骤已经发生。
+
+协调器补记：`6dc400bec1763c399967e8b1c6b8130ab50d4eed` 已由原 agent rebase，
+独立规定门禁通过后 ff-only 合入 main，本轮资源已清理。额外四次原生增长对照中有
+一次最终 v2 RSS 漏检，作为实测检测限制保留；不是全部额外诊断通过。实际提交、校验、
+清理与完整失败曲线见[最终记录](../../../../docs/bun-native-runtime-coordinator-results.md)。

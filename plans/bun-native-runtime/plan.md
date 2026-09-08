@@ -186,3 +186,36 @@ bun run wpt:test
 rebase、merge、push、PR、publish 或其他 worktree 操作。07 自身的实际合入 hash、
 协调器 rebase/独立复验、原分支 ff-only 和最终资源清理，由协调器在后续独立收尾记录
 中追加；本记录不提前声明 main 已合入或资源已清理。
+
+### 协调器最终集成与清理
+
+2026-09-08 UTC，本轮剩余 04、06、07 已由原 agent 各自 rebase，协调器独立复验后
+通过 `git merge --ff-only` 合入原 `main`。每项只保留一个任务提交：
+
+| todo | 实际合入 commit | agent / 模型 / 推理强度 |
+| --- | --- | --- |
+| 04 memory/GC（接续 PR #3） | `49351d2c346bab2156ac029345f5e95995f379f2` | Codex / gpt-6-astra / max |
+| 06 latest CI/release | `4a90f51bb6f98cbaf4ceab43579fb12da951ef35` | Codex / gpt-6-astra / xhigh |
+| 07 integration | `6dc400bec1763c399967e8b1c6b8130ab50d4eed` | Codex / gpt-6-astra / max |
+
+04、06、07 各自的协调器完整仓库门禁均通过；07 最终独立结果为 691 Rust、1194 Bun、
+0 fail，types、ledger、hdunit、WPT、native、docs 通过。真实 main/platform tarball、
+checksum、安装 smoke、两版原始基线 `bench:check` 和 integration 通过。07 的 no-op
+rebase 后，两版各 52 项定向测试通过。原 checkout 的 native 构建已刷新，合入后的
+native/runtime 检查通过，image 哈希与任务产物一致。
+
+**额外敏感性诊断未全部通过：协调器固定四次纯原生增长对照中，三次识别、latest
+第一次被最终 v2 漏检。** 完整曲线与断言失败均保留；24 MiB 确实保留，24 块最终
+释放，heap 与父/子生命周期计数通过。原 agent 只读复算确认实现符合明示规则：
+中段局部斜率为负，RSS 全程投影 5,142,055 B 低于块内 IQR 5,197,824 B，峰值未超
+warm-stock 预算。这是有限 RSS 判定规则的实测盲区，不应宣称任意原生泄漏均可检出，
+也不能把补充诊断的 exit 1 写成通过。本次没有通过改阈值、改基线或重试覆盖此失败。
+
+全部七个 todo 已归档至 `todos/done/`，本轮实现任务无 blocked/deferred。历史失败、
+额外 RSS 漏检、组合 GC 诊断原因未明、性能退化及未验证平台均作为明确限制保留。
+本轮三个 agent 已退出，`wA`/`wB`/`wD` workspace、对应 worktree 和任务分支均已
+清理，其他资源未动。合入后 main 干净；协调器收尾文档另作本地提交。未 push、修改
+PR、publish 或运行 hosted CI。
+
+详见[协调器最终记录](../../docs/bun-native-runtime-coordinator-results.md)及
+[独立校验与完整补充证据](../../docs/bun-native-runtime-evidence/coordinator-validation.json)。
