@@ -76,6 +76,11 @@ const LIVE_LISTS = new WeakMap();
 function childCount(list) {
   const parent = PARENT_HANDLES.get(list);
   const internals = nodeInternalsOf(parent);
+  const state = internals?.documentState;
+  if (state?.ffi?.childSnapshot !== undefined && state.ffiContext !== null && internals.token !== undefined) {
+    const flat = state.ffi.childSnapshot(state.ffiContext, internals.token);
+    if (flat !== undefined) return (flat.length - 1) / 2;
+  }
   const method = internals?.documentState?.nativeMethods.childNodesTokens;
   if (method !== undefined && internals.token !== undefined) {
     return (method(internals.token).length - 1) / 2;
@@ -87,6 +92,11 @@ function readNodes(ctx, list) {
   const parent = PARENT_HANDLES.get(list);
   const internals = nodeInternalsOf(parent);
   const state = internals?.documentState;
+  if (state?.ffi?.childSnapshot !== undefined && state.ffiContext !== null && internals.token !== undefined &&
+      state.nativeMethods.materializeNodeToken !== undefined) {
+    const flat = state.ffi.childSnapshot(state.ffiContext, internals.token);
+    if (flat !== undefined) return snapshotNodes(ctx, state, flat);
+  }
   const method = state?.nativeMethods.childNodesTokens;
   if (method !== undefined && internals.token !== undefined && state.nativeMethods.materializeNodeToken !== undefined) {
     return snapshotNodes(ctx, state, method(internals.token));

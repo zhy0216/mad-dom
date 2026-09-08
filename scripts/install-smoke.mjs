@@ -41,11 +41,13 @@ import { Window } from "mad-dom";
 const win = new Window({ url: "https://mad-dom.test/" });
 const { document } = win;
 document.body.innerHTML = '<ul id="list"><li class="a">one</li><li class="b">two</li></ul>';
-const items = document.querySelectorAll("li");
-if (items.length !== 2) throw new Error("expected 2 <li> elements, got " + items.length);
 const list = document.querySelector("#list");
+const items = list.querySelectorAll("li");
+if (items.length !== 2) throw new Error("expected 2 <li> elements, got " + items.length);
 if (list === null || list.id !== "list") throw new Error("querySelector('#list') failed");
 if (document.querySelector(".a")?.textContent !== "one") throw new Error("querySelector('.a').textContent mismatch");
+if (list !== document.querySelector("#list")) throw new Error("querySelector wrapper identity mismatch");
+if (!list.outerHTML.includes("<ul")) throw new Error("FFI serialization/query smoke failed");
 win.destroy();
 console.log("MAD_DOM_INSTALL_SMOKE_OK");
 `;
@@ -179,6 +181,21 @@ function main() {
     throw new Error(`install-smoke: happy path failed (exit ${happy.status}):\n${happy.stdout}\n${happy.stderr}`);
   }
   console.log(`install-smoke: happy path OK (${hostPkgName}@${version})`);
+
+  // --- 1b. explicit FFI-disabled fallback ---------------------------------
+  // The same packed artifacts must remain fully usable when the experimental
+  // Bun channel is disabled at process start.
+  const disabledDir = join(outDir, "proj-ffi-disabled");
+  setupProject(disabledDir, [platformTgz, mainTgz]);
+  writeFileSync(join(disabledDir, "smoke-dom.mjs"), DOM_SMOKE);
+  const disabled = runScript(disabledDir, "smoke-dom.mjs", {
+    ...process.env,
+    MAD_DOM_FFI_DISABLED: "1",
+  });
+  if (disabled.status !== 0 || !disabled.stdout.includes("MAD_DOM_INSTALL_SMOKE_OK")) {
+    throw new Error(`install-smoke: FFI-disabled fallback failed (exit ${disabled.status}):\n${disabled.stdout}\n${disabled.stderr}`);
+  }
+  console.log("install-smoke: FFI-disabled Node-API fallback OK");
 
   // --- 2. missing platform: main installed alone ----------------------------
   const missingDir = join(outDir, "proj-missing");

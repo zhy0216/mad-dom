@@ -116,9 +116,17 @@ data path for batched query/preorder snapshots and caller-owned serialization
 buffers. `DocumentHandle.ffiContext()` supplies a document-local owner,
 generation and root token; stale, foreign or destroyed credentials return
 stable status codes. The facade keeps Node-API as the lifecycle and wrapper
-fallback. `bun run dev:build` creates `build/mad-dom-ffi.<dylib|so|dll>` as a
-same-image link, and `MAD_DOM_FFI_PATH` can point the capability probe or
-boundary benchmark at it.
+fallback. The loader probes the FFI ABI and capability bitset lazily, then
+enables each packed operation independently; `MAD_DOM_FFI_DISABLED=1`, a
+missing artifact, an ABI mismatch, or a partial symbol set leaves the affected
+operation on Node-API and records the reason in the capability report. The
+document wrapper cache remains the identity authority, so FFI snapshots produce
+the same wrappers and destroy/cross-document checks as the fallback.
+`bun run dev:build` creates `build/mad-dom-ffi.<dylib|so|dll>` as a same-image
+link, and `MAD_DOM_FFI_PATH` can point the capability probe or boundary
+benchmark at it. Published platform packages carry one native image and mark
+that image as their FFI target; shipping a copied second image would split the
+document registry.
 
 ## Compatibility
 

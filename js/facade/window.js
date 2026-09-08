@@ -46,7 +46,7 @@
 
 import { windowTasks } from "./window-tasks.js";
 import { createBrowserSettings } from "./browser-settings.js";
-import { loadNative } from "../native-loader.js";
+import { ffiForDocument, loadNative } from "../native-loader.js";
 
 import { Document } from "./document.js";
 import {
@@ -280,9 +280,16 @@ function docStateOf(docHandle) {
     }
     const pinned = new SetConstructor();
     const nativeMethods = documentNativeMethodsOf(docHandle);
+    // The FFI adapter is document-local: its owner/generation/root context is
+    // minted by the Node-API document and never shared across documents.
+    // Capability failures stay represented by null and every extension keeps
+    // its existing Node-API branch.
+    const ffi = ffiForDocument(docHandle);
     let nodeNativeMethods = null;
     state = {
       documentHandle: docHandle,
+      ffi: ffi?.adapter ?? null,
+      ffiContext: ffi?.context ?? null,
       attributeEpoch: null,
       clearElementTokenPools: () => mapClear(elementTokenPools),
       clearPinned: () => setClear(pinned),

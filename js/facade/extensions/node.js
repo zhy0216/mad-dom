@@ -108,24 +108,59 @@ function createElementToken(documentHandle, documentState, localName, structureE
       // Object.prototype property for a supported performance capability.
       const rangeMethod = documentState.nativeMethods.createElementTokenRange;
       const batchMethod = documentState.nativeMethods.createElementTokenBatch;
-      if (rangeMethod !== undefined || batchMethod !== undefined) {
+      // A binding exposing the contiguous range entry is new enough for the
+      // FFI token batch. If that entry is absent, retain the audited Node-API
+      // array batch so legacy-binding probes and mixed-version packages keep
+      // their original fallback semantics even if a shared image exposes FFI.
+      const ffiMethod = rangeMethod !== undefined &&
+          documentState.ffi?.createElements !== undefined &&
+          documentState.ffiContext !== null
+        ? documentState.ffi.createElements
+        : undefined;
+      if (rangeMethod !== undefined || batchMethod !== undefined || ffiMethod !== undefined) {
         // Do not allocate a large invisible reserve for a one-off tag.
         // Repeated use ramps quickly to the steady 256-node batch size.
-        // Current bindings return only the first token of a contiguous
-        // registered range; the array fields retain the mixed-version
-        // fallback without changing token consumption order.
+        // Batches are consumed through a cursor (`pos`) instead of shrinking
+        // the container, so a TypedArray batch is not copied on every pop and
+        // the legacy Node-API array keeps its O(1) truncation cost.
         documentState.setElementTokenPool(localName, {
           rangeMethod,
           batchMethod,
+          ffiMethod,
           rangeStart: 0,
           rangeRemaining: 0,
-          tokens: [],
+          tokens: null,
+          pos: 0,
           next: 8,
         });
         return elementTokenMethod(localName);
       }
     }
     if (pool !== undefined) {
+      // Providers are consumed in preference order: FFI batch (same image),
+      // Node-API contiguous range, then the audited Node-API array batch.
+      // Batches are drained through a cursor (`pos`) instead of shrinking the
+      // container, so a TypedArray batch is not copied on every pop and the
+      // legacy Node-API array keeps its O(1) truncation cost. An empty result
+      // from one provider falls through to the next rather than degrading to a
+      // per-create native call.
+      if (pool.ffiMethod !== undefined) {
+        if (pool.pos === 0) {
+          const batch = pool.ffiMethod(documentState.ffiContext, localName, pool.next);
+          if (batch !== undefined && batch.length !== 0) {
+            pool.tokens = batch;
+            pool.pos = batch.length;
+          }
+          pool.next *= 4;
+          if (pool.next > ELEMENT_TOKEN_BATCH_SIZE) {
+            pool.next = ELEMENT_TOKEN_BATCH_SIZE;
+          }
+        }
+        if (pool.pos !== 0) {
+          pool.pos -= 1;
+          return pool.tokens[pool.pos];
+        }
+      }
       if (pool.rangeMethod !== undefined) {
         if (pool.rangeRemaining === 0) {
           pool.rangeStart = pool.rangeMethod(localName, pool.next);
@@ -138,17 +173,27 @@ function createElementToken(documentHandle, documentState, localName, structureE
         pool.rangeRemaining -= 1;
         return pool.rangeStart + pool.rangeRemaining;
       }
-      if (pool.tokens.length === 0) {
-        pool.tokens = pool.batchMethod(localName, pool.next);
-        pool.next *= 4;
-        if (pool.next > ELEMENT_TOKEN_BATCH_SIZE) {
-          pool.next = ELEMENT_TOKEN_BATCH_SIZE;
+      if (pool.batchMethod !== undefined) {
+        if (pool.pos === 0) {
+          const batch = pool.batchMethod(localName, pool.next);
+          if (batch !== undefined && batch.length !== 0) {
+            pool.tokens = batch;
+            pool.pos = batch.length;
+          }
+          pool.next *= 4;
+          if (pool.next > ELEMENT_TOKEN_BATCH_SIZE) {
+            pool.next = ELEMENT_TOKEN_BATCH_SIZE;
+          }
+        }
+        if (pool.pos !== 0) {
+          pool.pos -= 1;
+          return pool.tokens[pool.pos];
         }
       }
-      const index = pool.tokens.length - 1;
-      const token = pool.tokens[index];
-      pool.tokens.length = index;
-      return token;
+      // No provider produced a token (empty/rejected batch on a live
+      // document): fall back to a plain single creation rather than handing
+      // out an undefined token.
+      return elementTokenMethod(localName);
     }
   }
   return elementTokenMethod(localName);
@@ -627,14 +672,18 @@ export function install(ctx) {
     if (
       (primarySnapshot || partitionChild) &&
       token !== undefined &&
-      state.nativeMethods.preorderTokenSnapshot !== undefined &&
-      state.nativeMethods.materializeNodeToken !== undefined
+      state.nativeMethods.materializeNodeToken !== undefined &&
+      (state.ffi?.preorderSnapshot !== undefined ||
+        state.nativeMethods.preorderTokenSnapshot !== undefined)
     ) {
       if (primarySnapshot) {
         state.snapshotAttemptEpoch = epoch;
         state.snapshotPartitionRoots = null;
       }
-      const flat = state.nativeMethods.preorderTokenSnapshot(token);
+      let flat = state.ffi?.preorderSnapshot !== undefined && state.ffiContext !== null
+        ? state.ffi.preorderSnapshot(state.ffiContext, token)
+        : undefined;
+      if (flat === undefined) flat = state.nativeMethods.preorderTokenSnapshot(token);
       if (flat.length !== 0) {
         const continuation = hydrateSubtreeSnapshot(
           flat,

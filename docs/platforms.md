@@ -58,6 +58,14 @@ The loaded module must pass the native ABI probe. There is no JavaScript DOM
 fallback when loading fails. Native load results are cached within the process;
 restart it after correcting the installation or environment.
 
+On Bun, the loader then performs a separate FFI probe against that same native
+file. The platform package's `madDomFfi` metadata points at its `main` image;
+it is intentionally not a second copied library because the FFI document
+registry is owned by the Node-API image. `MAD_DOM_FFI_DISABLED=1` forces the
+Node-API path. Missing FFI, an ABI mismatch, and a partial capability bitset
+are reported as capability data and fall back per operation without changing
+the public facade or wrapper identity.
+
 An installed npm package does not contain the development build artifact.
 For local source comparisons, select the freshly built artifact explicitly so
 an installed platform package cannot take precedence.

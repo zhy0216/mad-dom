@@ -8,7 +8,7 @@ default_agent: codex
 | --- | --- | --- | --- | --- | --- |
 | ~~`01-capability-matrix-and-benchmarks.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Bun FFI/JSC/GC/IO capability matrix 和 N-API 对照基准 |
 | ~~`02-ffi-abi-and-native-fast-path.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Rust C ABI/FFI cdylib、token/batch/snapshot/serialization 快路径与边界测试 |
-| `03-bun-ffi-loader-and-facade.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 在 Bun 中加载 FFI、做 capability probe、接入 facade 并回退 Node-API |
+| ~~`03-bun-ffi-loader-and-facade.md`~~ | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | ✅ 已完成 · Bun FFI loader/probe、按能力位 facade 快路径、Node-API fallback 与平台布局 |
 | `04-memory-gc-and-external-buffers.md` | P0 | hard | inherit → codex | `gpt-6-astra` / `max` | 完成外部 buffer 所有权、deallocator、GC/finalizer/affinity 安全门禁 |
 | ~~`05-bun-host-io.md`~~ | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | ✅ 已完成 · virtual server/sync fetch/checksums 迁移 Bun IO，capability-gated 回退与行为/性能/校验和对照 |
 | `06-latest-bun-ci-and-release-policy.md` | P1 | medium | inherit → codex | `gpt-6-astra` / `xhigh` | 增加 latest/baseline CI、版本 capability 文档和发布回退策略 |
@@ -26,11 +26,12 @@ default_agent: codex
 6. `06-latest-bun-ci-and-release-policy.md`（依赖 01、03；可与 04、05 并行）
 7. `07-integration-and-regression-gate.md`（依赖 03、04、05、06）
 
-01、02 已归档于 `done/`（capability matrix/benchmark 与 FFI ABI v1）。FFI ABI v1 与
-Node-API 共用同一 cdylib；未通过 capability probe 时继续使用 Node-API。
-05 已归档于 `done/05-bun-host-io.md`。宿主 IO 迁移按 capability 门控
-（`MAD_DOM_BUN_IO_DISABLED` 强制回退），迁移前后字节/格式/退出码与
-性能对照见 `scripts/bench-bun-io.mjs`（schema `mad-dom/bun-host-io-bench/1`）。
+01、02、03、05 已归档于 `done/`（capability matrix/benchmark、FFI ABI v1、
+Bun FFI loader/facade 与宿主 IO）。FFI ABI v1 与 Node-API 共用同一 cdylib；
+未通过 capability probe 时继续使用 Node-API，partial capability 按入口独立
+回退。05 宿主 IO 迁移按 capability 门控（`MAD_DOM_BUN_IO_DISABLED` 强制回退），
+迁移前后字节/格式/退出码与性能对照见 `scripts/bench-bun-io.mjs`
+（schema `mad-dom/bun-host-io-bench/1`）。
 
 ## 依赖与并行
 

@@ -45,6 +45,7 @@
 
 import { Document } from "../document.js";
 import { Element, DocumentFragment } from "./node.js";
+import { nodeDocumentStateOf } from "./classes.js";
 import {
   flushCustomElementReactions,
   upgradeParsedCandidates,
@@ -188,6 +189,12 @@ export function install(ctx) {
     Element.prototype,
     "innerHTML",
     function innerHTML() {
+      const state = nodeDocumentStateOf(this);
+      const token = ctx.documentContext.tokenOf(this);
+      if (state?.ffi?.serialize !== undefined && state.ffiContext !== null && token !== undefined) {
+        const bytes = state.ffi.serialize(state.ffiContext, token, 1);
+        if (bytes !== undefined) return new TextDecoder().decode(bytes);
+      }
       return facadeNodeHandle(ctx, this, "innerHTML").innerHTML();
     },
     function innerHTML(value) {
@@ -205,6 +212,12 @@ export function install(ctx) {
     DocumentFragment.prototype,
     "innerHTML",
     function innerHTML() {
+      const state = nodeDocumentStateOf(this);
+      const token = ctx.documentContext.tokenOf(this);
+      if (state?.ffi?.serialize !== undefined && state.ffiContext !== null && token !== undefined) {
+        const bytes = state.ffi.serialize(state.ffiContext, token, 1);
+        if (bytes !== undefined) return new TextDecoder().decode(bytes);
+      }
       return facadeNodeHandle(ctx, this, "innerHTML").innerHTML();
     },
     function innerHTML(value) {
@@ -219,6 +232,12 @@ export function install(ctx) {
     Element.prototype,
     "outerHTML",
     function outerHTML() {
+      const state = nodeDocumentStateOf(this);
+      const token = ctx.documentContext.tokenOf(this);
+      if (state?.ffi?.serialize !== undefined && state.ffiContext !== null && token !== undefined) {
+        const bytes = state.ffi.serialize(state.ffiContext, token, 0);
+        if (bytes !== undefined) return new TextDecoder().decode(bytes);
+      }
       return facadeNodeHandle(ctx, this, "outerHTML").outerHTML();
     },
     function outerHTML(value) {

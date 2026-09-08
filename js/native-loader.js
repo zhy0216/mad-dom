@@ -35,7 +35,7 @@
 // failure surfaces on the first native-backed call, never as a fake Window or
 // a deferred error (ADR-0005 §8, §9).
 
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,6 +47,68 @@ const require = createRequire(import.meta.url);
 /// native surface changes in a way a stale package + native pair could
 /// misdetect.
 export const EXPECTED_ABI_VERSION = 1;
+
+// The Bun channel has an ABI independent from the Node-API object ABI. Keep
+// this contract in the loader so an installed package can disable only the
+// data fast path while retaining the object/lifecycle binding.
+export const EXPECTED_FFI_ABI_VERSION = 1;
+export const FFI_CAPABILITIES = Object.freeze({
+  querySnapshot: 1 << 0,
+  preorderSnapshot: 1 << 1,
+  tokenBatch: 1 << 2,
+  serializeIntoBuffer: 1 << 3,
+  attributeTextBatch: 1 << 4,
+});
+export const FFI_SYMBOLS = Object.freeze({
+  abiVersion: "mad_dom_ffi_abi_version",
+  capabilities: "mad_dom_ffi_capabilities",
+  querySnapshot: "mad_dom_ffi_query_snapshot",
+  preorderSnapshot: "mad_dom_ffi_preorder_snapshot",
+  childSnapshot: "mad_dom_ffi_child_tokens",
+  serialize: "mad_dom_ffi_serialize",
+  createElements: "mad_dom_ffi_create_elements",
+  readBatch: "mad_dom_ffi_read_batch",
+});
+const FFI_EXPECTED_CAPABILITIES = Object.values(FFI_CAPABILITIES).reduce(
+  (value, bit) => value | bit,
+  0,
+);
+const FFI_SYMBOL_DECLARATIONS = Object.freeze({
+  [FFI_SYMBOLS.abiVersion]: { args: [], returns: "u32" },
+  [FFI_SYMBOLS.capabilities]: { args: [], returns: "u32" },
+  [FFI_SYMBOLS.querySnapshot]: {
+    args: ["u32", "u32", "u32", "buffer", "u32", "ptr", "u32", "ptr"],
+    returns: "i32",
+  },
+  [FFI_SYMBOLS.preorderSnapshot]: {
+    args: ["u32", "u32", "u32", "ptr", "u32", "ptr"],
+    returns: "i32",
+  },
+  [FFI_SYMBOLS.childSnapshot]: {
+    args: ["u32", "u32", "u32", "ptr", "u32", "ptr"],
+    returns: "i32",
+  },
+  [FFI_SYMBOLS.serialize]: {
+    args: ["u32", "u32", "u32", "u32", "ptr", "u32", "ptr"],
+    returns: "i32",
+  },
+  [FFI_SYMBOLS.createElements]: {
+    args: ["u32", "u32", "buffer", "u32", "u32", "ptr", "u32", "ptr"],
+    returns: "i32",
+  },
+  [FFI_SYMBOLS.readBatch]: {
+    args: ["u32", "u32", "buffer", "u32", "u32", "ptr", "u32", "ptr"],
+    returns: "i32",
+  },
+});
+const FFI_SYMBOL_BITS = Object.freeze({
+  [FFI_SYMBOLS.querySnapshot]: FFI_CAPABILITIES.querySnapshot,
+  [FFI_SYMBOLS.preorderSnapshot]: FFI_CAPABILITIES.preorderSnapshot,
+  [FFI_SYMBOLS.childSnapshot]: FFI_CAPABILITIES.preorderSnapshot,
+  [FFI_SYMBOLS.serialize]: FFI_CAPABILITIES.serializeIntoBuffer,
+  [FFI_SYMBOLS.createElements]: FFI_CAPABILITIES.tokenBatch,
+  [FFI_SYMBOLS.readBatch]: FFI_CAPABILITIES.attributeTextBatch,
+});
 
 // Stable anchor text pointing at the README support-matrix section. The
 // install smoke asserts that every load error carries it (ADR-0005 §9: the
@@ -68,12 +130,18 @@ const MATRIX = {
 
 let native = null;
 let nativeLoadError = null;
+let nativePath = null;
+let ffiState = null;
+let ffiImageState = null;
 
 /// Test-only reset so a single test process can exercise multiple failure
 /// paths. Not part of the package contract.
 export function resetNativeLoaderForTests() {
   native = null;
   nativeLoadError = null;
+  nativePath = null;
+  ffiState = null;
+  ffiImageState = null;
 }
 
 export function isSupportedPlatform(platform, arch) {
@@ -158,7 +226,14 @@ function tryPlatformPackages(info, attempts) {
     const loaded = tryRequire(name, (failure) =>
       attempts.push({ label: name, message: failure.message, notFound: failure.notFound }),
     );
-    if (loaded !== null) return loaded;
+    if (loaded !== null) {
+      try {
+        nativePath = require.resolve(name);
+      } catch {
+        nativePath = null;
+      }
+      return loaded;
+    }
   }
   return null;
 }
@@ -241,6 +316,7 @@ export function loadNative() {
     loaded = tryRequire(path, (failure) =>
       attempts.push({ label: `MAD_DOM_NATIVE_PATH ${path}`, message: failure.message, notFound: failure.notFound }),
     );
+    if (loaded !== null) nativePath = path;
   }
 
   // 2. npm platform package (linux: dual-libc fallback).
@@ -254,6 +330,7 @@ export function loadNative() {
     loaded = tryRequire(path, (failure) =>
       attempts.push({ label: path, message: failure.message, notFound: failure.notFound }),
     );
+    if (loaded !== null) nativePath = path;
   }
 
   if (loaded === null) {
@@ -283,4 +360,415 @@ export function isNativeAvailable() {
 
 export function nativeAbiVersion() {
   return loadNative().abiVersion();
+}
+
+const FFI_SUFFIX = process.platform === "darwin" ? "dylib" : process.platform === "win32" ? "dll" : "so";
+const FFI_DISABLED = /^(1|true|yes)$/i;
+const FFI_STATUS = Object.freeze({
+  OK: 0,
+  BUFFER_TOO_SMALL: 2,
+});
+
+function bunRuntime() {
+  return typeof globalThis.Bun !== "undefined" || typeof process.versions?.bun === "string";
+}
+
+function ffiPathCandidate() {
+  const configured = process.env.MAD_DOM_FFI_PATH;
+  if (configured) return isAbsolute(configured) ? configured : resolve(process.cwd(), configured);
+  if (nativePath !== null) return nativePath;
+  const devFfi = fileURLToPath(new URL(`../build/mad-dom-ffi.${FFI_SUFFIX}`, import.meta.url));
+  if (existsSync(devFfi)) return devFfi;
+  const devNode = repoLocalArtifactPath();
+  return existsSync(devNode) ? devNode : null;
+}
+
+// Test-only knob: `MAD_DOM_TEST_FFI_MISSING_SYMBOLS=querySnapshot,serialize`
+// forces dlopen for those symbols to fail as if the image did not export them,
+// so child-process tests can exercise a genuinely partial symbol set without
+// compiling a second cdylib. Ignored in normal installations.
+function forcedMissingSymbols() {
+  const raw = process.env.MAD_DOM_TEST_FFI_MISSING_SYMBOLS;
+  if (raw === undefined || raw === "") return undefined;
+  const forced = new Set();
+  for (const part of raw.split(",")) {
+    const token = part.trim();
+    if (token === "") continue;
+    // Accept either the logical short name ("querySnapshot") or the exported
+    // C symbol ("mad_dom_ffi_query_snapshot"); both resolve to the same key.
+    const resolved = Object.prototype.hasOwnProperty.call(FFI_SYMBOLS, token)
+      ? FFI_SYMBOLS[token]
+      : token;
+    if (FFI_SYMBOL_BITS[resolved] !== undefined) forced.add(resolved);
+  }
+  return forced.size === 0 ? undefined : forced;
+}
+
+function ffiUnavailable(status, reason, extra = {}) {
+  return {
+    status,
+    reason,
+    expectedAbiVersion: EXPECTED_FFI_ABI_VERSION,
+    expectedCapabilities: FFI_EXPECTED_CAPABILITIES,
+    symbols: [],
+    ...extra,
+  };
+}
+
+function ffiError(status, operation) {
+  const details = {
+    1: ["ERR_MAD_DOM_INVALID_ARGUMENT", "invalid FFI argument"],
+    3: ["ERR_MAD_DOM_DOCUMENT_INVALID", "invalid FFI document"],
+    4: ["ERR_MAD_DOM_FFI_STALE_GENERATION", "stale FFI document generation"],
+    5: ["ERR_MAD_DOM_DOCUMENT_DESTROYED", "the document has been destroyed"],
+    6: ["ERR_MAD_DOM_INVALID_HANDLE", "invalid FFI token"],
+    7: ["ERR_MAD_DOM_STALE_HANDLE", "stale FFI token"],
+    8: ["ERR_MAD_DOM_WRONG_DOCUMENT", "the token belongs to a different document"],
+    9: ["ERR_MAD_DOM_INVALID_CHARACTER", "invalid UTF-8 input"],
+    10: ["ERR_MAD_DOM_SYNTAX", "syntax error"],
+    11: ["ERR_MAD_DOM_HIERARCHY", "the operation would yield an incorrect document tree"],
+    12: ["ERR_MAD_DOM_INVALID_CHARACTER", "invalid character"],
+    13: ["ERR_MAD_DOM_INDEX_OUT_OF_BOUNDS", "index out of bounds"],
+    14: ["ERR_MAD_DOM_NATIVE_PANIC", "native FFI panic"],
+  }[status] ?? ["ERR_MAD_DOM_FFI", `FFI operation failed with status ${status}`];
+  const error = new Error(`[${details[0]}] ${details[1]}${operation ? ` (${operation})` : ""}`);
+  error.code = details[0];
+  error.ffiStatus = status;
+  return error;
+}
+
+function ffiContextValues(context) {
+  if (context === null || context === undefined || context.length < 3) {
+    throw ffiError(1, "ffiContext");
+  }
+  return [context[0] >>> 0, context[1] >>> 0, context[2] >>> 0];
+}
+
+// Sanity ceiling for a single caller-owned output buffer. Exceeding it is not
+// an FFI failure: the operation simply goes back to Node-API, which can grow
+// without the loader's fixed working budget. Tuning the budget itself (external
+// buffers, deallocators, streaming) is the memory-protocol task; this loader
+// only guarantees that an oversized-but-legal result never surfaces as a DOM
+// error just because the additive channel declined to buffer it.
+const FFI_MAX_OUTPUT_WORDS = 4_000_000;
+const FFI_MAX_OUTPUT_BYTES = 64_000_000;
+
+// Returns the caller-owned output slice, or `undefined` when the FFI channel
+// cannot serve this operation at its fixed working budget (oversized result or
+// a protocol anomaly such as success claiming more words than were supplied).
+// `undefined` is the per-operation Node-API fallback signal used by every
+// facade caller. Genuine native error statuses (destroyed document, stale or
+// foreign token, syntax, …) still throw so the taxonomy stays identical to the
+// Node-API path the workload digest compares against.
+function outputWords(call, operation) {
+  let capacity = 256;
+  for (let attempt = 0; attempt !== 8; attempt += 1) {
+    const output = new Uint32Array(capacity);
+    const written = new Uint32Array(1);
+    const status = call(output, capacity, written);
+    if (status === FFI_STATUS.BUFFER_TOO_SMALL) {
+      if (written[0] <= capacity) return undefined;
+      if (written[0] > FFI_MAX_OUTPUT_WORDS) return undefined;
+      capacity = written[0];
+      continue;
+    }
+    if (status !== FFI_STATUS.OK) throw ffiError(status, operation);
+    if (written[0] > capacity) return undefined;
+    return output.slice(0, written[0]);
+  }
+  return undefined;
+}
+
+function outputBytes(call, operation) {
+  let capacity = 1024;
+  for (let attempt = 0; attempt !== 8; attempt += 1) {
+    const output = new Uint8Array(capacity);
+    const written = new Uint32Array(1);
+    const status = call(output, capacity, written);
+    if (status === FFI_STATUS.BUFFER_TOO_SMALL) {
+      if (written[0] <= capacity) return undefined;
+      if (written[0] > FFI_MAX_OUTPUT_BYTES) return undefined;
+      capacity = written[0];
+      continue;
+    }
+    if (status !== FFI_STATUS.OK) throw ffiError(status, operation);
+    if (written[0] > capacity) return undefined;
+    return output.slice(0, written[0]);
+  }
+  return undefined;
+}
+
+function openFfiSymbols(ffi, path, names, declarations = FFI_SYMBOL_DECLARATIONS) {
+  const definitions = {};
+  for (const name of names) definitions[name] = declarations[name];
+  return ffi.dlopen(path, definitions);
+}
+
+function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilities, forcedMissing) {  const symbols = {};
+  const missing = [];
+  const candidates = Object.entries(FFI_SYMBOL_BITS);
+  for (const [name, bit] of candidates) {
+    if ((advertisedCapabilities & bit) === 0) {
+      missing.push({ name, reason: "capability is not advertised" });
+      continue;
+    }
+    // `mad_dom_ffi_child_tokens` and `mad_dom_ffi_preorder_snapshot` both
+    // advertise the same capability bit, so availability must be tracked per
+    // symbol, not per bit: a partial image may export one and not the other.
+    // Test-only knob: request a symbol name the image does not export so the
+    // dlopen path fails exactly like a genuinely partial image.
+    const forced = forcedMissing?.has(name);
+    const openName = forced ? `${name}__missing` : name;
+    try {
+      const library = openFfiSymbols(ffi, path, [openName], forced
+        ? { [openName]: FFI_SYMBOL_DECLARATIONS[name] }
+        : FFI_SYMBOL_DECLARATIONS);
+      const symbol = library.symbols[openName];
+      if (typeof symbol !== "function") throw new Error(`symbol ${openName} is not callable`);
+      symbols[name] = symbol;
+    } catch (error) {
+      missing.push({ name, reason: error?.message ?? String(error) });
+    }
+  }
+  let capabilities = 0;
+  for (const [name, bit] of candidates) if (symbols[name] !== undefined) capabilities |= bit;
+  // "available" requires the full advertised surface to be backed by callable
+  // symbols. Because child/preorder share a capability bit, a symbol-shaped
+  // gap (present bit, missing symbol) must still report partial.
+  const reportStatus =
+    missing.length === 0 && advertisedCapabilities === FFI_EXPECTED_CAPABILITIES
+      ? "available"
+      : "partial";
+  // A method is attached only when the exact symbol backing it was resolved,
+  // so "the method exists" is the same statement as "the operation is
+  // FFI-backed". Facade branches (including the createElement token pool,
+  // which captures the method itself) rely on that equivalence to fall back to
+  // Node-API per operation.
+  const adapter = {
+    abiVersion,
+    capabilities,
+    advertisedCapabilities,
+    symbols: Object.freeze(symbols),
+  };
+  if (symbols[FFI_SYMBOLS.querySnapshot] !== undefined) {
+    adapter.querySnapshot = function querySnapshot(context, scopeToken, selector) {
+      const [owner, generation, scope] = ffiContextValues(context);
+      const bytes = typeof selector === "string" ? new TextEncoder().encode(selector) : selector;
+      const symbol = symbols[FFI_SYMBOLS.querySnapshot];
+      return outputWords((out, capacity, written) => symbol(owner, generation, scopeToken ?? scope, bytes, bytes.length, out, capacity, written), "query snapshot");
+    };
+  }
+  if (symbols[FFI_SYMBOLS.preorderSnapshot] !== undefined) {
+    adapter.preorderSnapshot = function preorderSnapshot(context, rootToken) {
+      const [owner, generation] = ffiContextValues(context);
+      const symbol = symbols[FFI_SYMBOLS.preorderSnapshot];
+      return outputWords((out, capacity, written) => symbol(owner, generation, rootToken, out, capacity, written), "preorder snapshot");
+    };
+  }
+  if (symbols[FFI_SYMBOLS.childSnapshot] !== undefined) {
+    adapter.childSnapshot = function childSnapshot(context, rootToken) {
+      const [owner, generation] = ffiContextValues(context);
+      const symbol = symbols[FFI_SYMBOLS.childSnapshot];
+      return outputWords((out, capacity, written) => symbol(owner, generation, rootToken, out, capacity, written), "child snapshot");
+    };
+  }
+  if (symbols[FFI_SYMBOLS.serialize] !== undefined) {
+    adapter.serialize = function serialize(context, rootToken, mode = 0) {
+      const [owner, generation] = ffiContextValues(context);
+      const symbol = symbols[FFI_SYMBOLS.serialize];
+      return outputBytes((out, capacity, written) => symbol(owner, generation, rootToken, mode, out, capacity, written), "serialize");
+    };
+  }
+  if (symbols[FFI_SYMBOLS.createElements] !== undefined) {
+    adapter.createElements = function createElements(context, name, count) {
+      const [owner, generation] = ffiContextValues(context);
+      const bytes = typeof name === "string" ? new TextEncoder().encode(name) : name;
+      const symbol = symbols[FFI_SYMBOLS.createElements];
+      return outputWords((out, capacity, written) => symbol(owner, generation, bytes, bytes.length, count, out, capacity, written), "create elements");
+    };
+  }
+  if (symbols[FFI_SYMBOLS.readBatch] !== undefined) {
+    adapter.readBatch = function readBatch(context, tokens, field) {
+      const [owner, generation] = ffiContextValues(context);
+      const input = tokens instanceof Uint32Array ? tokens : Uint32Array.from(tokens ?? []);
+      const symbol = symbols[FFI_SYMBOLS.readBatch];
+      return outputBytes((out, capacity, written) => symbol(owner, generation, input, input.length, field, out, capacity, written), "read batch");
+    };
+  }
+  return { reportStatus, adapter, symbols: Object.keys(symbols), missing, baseLibrary };
+}
+
+function initializeFfi() {
+  if (!bunRuntime()) return ffiUnavailable("unavailable", "bun:ffi is only available in Bun");
+  if (FFI_DISABLED.test(String(process.env.MAD_DOM_FFI_DISABLED ?? ""))) {
+    return ffiUnavailable("disabled", "MAD_DOM_FFI_DISABLED is set");
+  }
+  let ffi;
+  try {
+    // createRequire keeps this import lazy and lets Node-API-only runtimes
+    // import the package without resolving Bun's experimental module.
+    ffi = require("bun:ffi");
+  } catch (error) {
+    return ffiUnavailable("unavailable", `bun:ffi could not be imported: ${error?.message ?? String(error)}`);
+  }
+  // `loadNativeFfi()` is a public probe as well as the document-local path
+  // used by the facade. Resolve the Node-API candidate first when no explicit
+  // FFI path was supplied, so installed platform packages and custom
+  // MAD_DOM_NATIVE_PATH artifacts use the exact same image.
+  if (process.env.MAD_DOM_FFI_PATH === undefined && nativePath === null) {
+    try {
+      loadNative();
+    } catch {
+      // Keep this a capability report. The native loader's error is surfaced
+      // by the normal Node-API entry point; FFI remains an additive channel.
+    }
+  }
+  const path = ffiPathCandidate();
+  if (path === null || !existsSync(path)) {
+    return ffiUnavailable("unavailable", path === null ? "no FFI artifact was found" : `FFI artifact does not exist: ${path}`, { path });
+  }
+  let baseLibrary;
+  try {
+    baseLibrary = openFfiSymbols(ffi, path, [FFI_SYMBOLS.abiVersion, FFI_SYMBOLS.capabilities]);
+  } catch (error) {
+    return ffiUnavailable("unavailable", `FFI library could not be opened: ${error?.message ?? String(error)}`, { path });
+  }
+  let abiVersion;
+  let advertisedCapabilities;
+  try {
+    abiVersion = baseLibrary.symbols[FFI_SYMBOLS.abiVersion]();
+    advertisedCapabilities = baseLibrary.symbols[FFI_SYMBOLS.capabilities]();
+  } catch (error) {
+    return ffiUnavailable("unavailable", `FFI capability probe failed: ${error?.message ?? String(error)}`, { path });
+  }
+  // Child-process tests can exercise mismatch/partial fallback without
+  // compiling a second platform binary. These knobs are deliberately scoped
+  // to the test namespace and are ignored in normal installations.
+  if (process.env.MAD_DOM_TEST_FFI_ABI_VERSION !== undefined) {
+    const forced = Number(process.env.MAD_DOM_TEST_FFI_ABI_VERSION);
+    if (Number.isInteger(forced) && forced >= 0) abiVersion = forced;
+  }
+  if (process.env.MAD_DOM_TEST_FFI_CAPABILITIES !== undefined) {
+    const forced = Number(process.env.MAD_DOM_TEST_FFI_CAPABILITIES);
+    if (Number.isInteger(forced) && forced >= 0) advertisedCapabilities = forced;
+  }
+  if (abiVersion !== EXPECTED_FFI_ABI_VERSION) {
+    return ffiUnavailable("mismatch", `FFI ABI mismatch: expected ${EXPECTED_FFI_ABI_VERSION}, got ${abiVersion}`, {
+      path,
+      abiVersion,
+      advertisedCapabilities,
+      code: "MAD_DOM_FFI_ABI_MISMATCH",
+    });
+  }
+  const built = buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilities, forcedMissingSymbols());
+  return {
+    status: built.reportStatus,
+    ...(built.reportStatus === "partial"
+      ? { reason: "one or more advertised FFI capabilities or symbols are unavailable" }
+      : {}),
+    path,
+    abiVersion,
+    advertisedCapabilities,
+    capabilities: built.adapter.capabilities,
+    expectedAbiVersion: EXPECTED_FFI_ABI_VERSION,
+    expectedCapabilities: FFI_EXPECTED_CAPABILITIES,
+    symbols: built.symbols,
+    missing: built.missing,
+    adapter: built.adapter,
+    library: baseLibrary,
+  };
+}
+
+/**
+ * Probe and lazily load the additive Bun FFI channel. The return value is a
+ * report in every case; callers must treat `unavailable`, `disabled`,
+ * `mismatch` and `partial` as valid Node-API fallback states.
+ */
+export function loadNativeFfi() {
+  if (ffiState === null) ffiState = initializeFfi();
+  return ffiState;
+}
+
+export const loadFfi = loadNativeFfi;
+
+export function ffiCapabilityReport() {
+  const report = loadNativeFfi();
+  const { adapter: _adapter, library: _library, ...publicReport } = report;
+  return publicReport;
+}
+
+export function nativeLoadPath() {
+  if (native === null) {
+    try {
+      loadNative();
+    } catch {
+      // The caller may still have supplied MAD_DOM_FFI_PATH; preserve it.
+    }
+  }
+  return nativePath;
+}
+
+// The FFI document registry is owned by the loaded Node-API image
+// (ffi/ABI.md: "loading a second copy creates a separate thread-local
+// registry"). A behavior handshake alone cannot distinguish that split from a
+// genuinely stale handle, so the loader compares file identity between the FFI
+// artifact and the Node-API image before binding documents. Identical files
+// (same inode) resolve to one loaded image on the same Bun process; a
+// byte-identical second copy has its own registry and is refused with a reason.
+function sameFileIdentity(a, b) {
+  if (a === b) return true;
+  try {
+    const left = statSync(a);
+    const right = statSync(b);
+    return left.dev === right.dev && left.ino === right.ino;
+  } catch {
+    try {
+      return realpathSync(a) === realpathSync(b);
+    } catch {
+      return false;
+    }
+  }
+}
+
+function resolveFfiImage(ffiPath) {
+  if (ffiImageState !== null) return ffiImageState;
+  const nodePath = nativeLoadPath();
+  if (nodePath === null) {
+    // No Node-API image is loaded, so no document can reach this channel yet;
+    // defer until a document binding asks.
+    return null;
+  }
+  if (sameFileIdentity(ffiPath, nodePath)) {
+    ffiImageState = { compatible: true };
+    return ffiImageState;
+  }
+  ffiImageState = {
+    compatible: false,
+    reason:
+      `FFI artifact ${ffiPath} is a different file from the Node-API binding ${nodePath}. ` +
+      "The FFI document registry belongs to the Node-API image, so a second copy of the " +
+      "library cannot see its documents; pointing MAD_DOM_FFI_PATH at the exact file the " +
+      "Node-API loader used restores the FFI channel.",
+  };
+  return ffiImageState;
+}
+
+/** Return an FFI adapter bound to one Node-API document, or null on fallback. */
+export function ffiForDocument(documentHandle) {
+  const report = loadNativeFfi();
+  if (report.adapter === undefined || typeof documentHandle?.ffiContext !== "function") return null;
+  const image = resolveFfiImage(report.path);
+  if (image !== null && !image.compatible) {
+    // Same-ABI second image: record the reason on the report and refuse the
+    // document binding so the facade keeps its Node-API behavior instead of
+    // surfacing INVALID_DOCUMENT from a foreign registry.
+    if (report.imageReason === undefined) report.imageReason = image.reason;
+    return null;
+  }
+  try {
+    const context = Uint32Array.from(ffiContextValues(documentHandle.ffiContext()));
+    return { adapter: report.adapter, context };
+  } catch {
+    return null;
+  }
 }

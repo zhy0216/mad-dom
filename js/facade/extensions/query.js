@@ -213,7 +213,11 @@ export class StaticNodeList {
  * non-configurable, matching the rest of the facade surface.
  */
 export function install(ctx) {
-  // Document surface.
+  // Document surface. `querySelector` stays on the native single-result entry:
+  // it early-exits in Core on the first match and never materializes the full
+  // `querySelectorAll` snapshot. The FFI channel has only a whole-result
+  // snapshot symbol, so routing a single-result call through it would trade an
+  // early-exit for a full scan plus wrapper materialization on wide trees.
   ctx.defineMethod(Document.prototype, "querySelector", function querySelector(selectors) {
     return ctx.wrap(
       facadeDocumentHandle(ctx, this, "querySelector").querySelector(String(selectors)),
@@ -225,10 +229,7 @@ export function install(ctx) {
     const cache = queryCache(this, selector);
     const cached = cache === undefined ? undefined : mapGet(cache.entries, selector);
     if (cached !== undefined) return new StaticNodeList(cached);
-    const items = facadeDocumentHandle(ctx, this, "querySelectorAll").querySelectorAll(selector)
-      .map((handle) => ctx.wrap(handle));
-    saveQuery(this, selector, items, cache);
-    return new StaticNodeList(items);
+    return queryNodeList(ctx, this, selector, cache);
   });
 
   ctx.defineMethod(Document.prototype, "getElementById", function getElementById(elementId) {
@@ -338,14 +339,37 @@ export function install(ctx) {
   });
 }
 
-function queryNodeList(ctx, parent, selectors) {
+function queryNodeList(ctx, parent, selectors, preparedCache) {
   const selector = String(selectors);
-  const cache = queryCache(parent, selector);
+  const cache = preparedCache ?? queryCache(parent, selector);
   const cached = cache === undefined ? undefined : mapGet(cache.entries, selector);
   if (cached !== undefined) return new StaticNodeList(cached);
-  const handle = facadeNodeHandle(ctx, parent, "querySelectorAll");
   const state = nodeDocumentStateOf(parent);
-  const queryTokens = state?.nodeNativeMethodsOf(handle).querySelectorAllTokens;
+  const ffi = state?.ffi;
+  const ffiContext = state?.ffiContext;
+  // Keep document-root queries on the established Node-API object method. It
+  // owns implied-skeleton materialization and the compatibility behavior for
+  // older bindings; element/fragment scopes use the packed FFI snapshot.
+  const scopeToken = parent instanceof Document ? undefined : ctx.documentContext.tokenOf(parent);
+  if (ffi !== null && ffiContext !== null && scopeToken !== undefined &&
+      state?.nativeMethods.materializeNodeToken !== undefined &&
+      typeof ffi.querySnapshot === "function") {
+    const flat = ffi.querySnapshot(ffiContext, scopeToken, selector);
+    if (flat !== undefined) {
+      const items = snapshotNodes(ctx, state, flat);
+      saveQuery(parent, selector, items, cache);
+      return new StaticNodeList(items);
+    }
+  }
+  const handle = parent instanceof Document
+    ? facadeDocumentHandle(ctx, parent, "querySelectorAll")
+    : facadeNodeHandle(ctx, parent, "querySelectorAll");
+  // DocumentHandle has a similarly named compatibility method on some older
+  // bindings, but the token entry is a NodeHandle scope operation. Keep the
+  // document fallback on its original object-returning Node-API method.
+  const queryTokens = parent instanceof Document
+    ? undefined
+    : state?.nodeNativeMethodsOf(handle).querySelectorAllTokens;
   if (queryTokens === undefined || state.nativeMethods.materializeNodeToken === undefined) {
     const items = handle.querySelectorAll(selector).map((handle) => ctx.wrap(handle));
     saveQuery(parent, selector, items, cache);

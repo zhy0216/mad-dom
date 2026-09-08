@@ -117,6 +117,10 @@ function main() {
     version,
     description: `MAD DOM native binding for ${platformSegment(meta)} (Bun, Node-API).`,
     main: `./${binaryName}`,
+    // The FFI channel deliberately points at the same image as Node-API.
+    // Duplicating a cdylib would create a second thread-local document
+    // registry, so the package carries one binary and records its dual use.
+    madDomFfi: `./${binaryName}`,
     os: [meta.os],
     cpu: [meta.arch],
     ...libcField,
@@ -133,7 +137,8 @@ function main() {
       meta.libc ? ` (${meta.libc})` : ""
     }. This package is a platform binary payload of \`mad-dom\` (ADR-0005 §5): it is installed ` +
       "automatically as an optional dependency of the matching \`mad-dom\` version and is not meant to " +
-      "be depended on directly.\n",
+      "be depended on directly. The same binary is also the optional Bun FFI image; the main loader " +
+      "opens it once so document-local FFI ownership remains connected to Node-API.\n",
   );
 
   console.log(pkgDir);
