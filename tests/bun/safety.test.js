@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dlopen } from "bun:ffi";
 import { createDocument, isNativeAvailable } from "../../index.js";
 
 // T21 safety-boundary fixtures. They exercise the production binding through
@@ -24,6 +27,36 @@ import { createDocument, isNativeAvailable } from "../../index.js";
 // checkout still passes `npm run validate`.
 
 const nativeAvailable = isNativeAvailable();
+const FFI_ARTIFACT =
+  process.env.MAD_DOM_FFI_PATH ??
+  process.env.MAD_DOM_NATIVE_PATH ??
+  (() => {
+    const explicit = process.env.MAD_DOM_NATIVE_PATH;
+    return (explicit && (isAbsolute(explicit) ? explicit : resolve(process.cwd(), explicit))) ||
+      fileURLToPath(new URL("../../build/mad-dom.node", import.meta.url));
+  })();
+const ffiArtifactAvailable = existsSync(FFI_ARTIFACT);
+
+// Loads the FFI child-snapshot symbol exactly like the loader does, returning
+// a status code from the frozen C ABI (0 OK, 3 INVALID_DOCUMENT, …).
+function ffiChildTokens(owner, generation, root) {
+  const lib = dlopen(FFI_ARTIFACT, {
+    mad_dom_ffi_child_tokens: {
+      args: ["u32", "u32", "u32", "ptr", "u32", "ptr"],
+      returns: "i32",
+    },
+  });
+  const out = new Uint32Array(4);
+  const written = new Uint32Array(1);
+  return lib.symbols.mad_dom_ffi_child_tokens(
+    owner,
+    generation,
+    root,
+    out,
+    out.length,
+    written,
+  );
+}
 
 function thrown(fn) {
   try {
@@ -199,5 +232,67 @@ describe.skipIf(!nativeAvailable)("native safety boundary (T21)", () => {
     expect(result.error.message).toContain("nodeName is not a function");
 
     doc.destroy();
+  });
+
+  test("the FFI channel cannot bypass thread/isolate affinity", async () => {
+    if (!ffiArtifactAvailable) return;
+
+    // Positive control on this thread: a main-thread document's FFI context is
+    // resolved by the main-thread C registry (0 = OK).
+    const local = createDocument();
+    const localContext = Array.from(local.ffiContext());
+    expect(ffiChildTokens(...localContext)).toBe(0);
+
+    // A context minted inside a Worker belongs to the Worker's thread-local FFI
+    // registry. Replaying those numbers on the main thread must fail with
+    // INVALID_DOCUMENT (3) — the FFI fast path never reaches another isolate's
+    // document, so it cannot bypass the affinity guard.
+    const workerSource = `
+      import { createDocument } from __ENTRY__;
+      self.onmessage = () => {
+        try {
+          const doc = createDocument();
+          const context = typeof doc.ffiContext === "function" ? doc.ffiContext() : null;
+          self.postMessage({ ok: true, context: context ? Array.from(context) : null });
+        } catch (err) {
+          self.postMessage({ ok: false, error: String((err && err.message) || err) });
+        }
+      };
+    `;
+    const fromWorker = await runWorker(workerSource, "go");
+    expect(fromWorker.ok).toBe(true);
+    expect(ffiChildTokens(...fromWorker.context)).toBe(3);
+
+    // And the reverse: replaying a main-thread context inside a Worker must
+    // fail the same way (the Worker's registry has no such owner).
+    const reverseSource = `
+      import { dlopen } from "bun:ffi";
+      self.onmessage = (ev) => {
+        try {
+          const { path, context } = ev.data;
+          const lib = dlopen(path, {
+            mad_dom_ffi_child_tokens: {
+              args: ["u32", "u32", "u32", "ptr", "u32", "ptr"], returns: "i32",
+            },
+          });
+          const out = new Uint32Array(4);
+          const written = new Uint32Array(1);
+          const status = lib.symbols.mad_dom_ffi_child_tokens(
+            context[0], context[1], context[2], out, out.length, written,
+          );
+          self.postMessage({ ok: true, status });
+        } catch (err) {
+          self.postMessage({ ok: false, error: String((err && err.message) || err) });
+        }
+      };
+    `;
+    const inWorker = await runWorker(reverseSource, {
+      path: FFI_ARTIFACT,
+      context: localContext,
+    });
+    expect(inWorker.ok).toBe(true);
+    expect(inWorker.status).toBe(3);
+
+    local.destroy();
   });
 });

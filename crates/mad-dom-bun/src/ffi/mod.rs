@@ -6,6 +6,12 @@
 //! registry holds only thread-local Weak references. Node-API owns lifecycle,
 //! wrappers and callbacks; FFI never retains caller pointers or calls JS.
 //!
+//! All outputs are copies into caller-owned buffers. No native-owned (external)
+//! ArrayBuffer crosses this ABI in v1 — `bun:ffi` has no stable deallocator
+//! contract, so caller-owned copies keep the free path on the JS heap. The full
+//! memory protocol (ownership classes, capacity/length rules, exactly-once
+//! deallocator rule and lifecycle diagnostics) is in `ffi/ABI.md`.
+//!
 //! See `ABI.md` for signatures, errors, packed layouts and pointer preconditions.
 
 mod buffer;
@@ -82,6 +88,19 @@ thread_local! {
 }
 static NEXT_OWNER: AtomicU64 = AtomicU64::new(1);
 
+/// Number of documents currently registered in the *calling thread's* FFI
+/// owner registry. Diagnostic only (memory-protocol task 04): a document is
+/// registered lazily on its first `ffiContext()` call and unregistered when
+/// its last ownership `Arc` drops (never on `destroy()` alone — destroyed
+/// documents stay registered while a handle keeps them alive, so their FFI
+/// entries are still owned). The registry is thread-local, so this count is a
+/// deterministic, per-isolate lifecycle signal for the GC churn tests and the
+/// memory benchmark: after a bounded create→context→destroy→collect churn it
+/// must return to its baseline without relying on RSS measurements.
+pub(crate) fn registration_count() -> usize {
+    DOCUMENTS.with(|docs| docs.borrow().len())
+}
+
 pub(crate) struct Registration {
     owner: Cell<u32>,
     generation: Cell<u32>,
@@ -137,6 +156,26 @@ impl DocumentHandle {
             .map_err(|err| err.into_napi(&env))?;
         let [owner, generation] = self.shared().ffi.context(self.shared());
         Ok(vec![owner, generation, self.shared().token_for(root)].into())
+    }
+
+    /// Read-only memory/lifecycle diagnostics (memory-protocol task 04).
+    ///
+    /// Returns `[liveDocuments, ffiRegistrations, wrapperCacheEntries]` for the
+    /// *calling thread/isolate*: live Core documents, documents registered in
+    /// the calling thread's FFI owner registry, and total live weak
+    /// wrapper-cache entries across every document. All three are counters,
+    /// deliberately exposed on any document handle (they read only process
+    /// statics and thread-locals — never this document's state, so the call is
+    /// valid even after `destroy()`). The GC/finalizer and FFI churn tests and
+    /// `scripts/bench-ffi-gc.mjs` use them as the deterministic release proof;
+    /// production correctness never depends on them.
+    #[napi(catch_unwind)]
+    pub fn memory_diagnostics(&self) -> (u32, u32, u32) {
+        (
+            crate::handle::live_document_count() as u32,
+            registration_count() as u32,
+            crate::handle::live_wrapper_cache_entries() as u32,
+        )
     }
 }
 

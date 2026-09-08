@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   createDocument,
+  ffiRegistrationCount,
   isNativeAvailable,
   liveDocumentCount,
+  liveWrapperCacheEntries,
 } from "../../index.js";
 
 // T20 wrapper identity and GC lifecycle tests. They exercise the production
@@ -202,6 +204,7 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
   test("GC pressure: no document leak and collected wrappers stay collectable", async () => {
     await collectGarbage();
     const before = liveDocumentCount();
+    const wrapperCacheBaseline = liveWrapperCacheEntries();
 
     let recycled = null;
     // One full scenario per iteration, in its own function frame (same
@@ -244,6 +247,10 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
     await collectGarbage();
     expect(recycled.deref()).toBeUndefined();
     expect(liveDocumentCount()).toBe(before);
+    // Deterministic counter proof (memory-protocol task 04): the per-document
+    // weak wrapper cache must be back to its baseline after the churn — no
+    // residual wrapper-cache entry survives the destroy + GC cycle.
+    expect(liveWrapperCacheEntries()).toBe(wrapperCacheBaseline);
   });
 
   test("cross-document wrappers never share identity on the same slot", () => {
@@ -262,5 +269,80 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
 
     docA.destroy();
     docB.destroy();
+  });
+
+  test("explicit destroy is the deterministic, GC-independent free path", async () => {
+    await collectGarbage();
+    const before = liveDocumentCount();
+    const ffiBefore = ffiRegistrationCount();
+    const wrapperCacheBaseline = liveWrapperCacheEntries();
+
+    // destroy() must release the Core document synchronously. This assertion
+    // is what makes the memory protocol independent of Bun.gc()/finalizer
+    // timing: business correctness never waits for a GC.
+    const spawn = () => {
+      const doc = createDocument();
+      doc.createElement("ul");
+      doc.destroy();
+    };
+    spawn();
+    expect(liveDocumentCount()).toBe(before);
+
+    // The node wrapper cache drains eagerly at destroy, too (its entries are
+    // cleared with the document), so even a wrapper that was never collected
+    // cannot linger as a cache entry.
+    expect(liveWrapperCacheEntries()).toBe(wrapperCacheBaseline);
+
+    await collectGarbage();
+    expect(liveDocumentCount()).toBe(before);
+    expect(ffiRegistrationCount()).toBe(ffiBefore);
+    expect(liveWrapperCacheEntries()).toBe(wrapperCacheBaseline);
+  });
+
+  test("abandoned documents are reclaimed through the deferred napi finalizer", async () => {
+    await collectGarbage();
+    const before = liveDocumentCount();
+
+    // Create and abandon a document: nothing but the (weak) document wrapper
+    // cache and this file's counters reference it after the helper frame dies.
+    const spawn = () => {
+      const doc = createDocument();
+      const div = doc.createElement("div");
+      doc.appendChild(div, doc.createText("x"));
+    };
+    spawn();
+    await collectGarbage();
+    expect(liveDocumentCount()).toBe(before);
+  });
+
+  test("FinalizationRegistry observes wrapper reclamation (no strong cache pin)", async () => {
+    await collectGarbage();
+    const doc = createDocument();
+    let finalized = false;
+    const registry = new FinalizationRegistry(() => {
+      finalized = true;
+    });
+
+    const spawn = () => {
+      const parent = doc.createElement("ul");
+      const child = doc.createElement("li");
+      doc.appendChild(parent, child);
+      // While alive the cached wrapper is the very object just returned.
+      expect(parent.firstChild()).toBe(child);
+      registry.register(child, "child");
+    };
+    spawn();
+
+    // A wrapper nobody references must be collected and finalized like any
+    // ordinary JS object; the weak wrapper cache is not a strong pin. The
+    // FinalizationRegistry callback is not required to run on a fixed turn, so
+    // poll a bounded number of GC rounds.
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await collectGarbage();
+      if (finalized) break;
+    }
+    expect(finalized).toBe(true);
+
+    doc.destroy();
   });
 });

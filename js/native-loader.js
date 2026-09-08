@@ -460,6 +460,13 @@ const FFI_MAX_OUTPUT_BYTES = 64_000_000;
 // facade caller. Genuine native error statuses (destroyed document, stale or
 // foreign token, syntax, …) still throw so the taxonomy stays identical to the
 // Node-API path the workload digest compares against.
+//
+// Length protocol: native always writes the *exact* required element count to
+// `written` before returning — BUFFER_TOO_SMALL carries the required size (the
+// next capacity) and OK carries the produced size. This loader never trusts a
+// reported length beyond `capacity`, and never grows past
+// FFI_MAX_OUTPUT_WORDS / FFI_MAX_OUTPUT_BYTES; both violations fall back to
+// Node-API instead of allocating from an untrusted count.
 function outputWords(call, operation) {
   let capacity = 256;
   for (let attempt = 0; attempt !== 8; attempt += 1) {
@@ -498,6 +505,30 @@ function outputBytes(call, operation) {
   return undefined;
 }
 
+// Single-shot variant for *mutating* FFI entries (createElements). Native
+// guarantees a capacity failure is side-effect free (the element batch is only
+// created after the required size is proven to fit), but this loader must
+// still never re-invoke a mutating call in a retry loop: a second successful
+// invocation would mint a second batch of detached nodes and leak them. The
+// caller knows the exact output size up front (one word per token), so one
+// correctly-sized attempt either succeeds and returns the batch or falls back
+// to Node-API without a repeated mutation.
+function outputWordsExact(call, operation, requiredWords) {
+  const required = requiredWords >>> 0;
+  if (required > FFI_MAX_OUTPUT_WORDS) return undefined;
+  const output = new Uint32Array(required);
+  const written = new Uint32Array(1);
+  const status = call(output, required, written);
+  if (status === FFI_STATUS.OK) {
+    if (written[0] > required) return undefined;
+    return output.slice(0, written[0]);
+  }
+  // BUFFER_TOO_SMALL on a correctly sized buffer is a protocol anomaly: report
+  // the Node-API fallback signal rather than calling the mutating entry again.
+  if (status === FFI_STATUS.BUFFER_TOO_SMALL) return undefined;
+  throw ffiError(status, operation);
+}
+
 function openFfiSymbols(ffi, path, names, declarations = FFI_SYMBOL_DECLARATIONS) {
   const definitions = {};
   for (const name of names) definitions[name] = declarations[name];
@@ -506,6 +537,16 @@ function openFfiSymbols(ffi, path, names, declarations = FFI_SYMBOL_DECLARATIONS
 
 function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilities, forcedMissing) {  const symbols = {};
   const missing = [];
+  // Every dlopen handle backing a resolved symbol must stay referenced for as
+  // long as the adapter is alive. The raw C function pointers on
+  // `library.symbols` are only valid while their shared object stays mapped;
+  // Bun's Library is a GC object, so dropping every per-symbol handle would
+  // make symbol validity depend on Bun's (unspecified) unload timing. Keeping
+  // the handles on the adapter — which the loader report pins for the process
+  // lifetime — removes that dependency. `.close()` is never called: the image
+  // is the same `.node` the Node-API loader keeps loaded anyway, so the OS
+  // reclaims it at process exit.
+  const libraries = [];
   const candidates = Object.entries(FFI_SYMBOL_BITS);
   for (const [name, bit] of candidates) {
     if ((advertisedCapabilities & bit) === 0) {
@@ -526,6 +567,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
       const symbol = library.symbols[openName];
       if (typeof symbol !== "function") throw new Error(`symbol ${openName} is not callable`);
       symbols[name] = symbol;
+      libraries.push(library);
     } catch (error) {
       missing.push({ name, reason: error?.message ?? String(error) });
     }
@@ -550,6 +592,10 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
     advertisedCapabilities,
     symbols: Object.freeze(symbols),
   };
+  // Non-enumerable pin so the live handles never serialize (the public
+  // capability report strips `adapter` anyway) and never become GC-able while
+  // any resolved symbol could still be called.
+  Object.defineProperty(adapter, "libraries", { value: libraries, enumerable: false });
   if (symbols[FFI_SYMBOLS.querySnapshot] !== undefined) {
     adapter.querySnapshot = function querySnapshot(context, scopeToken, selector) {
       const [owner, generation, scope] = ffiContextValues(context);
@@ -584,7 +630,15 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
       const [owner, generation] = ffiContextValues(context);
       const bytes = typeof name === "string" ? new TextEncoder().encode(name) : name;
       const symbol = symbols[FFI_SYMBOLS.createElements];
-      return outputWords((out, capacity, written) => symbol(owner, generation, bytes, bytes.length, count, out, capacity, written), "create elements");
+      // createElements mints `count` detached elements: it must never be
+      // repeated by a retry loop (each successful call allocates a fresh
+      // batch), so it uses the single-shot exact-capacity helper instead of the
+      // growing outputWords retry. One token word per created element.
+      return outputWordsExact(
+        (out, capacity, written) => symbol(owner, generation, bytes, bytes.length, count, out, capacity, written),
+        "create elements",
+        count,
+      );
     };
   }
   if (symbols[FFI_SYMBOLS.readBatch] !== undefined) {

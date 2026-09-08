@@ -14,7 +14,14 @@
 //
 // Usage:
 //   bun scripts/bench-ffi-gc.mjs [--json]
-import { isNativeAvailable, createDocument, liveDocumentCount } from "../index.js";
+import {
+  Window,
+  createDocument,
+  ffiRegistrationCount,
+  isNativeAvailable,
+  liveDocumentCount,
+  liveWrapperCacheEntries,
+} from "../index.js";
 
 const JSON_MODE = process.argv.includes("--json");
 
@@ -100,6 +107,14 @@ async function benchGcRelease() {
   return { released: afterExplicit === before ? 1.0 : 0.0, baseline: before };
 }
 
+function sampleCounters() {
+  return {
+    docs: liveDocumentCount(),
+    ffiRegistrations: ffiRegistrationCount(),
+    wrapperCacheEntries: liveWrapperCacheEntries(),
+  };
+}
+
 async function benchMemoryCurve() {
   // Churn documents while the JS process stays alive; the memory curve is the
   // RSS growth after a bounded create/destroy cycle (a leak would grow it
@@ -121,6 +136,65 @@ async function benchMemoryCurve() {
   return { rssBefore, rssAfter, growthMb: (rssAfter - rssBefore) / (1024 * 1024) };
 }
 
+// Bounded FFI-facade churn with *deterministic* native lifecycle counters.
+// RSS alone can fluctuate without a leak, so the release proof is the counter
+// deltas: live documents, FFI owner registrations and weak wrapper-cache
+// entries must all return to their exact pre-churn baseline after explicit
+// destroy plus GC. This drives the facade hot paths (element token batch,
+// query/child snapshots, serialization, detached-wrapper churn).
+async function benchFfiMemoryChurn() {
+  const churnWindow = () => {
+    const win = new Window();
+    const { document } = win;
+    const body = document.body;
+    for (let i = 0; i < 20; i++) {
+      const span = document.createElement("span");
+      span.textContent = `s${i}`;
+      body.append(span);
+    }
+    const ul = document.createElement("ul");
+    body.append(ul);
+    for (let i = 0; i < 12; i++) {
+      const li = document.createElement("li");
+      li.className = i % 2 === 0 ? "even" : "odd";
+      li.textContent = `li${i}`;
+      ul.append(li);
+    }
+    void ul.querySelectorAll("li.even").length;
+    void ul.childNodes.length;
+    void ul.innerHTML;
+    void ul.outerHTML;
+    for (let i = 0; i < 12; i++) {
+      const orphan = document.createElement("section");
+      body.append(orphan);
+      orphan.remove();
+    }
+    win.destroy();
+  };
+
+  Bun.gc(true);
+  await drainEventLoop();
+  const before = sampleCounters();
+  const rssBefore = process.memoryUsage().rss;
+  for (let i = 0; i < 60; i++) {
+    churnWindow();
+  }
+  Bun.gc(true);
+  await drainEventLoop();
+  Bun.gc(true);
+  await drainEventLoop();
+  const after = sampleCounters();
+  const rssAfter = process.memoryUsage().rss;
+  return {
+    deltas: {
+      docs: after.docs - before.docs,
+      ffiRegistrations: after.ffiRegistrations - before.ffiRegistrations,
+      wrapperCacheEntries: after.wrapperCacheEntries - before.wrapperCacheEntries,
+    },
+    growthMb: (rssAfter - rssBefore) / (1024 * 1024),
+  };
+}
+
 async function main() {
   if (!isNativeAvailable()) {
     console.error("bench-ffi-gc: native binding unavailable (run npm run dev:build first)");
@@ -131,6 +205,7 @@ async function main() {
   const identity = benchWrapperIdentity();
   const gc = await benchGcRelease();
   const memory = await benchMemoryCurve();
+  const ffiMemory = await benchFfiMemoryChurn();
 
   const report = {
     schema: "mad-dom-ffi-gc-bench/1",
@@ -140,6 +215,13 @@ async function main() {
       wrapper_identity_hit_rate: identity.identityHitRate,
       gc_release_hit_rate: gc.released,
       gc_memory_growth_mb: memory.growthMb,
+      // Deterministic release counters (memory-protocol task 04). The gate's
+      // existing gc_memory_growth_mb remains the RSS smoke bound; these deltas
+      // are the counter proof and are 0 when nothing leaks.
+      memory_counter_docs_delta: ffiMemory.deltas.docs,
+      memory_counter_ffi_registrations_delta: ffiMemory.deltas.ffiRegistrations,
+      memory_counter_wrapper_cache_delta: ffiMemory.deltas.wrapperCacheEntries,
+      ffi_churn_rss_growth_mb: ffiMemory.growthMb,
     },
   };
   console.log(JSON.stringify(report, null, 2));
