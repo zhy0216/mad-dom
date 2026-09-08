@@ -1,0 +1,41 @@
+bun test v1.4.2 (744846f84)
+
+tests/bun/bench-gate.test.js:
+(pass) benchmark regression evidence > signed RSS current=-22.44 baseline=-18.5703125 passes=true [0.52ms]
+(pass) benchmark regression evidence > signed RSS current=-18.5703125 baseline=-18.5703125 passes=true [0.12ms]
+(pass) benchmark regression evidence > signed RSS current=-1 baseline=-18.5703125 passes=true [0.09ms]
+(pass) benchmark regression evidence > signed RSS current=0 baseline=-18.5703125 passes=true [0.05ms]
+(pass) benchmark regression evidence > signed RSS current=0.001 baseline=-18.5703125 passes=false [0.05ms]
+(pass) benchmark regression evidence > signed RSS current=-1 baseline=0 passes=true [0.12ms]
+(pass) benchmark regression evidence > signed RSS current=0 baseline=0 passes=true [0.05ms]
+(pass) benchmark regression evidence > signed RSS current=0.001 baseline=0 passes=false [0.04ms]
+(pass) benchmark regression evidence > signed RSS current=-1 baseline=10 passes=true [0.05ms]
+(pass) benchmark regression evidence > signed RSS current=0 baseline=10 passes=true [0.04ms]
+(pass) benchmark regression evidence > signed RSS current=10 baseline=10 passes=true [0.04ms]
+(pass) benchmark regression evidence > signed RSS current=20 baseline=10 passes=true [0.04ms]
+(pass) benchmark regression evidence > signed RSS current=20.001 baseline=10 passes=false [0.04ms]
+(pass) benchmark regression evidence > missing evidence current=undefined baseline=undefined fails [0.13ms]
+(pass) benchmark regression evidence > missing evidence current=undefined baseline=1 fails [0.20ms]
+(pass) benchmark regression evidence > missing evidence current=1 baseline=undefined fails [0.11ms]
+(pass) benchmark regression evidence > invalid evidence NaN fails on either side [0.46ms]
+(pass) benchmark regression evidence > invalid evidence Infinity fails on either side [0.10ms]
+(pass) benchmark regression evidence > invalid evidence -Infinity fails on either side [0.09ms]
+(pass) benchmark regression evidence > invalid evidence null fails on either side [0.10ms]
+(pass) benchmark regression evidence > invalid evidence "1" fails on either side [0.10ms]
+(pass) benchmark regression evidence > invalid evidence true fails on either side [0.12ms]
+(pass) benchmark regression evidence > invalid evidence {} fails on either side [0.10ms]
+(pass) benchmark regression evidence > invalid evidence [] fails on either side [0.09ms]
+(pass) benchmark regression evidence > empty reports never claim a regression pass [0.31ms]
+(pass) benchmark regression evidence > throughput and capacity retain their original thresholds [0.30ms]
+
+tests/bun/bun-native-runtime-probe.test.js:
+(pass) T1 Bun capability matrix > reports every capability as data, including unavailable paths [2.90ms]
+(pass) T1 Bun capability matrix > matrix semantics keep latest, baseline, disabled and unavailable distinct [0.21ms]
+(pass) T1 same-input native boundary benchmark > returns machine-readable comparison rows without synthetic FFI numbers [11.75ms]
+(pass) T1 same-input native boundary benchmark > a measured boundary row with wrong output cannot pass the CLI guard [6.77ms]
+(pass) T1 same-input native boundary benchmark > CLI entry points are present for the package scripts [0.03ms]
+
+ 31 pass
+ 0 fail
+ 126 expect() calls
+Ran 31 tests across 2 files. [52.00ms]

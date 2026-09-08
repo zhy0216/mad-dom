@@ -22,7 +22,7 @@
 - 不为了追求 Bun 专属性而删除现有 Node-API 对象层、显式 destroy 或兼容回退。
 - 不在本轮扩展 DOM 语义、happy-dom 兼容范围或平台矩阵；新增 ABI/产物只服务本计划的运行时通道。
 
-## 现状证据与关键约束
+## 规划基点的证据与关键约束（历史）
 
 - Rust Core 已明确不依赖 Bun/JSC；native binding 当前使用 `napi-rs` / Node-API，公开 native surface 已有 `Uint32Array` token/snapshot 和 batch 入口，可作为 FFI 候选。
 - `js/facade` 当前主要使用 `node:*` 模块和 `globalThis` Web API；生产路径没有 `bun:*` import，也没有普遍使用 `Bun.*`。
@@ -130,4 +130,59 @@ bun run wpt:test
 - 外部 ArrayBuffer 和 deallocator 的生命周期错误可能造成崩溃；默认优先 caller-owned buffers 和显式 destroy。
 - Bun host IO 与 happy-dom 的同步/异步时序可能不同；所有迁移必须以现有差分契约为验收标准。
 - 最新版本策略会降低单一 baseline 的可复现性；通过 baseline lane、lockfile 和完整 capability 记录保留定位能力。
-- 当前仓库仍有 `.bun-version=1.4.0` 及相应文档；本计划把它视为需要修正的验证策略，而不是产品运行时的精确版本限制。
+- 规划基点的 `.bun-version=1.4.0` 是可复现 baseline，而不是产品运行时精确版本限制；06 已实现独立 latest 验证策略。
+
+## 执行结果（07 本地验收完成）
+
+07 从实际已集成基点 `4a90f51bb6f98cbaf4ceab43579fb12da951ef35`（06）开始，
+其父提交为 `49351d2c346bab2156ac029345f5e95995f379f2`（04）。01—06 的
+实际提交与各自验收记录均保留；07 没有重放旧 WIP，也没有改动生产 DOM、Core、
+依赖版本或平台矩阵。2026-09-07/08 UTC 的本地结果如下，完整逐项命令、原始失败、
+采样数据和复现方法见[最终集成报告](../../docs/bun-native-runtime-results.md)及
+[命令证据](../../docs/bun-native-runtime-evidence/validation.json)。
+
+- baseline Bun `1.4.0+34cbb9a40b4bd1bd767d134a7065e66c2432a676` 与实际 latest
+  `1.4.2+744846f844374847c902b5e7fd59b4342a51ef99` 均通过全部规定命令，Rust
+  691/0、最终 Bun 1194/0；两次完整 `validate` 检查点各为 691 Rust / 1192 Bun，
+  v2 新增两项测试后的两版完整 Bun 套件、native 和 integration 再验通过。
+  ledger 前已运行 hdunit rewrite。所有源码 native/FFI 验证使用本 worktree
+  `build/mad-dom.node` 的同一 image，baseline 子进程的 PATH 与 `process.execPath`
+  保持同一 Bun。选定 compat/WPT/integration gate 的通过不代表全部上游测试通过。
+- 新 worktree、任务专用空缓存复现了 Bun hoisted `file:../..` 的递归副本；仅为
+  integration 配置 isolated linker，两版实际默认 `bun install --frozen-lockfile`
+  均从干净目录安装成功，53 个安装后 JS 文件与源码哈希一致。三份锁文件不变。
+  06 的 ENOENT/空缓存恢复日志与 07 的新复现分开保留。
+- 已真实生成 main/platform tarball、验证内容与 checksums，并完成五组安装 smoke；
+  latest/baseline、FFI enabled/disabled/unavailable、ABI/capability/platform
+  fallback、错误码、wrapper identity、destroy 与 affinity 均有实际证据。
+- 修复 benchmark 子进程版本选择、snapshot 工作量/结果一致性与 serialized-output
+  校验。对 signed RSS 的历史乘法比较改用明确的新 `mad-dom/memory-stability/2`
+  验收：固定每轮 200 documents × 100 nodes、8 轮 warmup、24 轮测量，严格零
+  ownership/cache counters；RSS/heap 峰值不超过同进程后四轮 warm stock 中位数的
+  2 倍，并检查三块局部趋势及 RSS 全程斜率相对块内波动的组合条件。原始 RSS、06
+  baseline 和失败均保留；这不是历史 signed-RSS 门限下的通过。无 baseline 的首次
+  记录路径也必须通过当前完整有效数据与内存门禁，否则不写文件。缺失/非法证据不算通过。
+- 最终规则重评 43 份完整保留曲线：22 份正常通过、21 份增长拒绝。最终固定新对照共
+  12 次：两版各 3 次正常通过、各 3 次纯原生每轮保留 1 MiB 的 RSS 对照均由 RSS
+  趋势分支拒绝，heap/计数分支通过，24 块全部释放。早期 RSS 漏检只有 AssertionError
+  日志、没有曲线；后续成功曲线不是原失败的重建。同进程注入压力后 FFI registration
+  残留另记为生命周期诊断失败；将独立 FFI digest 放入同 Bun 子进程后通过，不能单独
+  证明原 GC/JIT 根因或生产生命周期缺陷已修复。有限窗口不证明所有微小泄漏均可检出。
+- 代表性 DOM、FFI boundary、IO、GC/RSS/heap 均保留 cold/warm、固定样本和结果校验。
+  本机 latest 的 FFI-on DOM core/testing 总时长分别比 off 高 17.8%/10.7%；两版
+  Bun 文件写入约慢 4 倍；原始 packed-buffer FFI boundary 有收益，但不能外推为
+  完整 facade 加速。最终正式 bench:check 两版通过，原始单次 RSS delta 分别为
+  latest +0.47 MiB、baseline +0.25 MiB，只作方向观测。历史主机匹配仅 OS/arch，
+  不等于完整硬件或同版本匹配；首次主机记录不等于历史回归比较。
+- Bun deallocator API 确实存在，两版真实 C spike 均通过；默认仍采用 caller-owned
+  copies，没有新增生产外部 FFI ArrayBuffer。试验性 lease 的 bounded metadata、
+  VM rooting/affinity 与 library lifetime 限制见报告，不沿用旧“无 deallocator”结论。
+- 两版文档构建及生成 HTML/dist 检查通过，证据使用对应 GitHub source URL；没有
+  假设普通 Markdown JSON 链接会复制为静态资产。三份 workflow 的 actionlint 通过。
+  本轮未触发 hosted CI；musl、非本机平台及私有 JSC 生产集成仍未本地验证，alpha
+  支持边界不变。
+
+01—07 的实现与本地验收已归档。07 仅在自己的任务分支保留一个本地提交，未执行
+rebase、merge、push、PR、publish 或其他 worktree 操作。07 自身的实际合入 hash、
+协调器 rebase/独立复验、原分支 ff-only 和最终资源清理，由协调器在后续独立收尾记录
+中追加；本记录不提前声明 main 已合入或资源已清理。

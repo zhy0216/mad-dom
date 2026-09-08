@@ -118,9 +118,10 @@ platform metadata tamper now raises `MAD_DOM_METADATA_MISMATCH`.
 Verification timing is explicit: latest's 1140-test full run preceded this u32
 fix. Baseline's full command started earlier, but its test phase loaded the
 six added cases (1146 tests). Final-code release tests separately passed 19/19
-on both Bun versions. The coordinator will independently run the full gate
-on the final immutable commit; the earlier latest full run is not represented
-as a full run of that final commit.
+on both Bun versions. At that task-06 checkpoint the coordinator was still to run the final immutable
+commit; the earlier latest full run is not represented as a full run of that
+final commit. Task 07 starts from the actual integrated 06 commit and records
+its own subsequent full validations separately.
 
 The rebuilt native image SHA-256 is
 `2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96`.
@@ -132,7 +133,7 @@ exception observer), documentation builds, actionlint 1.7.12, capability and
 boundary/IO/tiny-DOM sanity passed. The FFI GC benchmark exercised all six
 operations on both versions and ended with zero document/registration/cache
 deltas. This does not change the historical negative-RSS threshold issue,
-which remains assigned to task 07.
+which was assigned to task 07 at the 06 checkpoint.
 
 The local integration install first encountered ENOENT in an incomplete
 `file:../..` dependency copy. The failed node_modules tree was moved to a task
@@ -148,3 +149,33 @@ blockers and complete task 06; hosted verification remains separate.
 Cross-platform and musl behavior remains unverified locally. Packaging now
 requires the payload to load on the runner and checks the measured libc;
 a cross compiler on a glibc runner alone does not establish a musl install.
+
+
+## Task 07 integration follow-through
+
+The final integration worktree starts from task 06 commit
+`4a90f51bb6f98cbaf4ceab43579fb12da951ef35`, after task 04 commit
+`49351d2c346bab2156ac029345f5e95995f379f2`. The
+[task 07 report](../docs/bun-native-runtime-results.md) records the final local
+repository, installed-package and benchmark results. The historical functional
+failures above are resolved; they are not current repository gate blockers.
+
+Task 07 preserves the original Linux baseline and negative-RSS failure. Fixed
+repetitions also disprove the initial zero-ceiling correction as a noise model.
+The signed delta remains raw evidence; a separate current-run stability contract
+checks a fixed 200-document × 100-child workload, 8 warmup / 24 measured rounds,
+positive warm-stock bounds, local trends plus a signal/spread check across the
+full RSS curve (`mad-dom/memory-stability/2`), and exact zero lifecycle counters.
+First-host recording must pass those checks and valid current metrics before
+writing a baseline. This explicitly changes memory acceptance semantics, without
+changing historical throughput/capacity thresholds or rewriting the baseline.
+The report preserves the former failures, real retained-memory negative controls,
+finite-horizon limits and final results; it does not claim an old-threshold pass.
+
+A new worktree plus empty external Bun cache reproduced a recursive hoisted
+`file:../..` copy even with install exit 0. The integration directory now selects
+Bun's isolated linker. The unchanged frozen lockfile installs cleanly on both
+versions, with no nested destination copy and matching installed JS hashes.
+This is distinct from the earlier incomplete-cache ENOENT recovery. No dependency
+version, public facade, ABI or release platform matrix changes in task 07.
+Hosted verification and non-host/musl validation remain separate.

@@ -6,13 +6,13 @@
 // Usage:
 //   bun scripts/bench.mjs --record        # run everything, write bench/baseline.json
 //   bun scripts/bench.mjs                 # run everything, gate against bench/baseline.json
-//   bun scripts/bench.mjs --report        # run everything, print merged report, no gate
+//   bun scripts/bench.mjs --report        # run everything and print the gate report
 //   bun scripts/bench.mjs --json          # merged report as JSON on stdout
 //
-// The gate compares every metric to its baseline value with the thresholds
+// The gate compares throughput/capacity metrics to baseline thresholds
 // declared below. Higher-is-better metrics (ops/s, hit rates) fail when they
 // drop below `lowerBound` (fraction of baseline); lower-is-better metrics
-// (memory growth, retention ratio drift) fail when they rise above
+// (retention ratio drift) fail when they rise above
 // `upperBound`. Timing noise is absorbed by generous bounds — the goal is
 // catching *obvious* regressions, not single-run absolute speed (plan §6).
 //
@@ -22,6 +22,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { memoryGate } from "./bench-memory-gate.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..");
@@ -57,7 +58,7 @@ const THRESHOLDS = {
   ffi_batch_append_ops_s: { direction: "higher", lowerBound: 0.5 },
   wrapper_identity_hit_rate: { direction: "higher", lowerBound: 1.0, tolerance: 0 },
   gc_release_hit_rate: { direction: "higher", lowerBound: 1.0, tolerance: 0 },
-  gc_memory_growth_mb: { direction: "lower", upperBound: 2.0 },
+  gc_memory_growth_mb: { direction: "observation" },
 };
 
 function parseArgs(argv) {
@@ -98,7 +99,7 @@ function runCoreBench() {
 }
 
 function runFfiGcBench() {
-  const report = runJson("bun", ["scripts/bench-ffi-gc.mjs"]);
+  const report = runJson(process.execPath, ["scripts/bench-ffi-gc.mjs"]);
   if (report.schema !== FFI_GC_BENCH_SCHEMA) {
     throw new Error(`ffi/gc bench returned unexpected schema: ${report.schema}`);
   }
@@ -110,6 +111,8 @@ function hostInfo() {
     os: process.platform,
     arch: process.arch,
     bun: process.versions.bun,
+    bunRevision: Bun.revision,
+    bunExecutable: process.execPath,
     rust: (() => {
       try {
         return execFileSync("rustc", ["-vV"], { encoding: "utf8" })
@@ -131,6 +134,10 @@ function collect() {
   return {
     schema: "mad-dom-bench/1",
     host: hostInfo(),
+    ffiRuntime: ffiGc.runtime,
+    memoryStability: ffiGc.memoryStability,
+    memoryEvidence: ffiGc.memoryEvidence,
+    memoryCurve: ffiGc.memoryCurve,
     node_bytes_per_node: core.node_bytes_per_node,
     bench_doc_nodes: core.bench_doc_nodes,
     metrics,
@@ -143,22 +150,31 @@ function formatNumber(value) {
   return value.toFixed(2);
 }
 
-function gate(report, baseline) {
+export function gate(report, baseline) {
   const failures = [];
   const rows = [];
   for (const [name, rule] of Object.entries(THRESHOLDS)) {
-    const current = report.metrics[name];
+    const current = report.metrics?.[name];
     const base = baseline.metrics?.[name];
     if (current === undefined || base === undefined) {
-      rows.push({ name, status: "n/a", detail: "metric missing on one side" });
-      if (baseline.metrics && baseline.metrics[name] !== undefined && report.metrics[name] === undefined) {
-        failures.push(`${name}: present in baseline but missing from the run`);
-      }
+      const side = current === undefined && base === undefined ? "both sides" : current === undefined ? "run" : "baseline";
+      const detail = `metric missing from ${side}; comparison requires both values`;
+      rows.push({ name, status: "n/a", detail });
+      failures.push(`${name}: ${detail}`);
+      continue;
+    }
+    if (!Number.isFinite(current) || !Number.isFinite(base)) {
+      const detail = "run and baseline must both contain finite numeric values";
+      rows.push({ name, status: "invalid", detail });
+      failures.push(`${name}: ${detail}`);
       continue;
     }
     let ok;
     let detail;
-    if (rule.direction === "higher") {
+    if (rule.direction === "observation") {
+      rows.push({ name, status: "info", detail: `raw signed RSS delta ${formatNumber(current)} MiB; historical ${formatNumber(base)} MiB (different sampling contract; see memory stability gate)` });
+      continue;
+    } else if (rule.direction === "higher") {
       const floor = base * rule.lowerBound;
       ok = current >= floor;
       detail = `current ${formatNumber(current)} vs floor ${formatNumber(floor)} (${rule.lowerBound}x of ${formatNumber(base)})`;
@@ -170,7 +186,24 @@ function gate(report, baseline) {
     if (!ok) failures.push(`${name}: ${detail}`);
     rows.push({ name, status: ok ? "pass" : "FAIL", detail });
   }
-  return { failures, rows };
+  const memory = memoryGate(report.memoryStability, report.memoryEvidence);
+  return { failures: [...failures, ...memory.failures], rows: [...rows, ...memory.rows] };
+}
+
+// Shared by explicit recording and the normal first-host path. Invalid current
+// evidence must not become a baseline merely because no reference exists yet.
+export function recordBaseline(report, path) {
+  const result = memoryGate(report.memoryStability, report.memoryEvidence);
+  for (const [name, rule] of Object.entries(THRESHOLDS)) {
+    const value = report.metrics?.[name];
+    if (!Number.isFinite(value) || (rule.direction !== "observation" && value <= 0) || (rule.tolerance === 0 && value !== 1)) {
+      const detail = "cannot record missing/invalid current metric or a failed identity/release invariant";
+      result.failures.push(`${name}: ${detail}`);
+      result.rows.push({ name, status: "FAIL", detail });
+    }
+  }
+  if (result.failures.length === 0) writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`);
+  return result;
 }
 
 function printReport(report, result) {
@@ -187,15 +220,16 @@ function printReport(report, result) {
   }
   if (result.failures.length > 0) {
     console.log("");
-    console.log(`FAIL: ${result.failures.length} metric(s) regressed`);
+    console.log(`FAIL: ${result.failures.length} metric(s) regressed or lack valid evidence`);
     for (const failure of result.failures) console.log(`  - ${failure}`);
     return false;
   }
   console.log("");
-  console.log("result: PASS — no metric regressed beyond its degradation threshold");
+  console.log("result: PASS — baseline throughput/capacity and current memory stability contract satisfied; raw RSS delta is observational");
   return true;
 }
 
+if (import.meta.main) {
 const args = parseArgs(process.argv.slice(2));
 const report = collect();
 
@@ -205,15 +239,15 @@ if (args.json) {
 }
 
 if (args.record) {
-  writeFileSync(BASELINE_PATH, `${JSON.stringify(report, null, 2)}\n`);
+  const result = recordBaseline(report, BASELINE_PATH);
+  if (result.failures.length) { printReport(report, result); process.exit(1); }
   console.log(`recorded baseline → ${BASELINE_PATH}`);
   process.exit(0);
 }
 
-// Baselines are host-specific (os/arch/bun/rust). The committed baseline.json
-// is the reference recorded by `bench:record`; when this run's host differs,
-// we record a host-specific baseline and pass instead of comparing numbers
-// measured on different hardware/toolchains (that comparison is meaningless).
+// Selection checks only os/arch, not CPU identity, Bun or Rust versions.
+// Version/revision metadata supports review but does not establish hardware
+// comparability. A first host-specific recording is not a regression pass.
 const hostKey = `${report.host.os}-${report.host.arch}`;
 const hostPath = HOST_BASELINE_PATH(report.host.os, report.host.arch);
 const committed = existsSync(BASELINE_PATH) ? JSON.parse(readFileSync(BASELINE_PATH, "utf8")) : null;
@@ -231,8 +265,10 @@ if (hostBaseline && hostBaseline.host?.os === report.host.os && hostBaseline.hos
   process.exit(ok ? 0 : 1);
 }
 
-// No baseline exists for this host: record one and pass (the first run on a
-// fresh host establishes its own baseline rather than failing).
+// Current-run memory acceptance does not require historical samples and must
+// still run on a fresh host. Recording is not a throughput regression pass.
+const recording = recordBaseline(report, hostPath);
+if (recording.failures.length) { printReport(report, recording); process.exit(1); }
 if (committed) {
   console.log(
     `no baseline for this host (${hostKey}); committed baseline is ${committed.host?.os}/${committed.host?.arch} — ` +
@@ -241,5 +277,6 @@ if (committed) {
 } else {
   console.log(`no baseline found — recording one → ${hostPath}`);
 }
-writeFileSync(hostPath, `${JSON.stringify(report, null, 2)}\n`);
+console.log("memory stability: PASS; historical throughput/capacity comparison: NOT RUN (first host recording)");
 process.exit(0);
+}

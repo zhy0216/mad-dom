@@ -50,6 +50,19 @@ describe("T1 same-input native boundary benchmark", () => {
       if (row.ffi.status === "unavailable") expect(row.comparable).toBe(false);
     }
     expect(report.validation.noSyntheticFfiMetrics).toBe(true);
+    const snapshot = report.comparisons["snapshot.bytes"];
+    if (snapshot.comparable) {
+      expect(snapshot.nodeApi.validation.words).toBe(11); // main + 4 empty spans
+      expect(snapshot.ffi.validation).toEqual(snapshot.nodeApi.validation);
+      snapshot.ffi.validation.words += 2;
+      expect(() => assertBenchmarkReport(report)).toThrow("workload result mismatch");
+    }
+  });
+
+  test("a measured boundary row with wrong output cannot pass the CLI guard", async () => {
+    const report = await runBenchmark({ iterations: 1, batchSize: 4 });
+    report.comparisons["serialize.string"].nodeApi = { status: "measured", validation: { passed: false } };
+    expect(() => assertBenchmarkReport(report)).toThrow("workload result validation failed");
   });
 
   test("CLI entry points are present for the package scripts", () => {

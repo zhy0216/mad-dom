@@ -1,0 +1,35 @@
+140 |       while (Object.keys(before).some((key) => counters[key] !== before[key]) && extraGcRounds < 20) {
+141 |         extraGcRounds++;
+142 |         await collectGarbage();
+143 |         counters = sample();
+144 |       }
+145 |       assert.deepEqual(counters, before, `lifecycle drift in round ${round}`);
+                   ^
+AssertionError: lifecycle drift in round 7
++ actual - expected
+
+  {
+    docs: 0,
++   ffiRegistrations: 1,
+-   ffiRegistrations: 0,
+    wrapperCacheEntries: 0
+  }
+
+ generatedMessage: false,
+     actual: {
+  docs: 0,
+  ffiRegistrations: 1,
+  wrapperCacheEntries: 0,
+},
+   expected: {
+  docs: 0,
+  ffiRegistrations: 0,
+  wrapperCacheEntries: 0,
+},
+   operator: "deepStrictEqual",
+       diff: "simple",
+       code: "ERR_ASSERTION"
+
+      at memoryDigest (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/tests/bun/fixtures/ffi-memory-digest.mjs:145:14)
+
+Bun v1.4.2 (Linux x64)

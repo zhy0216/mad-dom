@@ -1,0 +1,18 @@
+{
+  "source": "independent coordinator experiment; original results copied byte-for-byte",
+  "reportedExitCodes": {
+    "latest": 0,
+    "baseline": 0
+  },
+  "note": "Original JSON is emitted before finally; source asserts all 24 native blocks freed. Portable reproduction separately records releasedBlocks after finally. This C helper has no DOM registry and is not a second mad-dom image.",
+  "originalSources": {
+    "mad-dom-bun-coordinator-rss.c": {
+      "sha256": "760fba449fd91a9b231b66f17044fbfd99b26cc807eff3ae188e1b4779c1d02b",
+      "source": "#include <stdint.h>\n#include <stdlib.h>\n\nstatic void *blocks[64];\nstatic uint32_t count;\n\nuint32_t retain_native_mb(void) {\n    if (count == 64) return 0;\n    volatile unsigned char *p = malloc(1048576);\n    if (p == NULL) return 0;\n    for (uint32_t i = 0; i < 1048576; i += 4096) p[i] = 0x5a;\n    p[1048575] = 0x5a;\n    blocks[count++] = (void *)p;\n    return count;\n}\n\nuint32_t release_native_mb(void) {\n    uint32_t released = count;\n    while (count) free(blocks[--count]);\n    return released;\n}\n"
+    },
+    "mad-dom-bun-coordinator-rss.mjs": {
+      "sha256": "d29ca844c7367b3928cb030ad1df3126dc9ffe2ab7edd87883db6a44e65d76ac",
+      "source": "import assert from 'node:assert/strict';\nimport { dlopen, FFIType } from 'bun:ffi';\nimport { benchMemoryStability } from '/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/scripts/bench-ffi-gc.mjs';\nimport { memoryGate } from '/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/scripts/bench-memory-gate.mjs';\nimport { memoryDigest } from '/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/tests/bun/fixtures/ffi-memory-digest.mjs';\n\nconst lib = dlopen('/tmp/mad-dom-bun-coordinator-rss.so', {\n  retain_native_mb: { args: [], returns: FFIType.u32 },\n  release_native_mb: { args: [], returns: FFIType.u32 },\n});\nlet retained = 0;\ntry {\n  const series = await benchMemoryStability({ afterRound(_index, measured) {\n    if (!measured) return;\n    assert.equal(lib.symbols.retain_native_mb(), ++retained);\n  } });\n  const ffiEvidence = await memoryDigest();\n  const result = memoryGate(series, ffiEvidence);\n  console.log(JSON.stringify({ control: 'native-malloc-page-touched', bunVersion: Bun.version,\n    bunRevision: Bun.revision, retainedBytes: retained * 1048576, series, ffiEvidence, result }, null, 2));\n  assert.ok(result.rows.some(row => row.name.startsWith('memory_rss_') && row.status === 'FAIL'), 'RSS gate must detect retained native memory');\n  assert.equal(result.rows.find(row => row.name === 'memory_lifecycle_counters').status, 'pass');\n} finally {\n  assert.equal(lib.symbols.release_native_mb(), retained);\n  lib.close();\n}\n"
+    }
+  }
+}

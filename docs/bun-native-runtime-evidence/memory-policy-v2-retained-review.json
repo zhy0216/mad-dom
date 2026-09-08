@@ -1,0 +1,1632 @@
+{
+  "policy": {
+    "schema": "mad-dom/memory-stability/2",
+    "documents": 200,
+    "childrenPerDocument": 100,
+    "warmupRounds": 8,
+    "measuredRounds": 24,
+    "blockSize": 8,
+    "stockMultiplier": 2
+  },
+  "reviewed": [
+    {
+      "source": "memory-policy.json#memory-policy-baseline-buffer-final",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 96.609 MiB <= 2x warm stock 64.342 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [67.930, 79.648, 88.264], lower-quartile slopes B/round [195788.8, -692224.0, -3812010.7]; full-curve projected block growth 3860070.4 B vs median block IQR 12103680.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "FAIL",
+            "detail": "post-GC peak 27.887 MiB <= 2x warm stock 3.866 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [8.372, 16.377, 24.382], lower-quartile slopes B/round [1048220.8, 1048332.8, 1048720.0]"
+          }
+        ],
+        "failures": [
+          "memory_heapUsed_bound: post-GC peak 27.887 MiB <= 2x warm stock 3.866 MiB",
+          "memory_heapUsed_trend: three 8-round blocks: medians MiB [8.372, 16.377, 24.382], lower-quartile slopes B/round [1048220.8, 1048332.8, 1048720.0]"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-baseline-heap",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 97.164 MiB <= 2x warm stock 65.596 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [67.580, 80.320, 90.498], lower-quartile slopes B/round [2138112.0, -1703116.8, 950272.0]; full-curve projected block growth 7831552.0 B vs median block IQR 7790592.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "FAIL",
+            "detail": "post-GC peak 27.887 MiB <= 2x warm stock 3.865 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [8.370, 16.377, 24.382], lower-quartile slopes B/round [1048608.0, 1048104.0, 1048704.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [67.580, 80.320, 90.498], lower-quartile slopes B/round [2138112.0, -1703116.8, 950272.0]; full-curve projected block growth 7831552.0 B vs median block IQR 7790592.0 B",
+          "memory_heapUsed_bound: post-GC peak 27.887 MiB <= 2x warm stock 3.865 MiB",
+          "memory_heapUsed_trend: three 8-round blocks: medians MiB [8.370, 16.377, 24.382], lower-quartile slopes B/round [1048608.0, 1048104.0, 1048704.0]"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-baseline-normal-1",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 65.074 MiB <= 2x warm stock 64.203 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [63.668, 63.691, 59.447], lower-quartile slopes B/round [-96256.0, -4096.0, -467626.7]; full-curve projected block growth -2668771.6 B vs median block IQR 446464.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.886 MiB <= 2x warm stock 3.864 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.867, 3.876, 3.881], lower-quartile slopes B/round [0.0, 0.0, 70.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-baseline-normal-2",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 64.621 MiB <= 2x warm stock 61.842 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [62.727, 63.035, 63.764], lower-quartile slopes B/round [-215040.0, 80896.0, -100352.0]; full-curve projected block growth -133802.7 B vs median block IQR 1572864.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.887 MiB <= 2x warm stock 3.863 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.868, 3.877, 3.882], lower-quartile slopes B/round [0.0, 0.0, 0.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-baseline-normal-3",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 66.605 MiB <= 2x warm stock 59.555 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [64.773, 64.816, 66.111], lower-quartile slopes B/round [-1446912.0, 14336.0, 121241.6]; full-curve projected block growth 53248.0 B vs median block IQR 917504.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.872 MiB <= 2x warm stock 3.852 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.854, 3.861, 3.866], lower-quartile slopes B/round [-700.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-baseline-rss",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 100.266 MiB <= 2x warm stock 65.221 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [66.721, 87.139, 96.844], lower-quartile slopes B/round [-9011.2, 1116160.0, 1034240.0]; full-curve projected block growth 9869721.6 B vs median block IQR 4345856.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "FAIL",
+            "detail": "post-GC peak 27.874 MiB <= 2x warm stock 3.851 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [8.355, 16.364, 24.369], lower-quartile slopes B/round [1048624.0, 1048624.0, 1048720.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [66.721, 87.139, 96.844], lower-quartile slopes B/round [-9011.2, 1116160.0, 1034240.0]; full-curve projected block growth 9869721.6 B vs median block IQR 4345856.0 B",
+          "memory_heapUsed_bound: post-GC peak 27.874 MiB <= 2x warm stock 3.851 MiB",
+          "memory_heapUsed_trend: three 8-round blocks: medians MiB [8.355, 16.364, 24.369], lower-quartile slopes B/round [1048624.0, 1048624.0, 1048720.0]"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-latest-buffer-final",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 98.117 MiB <= 2x warm stock 59.684 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [70.258, 85.547, 93.584], lower-quartile slopes B/round [1970176.0, 936345.6, 1040384.0]; full-curve projected block growth 9568256.0 B vs median block IQR 5947392.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "FAIL",
+            "detail": "post-GC peak 27.382 MiB <= 2x warm stock 3.358 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [7.863, 15.872, 23.877], lower-quartile slopes B/round [1048624.0, 1048624.0, 1048720.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [70.258, 85.547, 93.584], lower-quartile slopes B/round [1970176.0, 936345.6, 1040384.0]; full-curve projected block growth 9568256.0 B vs median block IQR 5947392.0 B",
+          "memory_heapUsed_bound: post-GC peak 27.382 MiB <= 2x warm stock 3.358 MiB",
+          "memory_heapUsed_trend: three 8-round blocks: medians MiB [7.863, 15.872, 23.877], lower-quartile slopes B/round [1048624.0, 1048624.0, 1048720.0]"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-latest-heap",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 103.395 MiB <= 2x warm stock 68.660 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [74.475, 89.689, 99.520], lower-quartile slopes B/round [1536000.0, 1193301.3, 1163264.0]; full-curve projected block growth 10462354.3 B vs median block IQR 5382144.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "FAIL",
+            "detail": "post-GC peak 27.382 MiB <= 2x warm stock 3.360 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [7.865, 15.875, 23.877], lower-quartile slopes B/round [1048608.0, 1048137.6, 1048664.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [74.475, 89.689, 99.520], lower-quartile slopes B/round [1536000.0, 1193301.3, 1163264.0]; full-curve projected block growth 10462354.3 B vs median block IQR 5382144.0 B",
+          "memory_heapUsed_bound: post-GC peak 27.382 MiB <= 2x warm stock 3.360 MiB",
+          "memory_heapUsed_trend: three 8-round blocks: medians MiB [7.865, 15.875, 23.877], lower-quartile slopes B/round [1048608.0, 1048137.6, 1048664.0]"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-latest-normal-1",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 72.746 MiB <= 2x warm stock 69.914 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [70.295, 70.863, 72.305], lower-quartile slopes B/round [-46694.4, -16384.0, 10922.7]; full-curve projected block growth 337042.3 B vs median block IQR 622592.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.383 MiB <= 2x warm stock 3.358 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.363, 3.373, 3.378], lower-quartile slopes B/round [0.0, 0.0, 0.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-latest-normal-2",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 65.363 MiB <= 2x warm stock 63.396 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [63.400, 63.719, 63.064], lower-quartile slopes B/round [-953002.7, -409600.0, -805546.7]; full-curve projected block growth -1504051.2 B vs median block IQR 2134016.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.383 MiB <= 2x warm stock 3.358 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.364, 3.373, 3.377], lower-quartile slopes B/round [0.0, -179.2, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-latest-normal-3",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 61.543 MiB <= 2x warm stock 59.230 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [59.510, 59.600, 61.105], lower-quartile slopes B/round [-149504.0, 32768.0, 13653.3]; full-curve projected block growth 229376.0 B vs median block IQR 548864.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.383 MiB <= 2x warm stock 3.359 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.365, 3.374, 3.378], lower-quartile slopes B/round [0.0, -168.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy.json#memory-policy-latest-rss",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 98.898 MiB <= 2x warm stock 71.375 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [77.607, 87.135, 95.281], lower-quartile slopes B/round [1839104.0, -2306048.0, 1086464.0]; full-curve projected block growth 6557240.9 B vs median block IQR 5402624.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "FAIL",
+            "detail": "post-GC peak 27.382 MiB <= 2x warm stock 3.361 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [7.867, 15.874, 23.877], lower-quartile slopes B/round [1048624.0, 1047914.7, 1048694.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [77.607, 87.135, 95.281], lower-quartile slopes B/round [1839104.0, -2306048.0, 1086464.0]; full-curve projected block growth 6557240.9 B vs median block IQR 5402624.0 B",
+          "memory_heapUsed_bound: post-GC peak 27.382 MiB <= 2x warm stock 3.361 MiB",
+          "memory_heapUsed_trend: three 8-round blocks: medians MiB [7.867, 15.874, 23.877], lower-quartile slopes B/round [1048624.0, 1047914.7, 1048694.0]"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy.json#formalReports/latest",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 101.387 MiB <= 2x warm stock 100.098 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [100.211, 100.564, 101.232], lower-quartile slopes B/round [9557.3, -245760.0, -60074.7]; full-curve projected block growth 154477.7 B vs median block IQR 196608.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.408 MiB <= 2x warm stock 3.387 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.390, 3.399, 3.405], lower-quartile slopes B/round [0.0, 0.0, 374.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy.json#formalReports/baseline",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 105.676 MiB <= 2x warm stock 104.924 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [105.115, 105.010, 105.617], lower-quartile slopes B/round [27306.7, -5461.3, -2048.0]; full-curve projected block growth 65536.0 B vs median block IQR 139264.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.903 MiB <= 2x warm stock 3.880 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.886, 3.895, 3.900], lower-quartile slopes B/round [0.0, -22.4, 542.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "coordinator-native-rss-latest.json",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 95.789 MiB <= 2x warm stock 70.383 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [74.848, 83.004, 92.309], lower-quartile slopes B/round [968704.0, 995328.0, 1069056.0]; full-curve projected block growth 8398245.6 B vs median block IQR 4165632.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.407 MiB <= 2x warm stock 3.381 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.389, 3.397, 3.401], lower-quartile slopes B/round [0.0, -261.3, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [74.848, 83.004, 92.309], lower-quartile slopes B/round [968704.0, 995328.0, 1069056.0]; full-curve projected block growth 8398245.6 B vs median block IQR 4165632.0 B"
+        ]
+      }
+    },
+    {
+      "source": "coordinator-native-rss-baseline.json",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 87.715 MiB <= 2x warm stock 61.570 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [66.662, 71.730, 82.396], lower-quartile slopes B/round [825344.0, 1011712.0, 997376.0]; full-curve projected block growth 7798784.0 B vs median block IQR 6832128.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.910 MiB <= 2x warm stock 3.884 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.892, 3.899, 3.904], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [66.662, 71.730, 82.396], lower-quartile slopes B/round [825344.0, 1011712.0, 997376.0]; full-curve projected block growth 7798784.0 B vs median block IQR 6832128.0 B"
+        ]
+      }
+    },
+    {
+      "source": "native-rss-portable-baseline.json",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 95.664 MiB <= 2x warm stock 69.666 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [74.250, 82.283, 91.559], lower-quartile slopes B/round [1019904.0, 1019904.0, 1253376.0]; full-curve projected block growth 8384967.1 B vs median block IQR 4493312.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.918 MiB <= 2x warm stock 3.893 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.898, 3.907, 3.912], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [74.250, 82.283, 91.559], lower-quartile slopes B/round [1019904.0, 1019904.0, 1253376.0]; full-curve projected block growth 8384967.1 B vs median block IQR 4493312.0 B"
+        ]
+      }
+    },
+    {
+      "source": "native-rss-portable-latest-with-log.json",
+      "originalSchema": "mad-dom/memory-stability/1",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 88.961 MiB <= 2x warm stock 60.084 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [68.766, 72.584, 85.377], lower-quartile slopes B/round [638293.3, 733184.0, 1056768.0]; full-curve projected block growth 6042965.3 B vs median block IQR 5734400.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.413 MiB <= 2x warm stock 3.388 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.394, 3.403, 3.407], lower-quartile slopes B/round [0.0, -186.7, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [68.766, 72.584, 85.377], lower-quartile slopes B/round [638293.3, 733184.0, 1056768.0]; full-curve projected block growth 6042965.3 B vs median block IQR 5734400.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-baseline-native-1",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 87.176 MiB <= 2x warm stock 61.854 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [65.953, 74.184, 82.781], lower-quartile slopes B/round [1000448.0, 1037653.3, 933888.0]; full-curve projected block growth 8448186.2 B vs median block IQR 4317184.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.918 MiB <= 2x warm stock 3.895 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.899, 3.907, 3.912], lower-quartile slopes B/round [0.0, 0.0, 82.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [65.953, 74.184, 82.781], lower-quartile slopes B/round [1000448.0, 1037653.3, 933888.0]; full-curve projected block growth 8448186.2 B vs median block IQR 4317184.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-baseline-native-2",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 94.063 MiB <= 2x warm stock 68.816 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [73.400, 81.293, 90.906], lower-quartile slopes B/round [995328.0, 1040384.0, 1095680.0]; full-curve projected block growth 8323072.0 B vs median block IQR 4292608.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.916 MiB <= 2x warm stock 3.892 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.897, 3.906, 3.911], lower-quartile slopes B/round [0.0, 0.0, 126.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [73.400, 81.293, 90.906], lower-quartile slopes B/round [995328.0, 1040384.0, 1095680.0]; full-curve projected block growth 8323072.0 B vs median block IQR 4292608.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-baseline-native-3",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 85.844 MiB <= 2x warm stock 68.178 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [66.879, 74.146, 82.365], lower-quartile slopes B/round [487424.0, 1012531.2, 572269.7]; full-curve projected block growth 7897088.0 B vs median block IQR 4038656.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.906 MiB <= 2x warm stock 3.881 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.887, 3.895, 3.900], lower-quartile slopes B/round [-44.8, 0.0, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [66.879, 74.146, 82.365], lower-quartile slopes B/round [487424.0, 1012531.2, 572269.7]; full-curve projected block growth 7897088.0 B vs median block IQR 4038656.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-baseline-normal-1",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 65.051 MiB <= 2x warm stock 61.738 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [63.803, 63.619, 64.789], lower-quartile slopes B/round [-240298.7, -62464.0, 16384.0]; full-curve projected block growth -152917.3 B vs median block IQR 679936.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.885 MiB <= 2x warm stock 3.866 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.869, 3.877, 3.882], lower-quartile slopes B/round [-403.2, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-baseline-normal-2",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 61.902 MiB <= 2x warm stock 61.273 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [61.561, 61.068, 60.178], lower-quartile slopes B/round [-110592.0, -82944.0, -1041749.3]; full-curve projected block growth -1818624.0 B vs median block IQR 671744.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.886 MiB <= 2x warm stock 3.863 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.867, 3.876, 3.881], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-baseline-normal-3",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 65.766 MiB <= 2x warm stock 63.877 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [64.297, 64.268, 64.682], lower-quartile slopes B/round [-1413120.0, -294912.0, -241664.0]; full-curve projected block growth -353894.4 B vs median block IQR 782336.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.888 MiB <= 2x warm stock 3.866 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.870, 3.879, 3.883], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-baseline-native-1",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 87.297 MiB <= 2x warm stock 58.824 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [65.299, 74.898, 83.336], lower-quartile slopes B/round [237568.0, 945493.3, 1073152.0]; full-curve projected block growth 7903641.6 B vs median block IQR 3678208.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 4.000 MiB <= 2x warm stock 3.979 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.982, 3.991, 3.995], lower-quartile slopes B/round [-288.0, 0.0, 0.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [65.299, 74.898, 83.336], lower-quartile slopes B/round [237568.0, 945493.3, 1073152.0]; full-curve projected block growth 7903641.6 B vs median block IQR 3678208.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-baseline-native-2",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 87.453 MiB <= 2x warm stock 61.521 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [65.654, 70.688, 82.498], lower-quartile slopes B/round [985770.7, 1024000.0, 1155072.0]; full-curve projected block growth 8362393.6 B vs median block IQR 5857280.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 4.000 MiB <= 2x warm stock 3.976 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.981, 3.990, 3.995], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [65.654, 70.688, 82.498], lower-quartile slopes B/round [985770.7, 1024000.0, 1155072.0]; full-curve projected block growth 8362393.6 B vs median block IQR 5857280.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-baseline-native-3",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 87.488 MiB <= 2x warm stock 61.490 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [65.283, 74.045, 83.818], lower-quartile slopes B/round [958464.0, 885555.2, 1061888.0]; full-curve projected block growth 8529042.3 B vs median block IQR 3907584.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.989 MiB <= 2x warm stock 3.965 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.970, 3.979, 3.984], lower-quartile slopes B/round [0.0, 0.0, 0.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [65.283, 74.045, 83.818], lower-quartile slopes B/round [958464.0, 885555.2, 1061888.0]; full-curve projected block growth 8529042.3 B vs median block IQR 3907584.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-baseline-normal-1",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 65.207 MiB <= 2x warm stock 63.430 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [62.648, 63.434, 64.896], lower-quartile slopes B/round [-1011712.0, -102400.0, -59392.0]; full-curve projected block growth -256682.7 B vs median block IQR 1466368.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.875 MiB <= 2x warm stock 3.853 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.857, 3.866, 3.870], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-baseline-normal-2",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 63.227 MiB <= 2x warm stock 58.469 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [61.660, 61.652, 62.316], lower-quartile slopes B/round [-61440.0, -1411072.0, -335872.0]; full-curve projected block growth -581632.0 B vs median block IQR 1351680.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.887 MiB <= 2x warm stock 3.865 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.868, 3.876, 3.881], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-baseline-normal-3",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 65.082 MiB <= 2x warm stock 60.510 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [63.645, 63.256, 63.756], lower-quartile slopes B/round [-1467187.2, -149504.0, -684032.0]; full-curve projected block growth -513365.3 B vs median block IQR 7065600.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.888 MiB <= 2x warm stock 3.864 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.869, 3.878, 3.883], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-latest-native-1",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 86.973 MiB <= 2x warm stock 61.006 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [65.369, 72.943, 81.896], lower-quartile slopes B/round [585728.0, 800085.3, 389120.0]; full-curve projected block growth 7577600.0 B vs median block IQR 3952640.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.462 MiB <= 2x warm stock 3.437 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.442, 3.452, 3.457], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [65.369, 72.943, 81.896], lower-quartile slopes B/round [585728.0, 800085.3, 389120.0]; full-curve projected block growth 7577600.0 B vs median block IQR 3952640.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-latest-native-2",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 89.426 MiB <= 2x warm stock 63.346 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [67.465, 76.246, 85.063], lower-quartile slopes B/round [716800.0, 577536.0, 1114112.0]; full-curve projected block growth 7929856.0 B vs median block IQR 6606848.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.461 MiB <= 2x warm stock 3.437 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.443, 3.451, 3.456], lower-quartile slopes B/round [0.0, -288.0, 0.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [67.465, 76.246, 85.063], lower-quartile slopes B/round [716800.0, 577536.0, 1114112.0]; full-curve projected block growth 7929856.0 B vs median block IQR 6606848.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-latest-native-3",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 86.172 MiB <= 2x warm stock 60.848 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [65.336, 73.680, 82.627], lower-quartile slopes B/round [144530.3, 290816.0, 910677.3]; full-curve projected block growth 8047820.8 B vs median block IQR 4505600.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.462 MiB <= 2x warm stock 3.438 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.443, 3.452, 3.456], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [65.336, 73.680, 82.627], lower-quartile slopes B/round [144530.3, 290816.0, 910677.3]; full-curve projected block growth 8047820.8 B vs median block IQR 4505600.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-latest-normal-1",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 68.738 MiB <= 2x warm stock 66.629 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [66.871, 66.963, 67.934], lower-quartile slopes B/round [-32768.0, -141312.0, 77824.0]; full-curve projected block growth 118784.0 B vs median block IQR 569344.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.383 MiB <= 2x warm stock 3.362 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.366, 3.374, 3.378], lower-quartile slopes B/round [-420.0, -291.2, 0.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-latest-normal-2",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 61.902 MiB <= 2x warm stock 59.668 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [60.037, 59.740, 60.158], lower-quartile slopes B/round [-465578.7, -485785.6, 83968.0]; full-curve projected block growth -941533.9 B vs median block IQR 1970176.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.383 MiB <= 2x warm stock 3.362 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.367, 3.375, 3.378], lower-quartile slopes B/round [-288.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-final-latest-normal-3",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 63.180 MiB <= 2x warm stock 59.898 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [61.064, 61.264, 62.484], lower-quartile slopes B/round [-536576.0, -217088.0, -2048.0]; full-curve projected block growth -406323.2 B vs median block IQR 1609728.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.383 MiB <= 2x warm stock 3.361 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.364, 3.373, 3.378], lower-quartile slopes B/round [-291.2, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-latest-native-1",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 84.645 MiB <= 2x warm stock 61.158 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [65.803, 74.537, 82.412], lower-quartile slopes B/round [1026048.0, 1124352.0, 395946.7]; full-curve projected block growth 8335360.0 B vs median block IQR 4841472.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.415 MiB <= 2x warm stock 3.390 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.395, 3.404, 3.409], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [65.803, 74.537, 82.412], lower-quartile slopes B/round [1026048.0, 1124352.0, 395946.7]; full-curve projected block growth 8335360.0 B vs median block IQR 4841472.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-latest-native-2",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": true,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 86.898 MiB <= 2x warm stock 64.141 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "FAIL",
+            "detail": "three 8-round blocks: medians MiB [69.205, 71.781, 83.539], lower-quartile slopes B/round [1042432.0, 780970.7, 450560.0]; full-curve projected block growth 4702208.0 B vs median block IQR 4128768.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.412 MiB <= 2x warm stock 3.390 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.396, 3.404, 3.407], lower-quartile slopes B/round [0.0, -788.0, 96.0]"
+          }
+        ],
+        "failures": [
+          "memory_rss_trend: three 8-round blocks: medians MiB [69.205, 71.781, 83.539], lower-quartile slopes B/round [1042432.0, 780970.7, 450560.0]; full-curve projected block growth 4702208.0 B vs median block IQR 4128768.0 B"
+        ]
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-latest-normal-1",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 63.203 MiB <= 2x warm stock 61.387 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [61.619, 61.787, 62.328], lower-quartile slopes B/round [-66218.7, -60416.0, -337237.3]; full-curve projected block growth -516096.0 B vs median block IQR 397312.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.384 MiB <= 2x warm stock 3.362 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.366, 3.375, 3.379], lower-quartile slopes B/round [0.0, -179.2, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-latest-normal-2",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 63.414 MiB <= 2x warm stock 61.771 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [61.604, 61.889, 62.994], lower-quartile slopes B/round [-81920.0, -50517.3, 155648.0]; full-curve projected block growth 65536.0 B vs median block IQR 335872.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.382 MiB <= 2x warm stock 3.359 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.363, 3.372, 3.376], lower-quartile slopes B/round [-56.0, -168.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#memory-policy-v2-latest-normal-3",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 62.824 MiB <= 2x warm stock 60.385 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [60.930, 60.902, 62.369], lower-quartile slopes B/round [5734.4, 120832.0, 94208.0]; full-curve projected block growth 193331.2 B vs median block IQR 819200.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.384 MiB <= 2x warm stock 3.361 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.367, 3.374, 3.379], lower-quartile slopes B/round [0.0, 0.0, 96.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#formalReports/latest",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 147.063 MiB <= 2x warm stock 146.191 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [146.176, 146.529, 146.750], lower-quartile slopes B/round [-58709.3, -65536.0, -88064.0]; full-curve projected block growth -57344.0 B vs median block IQR 393216.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.408 MiB <= 2x warm stock 3.385 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.390, 3.399, 3.405], lower-quartile slopes B/round [0.0, 0.0, 542.0]"
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "source": "memory-policy-v2.json#formalReports/baseline",
+      "originalSchema": "mad-dom/memory-stability/2",
+      "evaluatedPolicy": "mad-dom/memory-stability/2",
+      "expectedGrowth": false,
+      "evaluation": {
+        "rows": [
+          {
+            "name": "memory_lifecycle_counters",
+            "status": "pass",
+            "detail": "documents, FFI registrations and wrapper caches must be zero in every warmup/measured sample and the independent facade/FFI digest"
+          },
+          {
+            "name": "memory_rss_bound",
+            "status": "pass",
+            "detail": "post-GC peak 106.063 MiB <= 2x warm stock 104.658 MiB"
+          },
+          {
+            "name": "memory_rss_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [105.361, 105.574, 105.809], lower-quartile slopes B/round [-22528.0, -192512.0, -998400.0]; full-curve projected block growth -734549.3 B vs median block IQR 1323008.0 B"
+          },
+          {
+            "name": "memory_heapUsed_bound",
+            "status": "pass",
+            "detail": "post-GC peak 3.901 MiB <= 2x warm stock 3.879 MiB"
+          },
+          {
+            "name": "memory_heapUsed_trend",
+            "status": "pass",
+            "detail": "three 8-round blocks: medians MiB [3.885, 3.893, 3.899], lower-quartile slopes B/round [-67.2, 0.0, 178.0]"
+          }
+        ],
+        "failures": []
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "source": "native-rss-portable-latest.json",
+      "reason": "zero-byte original; only the AssertionError log exists, so the missed curve cannot be regraded"
+    },
+    {
+      "source": "memory-policy-v2-latest-native-3.json",
+      "reason": "digest round 7 raised ffiRegistrations=1 before evaluation; original stdout records only releasedBlocks:24, no curve"
+    },
+    {
+      "source": "rss-diagnostics.json",
+      "reason": "legacy/isolated/full-shallow 11-round activation diagnostics have a different sampling contract, not 8 warmup + 24 samples"
+    },
+    {
+      "source": "measurements.json (memory digests)",
+      "reason": "Window digests (8 x 30 or 20 x 100) exercise a different facade/FFI workload; preserve raw counters/RSS/heap without claiming equivalence"
+    }
+  ]
+}

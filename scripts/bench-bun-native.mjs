@@ -92,6 +92,16 @@ function htmlFixture(count = 32) {
   ).join("")}</main>`;
 }
 
+function validateSnapshot(value, count) {
+  return {
+    passed: value instanceof Uint32Array && value.length === 1 + 2 * (count + 1),
+    words: value?.length ?? 0,
+    // Tokens are document-local opaque identities. Compare the packed shape
+    // (continuation word, node kinds and depths) independently of token ids.
+    shape: Array.from(value).filter((_, index) => index % 2 === 0),
+  };
+}
+
 function runWorkload(native, id, options) {
   const iterations = id === "large-document.snapshot"
     ? Math.min(options.iterations, 128)
@@ -148,7 +158,7 @@ function runWorkload(native, id, options) {
       return measured(
         () => element.outerHTML(),
         (value) => ({
-          passed: typeof value === "string" && value.includes('data-bench="t1"'),
+          passed: value === htmlFixture(batchSize),
           bytes: typeof value === "string" ? new TextEncoder().encode(value).byteLength : 0,
         }),
         iterations,
@@ -165,7 +175,7 @@ function runWorkload(native, id, options) {
       for (const child of children) document.appendChildToken(root, child);
       return measured(
         () => document.preorderTokenSnapshot(root),
-        (value) => ({ passed: value instanceof Uint32Array && value.length >= 3, words: value?.length ?? 0 }),
+        (value) => validateSnapshot(value, batchSize),
         iterations,
       );
     }
@@ -257,6 +267,21 @@ function runFfiWorkload(ffi, native, id, options) {
       };
       return measured(op, (value) => ({ passed: value instanceof Uint32Array && written[0] === count, length: written[0] }), options.iterations, count);
     }
+    if (id === "snapshot.bytes") {
+      // Match the Node-API row's detached main + empty span tree exactly.
+      // Parsing htmlFixture here used to add text nodes and double the output
+      // (131 vs 67 words at batchSize=32), invalidating the comparison.
+      const main = document.createElementToken("main");
+      for (const child of document.createElementTokenBatch("span", options.batchSize)) {
+        document.appendChildToken(main, child);
+      }
+      const op = () => {
+        const code = preorder(owner, generation, main, output, output.length, written);
+        if (code !== 0) throw new Error(`FFI preorder status ${code}`);
+        return output;
+      };
+      return measured(op, (value) => validateSnapshot(value.subarray(0, written[0]), options.batchSize), options.iterations);
+    }
     document.parseHtml(fixture);
     if (id === "query.snapshot" || id === "large-document.snapshot") {
       const expected = fixtureCount;
@@ -278,15 +303,7 @@ function runFfiWorkload(ffi, native, id, options) {
         if (code !== 0) throw new Error(`FFI serialize status ${code}`);
         return bytes;
       };
-      return measured(op, (value) => ({ passed: value instanceof Uint8Array && new TextDecoder().decode(value.subarray(0, byteWritten[0])).includes('data-bench="t1"'), bytes: byteWritten[0] }), options.iterations);
-    }
-    if (id === "snapshot.bytes") {
-      const op = () => {
-        const code = preorder(owner, generation, main, output, output.length, written);
-        if (code !== 0) throw new Error(`FFI preorder status ${code}`);
-        return output;
-      };
-      return measured(op, (value) => ({ passed: value instanceof Uint32Array && written[0] >= 3, words: written[0] }), options.iterations);
+      return measured(op, (value) => ({ passed: value instanceof Uint8Array && new TextDecoder().decode(value.subarray(0, byteWritten[0])) === fixture, bytes: byteWritten[0] }), options.iterations);
     }
     return unavailable(`unknown workload: ${id}`);
   } catch (error) {
@@ -384,6 +401,15 @@ export function assertBenchmarkReport(report) {
   if (!report.paths?.nodeApi || !report.paths?.ffi) throw new Error("benchmark paths are incomplete");
   for (const [id, comparison] of Object.entries(report.comparisons ?? {})) {
     if (comparison.sameInput !== true) throw new Error(`workload input mismatch: ${id}`);
+    for (const side of ["nodeApi", "ffi"]) {
+      if (comparison[side]?.status === "measured" && comparison[side].validation?.passed !== true) {
+        throw new Error(`workload result validation failed: ${id} ${side}`);
+      }
+    }
+    if (id === "snapshot.bytes" && comparison.comparable &&
+        JSON.stringify(comparison.nodeApi.validation) !== JSON.stringify(comparison.ffi.validation)) {
+      throw new Error(`workload result mismatch: ${id}`);
+    }
     if (comparison.ffi.status === "unavailable" && comparison.comparable) {
       throw new Error(`unavailable FFI path reported comparable metrics: ${id}`);
     }

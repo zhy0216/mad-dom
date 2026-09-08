@@ -1,0 +1,614 @@
+{
+  "schema": "mad-dom/bun-native-boundary-bench/1",
+  "status": "measured-comparable",
+  "runtime": {
+    "name": "bun",
+    "version": "1.4.2"
+  },
+  "input": {
+    "iterations": 1,
+    "batchSize": 32,
+    "largeDocumentSize": 512,
+    "fixture": "same fixture and iteration counts are supplied to both paths"
+  },
+  "paths": {
+    "nodeApi": {
+      "status": "measured",
+      "workloads": {
+        "boundary.single-call": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.035687000000001134,
+            "boundaryCostNs": 35687.000000001135,
+            "operationsPerSecond": 28021.40835598308,
+            "rssBeforeBytes": 25165824,
+            "rssAfterBytes": 25690112,
+            "rssDeltaBytes": 524288,
+            "heapUsedBeforeBytes": 1350656,
+            "heapUsedAfterBytes": 1351680,
+            "allocationEstimateBytes": 1024
+          },
+          "validation": {
+            "passed": true,
+            "type": "number"
+          }
+        },
+        "token.batch": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 32,
+            "operationUnits": 32,
+            "elapsedMs": 0.03136899999999976,
+            "boundaryCostNs": 31368.99999999976,
+            "operationsPerSecond": 1020115.4005546956,
+            "rssBeforeBytes": 25690112,
+            "rssAfterBytes": 25690112,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 1351680,
+            "heapUsedAfterBytes": 1384448,
+            "allocationEstimateBytes": 32768
+          },
+          "validation": {
+            "passed": true,
+            "length": 32
+          }
+        },
+        "query.snapshot": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.11338199999999965,
+            "boundaryCostNs": 113381.99999999965,
+            "operationsPerSecond": 8819.74211074071,
+            "rssBeforeBytes": 27000832,
+            "rssAfterBytes": 27000832,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 1384448,
+            "heapUsedAfterBytes": 1385472,
+            "allocationEstimateBytes": 1024
+          },
+          "validation": {
+            "passed": true,
+            "length": 32
+          }
+        },
+        "serialize.string": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.030427000000001314,
+            "boundaryCostNs": 30427.000000001313,
+            "operationsPerSecond": 32865.54704702918,
+            "rssBeforeBytes": 27000832,
+            "rssAfterBytes": 27000832,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 1385472,
+            "heapUsedAfterBytes": 1385472,
+            "allocationEstimateBytes": 0
+          },
+          "validation": {
+            "passed": true,
+            "bytes": 1193
+          }
+        },
+        "snapshot.bytes": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.025328000000000017,
+            "boundaryCostNs": 25328.00000000002,
+            "operationsPerSecond": 39481.996209728335,
+            "rssBeforeBytes": 27131904,
+            "rssAfterBytes": 27131904,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 1386496,
+            "heapUsedAfterBytes": 1387520,
+            "allocationEstimateBytes": 1024
+          },
+          "validation": {
+            "passed": true,
+            "words": 67
+          }
+        },
+        "large-document.snapshot": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 1.091251999999999,
+            "boundaryCostNs": 1091251.999999999,
+            "operationsPerSecond": 916.3786183209753,
+            "rssBeforeBytes": 32448512,
+            "rssAfterBytes": 32579584,
+            "rssDeltaBytes": 131072,
+            "heapUsedBeforeBytes": 1436672,
+            "heapUsedAfterBytes": 1611776,
+            "allocationEstimateBytes": 175104
+          },
+          "validation": {
+            "passed": true,
+            "length": 512
+          }
+        }
+      }
+    },
+    "ffi": {
+      "status": "available",
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/build/mad-dom.node",
+      "abiVersion": 1,
+      "capabilities": 31,
+      "contract": {
+        "abiVersion": 1,
+        "byteOrder": "native",
+        "capabilityBits": {
+          "querySnapshot": 1,
+          "preorderSnapshot": 2,
+          "tokenBatch": 4,
+          "serializeIntoBuffer": 8,
+          "attributeTextBatch": 16
+        },
+        "ownership": {
+          "input": "caller-owned; native reads only during the synchronous call",
+          "output": "caller-owned TypedArray first; external ArrayBuffer only with a deallocator",
+          "generation": "document-local monotonic generation and owner token"
+        },
+        "symbols": {
+          "abiVersion": "mad_dom_ffi_abi_version",
+          "capabilities": "mad_dom_ffi_capabilities",
+          "querySnapshot": "mad_dom_ffi_query_snapshot",
+          "preorderSnapshot": "mad_dom_ffi_preorder_snapshot",
+          "childSnapshot": "mad_dom_ffi_child_tokens",
+          "serialize": "mad_dom_ffi_serialize",
+          "createElements": "mad_dom_ffi_create_elements",
+          "readBatch": "mad_dom_ffi_read_batch"
+        }
+      },
+      "library": {},
+      "workloads": {
+        "boundary.single-call": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.04038500000000056,
+            "boundaryCostNs": 40385.00000000056,
+            "operationsPerSecond": 24761.668936485978,
+            "rssBeforeBytes": 35581952,
+            "rssAfterBytes": 35581952,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 689589,
+            "heapUsedAfterBytes": 689589,
+            "allocationEstimateBytes": 0
+          },
+          "validation": {
+            "passed": true,
+            "length": 1
+          }
+        },
+        "token.batch": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 32,
+            "operationUnits": 32,
+            "elapsedMs": 0.012662999999999869,
+            "boundaryCostNs": 12662.999999999869,
+            "operationsPerSecond": 2527047.303166732,
+            "rssBeforeBytes": 35581952,
+            "rssAfterBytes": 35581952,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 689589,
+            "heapUsedAfterBytes": 689589,
+            "allocationEstimateBytes": 0
+          },
+          "validation": {
+            "passed": true,
+            "length": 32
+          }
+        },
+        "query.snapshot": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.048500000000000654,
+            "boundaryCostNs": 48500.000000000655,
+            "operationsPerSecond": 20618.55670103065,
+            "rssBeforeBytes": 35581952,
+            "rssAfterBytes": 35581952,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 689589,
+            "heapUsedAfterBytes": 689589,
+            "allocationEstimateBytes": 0
+          },
+          "validation": {
+            "passed": true,
+            "words": 65
+          }
+        },
+        "serialize.string": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.03611699999999729,
+            "boundaryCostNs": 36116.99999999729,
+            "operationsPerSecond": 27687.792452309855,
+            "rssBeforeBytes": 35581952,
+            "rssAfterBytes": 35713024,
+            "rssDeltaBytes": 131072,
+            "heapUsedBeforeBytes": 689589,
+            "heapUsedAfterBytes": 689589,
+            "allocationEstimateBytes": 0
+          },
+          "validation": {
+            "passed": true,
+            "bytes": 1193
+          }
+        },
+        "snapshot.bytes": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.034743999999999886,
+            "boundaryCostNs": 34743.99999999988,
+            "operationsPerSecond": 28781.947962238177,
+            "rssBeforeBytes": 35975168,
+            "rssAfterBytes": 35975168,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 689589,
+            "heapUsedAfterBytes": 689589,
+            "allocationEstimateBytes": 0
+          },
+          "validation": {
+            "passed": true,
+            "words": 131
+          }
+        },
+        "large-document.snapshot": {
+          "status": "measured",
+          "metrics": {
+            "iterations": 1,
+            "calls": 1,
+            "operations": 1,
+            "operationUnits": 1,
+            "elapsedMs": 0.10338199999999986,
+            "boundaryCostNs": 103381.99999999987,
+            "operationsPerSecond": 9672.863748041258,
+            "rssBeforeBytes": 36630528,
+            "rssAfterBytes": 36630528,
+            "rssDeltaBytes": 0,
+            "heapUsedBeforeBytes": 689589,
+            "heapUsedAfterBytes": 689589,
+            "allocationEstimateBytes": 0
+          },
+          "validation": {
+            "passed": true,
+            "words": 1025
+          }
+        }
+      }
+    }
+  },
+  "comparisons": {
+    "boundary.single-call": {
+      "sameInput": true,
+      "nodeApi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.035687000000001134,
+          "boundaryCostNs": 35687.000000001135,
+          "operationsPerSecond": 28021.40835598308,
+          "rssBeforeBytes": 25165824,
+          "rssAfterBytes": 25690112,
+          "rssDeltaBytes": 524288,
+          "heapUsedBeforeBytes": 1350656,
+          "heapUsedAfterBytes": 1351680,
+          "allocationEstimateBytes": 1024
+        },
+        "validation": {
+          "passed": true,
+          "type": "number"
+        }
+      },
+      "ffi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.04038500000000056,
+          "boundaryCostNs": 40385.00000000056,
+          "operationsPerSecond": 24761.668936485978,
+          "rssBeforeBytes": 35581952,
+          "rssAfterBytes": 35581952,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 689589,
+          "heapUsedAfterBytes": 689589,
+          "allocationEstimateBytes": 0
+        },
+        "validation": {
+          "passed": true,
+          "length": 1
+        }
+      },
+      "comparable": true
+    },
+    "token.batch": {
+      "sameInput": true,
+      "nodeApi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 32,
+          "operationUnits": 32,
+          "elapsedMs": 0.03136899999999976,
+          "boundaryCostNs": 31368.99999999976,
+          "operationsPerSecond": 1020115.4005546956,
+          "rssBeforeBytes": 25690112,
+          "rssAfterBytes": 25690112,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 1351680,
+          "heapUsedAfterBytes": 1384448,
+          "allocationEstimateBytes": 32768
+        },
+        "validation": {
+          "passed": true,
+          "length": 32
+        }
+      },
+      "ffi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 32,
+          "operationUnits": 32,
+          "elapsedMs": 0.012662999999999869,
+          "boundaryCostNs": 12662.999999999869,
+          "operationsPerSecond": 2527047.303166732,
+          "rssBeforeBytes": 35581952,
+          "rssAfterBytes": 35581952,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 689589,
+          "heapUsedAfterBytes": 689589,
+          "allocationEstimateBytes": 0
+        },
+        "validation": {
+          "passed": true,
+          "length": 32
+        }
+      },
+      "comparable": true
+    },
+    "query.snapshot": {
+      "sameInput": true,
+      "nodeApi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.11338199999999965,
+          "boundaryCostNs": 113381.99999999965,
+          "operationsPerSecond": 8819.74211074071,
+          "rssBeforeBytes": 27000832,
+          "rssAfterBytes": 27000832,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 1384448,
+          "heapUsedAfterBytes": 1385472,
+          "allocationEstimateBytes": 1024
+        },
+        "validation": {
+          "passed": true,
+          "length": 32
+        }
+      },
+      "ffi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.048500000000000654,
+          "boundaryCostNs": 48500.000000000655,
+          "operationsPerSecond": 20618.55670103065,
+          "rssBeforeBytes": 35581952,
+          "rssAfterBytes": 35581952,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 689589,
+          "heapUsedAfterBytes": 689589,
+          "allocationEstimateBytes": 0
+        },
+        "validation": {
+          "passed": true,
+          "words": 65
+        }
+      },
+      "comparable": true
+    },
+    "serialize.string": {
+      "sameInput": true,
+      "nodeApi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.030427000000001314,
+          "boundaryCostNs": 30427.000000001313,
+          "operationsPerSecond": 32865.54704702918,
+          "rssBeforeBytes": 27000832,
+          "rssAfterBytes": 27000832,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 1385472,
+          "heapUsedAfterBytes": 1385472,
+          "allocationEstimateBytes": 0
+        },
+        "validation": {
+          "passed": true,
+          "bytes": 1193
+        }
+      },
+      "ffi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.03611699999999729,
+          "boundaryCostNs": 36116.99999999729,
+          "operationsPerSecond": 27687.792452309855,
+          "rssBeforeBytes": 35581952,
+          "rssAfterBytes": 35713024,
+          "rssDeltaBytes": 131072,
+          "heapUsedBeforeBytes": 689589,
+          "heapUsedAfterBytes": 689589,
+          "allocationEstimateBytes": 0
+        },
+        "validation": {
+          "passed": true,
+          "bytes": 1193
+        }
+      },
+      "comparable": true
+    },
+    "snapshot.bytes": {
+      "sameInput": true,
+      "nodeApi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.025328000000000017,
+          "boundaryCostNs": 25328.00000000002,
+          "operationsPerSecond": 39481.996209728335,
+          "rssBeforeBytes": 27131904,
+          "rssAfterBytes": 27131904,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 1386496,
+          "heapUsedAfterBytes": 1387520,
+          "allocationEstimateBytes": 1024
+        },
+        "validation": {
+          "passed": true,
+          "words": 67
+        }
+      },
+      "ffi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.034743999999999886,
+          "boundaryCostNs": 34743.99999999988,
+          "operationsPerSecond": 28781.947962238177,
+          "rssBeforeBytes": 35975168,
+          "rssAfterBytes": 35975168,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 689589,
+          "heapUsedAfterBytes": 689589,
+          "allocationEstimateBytes": 0
+        },
+        "validation": {
+          "passed": true,
+          "words": 131
+        }
+      },
+      "comparable": true
+    },
+    "large-document.snapshot": {
+      "sameInput": true,
+      "nodeApi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 1.091251999999999,
+          "boundaryCostNs": 1091251.999999999,
+          "operationsPerSecond": 916.3786183209753,
+          "rssBeforeBytes": 32448512,
+          "rssAfterBytes": 32579584,
+          "rssDeltaBytes": 131072,
+          "heapUsedBeforeBytes": 1436672,
+          "heapUsedAfterBytes": 1611776,
+          "allocationEstimateBytes": 175104
+        },
+        "validation": {
+          "passed": true,
+          "length": 512
+        }
+      },
+      "ffi": {
+        "status": "measured",
+        "metrics": {
+          "iterations": 1,
+          "calls": 1,
+          "operations": 1,
+          "operationUnits": 1,
+          "elapsedMs": 0.10338199999999986,
+          "boundaryCostNs": 103381.99999999987,
+          "operationsPerSecond": 9672.863748041258,
+          "rssBeforeBytes": 36630528,
+          "rssAfterBytes": 36630528,
+          "rssDeltaBytes": 0,
+          "heapUsedBeforeBytes": 689589,
+          "heapUsedAfterBytes": 689589,
+          "allocationEstimateBytes": 0
+        },
+        "validation": {
+          "passed": true,
+          "words": 1025
+        }
+      },
+      "comparable": true
+    }
+  },
+  "validation": {
+    "resultChecks": "each measured workload reports validation.passed; unavailable paths are explicit",
+    "noSyntheticFfiMetrics": true
+  }
+}

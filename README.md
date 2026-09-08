@@ -104,6 +104,10 @@ samples, result checks and RSS readings. The separate `bench:integration`
 command measures integration-suite wall time; `bench:check` compares mad-dom's
 internal metrics with a baseline. These measure different things.
 
+The separate [Bun-native integration results](docs/bun-native-runtime-results.md)
+record Linux Bun 1.4.0/1.4.2, FFI on/off, boundary, host IO and memory samples,
+including slower workloads and the limits of the local regression comparison.
+
 ## How it works
 
 The DOM tree lives in a Rust memory arena, with native HTML parsing, selector

@@ -1,0 +1,21 @@
+16 | } });
+17 | const ffiEvidence = await memoryDigest();
+18 | const result = memoryGate(series, ffiEvidence);
+19 | console.log(JSON.stringify({ control, bunVersion: Bun.version, bunRevision: Bun.revision, execPath: process.execPath, retainedBytes: control === "normal" ? 0 : retained.filter(Boolean).length * 1048576, series, ffiEvidence, result }, null, 2));
+20 | if (control === "normal") assert.deepEqual(result.failures, []);
+21 | else assert.equal(result.rows.find(row => row.name === `memory_${control === "rss" ? "rss" : "heapUsed"}_trend`).status, "FAIL", "real retained growth must fail the trend gate, independently of the stock bound");
+                 ^
+AssertionError: real retained growth must fail the trend gate, independently of the stock bound
+
+'pass' !== 'FAIL'
+
+ generatedMessage: false,
+     actual: "pass",
+   expected: "FAIL",
+   operator: "strictEqual",
+       diff: "simple",
+       code: "ERR_ASSERTION"
+
+      at /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/tests/bun/fixtures/bench-memory-control.mjs:21:13
+
+Bun v1.4.0 (Linux x64)

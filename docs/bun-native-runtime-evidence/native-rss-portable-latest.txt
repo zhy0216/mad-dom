@@ -1,0 +1,18 @@
+25 |   } });
+26 |   const ffiEvidence = await memoryDigest();
+27 |   const result = memoryGate(series, ffiEvidence);
+28 |   report = { control: 'native-malloc-page-touched', bunVersion: Bun.version,
+29 |     bunRevision: Bun.revision, execPath: process.execPath, retainedBytes: retained * 1048576, series, ffiEvidence, result };
+30 |   assert.ok(result.rows.some(row => row.name.startsWith('memory_rss_') && row.status === 'FAIL'), 'RSS gate must detect retained native memory');
+              ^
+AssertionError: RSS gate must detect retained native memory
+ generatedMessage: false,
+     actual: false,
+   expected: true,
+   operator: "==",
+       diff: "simple",
+       code: "ERR_ASSERTION"
+
+      at /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/docs/bun-native-runtime-evidence/native-rss-control.mjs:30:10
+
+Bun v1.4.2 (Linux x64)

@@ -215,6 +215,11 @@ a green first run alone is not evidence of no regression. See the
 [gate documentation](https://github.com/zhy0216/mad-dom/blob/main/bench/README.md)
 for thresholds and CI baseline behavior.
 
+The [Bun-native integration measurements](./bun-native-runtime-results.md)
+record Linux Bun 1.4.0/1.4.2 with FFI enabled and disabled, cold/warm boundary
+and host IO samples, GC/heap/RSS pressure, and the corrected signed-RSS gate.
+They are separate from the dated macOS results above.
+
 ## Implementation
 
 The Rust arena stores the DOM tree; a JavaScript facade and native binding

@@ -1,0 +1,4048 @@
+{
+  "design": "Three fresh processes per variant and Bun; alternating order; each process 1 cold + 2 warmup + 8 measured rounds, each 200 documents x 100 child elements. No sample selection.",
+  "rssActivationProbeSource": "#!/usr/bin/env bun\n// T50 FFI + GC benchmark for the JS\u2194Rust boundary.\n//\n// Measures what the Core-only bench (crates/mad-dom-core/examples/bench.rs)\n// cannot: the cost of one JS\u2192Rust call (single createElement + append), batch\n// mutation throughput through the facade, wrapper-cache identity (same native\n// node reads back as one JS object), GC release of explicitly destroyed and\n// abandoned documents, and the long-run memory curve under churn.\n//\n// Outputs a `mad-dom-ffi-gc-bench/1` JSON document that scripts/bench.mjs\n// merges with the core bench and gates against bench/baseline.json. Requires\n// the native dev artifact (bun run dev:build); without it the script exits 2\n// so the bench driver can report the gap instead of fabricating numbers.\n//\n// Usage:\n//   bun scripts/bench-ffi-gc.mjs [--json] [--require-ffi]\nimport { isNativeAvailable, createDocument, liveDocumentCount } from '/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/index.js';\n\nimport { memoryDigest } from '/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/tests/bun/fixtures/ffi-memory-digest.mjs';\n\nfunction now() {\n  return performance.now();\n}\n\nfunction opsPerSec(iterations, fn) {\n  const start = now();\n  fn();\n  const secs = (now() - start) / 1e3;\n  return secs === 0 ? Infinity : iterations / secs;\n}\n\nfunction drainEventLoop() {\n  return new Promise((resolve) => setTimeout(resolve, 0));\n}\n\nasync function collectGarbage() {\n  Bun.gc(true);\n  await drainEventLoop();\n}\n\nfunction benchFfi() {\n  const N = 200_000;\n\n  // Single JS\u2192Rust call: mint a document, then measure createElement+append\n  // round trips. Each call crosses the Node-API boundary and returns a fresh\n  // (or cached) wrapper object.\n  const createSingle = opsPerSec(N, () => {\n    const doc = createDocument();\n    for (let i = 0; i < N; i++) {\n      doc.createElement(\"span\");\n    }\n    doc.destroy();\n  });\n\n  // Batch append through the facade: build one parent, append many children.\n  const batchAppend = opsPerSec(20, () => {\n    const doc = createDocument();\n    const parent = doc.createElement(\"div\");\n    for (let i = 0; i < 10_000; i++) {\n      doc.appendChild(parent, doc.createElement(\"span\"));\n    }\n    doc.destroy();\n  });\n\n  return { createSingle, batchAppend };\n}\n\nfunction benchWrapperIdentity() {\n  const doc = createDocument();\n  const parent = doc.createElement(\"ul\");\n  const a = doc.createElement(\"li\");\n  doc.appendChild(parent, a);\n  const identical = parent.firstChild() === parent.firstChild();\n  const listIdentical = parent.childNodes()[0] === parent.childNodes()[0];\n  const other = doc.createElement(\"ul\");\n  const crossIdentical = parent.firstChild() === other.firstChild();\n  doc.destroy();\n  return {\n    identityHitRate: identical && listIdentical && !crossIdentical ? 1.0 : 0.0,\n  };\n}\n\nasync function benchGcRelease() {\n  const before = liveDocumentCount();\n  const created = [];\n  for (let i = 0; i < 50; i++) {\n    const doc = createDocument();\n    const parent = doc.createElement(\"div\");\n    doc.appendChild(parent, doc.createElement(\"span\"));\n    created.push(doc);\n  }\n  if (liveDocumentCount() !== before + created.length) {\n    throw new Error(\"liveDocumentCount did not track created documents\");\n  }\n  // Explicit destroy: count must return to the baseline immediately.\n  for (const doc of created) {\n    doc.destroy();\n  }\n  const afterExplicit = liveDocumentCount();\n  return { released: afterExplicit === before ? 1.0 : 0.0, baseline: before };\n}\n\nasync function benchMemoryCurve() {\n  // Churn documents while the JS process stays alive; the memory curve is the\n  // RSS growth after a bounded create/destroy cycle (a leak would grow it\n  // unboundedly and fail the gate's generous 2x bound).\n  Bun.gc(true);\n  await drainEventLoop();\n  const rssBefore = process.memoryUsage().rss;\n  for (let i = 0; i < 200; i++) {\n    const doc = createDocument();\n    const parent = doc.createElement(\"div\");\n    for (let j = 0; j < 100; j++) {\n      doc.appendChild(parent, doc.createElement(\"span\"));\n    }\n    doc.destroy();\n  }\n  Bun.gc(true);\n  await drainEventLoop();\n  const rssAfter = process.memoryUsage().rss;\n  return { rssBefore, rssAfter, growthMb: (rssAfter - rssBefore) / (1024 * 1024) };\n}\n\nasync function main() {\n  if (!isNativeAvailable()) {\n    console.error(\"bench-ffi-gc: native binding unavailable (run bun run dev:build first)\");\n    process.exit(2);\n  }\n\n  const ffi = benchFfi();\n  const identity = benchWrapperIdentity();\n  const gc = await benchGcRelease();\n  const memory = await benchMemoryCurve();\n  const ffiMemory = await memoryDigest();\n  if (process.argv.includes(\"--require-ffi\") && ffiMemory.ffiMethods.length !== 6) {\n    throw new Error(\"FFI-enabled benchmark requires all six mounted data operations\");\n  }\n\n  if (identity.identityHitRate !== 1 || gc.released !== 1) throw new Error(\"identity/GC benchmark validation failed\");\n\n  const report = {\n    schema: \"mad-dom-ffi-gc-bench/1\",\n    runtime: { bunVersion: Bun.version, bunRevision: Bun.revision, platform: process.platform, arch: process.arch },\n    memoryEvidence: ffiMemory,\n    metrics: {\n      ffi_create_element_ops_s: ffi.createSingle,\n      ffi_batch_append_ops_s: ffi.batchAppend,\n      wrapper_identity_hit_rate: identity.identityHitRate,\n      gc_release_hit_rate: gc.released,\n      gc_memory_growth_mb: memory.growthMb,\n      // Deterministic release counters (memory-protocol task 04). The gate's\n      // existing gc_memory_growth_mb remains the RSS smoke bound. Zero here\n      // proves tracked owners/cache entries drained, not arbitrary malloc bytes.\n      memory_counter_docs_delta: ffiMemory.counters.deltas.docs,\n      memory_counter_ffi_registrations_delta: ffiMemory.counters.deltas.ffiRegistrations,\n      memory_counter_wrapper_cache_delta: ffiMemory.counters.deltas.wrapperCacheEntries,\n      ffi_churn_rss_growth_mb: ffiMemory.rssGrowthMb,\n    },\n  };\n  console.log(JSON.stringify(report, null, 2));\n}\n\n\n\n\nimport assert from \"node:assert/strict\";\nimport { noInline } from \"bun:jsc\";\nfunction isolatedChurn() {\n  for (let i = 0; i < 200; i++) {\n    const doc = createDocument();\n    const parent = doc.createElement(\"div\");\n    for (let j = 0; j < 100; j++) doc.appendChild(parent, doc.createElement(\"span\"));\n    doc.destroy();\n  }\n}\nnoInline(isolatedChurn);\nasync function isolatedCurve() {\n  Bun.gc(true);\n  await drainEventLoop();\n  const rssBefore = process.memoryUsage().rss;\n  await new Promise(resolve => setTimeout(() => { isolatedChurn(); resolve(); }, 0));\n  Bun.gc(true);\n  await drainEventLoop();\n  const rssAfter = process.memoryUsage().rss;\n  return { rssBefore, rssAfter, growthMb: (rssAfter - rssBefore) / 1048576 };\n}\nconst variant = process.argv[2];\nassert.ok([\"legacy\", \"isolated\"].includes(variant));\nassert.equal(process.execPath, Bun.which(\"bun\"));\n// Same preceding workloads and eager imports as the production script.\nconst prelude = { ffi: benchFfi(), identity: benchWrapperIdentity(), gc: await benchGcRelease() };\nconst diagnostics = createDocument(); diagnostics.destroy();\nconst curve = variant === \"legacy\" ? benchMemoryCurve : isolatedCurve;\nconst samples = [];\nfor (let i = 0; i < 11; i++) {\n  const before = diagnostics.memoryDiagnostics();\n  const result = await curve();\n  const after = diagnostics.memoryDiagnostics();\n  samples.push({ index: i, phase: i === 0 ? \"cold\" : i <= 2 ? \"warmup\" : \"measured\", ...result, countersBefore: before, countersAfter: after, heapUsed: process.memoryUsage().heapUsed });\n  assert.deepEqual(after, before);\n}\nconsole.log(JSON.stringify({ version: Bun.version, revision: Bun.revision, execPath: process.execPath, variant, documentsPerRound: 200, nodesPerDocument: 100, prelude, samples }, null, 2));\n",
+  "finalizerProbeSource": "import { createDocument } from \"/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/index.js\";\nimport { noInline } from \"bun:jsc\";\nconst tick = () => new Promise(resolve => setTimeout(resolve, 0));\nconst releases = [];\nconst registry = new FinalizationRegistry(key => releases.push(key));\nfunction churn(tag) {\n  for (let i=0; i<200; i++) {\n    const doc=createDocument(), parent=doc.createElement(\"div\");\n    for (let j=0; j<100; j++) doc.appendChild(parent, doc.createElement(\"span\"));\n    if (i===199) { registry.register(doc,tag+\":doc\"); registry.register(parent,tag+\":parent\"); }\n    doc.destroy();\n  }\n}\nnoInline(churn);\nasync function isolated() {\n  await new Promise(resolve=>setTimeout(()=>{churn(\"isolated\"); resolve();},0));\n  Bun.gc(true); await tick();\n  return [...releases];\n}\nasync function legacy() {\n  for (let i=0; i<200; i++) {\n    const doc=createDocument(), parent=doc.createElement(\"div\");\n    for (let j=0; j<100; j++) doc.appendChild(parent, doc.createElement(\"span\"));\n    if (i===199) { registry.register(doc,\"legacy:doc\"); registry.register(parent,\"legacy:parent\"); }\n    doc.destroy();\n  }\n  Bun.gc(true); await tick();\n  return [...releases];\n}\nconst legacyAtSample=await legacy();\nfor(let i=0;i<3;i++) await new Promise(resolve=>setTimeout(()=>{Bun.gc(true); setTimeout(resolve,0);},0));\nconst legacyAfterFrame=[...releases];\nconst isolatedAtSample=await isolated();\nfor(let i=0;i<3;i++) await new Promise(resolve=>setTimeout(()=>{Bun.gc(true); setTimeout(resolve,0);},0));\nconsole.log(JSON.stringify({version:Bun.version,revision:Bun.revision,legacyAtSample,legacyAfterFrame,isolatedAtSample,after:[...releases]},null,2));\n",
+  "runs": {
+    "latest": {
+      "legacy": [
+        {
+          "version": "1.4.2",
+          "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "execPath": "/home/ubuntu/.bun/bin/bun",
+          "variant": "legacy",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 301364.186468343,
+              "batchAppend": 526.2594935568081
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 154820608,
+              "rssAfter": 155082752,
+              "growthMb": 0.25,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3523057
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 154931200,
+              "rssAfter": 155324416,
+              "growthMb": 0.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3530897
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 155455488,
+              "rssAfter": 155324416,
+              "growthMb": -0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3530865
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 155013120,
+              "rssAfter": 155406336,
+              "growthMb": 0.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3531105
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 155406336,
+              "rssAfter": 155537408,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3534649
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 155250688,
+              "rssAfter": 155774976,
+              "growthMb": 0.5,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3538425
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 155774976,
+              "rssAfter": 155774976,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3537193
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 155643904,
+              "rssAfter": 155774976,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3537385
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 155774976,
+              "rssAfter": 155774976,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3537577
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 155471872,
+              "rssAfter": 155602944,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3537769
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 155201536,
+              "rssAfter": 155324416,
+              "growthMb": 0.1171875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3538041
+            }
+          ]
+        },
+        {
+          "version": "1.4.2",
+          "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "execPath": "/home/ubuntu/.bun/bin/bun",
+          "variant": "legacy",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 303653.82256899535,
+              "batchAppend": 529.9956890150664
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 123498496,
+              "rssAfter": 110125056,
+              "growthMb": -12.75390625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3525057
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 109948928,
+              "rssAfter": 111915008,
+              "growthMb": 1.875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3532449
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 106835968,
+              "rssAfter": 110637056,
+              "growthMb": 3.625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3531969
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 110362624,
+              "rssAfter": 107528192,
+              "growthMb": -2.703125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3532209
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 107528192,
+              "rssAfter": 107622400,
+              "growthMb": 0.08984375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3539337
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 107335680,
+              "rssAfter": 107708416,
+              "growthMb": 0.35546875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3539529
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 107708416,
+              "rssAfter": 104890368,
+              "growthMb": -2.6875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3539753
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 104349696,
+              "rssAfter": 107626496,
+              "growthMb": 3.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3539945
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 107626496,
+              "rssAfter": 107663360,
+              "growthMb": 0.03515625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3538697
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 107352064,
+              "rssAfter": 107122688,
+              "growthMb": -0.21875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3538889
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 106991616,
+              "rssAfter": 108404736,
+              "growthMb": 1.34765625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3539161
+            }
+          ]
+        },
+        {
+          "version": "1.4.2",
+          "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "execPath": "/home/ubuntu/.bun/bin/bun",
+          "variant": "legacy",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 316620.4295035598,
+              "batchAppend": 519.0922519589691
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 136556544,
+              "rssAfter": 106602496,
+              "growthMb": -28.56640625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3522273
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 106332160,
+              "rssAfter": 106553344,
+              "growthMb": 0.2109375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3529665
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 106553344,
+              "rssAfter": 106684416,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3529521
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 106258432,
+              "rssAfter": 106913792,
+              "growthMb": 0.625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3529313
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 106913792,
+              "rssAfter": 106536960,
+              "growthMb": -0.359375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3532857
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 106131456,
+              "rssAfter": 106668032,
+              "growthMb": 0.51171875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3536633
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 106668032,
+              "rssAfter": 106815488,
+              "growthMb": 0.140625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3535401
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 106389504,
+              "rssAfter": 107044864,
+              "growthMb": 0.625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3535593
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 107044864,
+              "rssAfter": 106762240,
+              "growthMb": -0.26953125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3535785
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 106336256,
+              "rssAfter": 106639360,
+              "growthMb": 0.2890625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3535977
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 106639360,
+              "rssAfter": 106770432,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3536249
+            }
+          ]
+        }
+      ],
+      "isolated": [
+        {
+          "version": "1.4.2",
+          "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "execPath": "/home/ubuntu/.bun/bin/bun",
+          "variant": "isolated",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 303571.1790196567,
+              "batchAppend": 521.6607633795807
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 120737792,
+              "rssAfter": 107958272,
+              "growthMb": -12.1875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3517089
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 107794432,
+              "rssAfter": 107831296,
+              "growthMb": 0.03515625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3520290
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 107696128,
+              "rssAfter": 107991040,
+              "growthMb": 0.28125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3520786
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 107991040,
+              "rssAfter": 105369600,
+              "growthMb": -2.5,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3520978
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 105099264,
+              "rssAfter": 107978752,
+              "growthMb": 2.74609375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3523722
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 103522304,
+              "rssAfter": 105025536,
+              "growthMb": 1.43359375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3527530
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 104751104,
+              "rssAfter": 108290048,
+              "growthMb": 3.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3527418
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 108290048,
+              "rssAfter": 108138496,
+              "growthMb": -0.14453125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3526490
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 107696128,
+              "rssAfter": 107581440,
+              "growthMb": -0.109375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3532298
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 107581440,
+              "rssAfter": 108134400,
+              "growthMb": 0.52734375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3532586
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 107683840,
+              "rssAfter": 108355584,
+              "growthMb": 0.640625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3533386
+            }
+          ]
+        },
+        {
+          "version": "1.4.2",
+          "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "execPath": "/home/ubuntu/.bun/bin/bun",
+          "variant": "isolated",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 310037.83742072806,
+              "batchAppend": 516.8999000858332
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 137064448,
+              "rssAfter": 106684416,
+              "growthMb": -28.97265625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3517774
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 106635264,
+              "rssAfter": 105795584,
+              "growthMb": -0.80078125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3518335
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 105795584,
+              "rssAfter": 105820160,
+              "growthMb": 0.0234375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3518335
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 105525248,
+              "rssAfter": 105914368,
+              "growthMb": 0.37109375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3518527
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 105914368,
+              "rssAfter": 105738240,
+              "growthMb": -0.16796875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3523399
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 105287680,
+              "rssAfter": 106336256,
+              "growthMb": 1,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3523628
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 101810176,
+              "rssAfter": 106266624,
+              "growthMb": 4.25,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3523852
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 105705472,
+              "rssAfter": 106070016,
+              "growthMb": 0.34765625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3524044
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 106070016,
+              "rssAfter": 106295296,
+              "growthMb": 0.21484375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3529852
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 106115072,
+              "rssAfter": 106418176,
+              "growthMb": 0.2890625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3530140
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 106418176,
+              "rssAfter": 106545152,
+              "growthMb": 0.12109375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3530940
+            }
+          ]
+        },
+        {
+          "version": "1.4.2",
+          "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+          "execPath": "/home/ubuntu/.bun/bin/bun",
+          "variant": "isolated",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 321543.096639088,
+              "batchAppend": 542.4277345904353
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 131604480,
+              "rssAfter": 109637632,
+              "growthMb": -20.94921875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3516654
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 109768704,
+              "rssAfter": 108916736,
+              "growthMb": -0.8125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3517583
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 108478464,
+              "rssAfter": 109658112,
+              "growthMb": 1.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3517967
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 109658112,
+              "rssAfter": 105709568,
+              "growthMb": -3.765625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3517967
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 105111552,
+              "rssAfter": 106094592,
+              "growthMb": 0.9375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3520711
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 106094592,
+              "rssAfter": 106094592,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3524519
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 105529344,
+              "rssAfter": 106315776,
+              "growthMb": 0.75,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3524743
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 106315776,
+              "rssAfter": 106246144,
+              "growthMb": -0.06640625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3524935
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 105799680,
+              "rssAfter": 106438656,
+              "growthMb": 0.609375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3530743
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 106438656,
+              "rssAfter": 103882752,
+              "growthMb": -2.4375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3531031
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 103456768,
+              "rssAfter": 106471424,
+              "growthMb": 2.875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 3531831
+            }
+          ]
+        }
+      ]
+    },
+    "baseline": {
+      "legacy": [
+        {
+          "version": "1.4.0",
+          "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+          "variant": "legacy",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 326822.11409283534,
+              "batchAppend": 544.8880105294159
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 142229504,
+              "rssAfter": 117903360,
+              "growthMb": -23.19921875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4050967
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 117899264,
+              "rssAfter": 117874688,
+              "growthMb": -0.0234375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4058035
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 117874688,
+              "rssAfter": 115818496,
+              "growthMb": -1.9609375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4058019
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 115671040,
+              "rssAfter": 116178944,
+              "growthMb": 0.484375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4058419
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 116166656,
+              "rssAfter": 117477376,
+              "growthMb": 1.25,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4058611
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 114749440,
+              "rssAfter": 119074816,
+              "growthMb": 4.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065419
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 116047872,
+              "rssAfter": 119324672,
+              "growthMb": 3.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065643
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 119324672,
+              "rssAfter": 115392512,
+              "growthMb": -3.75,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065835
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 115081216,
+              "rssAfter": 115642368,
+              "growthMb": 0.53515625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4066027
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 115642368,
+              "rssAfter": 115707904,
+              "growthMb": 0.0625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4066219
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 115445760,
+              "rssAfter": 115838976,
+              "growthMb": 0.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4066491
+            }
+          ]
+        },
+        {
+          "version": "1.4.0",
+          "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+          "variant": "legacy",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 324050.1251945785,
+              "batchAppend": 534.9754654901766
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 148955136,
+              "rssAfter": 149217280,
+              "growthMb": 0.25,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4050631
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 149172224,
+              "rssAfter": 149696512,
+              "growthMb": 0.5,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4057795
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 149696512,
+              "rssAfter": 149696512,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4057619
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 149286912,
+              "rssAfter": 149549056,
+              "growthMb": 0.25,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4058195
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 149549056,
+              "rssAfter": 149680128,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065227
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 149393408,
+              "rssAfter": 149786624,
+              "growthMb": 0.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065419
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 149917696,
+              "rssAfter": 149917696,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065643
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 149651456,
+              "rssAfter": 149913600,
+              "growthMb": 0.25,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065835
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 149913600,
+              "rssAfter": 149913600,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4066027
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 149364736,
+              "rssAfter": 149757952,
+              "growthMb": 0.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065995
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 149757952,
+              "rssAfter": 149757952,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4066267
+            }
+          ]
+        },
+        {
+          "version": "1.4.0",
+          "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+          "variant": "legacy",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 314686.83849581337,
+              "batchAppend": 545.318726389574
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 139808768,
+              "rssAfter": 113586176,
+              "growthMb": -25.0078125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4052423
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 113233920,
+              "rssAfter": 111067136,
+              "growthMb": -2.06640625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4059955
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 111067136,
+              "rssAfter": 111067136,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4059027
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 110936064,
+              "rssAfter": 110829568,
+              "growthMb": -0.1015625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4057971
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 110829568,
+              "rssAfter": 111190016,
+              "growthMb": 0.34375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4058163
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 110899200,
+              "rssAfter": 110792704,
+              "growthMb": -0.1015625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065195
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 110792704,
+              "rssAfter": 112365568,
+              "growthMb": 1.5,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065419
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 111931392,
+              "rssAfter": 112074752,
+              "growthMb": 0.13671875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065611
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 112074752,
+              "rssAfter": 112234496,
+              "growthMb": 0.15234375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065803
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 111923200,
+              "rssAfter": 112324608,
+              "growthMb": 0.3828125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4065995
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 112324608,
+              "rssAfter": 112324608,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4066267
+            }
+          ]
+        }
+      ],
+      "isolated": [
+        {
+          "version": "1.4.0",
+          "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+          "variant": "isolated",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 288700.0246688397,
+              "batchAppend": 517.3082681613294
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 150257664,
+              "rssAfter": 150372352,
+              "growthMb": 0.109375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4047080
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 150503424,
+              "rssAfter": 150503424,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4048789
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 150093824,
+              "rssAfter": 150355968,
+              "growthMb": 0.25,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4049317
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 150355968,
+              "rssAfter": 150355968,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4049173
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 150065152,
+              "rssAfter": 150458368,
+              "growthMb": 0.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4047225
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 150458368,
+              "rssAfter": 150589440,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4054289
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 150151168,
+              "rssAfter": 150544384,
+              "growthMb": 0.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4054689
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 150544384,
+              "rssAfter": 150515712,
+              "growthMb": -0.02734375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4054545
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 150515712,
+              "rssAfter": 150515712,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4060529
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 150380544,
+              "rssAfter": 150511616,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4058017
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 150347776,
+              "rssAfter": 150609920,
+              "growthMb": 0.25,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4058817
+            }
+          ]
+        },
+        {
+          "version": "1.4.0",
+          "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+          "variant": "isolated",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 277108.9564525755,
+              "batchAppend": 484.79088581499667
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 139878400,
+              "rssAfter": 110366720,
+              "growthMb": -28.14453125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4045832
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 110497792,
+              "rssAfter": 109780992,
+              "growthMb": -0.68359375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4048805
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 109637632,
+              "rssAfter": 109809664,
+              "growthMb": 0.1640625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4049173
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 109809664,
+              "rssAfter": 109940736,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4049189
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 109633536,
+              "rssAfter": 110178304,
+              "growthMb": 0.51953125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4048245
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 110178304,
+              "rssAfter": 111370240,
+              "growthMb": 1.13671875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4055645
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 111079424,
+              "rssAfter": 111742976,
+              "growthMb": 0.6328125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4056045
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 111742976,
+              "rssAfter": 111742976,
+              "growthMb": 0,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4056237
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 111316992,
+              "rssAfter": 111493120,
+              "growthMb": 0.16796875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4061885
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 111493120,
+              "rssAfter": 111665152,
+              "growthMb": 0.1640625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4062173
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 111353856,
+              "rssAfter": 111804416,
+              "growthMb": 0.4296875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4062973
+            }
+          ]
+        },
+        {
+          "version": "1.4.0",
+          "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+          "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+          "variant": "isolated",
+          "documentsPerRound": 200,
+          "nodesPerDocument": 100,
+          "prelude": {
+            "ffi": {
+              "createSingle": 328927.2773481926,
+              "batchAppend": 557.5941662937059
+            },
+            "identity": {
+              "identityHitRate": 1
+            },
+            "gc": {
+              "released": 1,
+              "baseline": 0
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "phase": "cold",
+              "rssBefore": 131817472,
+              "rssAfter": 110747648,
+              "growthMb": -20.09375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4046424
+            },
+            {
+              "index": 1,
+              "phase": "warmup",
+              "rssBefore": 110878720,
+              "rssAfter": 111271936,
+              "growthMb": 0.375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4048469
+            },
+            {
+              "index": 2,
+              "phase": "warmup",
+              "rssBefore": 110825472,
+              "rssAfter": 110104576,
+              "growthMb": -0.6875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4048853
+            },
+            {
+              "index": 3,
+              "phase": "measured",
+              "rssBefore": 110104576,
+              "rssAfter": 110051328,
+              "growthMb": -0.05078125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4048853
+            },
+            {
+              "index": 4,
+              "phase": "measured",
+              "rssBefore": 109776896,
+              "rssAfter": 110317568,
+              "growthMb": 0.515625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4051597
+            },
+            {
+              "index": 5,
+              "phase": "measured",
+              "rssBefore": 110317568,
+              "rssAfter": 110448640,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4053853
+            },
+            {
+              "index": 6,
+              "phase": "measured",
+              "rssBefore": 109977600,
+              "rssAfter": 110075904,
+              "growthMb": 0.09375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4054257
+            },
+            {
+              "index": 7,
+              "phase": "measured",
+              "rssBefore": 110075904,
+              "rssAfter": 110309376,
+              "growthMb": 0.22265625,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4054449
+            },
+            {
+              "index": 8,
+              "phase": "measured",
+              "rssBefore": 110022656,
+              "rssAfter": 110362624,
+              "growthMb": 0.32421875,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4060097
+            },
+            {
+              "index": 9,
+              "phase": "measured",
+              "rssBefore": 110362624,
+              "rssAfter": 110493696,
+              "growthMb": 0.125,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4060385
+            },
+            {
+              "index": 10,
+              "phase": "measured",
+              "rssBefore": 110215168,
+              "rssAfter": 110120960,
+              "growthMb": -0.08984375,
+              "countersBefore": [
+                0,
+                0,
+                0
+              ],
+              "countersAfter": [
+                0,
+                0,
+                0
+              ],
+              "heapUsed": 4061185
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "finalizers": {
+    "latest": {
+      "version": "1.4.2",
+      "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "legacyAtSample": [
+        "legacy:parent"
+      ],
+      "legacyAfterFrame": [
+        "legacy:parent",
+        "legacy:doc"
+      ],
+      "isolatedAtSample": [
+        "legacy:parent",
+        "legacy:doc",
+        "isolated:parent",
+        "isolated:doc"
+      ],
+      "after": [
+        "legacy:parent",
+        "legacy:doc",
+        "isolated:parent",
+        "isolated:doc"
+      ]
+    },
+    "baseline": {
+      "version": "1.4.0",
+      "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+      "legacyAtSample": [
+        "legacy:parent"
+      ],
+      "legacyAfterFrame": [
+        "legacy:parent",
+        "legacy:doc"
+      ],
+      "isolatedAtSample": [
+        "legacy:parent",
+        "legacy:doc",
+        "isolated:parent",
+        "isolated:doc"
+      ],
+      "after": [
+        "legacy:parent",
+        "legacy:doc",
+        "isolated:parent",
+        "isolated:doc"
+      ]
+    }
+  },
+  "fullShallow": {
+    "rss-shallow-baseline-1": {
+      "version": "1.4.0",
+      "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+      "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+      "variant": "shallow",
+      "documentsPerRound": 200,
+      "nodesPerDocument": 100,
+      "prelude": {
+        "ffi": {
+          "createSingle": 263879.9877404524,
+          "batchAppend": 452.2683860101626
+        },
+        "identity": {
+          "identityHitRate": 1
+        },
+        "gc": {
+          "released": 1,
+          "baseline": 0
+        }
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "rssBefore": 154185728,
+          "rssAfter": 154423296,
+          "growthMb": 0.2265625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4037106
+        },
+        {
+          "index": 1,
+          "phase": "warmup",
+          "rssBefore": 154554368,
+          "rssAfter": 154640384,
+          "growthMb": 0.08203125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4037694
+        },
+        {
+          "index": 2,
+          "phase": "warmup",
+          "rssBefore": 154640384,
+          "rssAfter": 154488832,
+          "growthMb": -0.14453125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4037886
+        },
+        {
+          "index": 3,
+          "phase": "measured",
+          "rssBefore": 154488832,
+          "rssAfter": 154488832,
+          "growthMb": 0,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4037406
+        },
+        {
+          "index": 4,
+          "phase": "measured",
+          "rssBefore": 154488832,
+          "rssAfter": 154726400,
+          "growthMb": 0.2265625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4039934
+        },
+        {
+          "index": 5,
+          "phase": "measured",
+          "rssBefore": 154726400,
+          "rssAfter": 154783744,
+          "growthMb": 0.0546875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4049222
+        },
+        {
+          "index": 6,
+          "phase": "measured",
+          "rssBefore": 154783744,
+          "rssAfter": 154886144,
+          "growthMb": 0.09765625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4049782
+        },
+        {
+          "index": 7,
+          "phase": "measured",
+          "rssBefore": 154886144,
+          "rssAfter": 154996736,
+          "growthMb": 0.10546875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4048714
+        },
+        {
+          "index": 8,
+          "phase": "measured",
+          "rssBefore": 154996736,
+          "rssAfter": 154779648,
+          "growthMb": -0.20703125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4053514
+        },
+        {
+          "index": 9,
+          "phase": "measured",
+          "rssBefore": 154779648,
+          "rssAfter": 154869760,
+          "growthMb": 0.0859375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4053706
+        },
+        {
+          "index": 10,
+          "phase": "measured",
+          "rssBefore": 154869760,
+          "rssAfter": 154808320,
+          "growthMb": -0.05859375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4054506
+        }
+      ]
+    },
+    "rss-shallow-baseline-2": {
+      "version": "1.4.0",
+      "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+      "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+      "variant": "shallow",
+      "documentsPerRound": 200,
+      "nodesPerDocument": 100,
+      "prelude": {
+        "ffi": {
+          "createSingle": 251952.18727529483,
+          "batchAppend": 484.1186334647781
+        },
+        "identity": {
+          "identityHitRate": 1
+        },
+        "gc": {
+          "released": 1,
+          "baseline": 0
+        }
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "rssBefore": 133697536,
+          "rssAfter": 108408832,
+          "growthMb": -24.1171875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4035254
+        },
+        {
+          "index": 1,
+          "phase": "warmup",
+          "rssBefore": 108539904,
+          "rssAfter": 108621824,
+          "growthMb": 0.078125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4038754
+        },
+        {
+          "index": 2,
+          "phase": "warmup",
+          "rssBefore": 108621824,
+          "rssAfter": 108466176,
+          "growthMb": -0.1484375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4038946
+        },
+        {
+          "index": 3,
+          "phase": "measured",
+          "rssBefore": 108466176,
+          "rssAfter": 108548096,
+          "growthMb": 0.078125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4038914
+        },
+        {
+          "index": 4,
+          "phase": "measured",
+          "rssBefore": 103653376,
+          "rssAfter": 109002752,
+          "growthMb": 5.1015625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4048282
+        },
+        {
+          "index": 5,
+          "phase": "measured",
+          "rssBefore": 109002752,
+          "rssAfter": 109346816,
+          "growthMb": 0.328125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4050730
+        },
+        {
+          "index": 6,
+          "phase": "measured",
+          "rssBefore": 109346816,
+          "rssAfter": 109068288,
+          "growthMb": -0.265625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4051290
+        },
+        {
+          "index": 7,
+          "phase": "measured",
+          "rssBefore": 109068288,
+          "rssAfter": 103845888,
+          "growthMb": -4.98046875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4051146
+        },
+        {
+          "index": 8,
+          "phase": "measured",
+          "rssBefore": 103845888,
+          "rssAfter": 109182976,
+          "growthMb": 5.08984375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4056362
+        },
+        {
+          "index": 9,
+          "phase": "measured",
+          "rssBefore": 109182976,
+          "rssAfter": 108937216,
+          "growthMb": -0.234375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4056554
+        },
+        {
+          "index": 10,
+          "phase": "measured",
+          "rssBefore": 108937216,
+          "rssAfter": 108883968,
+          "growthMb": -0.05078125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4057354
+        }
+      ]
+    },
+    "rss-shallow-baseline-3": {
+      "version": "1.4.0",
+      "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+      "execPath": "/tmp/mad-dom-task04-memory/baseline/bun-linux-x64/bun",
+      "variant": "shallow",
+      "documentsPerRound": 200,
+      "nodesPerDocument": 100,
+      "prelude": {
+        "ffi": {
+          "createSingle": 320140.242427383,
+          "batchAppend": 540.5649682331588
+        },
+        "identity": {
+          "identityHitRate": 1
+        },
+        "gc": {
+          "released": 1,
+          "baseline": 0
+        }
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "rssBefore": 154263552,
+          "rssAfter": 155049984,
+          "growthMb": 0.75,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4052252
+        },
+        {
+          "index": 1,
+          "phase": "warmup",
+          "rssBefore": 154722304,
+          "rssAfter": 155246592,
+          "growthMb": 0.5,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4054296
+        },
+        {
+          "index": 2,
+          "phase": "warmup",
+          "rssBefore": 154947584,
+          "rssAfter": 154775552,
+          "growthMb": -0.1640625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4054488
+        },
+        {
+          "index": 3,
+          "phase": "measured",
+          "rssBefore": 154775552,
+          "rssAfter": 154869760,
+          "growthMb": 0.08984375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4054680
+        },
+        {
+          "index": 4,
+          "phase": "measured",
+          "rssBefore": 154869760,
+          "rssAfter": 154824704,
+          "growthMb": -0.04296875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4057208
+        },
+        {
+          "index": 5,
+          "phase": "measured",
+          "rssBefore": 154824704,
+          "rssAfter": 155041792,
+          "growthMb": 0.20703125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4066608
+        },
+        {
+          "index": 6,
+          "phase": "measured",
+          "rssBefore": 155041792,
+          "rssAfter": 155013120,
+          "growthMb": -0.02734375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4066832
+        },
+        {
+          "index": 7,
+          "phase": "measured",
+          "rssBefore": 155013120,
+          "rssAfter": 155090944,
+          "growthMb": 0.07421875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4067024
+        },
+        {
+          "index": 8,
+          "phase": "measured",
+          "rssBefore": 155090944,
+          "rssAfter": 154787840,
+          "growthMb": -0.2890625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4071904
+        },
+        {
+          "index": 9,
+          "phase": "measured",
+          "rssBefore": 154787840,
+          "rssAfter": 154742784,
+          "growthMb": -0.04296875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4072096
+        },
+        {
+          "index": 10,
+          "phase": "measured",
+          "rssBefore": 154742784,
+          "rssAfter": 154873856,
+          "growthMb": 0.125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 4071440
+        }
+      ]
+    },
+    "rss-shallow-latest-1": {
+      "version": "1.4.2",
+      "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "execPath": "/home/ubuntu/.bun/bin/bun",
+      "variant": "shallow",
+      "documentsPerRound": 200,
+      "nodesPerDocument": 100,
+      "prelude": {
+        "ffi": {
+          "createSingle": 304623.8536412275,
+          "batchAppend": 505.748028644759
+        },
+        "identity": {
+          "identityHitRate": 1
+        },
+        "gc": {
+          "released": 1,
+          "baseline": 0
+        }
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "rssBefore": 140066816,
+          "rssAfter": 106164224,
+          "growthMb": -32.33203125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3522688
+        },
+        {
+          "index": 1,
+          "phase": "warmup",
+          "rssBefore": 101675008,
+          "rssAfter": 106483712,
+          "growthMb": 4.5859375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3523313
+        },
+        {
+          "index": 2,
+          "phase": "warmup",
+          "rssBefore": 102264832,
+          "rssAfter": 106582016,
+          "growthMb": 4.1171875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3523505
+        },
+        {
+          "index": 3,
+          "phase": "measured",
+          "rssBefore": 101888000,
+          "rssAfter": 107122688,
+          "growthMb": 4.9921875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3523697
+        },
+        {
+          "index": 4,
+          "phase": "measured",
+          "rssBefore": 101806080,
+          "rssAfter": 102330368,
+          "growthMb": 0.5,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3526321
+        },
+        {
+          "index": 5,
+          "phase": "measured",
+          "rssBefore": 102330368,
+          "rssAfter": 104800256,
+          "growthMb": 2.35546875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3536073
+        },
+        {
+          "index": 6,
+          "phase": "measured",
+          "rssBefore": 104800256,
+          "rssAfter": 106807296,
+          "growthMb": 1.9140625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3536297
+        },
+        {
+          "index": 7,
+          "phase": "measured",
+          "rssBefore": 106807296,
+          "rssAfter": 106741760,
+          "growthMb": -0.0625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3536489
+        },
+        {
+          "index": 8,
+          "phase": "measured",
+          "rssBefore": 106741760,
+          "rssAfter": 106717184,
+          "growthMb": -0.0234375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3541529
+        },
+        {
+          "index": 9,
+          "phase": "measured",
+          "rssBefore": 106717184,
+          "rssAfter": 106725376,
+          "growthMb": 0.0078125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3541721
+        },
+        {
+          "index": 10,
+          "phase": "measured",
+          "rssBefore": 106725376,
+          "rssAfter": 107102208,
+          "growthMb": 0.359375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3542521
+        }
+      ]
+    },
+    "rss-shallow-latest-2": {
+      "version": "1.4.2",
+      "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "execPath": "/home/ubuntu/.bun/bin/bun",
+      "variant": "shallow",
+      "documentsPerRound": 200,
+      "nodesPerDocument": 100,
+      "prelude": {
+        "ffi": {
+          "createSingle": 251249.68199955876,
+          "batchAppend": 460.1544973326339
+        },
+        "identity": {
+          "identityHitRate": 1
+        },
+        "gc": {
+          "released": 1,
+          "baseline": 0
+        }
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "rssBefore": 155209728,
+          "rssAfter": 155312128,
+          "growthMb": 0.09765625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3521219
+        },
+        {
+          "index": 1,
+          "phase": "warmup",
+          "rssBefore": 155443200,
+          "rssAfter": 155258880,
+          "growthMb": -0.17578125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3523300
+        },
+        {
+          "index": 2,
+          "phase": "warmup",
+          "rssBefore": 155258880,
+          "rssAfter": 155361280,
+          "growthMb": 0.09765625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3523492
+        },
+        {
+          "index": 3,
+          "phase": "measured",
+          "rssBefore": 155361280,
+          "rssAfter": 155512832,
+          "growthMb": 0.14453125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3523684
+        },
+        {
+          "index": 4,
+          "phase": "measured",
+          "rssBefore": 155512832,
+          "rssAfter": 155693056,
+          "growthMb": 0.171875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3526308
+        },
+        {
+          "index": 5,
+          "phase": "measured",
+          "rssBefore": 155693056,
+          "rssAfter": 155631616,
+          "growthMb": -0.05859375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3535500
+        },
+        {
+          "index": 6,
+          "phase": "measured",
+          "rssBefore": 155631616,
+          "rssAfter": 155557888,
+          "growthMb": -0.0703125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3534284
+        },
+        {
+          "index": 7,
+          "phase": "measured",
+          "rssBefore": 155557888,
+          "rssAfter": 155623424,
+          "growthMb": 0.0625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3534476
+        },
+        {
+          "index": 8,
+          "phase": "measured",
+          "rssBefore": 155623424,
+          "rssAfter": 156278784,
+          "growthMb": 0.625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3539516
+        },
+        {
+          "index": 9,
+          "phase": "measured",
+          "rssBefore": 156278784,
+          "rssAfter": 155865088,
+          "growthMb": -0.39453125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3539708
+        },
+        {
+          "index": 10,
+          "phase": "measured",
+          "rssBefore": 155865088,
+          "rssAfter": 155959296,
+          "growthMb": 0.08984375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3540508
+        }
+      ]
+    },
+    "rss-shallow-latest-3": {
+      "version": "1.4.2",
+      "revision": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "execPath": "/home/ubuntu/.bun/bin/bun",
+      "variant": "shallow",
+      "documentsPerRound": 200,
+      "nodesPerDocument": 100,
+      "prelude": {
+        "ffi": {
+          "createSingle": 296666.85649389925,
+          "batchAppend": 504.2267309952415
+        },
+        "identity": {
+          "identityHitRate": 1
+        },
+        "gc": {
+          "released": 1,
+          "baseline": 0
+        }
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "rssBefore": 133251072,
+          "rssAfter": 100184064,
+          "growthMb": -31.53515625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3520800
+        },
+        {
+          "index": 1,
+          "phase": "warmup",
+          "rssBefore": 100179968,
+          "rssAfter": 104091648,
+          "growthMb": 3.73046875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3524337
+        },
+        {
+          "index": 2,
+          "phase": "warmup",
+          "rssBefore": 99950592,
+          "rssAfter": 104120320,
+          "growthMb": 3.9765625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3524529
+        },
+        {
+          "index": 3,
+          "phase": "measured",
+          "rssBefore": 99930112,
+          "rssAfter": 104071168,
+          "growthMb": 3.94921875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3524721
+        },
+        {
+          "index": 4,
+          "phase": "measured",
+          "rssBefore": 104071168,
+          "rssAfter": 104124416,
+          "growthMb": 0.05078125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3527345
+        },
+        {
+          "index": 5,
+          "phase": "measured",
+          "rssBefore": 104124416,
+          "rssAfter": 104738816,
+          "growthMb": 0.5859375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3537097
+        },
+        {
+          "index": 6,
+          "phase": "measured",
+          "rssBefore": 104738816,
+          "rssAfter": 104898560,
+          "growthMb": 0.15234375,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3537321
+        },
+        {
+          "index": 7,
+          "phase": "measured",
+          "rssBefore": 104898560,
+          "rssAfter": 104853504,
+          "growthMb": -0.04296875,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3537513
+        },
+        {
+          "index": 8,
+          "phase": "measured",
+          "rssBefore": 104853504,
+          "rssAfter": 105058304,
+          "growthMb": 0.1953125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3542553
+        },
+        {
+          "index": 9,
+          "phase": "measured",
+          "rssBefore": 105058304,
+          "rssAfter": 105570304,
+          "growthMb": 0.48828125,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3541961
+        },
+        {
+          "index": 10,
+          "phase": "measured",
+          "rssBefore": 105570304,
+          "rssAfter": 105504768,
+          "growthMb": -0.0625,
+          "countersBefore": [
+            0,
+            0,
+            0
+          ],
+          "countersAfter": [
+            0,
+            0,
+            0
+          ],
+          "heapUsed": 3541081
+        }
+      ]
+    }
+  },
+  "fullShallowProbeSource": "#!/usr/bin/env bun\n// T50 FFI + GC benchmark for the JS\u2194Rust boundary.\n//\n// Measures what the Core-only bench (crates/mad-dom-core/examples/bench.rs)\n// cannot: the cost of one JS\u2192Rust call (single createElement + append), batch\n// mutation throughput through the facade, wrapper-cache identity (same native\n// node reads back as one JS object), GC release of explicitly destroyed and\n// abandoned documents, and the long-run memory curve under churn.\n//\n// Outputs a `mad-dom-ffi-gc-bench/1` JSON document that scripts/bench.mjs\n// merges with the core bench and gates against bench/baseline.json. Requires\n// the native dev artifact (bun run dev:build); without it the script exits 2\n// so the bench driver can report the gap instead of fabricating numbers.\n//\n// Usage:\n//   bun scripts/bench-ffi-gc.mjs [--json] [--require-ffi]\nimport { isNativeAvailable, createDocument, liveDocumentCount } from '/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/index.js';\n\nimport { collectGarbage as collectShallow, memoryDigest } from '/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-runtime-07-integration/tests/bun/fixtures/ffi-memory-digest.mjs';\n\nfunction now() {\n  return performance.now();\n}\n\nfunction opsPerSec(iterations, fn) {\n  const start = now();\n  fn();\n  const secs = (now() - start) / 1e3;\n  return secs === 0 ? Infinity : iterations / secs;\n}\n\nfunction drainEventLoop() {\n  return new Promise((resolve) => setTimeout(resolve, 0));\n}\n\nasync function collectGarbage() {\n  Bun.gc(true);\n  await drainEventLoop();\n}\n\nfunction benchFfi() {\n  const N = 200_000;\n\n  // Single JS\u2192Rust call: mint a document, then measure createElement+append\n  // round trips. Each call crosses the Node-API boundary and returns a fresh\n  // (or cached) wrapper object.\n  const createSingle = opsPerSec(N, () => {\n    const doc = createDocument();\n    for (let i = 0; i < N; i++) {\n      doc.createElement(\"span\");\n    }\n    doc.destroy();\n  });\n\n  // Batch append through the facade: build one parent, append many children.\n  const batchAppend = opsPerSec(20, () => {\n    const doc = createDocument();\n    const parent = doc.createElement(\"div\");\n    for (let i = 0; i < 10_000; i++) {\n      doc.appendChild(parent, doc.createElement(\"span\"));\n    }\n    doc.destroy();\n  });\n\n  return { createSingle, batchAppend };\n}\n\nfunction benchWrapperIdentity() {\n  const doc = createDocument();\n  const parent = doc.createElement(\"ul\");\n  const a = doc.createElement(\"li\");\n  doc.appendChild(parent, a);\n  const identical = parent.firstChild() === parent.firstChild();\n  const listIdentical = parent.childNodes()[0] === parent.childNodes()[0];\n  const other = doc.createElement(\"ul\");\n  const crossIdentical = parent.firstChild() === other.firstChild();\n  doc.destroy();\n  return {\n    identityHitRate: identical && listIdentical && !crossIdentical ? 1.0 : 0.0,\n  };\n}\n\nasync function benchGcRelease() {\n  const before = liveDocumentCount();\n  const created = [];\n  for (let i = 0; i < 50; i++) {\n    const doc = createDocument();\n    const parent = doc.createElement(\"div\");\n    doc.appendChild(parent, doc.createElement(\"span\"));\n    created.push(doc);\n  }\n  if (liveDocumentCount() !== before + created.length) {\n    throw new Error(\"liveDocumentCount did not track created documents\");\n  }\n  // Explicit destroy: count must return to the baseline immediately.\n  for (const doc of created) {\n    doc.destroy();\n  }\n  const afterExplicit = liveDocumentCount();\n  return { released: afterExplicit === before ? 1.0 : 0.0, baseline: before };\n}\n\nasync function benchMemoryCurve() {\n  // Churn documents while the JS process stays alive; the memory curve is the\n  // RSS growth after a bounded create/destroy cycle (a leak would grow it\n  // unboundedly and fail the gate's generous 2x bound).\n  Bun.gc(true);\n  await drainEventLoop();\n  const rssBefore = process.memoryUsage().rss;\n  for (let i = 0; i < 200; i++) {\n    const doc = createDocument();\n    const parent = doc.createElement(\"div\");\n    for (let j = 0; j < 100; j++) {\n      doc.appendChild(parent, doc.createElement(\"span\"));\n    }\n    doc.destroy();\n  }\n  Bun.gc(true);\n  await drainEventLoop();\n  const rssAfter = process.memoryUsage().rss;\n  return { rssBefore, rssAfter, growthMb: (rssAfter - rssBefore) / (1024 * 1024) };\n}\n\nasync function main() {\n  if (!isNativeAvailable()) {\n    console.error(\"bench-ffi-gc: native binding unavailable (run bun run dev:build first)\");\n    process.exit(2);\n  }\n\n  const ffi = benchFfi();\n  const identity = benchWrapperIdentity();\n  const gc = await benchGcRelease();\n  const memory = await benchMemoryCurve();\n  const ffiMemory = await memoryDigest();\n  if (process.argv.includes(\"--require-ffi\") && ffiMemory.ffiMethods.length !== 6) {\n    throw new Error(\"FFI-enabled benchmark requires all six mounted data operations\");\n  }\n\n  if (identity.identityHitRate !== 1 || gc.released !== 1) throw new Error(\"identity/GC benchmark validation failed\");\n\n  const report = {\n    schema: \"mad-dom-ffi-gc-bench/1\",\n    runtime: { bunVersion: Bun.version, bunRevision: Bun.revision, platform: process.platform, arch: process.arch },\n    memoryEvidence: ffiMemory,\n    metrics: {\n      ffi_create_element_ops_s: ffi.createSingle,\n      ffi_batch_append_ops_s: ffi.batchAppend,\n      wrapper_identity_hit_rate: identity.identityHitRate,\n      gc_release_hit_rate: gc.released,\n      gc_memory_growth_mb: memory.growthMb,\n      // Deterministic release counters (memory-protocol task 04). The gate's\n      // existing gc_memory_growth_mb remains the RSS smoke bound. Zero here\n      // proves tracked owners/cache entries drained, not arbitrary malloc bytes.\n      memory_counter_docs_delta: ffiMemory.counters.deltas.docs,\n      memory_counter_ffi_registrations_delta: ffiMemory.counters.deltas.ffiRegistrations,\n      memory_counter_wrapper_cache_delta: ffiMemory.counters.deltas.wrapperCacheEntries,\n      ffi_churn_rss_growth_mb: ffiMemory.rssGrowthMb,\n    },\n  };\n  console.log(JSON.stringify(report, null, 2));\n}\n\n\n\n\nimport assert from \"node:assert/strict\";\nimport { noInline } from \"bun:jsc\";\nfunction isolatedChurn() {\n  for (let i = 0; i < 200; i++) {\n    const doc = createDocument();\n    const parent = doc.createElement(\"div\");\n    for (let j = 0; j < 100; j++) doc.appendChild(parent, doc.createElement(\"span\"));\n    doc.destroy();\n  }\n}\nnoInline(isolatedChurn);\nasync function isolatedCurve() {\n  Bun.gc(true);\n  await drainEventLoop();\n  const rssBefore = process.memoryUsage().rss;\n  await new Promise(resolve => setTimeout(() => { isolatedChurn(); resolve(); }, 0));\n  Bun.gc(true);\n  await drainEventLoop();\n  const rssAfter = process.memoryUsage().rss;\n  return { rssBefore, rssAfter, growthMb: (rssAfter - rssBefore) / 1048576 };\n}\nasync function shallowCurve() {\n  await collectShallow();\n  const rssBefore = process.memoryUsage().rss;\n  await new Promise(resolve => setTimeout(() => { isolatedChurn(); resolve(); }, 0));\n  await collectShallow();\n  const rssAfter = process.memoryUsage().rss;\n  return { rssBefore, rssAfter, growthMb: (rssAfter - rssBefore) / 1048576 };\n}\nconst variant = process.argv[2];\nassert.ok([\"legacy\", \"isolated\", \"shallow\"].includes(variant));\nassert.equal(process.execPath, Bun.which(\"bun\"));\n// Same preceding workloads and eager imports as the production script.\nconst prelude = { ffi: benchFfi(), identity: benchWrapperIdentity(), gc: await benchGcRelease() };\nconst diagnostics = createDocument(); diagnostics.destroy();\nconst curve = variant === \"legacy\" ? benchMemoryCurve : variant === \"isolated\" ? isolatedCurve : shallowCurve;\nconst samples = [];\nfor (let i = 0; i < 11; i++) {\n  const before = diagnostics.memoryDiagnostics();\n  const result = await curve();\n  const after = diagnostics.memoryDiagnostics();\n  samples.push({ index: i, phase: i === 0 ? \"cold\" : i <= 2 ? \"warmup\" : \"measured\", ...result, countersBefore: before, countersAfter: after, heapUsed: process.memoryUsage().heapUsed });\n  assert.deepEqual(after, before);\n}\nconsole.log(JSON.stringify({ version: Bun.version, revision: Bun.revision, execPath: process.execPath, variant, documentsPerRound: 200, nodesPerDocument: 100, prelude, samples }, null, 2));\n"
+}
