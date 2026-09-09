@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { runtimeContract, validatePackageMetadata } from "../../js/runtime-metadata.js";
+import { loadNativeFfi } from "../../js/native-loader.js";
 import pkg from "../../package.json";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -118,7 +119,18 @@ test.skipIf(process.platform !== "linux" || !existsSync(join(root, "build/mad-do
       const manifest = JSON.parse(readFileSync(join(dir, "runtime-metadata.json")));
       const platform = manifest.platforms[0];
       expect(platform.build.capabilityLevel).toBe("node-api-only");
-      expect(platform.build.ffi.status).toBe("unavailable");
+      // The draft records what the payload probe measured. That probe inherits
+      // the ambient environment minus the test-only overrides (MAD_DOM_TEST_*,
+      // MAD_DOM_*_PATH), and the loader's documented precedence answers
+      // MAD_DOM_FFI_DISABLED before it ever opens an image. In a global off run
+      // the honest observation is therefore "disabled" — build metadata is an
+      // observation, not a runtime switch (docs/bun-native-runtime-results.md).
+      // Otherwise the masked `mad_dom_ffi_*` exports are what the probe really
+      // sees, and the status is "unavailable". install-smoke clears every
+      // MAD_DOM_* variable for its own probes, so its automatic row reports the
+      // payload's missing exports in either ambient mode.
+      const ambientFfiDisabled = loadNativeFfi().status === "disabled";
+      expect(platform.build.ffi.status).toBe(ambientFfiDisabled ? "disabled" : "unavailable");
       const platformTgz = `${platform.pkgName.replace(/^@/, "").replace("/", "-")}-${pkg.version}.tgz`;
       run(["scripts/install-smoke.mjs", "--out", join(dir, "smoke"), "--main-tgz", join(dir, "tgz", `mad-dom-${pkg.version}.tgz`),
         "--platform-tgz", join(dir, "tgz", platformTgz), "--expect-ffi", "unavailable"]);

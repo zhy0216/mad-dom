@@ -15,6 +15,15 @@ import { FFI_CAPABILITIES } from "../../js/native-loader.js";
 // baseline-Bun child (not a newer `bun` on PATH); each fixture echoes its own
 // `Bun.version`, and `digest()` asserts it equals the parent's before any
 // comparison.
+//
+// Every child gets an explicit FFI mode instead of the parent's ambient one.
+// The default is MAD_DOM_FFI_DISABLED="0" because a scenario that names no
+// mode measures the enabled hot path: the trace proves the FFI methods are
+// really called, and the digest comparison must pit a real FFI run against a
+// Node-API run. A scenario that wants a different state names it in
+// `extraEnv`, which is spread last and therefore always wins. Inheriting the
+// parent env instead would let a global MAD_DOM_FFI_DISABLED=1 run compare
+// Node-API digests with Node-API digests and report that as FFI parity.
 
 const WORKLOAD = join(import.meta.dir, "fixtures", "ffi-facade-workload.mjs");
 const TRACE = join(import.meta.dir, "fixtures", "ffi-call-trace.mjs");
@@ -26,6 +35,7 @@ function runFixture(fixture, extraEnv = {}) {
     env: {
       ...process.env,
       MAD_DOM_NATIVE_PATH: process.env.MAD_DOM_NATIVE_PATH ?? resolve("build/mad-dom.node"),
+      MAD_DOM_FFI_DISABLED: "0",
       ...extraEnv,
     },
     stdout: "pipe",

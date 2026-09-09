@@ -1,0 +1,50 @@
+$ bun run check && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && bun run compat:types && bun run test && bun run compat:ledger && bun run compat:hdunit:rewrite && bun run compat:hdunit:validate && bun run wpt:test
+$ bun --check index.js
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/mad_dom_bun-776ada1884a7b6fc)
+     Running unittests src/lib.rs (target/debug/deps/mad_dom_core-de340ce8438aaa69)
+     Running tests/property_cross_document.rs (target/debug/deps/property_cross_document-c3715f530c7b671d)
+     Running tests/property_mutations.rs (target/debug/deps/property_mutations-dd3913b3ed62a478)
+     Running tests/property_stress.rs (target/debug/deps/property_stress-2b7360d7b4c37289)
+     Running tests/stress.rs (target/debug/deps/stress-f9f209a409214fe3)
+     Running tests/t25_attributes.rs (target/debug/deps/t25_attributes-e187ced4447ac206)
+     Running tests/t25_text_content.rs (target/debug/deps/t25_text_content-e2129fce87677c4a)
+     Running tests/t26_html_parser.rs (target/debug/deps/t26_html_parser-f324290838122433)
+     Running tests/t27_fragment_diff.rs (target/debug/deps/t27_fragment_diff-91418c3717c17f78)
+     Running tests/t27_html_fragment.rs (target/debug/deps/t27_html_fragment-2e2ae3c76b0ede0d)
+     Running tests/t28_html_serializer.rs (target/debug/deps/t28_html_serializer-c3f6e38e6e3117db)
+     Running tests/t29_html_api.rs (target/debug/deps/t29_html_api-e7fa66198390c9bc)
+     Running tests/t30_selectors.rs (target/debug/deps/t30_selectors-a7630ecb7d4129c1)
+     Running tests/t31_queries.rs (target/debug/deps/t31_queries-0514cc8b54817e47)
+     Running tests/t32_live_collections.rs (target/debug/deps/t32_live_collections-83d8b141c48d2409)
+     Running tests/t33_character_data.rs (target/debug/deps/t33_character_data-d73394825350490c)
+     Running tests/t34_attributes_tokens.rs (target/debug/deps/t34_attributes_tokens-31ad05b8cdb55d82)
+     Running tests/t35_traversal.rs (target/debug/deps/t35_traversal-58eb0ccb78e40474)
+     Running tests/t36_range.rs (target/debug/deps/t36_range-2e46b9c0dee901a2)
+     Running tests/t37_events.rs (target/debug/deps/t37_events-ea3bed5bb016f21d)
+     Running tests/t38_events.rs (target/debug/deps/t38_events-b820ca04eada8099)
+     Running tests/t40_template_form.rs (target/debug/deps/t40_template_form-bf16a5bc500a8c99)
+     Running tests/t43_shadow_dom.rs (target/debug/deps/t43_shadow_dom-c714de11b60a088a)
+   Doc-tests mad_dom_bun
+   Doc-tests mad_dom_core
+$ bun tests/compat/types/run.mjs
+$ bun test tests/bun tests/compat tests/wpt
+
+thread '<unnamed>' (705717) panicked at crates/mad-dom-bun/src/handle.rs:1946:9:
+diagnostic panic: the native panic boundary is contained
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+ 1209 pass
+ 0 fail
+ 10970 expect() calls
+Ran 1209 tests across 78 files. [256.14s]
+$ bun compat/validate-ledger.js
+$ bun scripts/rewrite-happy-dom-tests.mjs
+$ bun tests/happy-dom/validate-triage.mjs
+$ bun test tests/wpt
+
+ 5 pass
+ 0 fail
+ 227 expect() calls
+Ran 5 tests across 1 file. [885.00ms]

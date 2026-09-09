@@ -21,6 +21,15 @@ const ARTIFACT = process.env.MAD_DOM_FFI_PATH ?? process.env.MAD_DOM_NATIVE_PATH
 // silently fall back to a newer Bun on PATH. Each fixture echoes its own
 // `Bun.version`; asserting it equals the parent's is belt-and-braces against
 // an exec-path mismatch.
+//
+// Every scenario states the FFI mode it measures. The capability matrix probes
+// what the loader does when FFI resolution is *attempted*, so the default child
+// env passes MAD_DOM_FFI_DISABLED="0" instead of inheriting the parent's value:
+// a global off lane (validate under MAD_DOM_FFI_DISABLED=1) must not silently
+// turn "enabled probe", "missing artifact", "ABI mismatch", "partial", "missing
+// symbol" and the binding probes into observations of the env short-circuit.
+// The one test that measures that short-circuit names MAD_DOM_FFI_DISABLED in
+// `extra`, which is spread last and therefore still wins.
 function runProbe(extra = {}) {
   return runProbeFile("ffi-loader-probe.mjs", extra, /^PROBE (\{.*\})$/m);
 }
@@ -32,6 +41,7 @@ function runProbeFile(name, extra = {}, pattern = /^BIND (\{.*\})$/m) {
       ...process.env,
       MAD_DOM_NATIVE_PATH: process.env.MAD_DOM_NATIVE_PATH ?? resolve("build/mad-dom.node"),
       MAD_DOM_FFI_PATH: ARTIFACT,
+      MAD_DOM_FFI_DISABLED: "0",
       ...extra,
     },
     stdout: "pipe",
