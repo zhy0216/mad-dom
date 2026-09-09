@@ -1,0 +1,74 @@
+mad-dom unsafe/FFI inventory:
+(mad-dom-core: none)
+mad-dom-bun (expected: the 4 documented cast() relaxations only):
+crates/mad-dom-bun/src/ffi/mod.rs:227:    unsafe {
+crates/mad-dom-bun/src/ffi/mod.rs:270:        let selector = unsafe { utf8(selector, selector_len)? };
+crates/mad-dom-bun/src/ffi/mod.rs:277:        unsafe { fill_snapshot(&shared, &mut output, &nodes, None) }
+crates/mad-dom-bun/src/ffi/mod.rs:295:        unsafe { fill_snapshot(&shared, &mut output, &nodes, continuation) }
+crates/mad-dom-bun/src/ffi/mod.rs:311:        unsafe { fill_snapshot(&shared, &mut output, &nodes, None) }
+crates/mad-dom-bun/src/ffi/mod.rs:329:        unsafe { output.write(text.as_bytes()) }
+crates/mad-dom-bun/src/ffi/mod.rs:340:        let name = unsafe { utf8(name, name_len)? };
+crates/mad-dom-bun/src/ffi/mod.rs:343:        unsafe { output.require(count as usize)?; }
+crates/mad-dom-bun/src/ffi/mod.rs:346:        unsafe { output.write(&shared.tokens_for_fresh(&ids)) }
+crates/mad-dom-bun/src/ffi/mod.rs:360:        let tokens = unsafe { input(tokens, count)? };
+crates/mad-dom-bun/src/ffi/mod.rs:380:        unsafe { output.write(&bytes) }
+crates/mad-dom-bun/src/ffi/buffer.rs:33:        unsafe { self.require(len)? };
+crates/mad-dom-bun/src/ffi/buffer.rs:42:            unsafe { slice::from_raw_parts_mut(self.pointer.cast::<MaybeUninit<u32>>(), len) }
+crates/mad-dom-bun/src/ffi/buffer.rs:56:    Ok(unsafe { slice::from_raw_parts(pointer, count as usize) })
+crates/mad-dom-bun/src/ffi/buffer.rs:60:    str::from_utf8(unsafe { input(pointer, len)? }).map_err(|_| Status::InvalidUtf8)
+crates/mad-dom-bun/src/ffi/buffer.rs:100:        unsafe { ptr::write(self.written, len) };
+crates/mad-dom-bun/src/ffi/buffer.rs:109:        unsafe {
+crates/mad-dom-bun/src/ffi/buffer.rs:115:            unsafe { ptr::copy_nonoverlapping(values.as_ptr(), self.pointer, values.len()) };
+crates/mad-dom-bun/src/ffi/buffer.rs:146:        let status = unsafe {
+crates/mad-dom-bun/src/ffi/buffer.rs:163:            .map(|word| unsafe { word.assume_init() })
+crates/mad-dom-bun/src/ffi/buffer.rs:171:        assert_eq!(unsafe { storage[6].assume_init() }, 0xa5a5a5a5);
+crates/mad-dom-bun/src/ffi/buffer.rs:179:        unsafe {
+crates/mad-dom-bun/src/ffi/buffer.rs:192:        unsafe { empty.fill(0, |words| assert!(words.is_empty())).unwrap() };
+crates/mad-dom-bun/src/handle.rs:214:        unsafe {
+crates/mad-dom-bun/src/handle.rs:300:    let value = match unsafe { ToNapiValue::to_napi_value(raw_env, probe) } {
+crates/mad-dom-bun/src/handle.rs:328:    let value = match unsafe { ToNapiValue::to_napi_value(env, probe) } {
+crates/mad-dom-bun/src/handle.rs:359:        check_status!(unsafe { napi::sys::napi_create_uint32(raw_env, number, &mut created) })?;
+crates/mad-dom-bun/src/handle.rs:364:        check_status!(unsafe {
+crates/mad-dom-bun/src/handle.rs:409:    check_status!(unsafe {
+crates/mad-dom-bun/src/handle.rs:428:    check_status!(unsafe { napi::sys::napi_get_null(env.raw(), &mut value) })?;
+crates/mad-dom-bun/src/handle.rs:429:    Ok(unsafe { Unknown::from_napi_value(env.raw(), value)? })
+crates/mad-dom-bun/src/handle.rs:500:            let live = unsafe {
+crates/mad-dom-bun/src/handle.rs:508:                live && unsafe {
+crates/mad-dom-bun/src/handle.rs:517:                unsafe { data.cast::<i32>().write_unaligned(value) };
+crates/mad-dom-bun/src/handle.rs:627:        check_status!(unsafe {
+crates/mad-dom-bun/src/handle.rs:857:        unsafe { Reference::from_napi_value(env.raw(), value) }
+crates/mad-dom-bun/src/handle.rs:941:        let value = unsafe { ToNapiValue::to_napi_value(raw_env, reference)? };
+crates/mad-dom-bun/src/handle.rs:972:        unsafe { unknown_of(env, value) }
+crates/mad-dom-bun/src/handle.rs:983:        unsafe { unknown_of(env, value) }
+crates/mad-dom-bun/src/handle.rs:1045:        let value = unsafe { ToNapiValue::to_napi_value(raw_env, reference)? };
+crates/mad-dom-bun/src/handle.rs:2386:        unsafe { unknown_of(env, value) }
+crates/mad-dom-bun/src/ffi/tests.rs:46:        unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:67:        unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:125:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:156:        Box::new(|o, g, t| unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:159:        Box::new(|o, g, t| unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:162:        Box::new(|o, g, t| unsafe { mad_dom_ffi_child_tokens(o, g, t, null_mut(), 0, &mut 0) }),
+crates/mad-dom-bun/src/ffi/tests.rs:163:        Box::new(|o, g, t| unsafe { mad_dom_ffi_serialize(o, g, t, 0, null_mut(), 0, &mut 0) }),
+crates/mad-dom-bun/src/ffi/tests.rs:164:        Box::new(|o, g, t| unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:188:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:270:        let call = |out, capacity, written| unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:333:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:366:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:387:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:478:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:584:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:673:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:750:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:780:        std::thread::spawn(move || unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:791:    unsafe {
+crates/mad-dom-bun/src/ffi/tests.rs:855:    unsafe {
+crates/mad-dom-bun/src/extensions/epoch_api.rs:55:    check_status!(unsafe {
+crates/mad-dom-bun/src/extensions/epoch_api.rs:71:    unsafe { data.cast::<i32>().write_unaligned(value) };
+crates/mad-dom-bun/src/extensions/epoch_api.rs:92:        unsafe { Unknown::from_napi_value(env.raw(), buffer) }
+crates/mad-dom-bun/src/extensions/epoch_api.rs:108:        unsafe { Unknown::from_napi_value(env.raw(), buffer) }
+crates/mad-dom-bun/src/extensions/epoch_api.rs:126:        unsafe { Unknown::from_napi_value(env.raw(), buffer) }
+crates/mad-dom-bun/src/extensions/epoch_api.rs:140:        unsafe { Unknown::from_napi_value(env.raw(), buffer) }
+crates/mad-dom-bun/src/extensions/traversal_api.rs:157:                unsafe { (*filter).cast() }?;
+crates/mad-dom-bun/src/extensions/mutation_observer_api.rs:199:    let function: Function<'static, FnArgs<(u32, u32)>, ()> = unsafe { scheduler.cast() }?;
+crates/mad-dom-bun/src/extensions/mutation_observer_api.rs:324:    let function: Function<'static, ObserverCallbackArgs, ()> = unsafe { callback.cast() }?;
+crates/mad-dom-bun/src/extensions/events_api.rs:594:    let function: Function<'static, Reference<EventHandle>, ()> = unsafe { (*listener).cast() }?;

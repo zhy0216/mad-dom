@@ -36,6 +36,26 @@ descriptor<<16 | depth)` pairs. Serialization writes bytes without a NUL.
 `read_batch` writes repeated little-endian `u32 length + bytes`; `0xffffffff`
 means null. All `written` values are element/byte counts, never capacities.
 
+### Snapshot packing implementation
+
+Query, child and preorder keep their existing node/descriptor collectors, then
+use the same checked fill helper as Node-API. FFI fills caller storage directly;
+it does not allocate an intermediate packed Vec or copy that Vec into output.
+Node-API still returns a separate owned `Uint32Array` allocation on every call.
+This is an implementation change only: symbols, capability bits, ABI version,
+length units, status codes, layout and the single-shot creation protocol stay
+unchanged. Bit 31 of each descriptor/depth word still proves that this snapshot
+first registered that token; existing tokens are stable and do not gain that bit.
+
+The required word count uses checked arithmetic. Full output/input/`written`
+ranges and capacity are validated before a caller borrow or token registration.
+`buffer.rs` lends only the required prefix to a synchronous callback, using
+`MaybeUninit<u32>` so uninitialized caller memory is never read as a u32. The
+helper writes every produced word, including fresh descriptors, and cannot
+return a caller slice. Unused capacity is untouched. Packing retains one token
+registry lock and the existing missing-index collection. A capacity failure
+sets only the required length and consumes no tokens or fresh proof.
+
 ## Ownership and errors
 
 Input buffers are borrowed only for the synchronous call. Outputs are written
@@ -67,7 +87,7 @@ entry catches Rust panics and returns `PANIC`, so no unwind crosses C ABI.
   intrinsic TypedArray lengths, validates u32 scalars without coercion, and
   rejects shared, resizable or detached backing stores. Direct C callers must
   provide valid allocation sizes and forbid concurrent mutation/detach/free.
-- Every FFI output is copied into caller-owned storage. Returned bytes remain
+- Every FFI output resides in caller-owned storage. Returned bytes remain
   readable after document destroy, further FFI calls, transfer or GC; tokens
   within that storage still require live owner/generation validation for use.
   Rust temporary Vec/String values drop on every return/unwind path.

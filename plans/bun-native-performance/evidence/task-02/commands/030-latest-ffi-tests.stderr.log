@@ -1,0 +1,37 @@
+
+tests/bun/ffi-memory.test.js:
+(pass) Bun FFI memory and GC protocol > bounded churn returns every native lifecycle counter to baseline (FFI-enabled) [718.18ms]
+(pass) Bun FFI memory and GC protocol > the same churn returns the same counters to baseline on the Node-API channel [530.72ms]
+(pass) Bun FFI memory and GC protocol > explicit destroy releases documents without any GC, and counters drain after collect [22.95ms]
+(pass) Bun FFI memory and GC protocol > native external ArrayBuffer callbacks honor retain/destroy/GC and release once [239.73ms]
+(pass) FFI loader output memory protocol > corrupt output lengths cannot cause duplicate mutations or unbounded allocation [116.52ms]
+(pass) FFI loader output memory protocol > createElements is served single-shot at any legal batch size [8.36ms]
+(pass) FFI loader output memory protocol > destroyed-document FFI calls surface the frozen error, not a crash [0.81ms]
+(pass) FFI loader output memory protocol > FFI copies and Node-API token buffers survive later calls, transfer, GC and destroy [10.38ms]
+(pass) FFI loader output memory protocol > input lengths use the real view and mutable/detached stores are rejected [1.08ms]
+
+tests/bun/ffi-fast-path.test.js:
+(pass) Bun FFI data fast path > matches Node-API query and serialization on a real DOM workload [0.35ms]
+(pass) caller-buffer snapshot packing > query: exact/short/zero capacity, fresh proof and Node-API semantic parity [4.99ms]
+(pass) caller-buffer snapshot packing > child: exact/short/zero capacity, fresh proof and Node-API semantic parity [3.99ms]
+(pass) caller-buffer snapshot packing > preorder: exact/short/zero capacity, fresh proof and Node-API semantic parity [4.36ms]
+(pass) caller-buffer snapshot packing > deep topology and empty snapshots match the owned Node-API layout [24.09ms]
+(pass) caller-buffer snapshot packing > wide trees preserve the 65,535-node boundary and all continuation subtrees [867.29ms]
+
+tests/bun/native-loader.test.js:
+(pass) T49 platform package naming (ADR-0005 §5) > maps every supported os/arch to the pinned platform-package name [1.47ms]
+(pass) T49 platform package naming (ADR-0005 §5) > libc is explicit on linux and absent elsewhere [0.11ms]
+(pass) T49 platform package naming (ADR-0005 §5) > platforms outside the matrix return null (unsupported) [0.04ms]
+(pass) T49 platform package naming (ADR-0005 §5) > the expected ABI constant matches the binding's probe [0.07ms]
+(pass) T49 platform info (ADR-0005 §6) > reports the host platform with no libc on non-linux [0.09ms]
+(pass) T49 platform info (ADR-0005 §6) > honors the MAD_DOM_TEST_* overrides used by the install smoke [0.05ms]
+(pass) T49 load-time error contract (ADR-0005 §9) > an unsupported platform fails fast with a stable code and message structure [12.94ms]
+(pass) T49 load-time error contract (ADR-0005 §9) > a supported platform without an installed platform package fails with reinstall guidance [12.81ms]
+(pass) T49 load-time error contract (ADR-0005 §9) > an ABI mismatch fails with MAD_DOM_ABI_MISMATCH naming both ABI versions [13.69ms]
+(pass) T49 load-time error contract (ADR-0005 §9) > the happy path loads the dev artifact and passes the ABI probe [14.31ms]
+(pass) T49 load-time error contract (ADR-0005 §9) > resetNativeLoaderForTests clears the cached resolution state [0.14ms]
+
+ 26 pass
+ 0 fail
+ 231 expect() calls
+Ran 26 tests across 3 files. [2.75s]

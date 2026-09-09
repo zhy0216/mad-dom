@@ -147,6 +147,13 @@ fn reserve_node_tokens(count: usize) -> u32 {
     u32::try_from(start).expect("node token space exhausted")
 }
 
+pub(crate) fn token_snapshot_len(node_count: usize) -> Option<usize> {
+    node_count
+        .checked_mul(2)?
+        .checked_add(1)
+        .filter(|&len| u32::try_from(len).is_ok())
+}
+
 /// Returns [`LIVE_DOCUMENT_COUNT`]. Diagnostic for the GC and destroy smoke
 /// tests.
 pub(crate) fn live_document_count() -> u64 {
@@ -720,33 +727,50 @@ impl SharedDocument {
             .collect()
     }
 
-    /// Resolves tokens and writes an already-classified subtree directly into
-    /// the flat transfer buffer. One registry lock and one allocation cover
-    /// the snapshot; nodes already exposed keep their token.
+    /// Node-API retains an independent owned allocation for every snapshot.
     pub(crate) fn token_snapshot(
         &self,
         nodes: &[(NodeId, u32)],
         continuation_depth: Option<u32>,
     ) -> Vec<u32> {
+        let len = token_snapshot_len(nodes.len()).expect("snapshot length exceeds u32::MAX");
+        let mut flat = vec![0; len];
+        self.fill_token_snapshot(nodes, continuation_depth, &mut flat, std::convert::identity)
+            .expect("snapshot allocation has the required length");
+        flat
+    }
+
+    /// Fill an already-classified snapshot under one registry lock. Length and
+    /// continuation are checked before any output or token-registry mutation.
+    /// `None` means an unrepresentable length or insufficient output storage.
+    /// Nodes must be distinct, as in the existing query/child/preorder collectors.
+    /// `word` is identity for owned u32s or MaybeUninit::new for caller storage;
+    /// packing only assigns values and never reads an uninitialized word.
+    pub(crate) fn fill_token_snapshot<T>(
+        &self,
+        nodes: &[(NodeId, u32)],
+        continuation_depth: Option<u32>,
+        flat: &mut [T],
+        word: impl Fn(u32) -> T,
+    ) -> Option<()> {
+        let flat = flat.get_mut(..token_snapshot_len(nodes.len())?)?;
+        let continuation = continuation_depth
+            .map(|depth| depth.checked_add(1).expect("DOM depth exceeds u32::MAX"))
+            .unwrap_or(0);
         self.enable_tokens();
         let mut tokens = self
             .tokens
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let mut flat = Vec::with_capacity(nodes.len() * 2 + 1);
-        flat.push(
-            continuation_depth
-                .map(|depth| depth.checked_add(1).expect("DOM depth exceeds u32::MAX"))
-                .unwrap_or(0),
-        );
+        flat[0] = word(continuation);
         let mut missing = Vec::new();
         for (index, &(id, packed)) in nodes.iter().enumerate() {
             let token = tokens.by_id.get(&id).copied().unwrap_or_else(|| {
                 missing.push(index);
                 0
             });
-            flat.push(token);
-            flat.push(packed);
+            flat[1 + index * 2] = word(token);
+            flat[2 + index * 2] = word(packed);
         }
         if !missing.is_empty() {
             let fresh_start = reserve_node_tokens(missing.len());
@@ -759,17 +783,17 @@ impl SharedDocument {
                     .expect("node token space exhausted");
                 tokens.ids.insert(token, id);
                 tokens.by_id.insert(id, token);
-                flat[1 + node_index * 2] = token;
+                flat[1 + node_index * 2] = word(token);
                 // Reserve the high descriptor bit as a proof that this token
                 // was assigned by this snapshot. No token could previously
                 // have crossed into the facade, so current facades may skip
                 // an otherwise mandatory wrapper-identity map probe. Older
                 // facades safely take their unknown-kind materialization
                 // fallback for the flagged descriptor.
-                flat[2 + node_index * 2] |= 1 << 31;
+                flat[2 + node_index * 2] = word(nodes[node_index].1 | (1 << 31));
             }
         }
-        flat
+        Some(())
     }
 
     /// Resolves a document-local primitive token back to the opaque Core id.
@@ -2425,6 +2449,49 @@ mod tests {
             epoch.load(Ordering::SeqCst),
             SharedDocument::CACHE_DISABLED_EPOCH
         );
+    }
+
+    #[test]
+    fn checked_snapshot_fill_rejects_lengths_before_enabling_or_registering_tokens() {
+        let _guard = lock();
+        assert_eq!(token_snapshot_len(0), Some(1));
+        assert_eq!(token_snapshot_len(usize::MAX), None);
+        assert_eq!(token_snapshot_len(u32::MAX as usize), None);
+        assert_eq!(
+            token_snapshot_len((u32::MAX / 2) as usize),
+            Some(u32::MAX as usize)
+        );
+        let doc = DocumentHandle::new();
+        let id = doc.create_element_inner("span").unwrap();
+        let nodes = [(id, 21 << 16)];
+        let shared = doc.shared();
+        let mut short = [0xa5; 2];
+        assert_eq!(
+            shared.fill_token_snapshot(&nodes, None, &mut short, std::convert::identity),
+            None
+        );
+        assert_eq!(short, [0xa5; 2]);
+        assert!(!shared.tokens_enabled.load(Ordering::Relaxed));
+        assert!(shared.tokens.lock().unwrap().by_id.is_empty());
+        let mut out = [0xa5; 5];
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            shared.fill_token_snapshot(&nodes, Some(u32::MAX), &mut out, std::convert::identity)
+        }));
+        assert!(panic.is_err());
+        assert_eq!(out, [0xa5; 5]);
+        assert!(!shared.tokens_enabled.load(Ordering::Relaxed));
+        assert!(shared.tokens.lock().unwrap().by_id.is_empty());
+        assert_eq!(
+            shared.fill_token_snapshot(&nodes, Some(7), &mut out, std::convert::identity),
+            Some(())
+        );
+        assert_eq!(out[0], 8);
+        assert_eq!(out[2], (21 << 16) | (1 << 31));
+        assert_eq!(&out[3..], &[0xa5; 2]);
+        assert_eq!(shared.id_for_token(out[1]), Some(id));
+        assert_eq!(shared.tokens.lock().unwrap().by_id.len(), 1);
+        let owned = shared.token_snapshot(&nodes, Some(7));
+        assert_eq!(owned, [8, out[1], 21 << 16]);
     }
 
     #[test]

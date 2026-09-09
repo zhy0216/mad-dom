@@ -242,6 +242,234 @@ fn capacity_probe_is_exact_and_never_partially_writes_or_mints_tokens() {
 }
 
 #[test]
+fn all_snapshot_capacity_failures_preserve_fresh_proof_and_existing_tokens() {
+    let _guard = lock();
+    for kind in ["query", "preorder", "child"] {
+        let f = Fixture::new();
+        f.html("<main><span id='seen'>你好</span><!--c--><b>🌍</b><svg><path/></svg></main>");
+        let root = f.query("main")[1];
+        let seen = f.query("#seen")[1];
+        let shared = f.handle.shared();
+        let nodes = with_document(shared, |doc| {
+            let id = shared.id_for_token(root).unwrap();
+            let nodes = match kind {
+                "preorder" => doc.preorder_subtree_chunk(id, u16::MAX as usize)?.0,
+                "child" => doc.children(id)?.into_iter().map(|id| (id, 0)).collect(),
+                _ => doc
+                    .query_selector_all(id, "*")?
+                    .into_iter()
+                    .map(|id| (id, 0))
+                    .collect(),
+            };
+            nodes
+                .into_iter()
+                .map(|(id, depth)| Ok((id, depth | (node_snapshot_descriptor(doc, id)? << 16))))
+                .collect::<std::result::Result<Vec<_>, BindingError>>()
+        })
+        .unwrap();
+        let call = |out, capacity, written| unsafe {
+            match kind {
+                "preorder" => {
+                    mad_dom_ffi_preorder_snapshot(f.owner, 1, root, out, capacity, written)
+                }
+                "child" => mad_dom_ffi_child_tokens(f.owner, 1, root, out, capacity, written),
+                _ => mad_dom_ffi_query_snapshot(
+                    f.owner,
+                    1,
+                    root,
+                    b"*".as_ptr(),
+                    1,
+                    out,
+                    capacity,
+                    written,
+                ),
+            }
+        };
+        let required = (nodes.len() * 2 + 1) as u32;
+        let mut written = 99;
+        assert_eq!(call(null_mut(), 0, &mut written), 2, "{kind}");
+        assert_eq!(written, required);
+        let mut out = vec![0xa5a5a5a5; required as usize + 2];
+        assert_eq!(call(out.as_mut_ptr(), required - 1, &mut written), 2);
+        assert_eq!(written, required);
+        assert!(out.iter().all(|&word| word == 0xa5a5a5a5));
+        assert_eq!(call(out.as_mut_ptr(), required, &mut written), 0);
+        assert_eq!(written, required);
+        assert_eq!(out[0], 0);
+        assert_eq!(&out[required as usize..], &[0xa5a5a5a5; 2]);
+        for (&(id, packed), pair) in nodes.iter().zip(out[1..required as usize].chunks_exact(2)) {
+            assert_eq!(shared.id_for_token(pair[0]), Some(id));
+            assert_eq!(pair[1] & 0x7fff_ffff, packed);
+            assert_eq!(pair[1] >> 31, u32::from(pair[0] != root && pair[0] != seen));
+        }
+        // Same-document tokens must stay identical, with no fresh proof on a
+        // later FFI or owned Node-API snapshot. This is not a cross-doc oracle.
+        let owned = shared.token_snapshot(&nodes, None);
+        assert_eq!(call(out.as_mut_ptr(), required, &mut written), 0);
+        assert_eq!(&out[..required as usize], owned);
+        assert!(out[2..required as usize]
+            .iter()
+            .step_by(2)
+            .all(|x| x >> 31 == 0));
+    }
+}
+
+#[test]
+fn wide_preorder_continuation_preserves_topology_and_tokens_across_blocks() {
+    let _guard = lock();
+    let f = Fixture::new();
+    // Use the existing bulk HTML loader so debug invariant checks do not scan
+    // the growing tree once per append. The full >65,535-node fixture remains.
+    f.html(&format!("<main>{}</main>", "<span></span>".repeat(65_538)));
+    let root = f.query("main")[1];
+    let children = with_document(f.handle.shared(), |doc| {
+        let root = f.handle.shared().id_for_token(root).unwrap();
+        Ok(doc.children(root)?)
+    })
+    .unwrap();
+    let required = u16::MAX as usize * 2 + 1;
+    let mut out = vec![0; required];
+    let mut written = 0;
+    unsafe {
+        assert_eq!(
+            mad_dom_ffi_preorder_snapshot(f.owner, 1, root, null_mut(), 0, &mut written),
+            2
+        );
+        assert_eq!(written as usize, required);
+        assert_eq!(
+            mad_dom_ffi_preorder_snapshot(
+                f.owner,
+                1,
+                root,
+                out.as_mut_ptr(),
+                required as u32,
+                &mut written,
+            ),
+            0
+        );
+    }
+    assert_eq!(out[0], 2); // next sibling at depth 1, encoded as depth + 1
+    assert_eq!(out[1], root);
+    assert_eq!(out[2] >> 31, 0);
+    for (&id, pair) in children.iter().zip(out[3..].chunks_exact(2)) {
+        assert_eq!(f.handle.shared().id_for_token(pair[0]), Some(id));
+        assert_eq!(pair[1] & 0xffff, 1);
+        assert_eq!(pair[1] >> 31, 1);
+    }
+    let last_id = f.handle.shared().id_for_token(out[required - 2]).unwrap();
+    let next_id = with_document(f.handle.shared(), |doc| Ok(doc.next_sibling(last_id)?))
+        .unwrap()
+        .unwrap();
+    assert_eq!(next_id, children[u16::MAX as usize - 1]);
+    let next = f.handle.shared().token_for(next_id);
+    let mut tail = [0; 3];
+    unsafe {
+        assert_eq!(
+            mad_dom_ffi_preorder_snapshot(f.owner, 1, next, tail.as_mut_ptr(), 3, &mut written),
+            0
+        );
+    }
+    assert_eq!(written, 3);
+    assert_eq!(tail[0], 0); // the continuation root is its own complete subtree
+    assert_eq!(tail[1], next);
+    assert_eq!(tail[2] & 0xffff, 0);
+    assert_eq!(tail[2] >> 31, 0);
+}
+
+#[test]
+fn snapshot_errors_win_over_capacity_and_preserve_all_output() {
+    let _guard = lock();
+    let f = Fixture::new();
+    f.html("<span></span>");
+    let mut words = [u32::from_ne_bytes(*b"span"); 8];
+    let original = words;
+    let mut written = 99;
+    unsafe {
+        // Even the unused output tail must be disjoint from input/written.
+        let base = words.as_mut_ptr();
+        assert_eq!(
+            mad_dom_ffi_query_snapshot(
+                f.owner,
+                1,
+                f.root,
+                base.add(7).cast(),
+                4,
+                base,
+                8,
+                &mut written
+            ),
+            1
+        );
+        assert_eq!(
+            mad_dom_ffi_query_snapshot(f.owner, 1, f.root, base.cast(), 4, null_mut(), 0, base),
+            1
+        );
+        assert_eq!(
+            mad_dom_ffi_preorder_snapshot(f.owner, 1, f.root, base, 8, base.add(7)),
+            1
+        );
+        for (selector, expected) in [(&b"["[..], 10), (&b"\xff"[..], 9)] {
+            assert_eq!(
+                mad_dom_ffi_query_snapshot(
+                    f.owner,
+                    1,
+                    f.root,
+                    selector.as_ptr(),
+                    1,
+                    base,
+                    0,
+                    &mut written
+                ),
+                expected
+            );
+        }
+        assert_eq!(
+            mad_dom_ffi_query_snapshot(
+                f.owner,
+                1,
+                u32::MAX,
+                b"[".as_ptr(),
+                1,
+                base,
+                0,
+                &mut written
+            ),
+            6
+        );
+        // These ranges overflow before any raw dereference or token lookup.
+        let overflow = (usize::MAX - 3) as *mut u32;
+        assert_eq!(
+            mad_dom_ffi_child_tokens(f.owner, 1, f.root, overflow, 1, &mut written),
+            1
+        );
+        assert_eq!(
+            mad_dom_ffi_preorder_snapshot(f.owner, 1, f.root, base, 8, overflow),
+            1
+        );
+        assert_eq!(
+            mad_dom_ffi_query_snapshot(
+                f.owner,
+                1,
+                f.root,
+                usize::MAX as *const u8,
+                1,
+                base,
+                8,
+                &mut written
+            ),
+            1
+        );
+        f.handle.destroy_inner();
+        assert_eq!(
+            mad_dom_ffi_preorder_snapshot(f.owner, 0, u32::MAX, overflow, 1, null_mut()),
+            5
+        );
+    }
+    assert_eq!(written, 99);
+    assert_eq!(words, original);
+}
+
+#[test]
 fn input_and_output_validation_empty_utf8_alignment_overlap_and_syntax() {
     let _guard = lock();
     let f = Fixture::new();

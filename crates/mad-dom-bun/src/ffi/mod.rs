@@ -6,9 +6,9 @@
 //! registry holds only thread-local Weak references. Node-API owns lifecycle,
 //! wrappers and callbacks; FFI never retains caller pointers or calls JS.
 //!
-//! All outputs are copies into caller-owned buffers. No native-owned (external)
+//! All outputs use caller-owned buffers. No native-owned (external)
 //! ArrayBuffer crosses this ABI in v1. Bun exposes a native deallocator hook,
-//! but copies avoid tying DOM storage or library lifetime to a GC callback. The full
+//! but independent output avoids tying DOM storage or library lifetime to a GC callback. The full
 //! memory protocol (ownership classes, capacity/length rules, exactly-once
 //! deallocator rule and lifecycle diagnostics) is in `ffi/ABI.md`.
 //!
@@ -30,7 +30,8 @@ use napi_derive::napi;
 
 use crate::error::BindingError;
 use crate::handle::{
-    check_affinity, node_snapshot_descriptor, with_document, DocumentHandle, SharedDocument,
+    check_affinity, node_snapshot_descriptor, token_snapshot_len, with_document, DocumentHandle,
+    SharedDocument,
 };
 use buffer::{input, utf8, Output};
 
@@ -214,6 +215,24 @@ fn boundary(f: impl FnOnce() -> Result<()>) -> i32 {
     }
 }
 
+// Collection/validation finishes before borrowing caller storage or registering
+// tokens. The Node-API owned-array path uses the same checked packing helper.
+unsafe fn fill_snapshot(
+    shared: &SharedDocument,
+    output: &mut Output<u32>,
+    nodes: &[(NodeId, u32)],
+    continuation: Option<u32>,
+) -> Result<()> {
+    let len = token_snapshot_len(nodes.len()).ok_or(Status::InvalidArgument)?;
+    unsafe {
+        output.fill(len, |words| {
+            shared
+                .fill_token_snapshot(nodes, continuation, words, std::mem::MaybeUninit::new)
+                .expect("caller capacity was checked before packing");
+        })
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn mad_dom_ffi_abi_version() -> u32 {
     ABI_VERSION
@@ -246,7 +265,7 @@ entry! {
     fn mad_dom_ffi_query_snapshot(owner: u32, generation: u32, scope: u32,
         selector: *const u8, selector_len: u32, out: *mut u32, capacity: u32, written: *mut u32) {
         let shared = document(owner, generation)?;
-        let output = Output::new(out, capacity, written)?;
+        let mut output = Output::new(out, capacity, written)?;
         output.validate_input(selector, selector_len)?;
         let selector = unsafe { utf8(selector, selector_len)? };
         let nodes = read(&shared, |doc| {
@@ -255,8 +274,7 @@ entry! {
                 Ok((id, node_snapshot_descriptor(doc, id).map_err(Status::from)? << 16))
             }).collect::<Result<Vec<_>>>()
         })?;
-        unsafe { output.require(nodes.len() * 2 + 1)?; }
-        unsafe { output.write(&shared.token_snapshot(&nodes, None)) }
+        unsafe { fill_snapshot(&shared, &mut output, &nodes, None) }
     }
 }
 
@@ -265,7 +283,7 @@ entry! {
     fn mad_dom_ffi_preorder_snapshot(owner: u32, generation: u32, root: u32,
         out: *mut u32, capacity: u32, written: *mut u32) {
         let shared = document(owner, generation)?;
-        let output = Output::new(out, capacity, written)?;
+        let mut output = Output::new(out, capacity, written)?;
         let (nodes, continuation) = read(&shared, |doc| {
             let root = node(&shared, doc, root)?;
             let (mut nodes, continuation) = doc.preorder_subtree_chunk(root, u16::MAX as usize)?;
@@ -274,8 +292,7 @@ entry! {
             }
             Ok((nodes, continuation))
         })?;
-        unsafe { output.require(nodes.len() * 2 + 1)?; }
-        unsafe { output.write(&shared.token_snapshot(&nodes, continuation)) }
+        unsafe { fill_snapshot(&shared, &mut output, &nodes, continuation) }
     }
 }
 
@@ -284,15 +301,14 @@ entry! {
     fn mad_dom_ffi_child_tokens(owner: u32, generation: u32, root: u32,
         out: *mut u32, capacity: u32, written: *mut u32) {
         let shared = document(owner, generation)?;
-        let output = Output::new(out, capacity, written)?;
+        let mut output = Output::new(out, capacity, written)?;
         let nodes = read(&shared, |doc| {
             let root = node(&shared, doc, root)?;
             doc.children(root)?.into_iter().map(|id| {
                 Ok((id, node_snapshot_descriptor(doc, id).map_err(Status::from)? << 16))
             }).collect::<Result<Vec<_>>>()
         })?;
-        unsafe { output.require(nodes.len() * 2 + 1)?; }
-        unsafe { output.write(&shared.token_snapshot(&nodes, None)) }
+        unsafe { fill_snapshot(&shared, &mut output, &nodes, None) }
     }
 }
 
