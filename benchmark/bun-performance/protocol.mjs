@@ -46,8 +46,10 @@ export function operationPath(suite, name, ffi) {
   const channel = ffi === "on" ? "FFI" : "Node-API";
   if (suite === "core" || suite === "testing") return `${channel} enabled surface; mixed public operations; document-root query remains Node-API; see diagnostic path audit`;
   if (name.endsWith("hot") && suite === "facade") return "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)";
+  if (suite === "facade" && /HTML/.test(name)) return `public ${name.startsWith("inner") ? "innerHTML" : "outerHTML"} -> complete string generation and length consumption (provider: independent observedPath)`;
   if (name.startsWith("create.")) return suite === "facade"
-    ? `public createElement -> tier ${name.split(".")[1]} -> ${name === "create.1" ? "Node-API scalar" : ffi === "on" ? "FFI exact token array" : "Node-API scalar range"} -> canonical wrappers`
+    ? name === "create.1" ? "public createElement -> tier 1 -> Node-API scalar -> canonical wrappers"
+      : `public createElement -> tier ${name.split(".")[1]} (count ${name.split(".")[1]}) -> provider: independent observedPath -> canonical wrappers`
     : `${suite} ${channel} ${ffi === "on" ? "create_elements exact caller buffer" : "createElementTokenRange scalar + local range consumption"}`;
   const operation = name.startsWith("query") ? "query_snapshot/querySelectorAllTokens" :
     name.startsWith("child") ? "child_tokens/childNodesTokens" : name.startsWith("preorder") ?

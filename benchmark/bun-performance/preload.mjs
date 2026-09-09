@@ -56,5 +56,7 @@ const metadata = { runtime, executable: fileIdentity(process.execPath), source: 
     MAD_DOM_FFI_DISABLED: process.env.MAD_DOM_FFI_DISABLED },
   libc: process.report?.getReport?.().header?.glibcVersionRuntime ?? null,
   rustToolchain: readFileSync(join(root, "rust-toolchain.toml"), "utf8").trim(),
-  handshake: "passed real document query + full UTF-8 serialization; same Node-API/FFI image" };
+  handshake: ffi === "on"
+    ? "preload: verified native runtime/path and FFI binding; real document query + full UTF-8 serialization; document destroyed; same Node-API/FFI image"
+    : "preload: verified native runtime/path; FFI explicitly disabled with null document binding; real document created and destroyed" };
 writeFileSync(config.metadataPath, JSON.stringify(metadata, null, 2) + "\n");

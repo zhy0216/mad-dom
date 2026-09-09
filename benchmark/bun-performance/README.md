@@ -72,9 +72,14 @@ describes the independent CPU profile used below.
 "$BASELINE" benchmark/bun-performance/run.mjs --verify /tmp/bun-performance-baseline
 ```
 
-The runner owns both overrides in every child. The preload checks the actual
-loaded image, ABI 1, all six operation symbols / bitset 31, document binding and
-real UTF-8 serialization. Disabled mode must explicitly report disabled. A missing
+The runner owns both overrides in every child. Both preload branches verify the
+native runtime/path and image, then create and destroy a real document. FFI-on
+also checks ABI 1, all six operation methods / bitset 31, same-image document
+binding, an actual query and full UTF-8 serialization. FFI-off checks explicit
+disablement and a null FFI document binding; it does not run a preload query or
+serialization. `metadata.handshake` describes only that completed preload branch.
+Full workload correctness is checked separately by the workers in both modes.
+A missing
 file, partial/unavailable capability, mixed image, changed source/executable,
 failed subprocess, absent result, inconsistent fingerprint or missing workload
 invalidates the comparison. Source comparison never mixes Bun versions.
@@ -98,13 +103,34 @@ results cannot be promoted into formal timing.
 
 Every hotspot comparison runs independent A and B diagnostic processes before
 that suite's formal ABBA. They instrument JS constructors, TypedArray copies,
-adapter methods and native prototype methods. `expectedPath` is a description
-of the reference implementation. `observedPath` contains actual per-round calls,
+adapter methods and native prototype methods. `expectedPath` is a nominal
+operation description, not proof of the selected provider. Facade HTML describes
+complete public string generation/length consumption, and creation above tier 1
+describes the exact tier/count and canonical wrappers; both refer to independent
+`observedPath` for their provider without assuming FFI or JS decoding. Scalar
+create.1 and the public hot-cache description retain their existing meaning.
+`observedPath` contains actual per-round calls,
 bound to the specific source root/hash, artifact, runtime, mode and audit checksum.
 A candidate can select Node-API/range while FFI remains available; the observed
 calls expose that selection. An adapter returning `undefined` is an unexpected
 fallback and fails the audit. New unobservable operation helpers require an audit
 update before they can produce a valid comparison. Formal workers have no hooks.
+
+| Metadata fact | Meaning |
+| --- | --- |
+| `runtime.ffi.status` / capabilities | Whether the selected source/image exposes the required FFI surface; available does not force a facade operation to use it. |
+| `config.ffi` / overrides | The requested on/off mode, validated against the runtime. Raw/adapter on still requires actual FFI operation evidence. |
+| `expectedPath` | Nominal operation/output contract; descriptive labels do not select or validate a candidate provider. |
+| `observedPath` / `pathAudit` | Independently observed per-round calls and audit checksum for this source/image/runtime/mode. A Node-API HTML getter or scalar range is allowed for facade while FFI is available. |
+| `metadata.handshake` | The checks actually executed during preload. It does not describe timed workload operations or independent audit calls. |
+| Workload checks/fingerprints | Complete semantic result checks for the actual worker workload, including FFI-off query and serialization. |
+
+The metadata followup changes only new descriptive labels. Historical metadata,
+labels, samples, manifests and hashes retain their original meaning and original
+harness provenance; saved-evidence verification does not relabel them. In the old
+preload, the fixed handshake text overclaimed query/serialization for off mode;
+its branch checks, workload results and audits remain the evidence of actual work.
+Any future campaign using this harness must record its new absolute path/hash.
 
 The three layers have deliberately different output contracts:
 
