@@ -22,7 +22,7 @@ import {
 const PROBE = join(import.meta.dir, "fixtures", "native-loader-probe.mjs");
 
 function runProbe(env) {
-  const proc = Bun.spawnSync(["bun", PROBE], {
+  const proc = Bun.spawnSync([process.execPath, PROBE], {
     // Each probe selects its own loader path, even when validate is run
     // with a native artifact override in the parent environment.
     env: { ...process.env, MAD_DOM_NATIVE_PATH: "", ...env },

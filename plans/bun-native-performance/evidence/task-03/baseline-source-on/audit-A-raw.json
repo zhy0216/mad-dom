@@ -1,0 +1,4401 @@
+{
+  "id": "audit-A-raw",
+  "side": "A",
+  "position": 0,
+  "config": {
+    "root": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b",
+    "image": {
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+      "sha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96",
+      "bytes": 3866672,
+      "dev": 64784,
+      "inode": 2104807
+    },
+    "source": {
+      "root": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b",
+      "sourceSha": "efaa64b3b9d90cf1988d8092d7de08e97e929630",
+      "productionSha256": "119652fe7235e5116a21adbb547e288ba6e31768e34c7ce59cb306936ad65fda",
+      "inventoryVersion": 2,
+      "productionInputs": [
+        "index.js",
+        "index.d.ts",
+        "js",
+        "crates",
+        "scripts",
+        "benchmark/dom-bench",
+        "package.json",
+        "bun.lock",
+        "Cargo.lock",
+        "Cargo.toml",
+        "rust-toolchain.toml",
+        ".bun-version"
+      ],
+      "untrackedProductionFiles": [],
+      "sourceShaMeaning": "Git HEAD anchor; it does not assert that current production files match that commit",
+      "productionSha256Meaning": "Digest of the sorted path-to-current-file-SHA256 map; tracked plus nonignored untracked production inputs",
+      "lockSha256": "ca3827dae797c2697e507de835366ca953e81ce31234e8de763f6b0bfdc6204b",
+      "domWorkloadSha256": "659d912c62373970e22409ac20dd8d9d390956dd5718c875fa1d1a34a13ff1fc"
+    },
+    "bun": {
+      "path": "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+      "sha256": "33d56b070be6a9e3da0ab013038b43d1645d0534ca811ecdba4472599117eb4b",
+      "bytes": 80761952,
+      "dev": 64769,
+      "inode": 1087114,
+      "version": "1.4.0",
+      "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676"
+    },
+    "suite": "raw",
+    "ffi": "on",
+    "sizes": [
+      1,
+      0.1,
+      2
+    ],
+    "iterations": 1,
+    "runs": 1,
+    "diagnostic": true,
+    "metadataPath": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/plans/bun-native-performance/evidence/task-03/baseline-source-on/audit-A-raw.metadata.json"
+  },
+  "command": [
+    "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+    "--preload",
+    "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/benchmark/bun-performance/preload.mjs",
+    "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/benchmark/bun-performance/worker.mjs"
+  ],
+  "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b",
+  "before": {
+    "at": "2026-09-08T12:15:57.667Z",
+    "loadavg": [
+      1.68,
+      2.46,
+      2.39
+    ],
+    "cpuCount": 8,
+    "cpuModel": "AMD EPYC Processor",
+    "freeMemory": 14226923520,
+    "totalMemory": 16760184832,
+    "kernel": "6.8.0-31-generic",
+    "cpuPressure": "some avg10=1.20 avg60=1.52 avg300=2.61 total=1717367950\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+    "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=11113187\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=7486217",
+    "cpuStat": [
+      "cpu  5579507 20 1470184 30389273 116200 0 68913 284 0 0"
+    ],
+    "competingProcesses": [
+      "    PID    PPID COMMAND         %CPU %MEM",
+      "   4960       1 herdr            6.5  0.2",
+      "1941471   84182 sshd             3.6  0.0",
+      "1718811 1717433 codex            2.4  1.3",
+      "1631962 1631039 codex            2.0  1.4",
+      "1630355 1629749 codex            1.9  1.4",
+      "1633811 1632686 codex            1.9  1.3",
+      "1531378 1530963 codex            1.8  1.3",
+      "1783150 1506846 codex            1.8  1.4",
+      " 910842  910345 codex            1.4  1.4",
+      "1201601 1201062 codex            0.8  1.3",
+      "1533214 1533209 zed-remote-serv  0.2  0.3",
+      "1535854 1535837 MainThread       0.2  2.4",
+      "1790883       2 kworker/u64:3-e  0.1  0.0",
+      "     17       2 rcu_preempt      0.1  0.0",
+      "1533224 1533214 zed-remote-serv  0.1  0.0"
+    ]
+  },
+  "after": {
+    "at": "2026-09-08T12:16:00.016Z",
+    "loadavg": [
+      1.68,
+      2.46,
+      2.39
+    ],
+    "cpuCount": 8,
+    "cpuModel": "AMD EPYC Processor",
+    "freeMemory": 14070857728,
+    "totalMemory": 16760184832,
+    "kernel": "6.8.0-31-generic",
+    "cpuPressure": "some avg10=1.31 avg60=1.52 avg300=2.59 total=1717431015\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+    "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=11113187\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=7486217",
+    "cpuStat": [
+      "cpu  5579890 20 1470332 30390583 116201 0 68916 284 0 0"
+    ],
+    "competingProcesses": [
+      "    PID    PPID COMMAND         %CPU %MEM",
+      "1941514 1783150 MainThread       100  0.8",
+      "1941542 1941514 chrome-headless  100  0.5",
+      "1941599 1934958 ps               100  0.0",
+      "1941559 1941544 chrome-headless 66.6  0.3",
+      "1941563 1941542 chrome-headless 66.6  0.3",
+      "1941544 1941542 chrome-headless 16.6  0.2",
+      "1941545 1941542 chrome-headless 16.6  0.2",
+      "   4960       1 herdr            6.5  0.2",
+      "1941510   84182 sshd             4.2  0.0",
+      "1718811 1717433 codex            2.3  1.3",
+      "1631962 1631039 codex            2.0  1.4",
+      "1630355 1629749 codex            1.9  1.4",
+      "1633811 1632686 codex            1.9  1.3",
+      "1531378 1530963 codex            1.8  1.3",
+      "1783150 1506846 codex            1.8  1.4"
+    ]
+  },
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSha256": "100e3bd1228ff914a3a83058be4967972cf5d10ab24eab7123a958670feb9b2e",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr": "",
+  "report": {
+    "schema": "mad-dom/bun-performance/1/hotspots",
+    "suite": "raw",
+    "engine": "mad-dom",
+    "runs": 1,
+    "host": {
+      "bun": "1.4.0",
+      "os": "linux",
+      "arch": "x64"
+    },
+    "sizes": [
+      1,
+      0.1,
+      2
+    ],
+    "results": [
+      {
+        "size": 1,
+        "workload": {
+          "runs": 1,
+          "iterations": 1,
+          "cases": {
+            "query.small.cold": {
+              "name": "query.small.cold",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.small.hot": {
+              "name": "query.small.hot",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.cold": {
+              "name": "query.large.cold",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.hot": {
+              "name": "query.large.hot",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.cold": {
+              "name": "child.cold",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.cold": {
+              "name": "preorder.cold",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.grow-shrink": {
+              "name": "child.grow-shrink",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.grow-shrink": {
+              "name": "preorder.grow-shrink",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.ascii": {
+              "name": "innerHTML.ascii",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "516182fb2dabc9883018e154a9e5b58129b8d531112d6cc6e57805b74b501354",
+              "inputUtf8Bytes": 35620,
+              "innerUtf8Bytes": 35620,
+              "outerUtf8Bytes": 35639,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.unicode": {
+              "name": "innerHTML.unicode",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.ascii": {
+              "name": "outerHTML.ascii",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "516182fb2dabc9883018e154a9e5b58129b8d531112d6cc6e57805b74b501354",
+              "inputUtf8Bytes": 35620,
+              "innerUtf8Bytes": 35620,
+              "outerUtf8Bytes": 35639,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.unicode": {
+              "name": "outerHTML.unicode",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.grow-shrink": {
+              "name": "innerHTML.grow-shrink",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.grow-shrink": {
+              "name": "outerHTML.grow-shrink",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.1": {
+              "name": "create.1",
+              "size": 1,
+              "iterations": 1,
+              "count": 1,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.8": {
+              "name": "create.8",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.32": {
+              "name": "create.32",
+              "size": 1,
+              "iterations": 1,
+              "count": 32,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.128": {
+              "name": "create.128",
+              "size": 1,
+              "iterations": 1,
+              "count": 128,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.256": {
+              "name": "create.256",
+              "size": 1,
+              "iterations": 1,
+              "count": 256,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            }
+          }
+        },
+        "phases": {
+          "query.small.cold": {
+            "status": "passed",
+            "samples": [
+              0.08831499999996595
+            ],
+            "warmupSamples": [
+              0.312012999999979,
+              0.07968899999997348
+            ],
+            "medianMs": 0.08831499999996595,
+            "minMs": 0.08831499999996595,
+            "p90Ms": 0.08831499999996595,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.small.hot": {
+            "status": "passed",
+            "samples": [
+              0.038140999999995984
+            ],
+            "warmupSamples": [
+              0.06641400000000885,
+              0.062265999999965516
+            ],
+            "medianMs": 0.038140999999995984,
+            "minMs": 0.038140999999995984,
+            "p90Ms": 0.038140999999995984,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.large.cold": {
+            "status": "passed",
+            "samples": [
+              0.3649029999999698
+            ],
+            "warmupSamples": [
+              0.23993899999999257,
+              0.24907699999999977
+            ],
+            "medianMs": 0.3649029999999698,
+            "minMs": 0.3649029999999698,
+            "p90Ms": 0.3649029999999698,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.large.hot": {
+            "status": "passed",
+            "samples": [
+              0.2220649999999864
+            ],
+            "warmupSamples": [
+              0.23449899999997115,
+              0.2714369999999917
+            ],
+            "medianMs": 0.2220649999999864,
+            "minMs": 0.2220649999999864,
+            "p90Ms": 0.2220649999999864,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "child.cold": {
+            "status": "passed",
+            "samples": [
+              0.10739999999998417
+            ],
+            "warmupSamples": [
+              0.21370999999999185,
+              0.14552199999997129
+            ],
+            "medianMs": 0.10739999999998417,
+            "minMs": 0.10739999999998417,
+            "p90Ms": 0.10739999999998417,
+            "madMs": 0,
+            "expectedPath": "raw FFI child_tokens/childNodesTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              }
+            ]
+          },
+          "preorder.cold": {
+            "status": "passed",
+            "samples": [
+              0.2834509999999
+            ],
+            "warmupSamples": [
+              0.182721000000015,
+              0.2236489999999094
+            ],
+            "medianMs": 0.2834509999999,
+            "minMs": 0.2834509999999,
+            "p90Ms": 0.2834509999999,
+            "madMs": 0,
+            "expectedPath": "raw FFI preorder_snapshot/preorderTokenSnapshot -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              }
+            ]
+          },
+          "child.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.035234999999943284
+            ],
+            "warmupSamples": [
+              0.06351899999992838,
+              0.04437299999995048
+            ],
+            "medianMs": 0.035234999999943284,
+            "minMs": 0.035234999999943284,
+            "p90Ms": 0.035234999999943284,
+            "madMs": 0,
+            "expectedPath": "raw FFI child_tokens/childNodesTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              }
+            ]
+          },
+          "preorder.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.18456500000002052
+            ],
+            "warmupSamples": [
+              0.08640100000002349,
+              0.09630099999992581
+            ],
+            "medianMs": 0.18456500000002052,
+            "minMs": 0.18456500000002052,
+            "p90Ms": 0.18456500000002052,
+            "madMs": 0,
+            "expectedPath": "raw FFI preorder_snapshot/preorderTokenSnapshot -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              }
+            ]
+          },
+          "innerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.23210499999993317
+            ],
+            "warmupSamples": [
+              0.20351099999993494,
+              0.18927300000007108
+            ],
+            "medianMs": 0.23210499999993317,
+            "minMs": 0.23210499999993317,
+            "p90Ms": 0.23210499999993317,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "innerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.19685800000002018
+            ],
+            "warmupSamples": [
+              0.1710409999999456,
+              0.18034899999997833
+            ],
+            "medianMs": 0.19685800000002018,
+            "minMs": 0.19685800000002018,
+            "p90Ms": 0.19685800000002018,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.165520000000015
+            ],
+            "warmupSamples": [
+              0.21720600000003287,
+              0.15559200000006967
+            ],
+            "medianMs": 0.165520000000015,
+            "minMs": 0.165520000000015,
+            "p90Ms": 0.165520000000015,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.18180099999995036
+            ],
+            "warmupSamples": [
+              0.1872210000000223,
+              0.18288299999994706
+            ],
+            "medianMs": 0.18180099999995036,
+            "minMs": 0.18180099999995036,
+            "p90Ms": 0.18180099999995036,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "innerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.06093399999997473
+            ],
+            "warmupSamples": [
+              0.03245100000003731,
+              0.030186999999955333
+            ],
+            "medianMs": 0.06093399999997473,
+            "minMs": 0.06093399999997473,
+            "p90Ms": 0.06093399999997473,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.024325999999973646
+            ],
+            "warmupSamples": [
+              0.038362000000006446,
+              0.04675700000007055
+            ],
+            "medianMs": 0.024325999999973646,
+            "minMs": 0.024325999999973646,
+            "p90Ms": 0.024325999999973646,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "create.1": {
+            "status": "passed",
+            "samples": [
+              0.028824999999983447
+            ],
+            "warmupSamples": [
+              0.043029000000046835,
+              0.04250999999999294
+            ],
+            "medianMs": 0.028824999999983447,
+            "minMs": 0.028824999999983447,
+            "p90Ms": 0.028824999999983447,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.8": {
+            "status": "passed",
+            "samples": [
+              0.017382999999995263
+            ],
+            "warmupSamples": [
+              0.02457599999991089,
+              0.02488600000003771
+            ],
+            "medianMs": 0.017382999999995263,
+            "minMs": 0.017382999999995263,
+            "p90Ms": 0.017382999999995263,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.32": {
+            "status": "passed",
+            "samples": [
+              0.10959500000001299
+            ],
+            "warmupSamples": [
+              0.0301560000000336,
+              0.08188300000006166
+            ],
+            "medianMs": 0.10959500000001299,
+            "minMs": 0.10959500000001299,
+            "p90Ms": 0.10959500000001299,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.128": {
+            "status": "passed",
+            "samples": [
+              0.05730699999992339
+            ],
+            "warmupSamples": [
+              0.05682600000000093,
+              0.06319799999994302
+            ],
+            "medianMs": 0.05730699999992339,
+            "minMs": 0.05730699999992339,
+            "p90Ms": 0.05730699999992339,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.256": {
+            "status": "passed",
+            "samples": [
+              0.05827999999996791
+            ],
+            "warmupSamples": [
+              0.06994999999994889,
+              0.05952100000001792
+            ],
+            "medianMs": 0.05827999999996791,
+            "minMs": 0.05827999999996791,
+            "p90Ms": 0.05827999999996791,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          }
+        },
+        "checks": {
+          "query.small.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "query.small.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "query.large.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "2b58dd0a29b5071692b5a13d91561d9d4c156863caae11c3f180f3fda590d8d5"
+          },
+          "query.large.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "2b58dd0a29b5071692b5a13d91561d9d4c156863caae11c3f180f3fda590d8d5"
+          },
+          "child.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "2b58dd0a29b5071692b5a13d91561d9d4c156863caae11c3f180f3fda590d8d5"
+          },
+          "preorder.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "bdb01d983e2acc2f781e1b54cb32c91c311ec63009f085eab95ba19e4d6b9fb9"
+          },
+          "child.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "preorder.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "022277ed4ffeac0b029569e921a0862b4d4a1f53c9e1766755fb26a3b26aa06b"
+          },
+          "innerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 1,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 1,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              }
+            ],
+            "fingerprint": "7da4bb10708e59b2051bd82f18bb6d00b4da903d5039e0051fcccd485ef13ff7"
+          },
+          "innerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 1,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 1,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              }
+            ],
+            "fingerprint": "2ce16e4f906058302605556d409a051d888c2a763eed0ccf6bf3dcef89fc9bc4"
+          },
+          "outerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 1,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 1,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              }
+            ],
+            "fingerprint": "6702eafea13182f6f7fbeb5b5fb2bb226b97a4fa57948a80e08beb9e119e1c44"
+          },
+          "outerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 1,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 1,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              }
+            ],
+            "fingerprint": "7ff82dcfcb138731135b53d8c3da5d4d9d6705d97bb07b04f7d73528cd6063aa"
+          },
+          "innerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 1,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 1,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              }
+            ],
+            "fingerprint": "9e55625574c46a3a028c5cfb74d1efe529a0e6f29aea18885296490ecd4dc732"
+          },
+          "outerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 1,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 1,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              }
+            ],
+            "fingerprint": "e14e766b39279ceb69df0407ff94dc964624a1a08ae42e28cb194c44832555eb"
+          },
+          "create.1": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "create.8": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "create.32": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1f4e45fee928076dcc8feb55d6e3e82a4ab5887c99645ff5fae3d0eeeb790bf5"
+          },
+          "create.128": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "7c15eea1b4ad186ae74147c305751bad346ccaa8226db4f13f1c05d96e00d676"
+          },
+          "create.256": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "204df7f0df86b4c7d540e9a3d2682fa66f09c518a2db2d514fcc242fcd63980a"
+          }
+        },
+        "valid": true,
+        "memory": {
+          "rss": 67006464,
+          "heapTotal": 5104640,
+          "heapUsed": 4826503,
+          "external": 1906551,
+          "arrayBuffers": 1228
+        }
+      },
+      {
+        "size": 0.1,
+        "workload": {
+          "runs": 1,
+          "iterations": 1,
+          "cases": {
+            "query.small.cold": {
+              "name": "query.small.cold",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.small.hot": {
+              "name": "query.small.hot",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.cold": {
+              "name": "query.large.cold",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.hot": {
+              "name": "query.large.hot",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.cold": {
+              "name": "child.cold",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.cold": {
+              "name": "preorder.cold",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.grow-shrink": {
+              "name": "child.grow-shrink",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.grow-shrink": {
+              "name": "preorder.grow-shrink",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.ascii": {
+              "name": "innerHTML.ascii",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "330fd00b725bbf0ec141aae84c73a854186f0f5859daca527c7bab536b7125af",
+              "inputUtf8Bytes": 3448,
+              "innerUtf8Bytes": 3448,
+              "outerUtf8Bytes": 3467,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.unicode": {
+              "name": "innerHTML.unicode",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.ascii": {
+              "name": "outerHTML.ascii",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "330fd00b725bbf0ec141aae84c73a854186f0f5859daca527c7bab536b7125af",
+              "inputUtf8Bytes": 3448,
+              "innerUtf8Bytes": 3448,
+              "outerUtf8Bytes": 3467,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.unicode": {
+              "name": "outerHTML.unicode",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.grow-shrink": {
+              "name": "innerHTML.grow-shrink",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.grow-shrink": {
+              "name": "outerHTML.grow-shrink",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.1": {
+              "name": "create.1",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.8": {
+              "name": "create.8",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 8,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.32": {
+              "name": "create.32",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 32,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.128": {
+              "name": "create.128",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 128,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.256": {
+              "name": "create.256",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 256,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            }
+          }
+        },
+        "phases": {
+          "query.small.cold": {
+            "status": "passed",
+            "samples": [
+              0.05938099999991664
+            ],
+            "warmupSamples": [
+              0.05639500000006592,
+              0.053660000000036234
+            ],
+            "medianMs": 0.05938099999991664,
+            "minMs": 0.05938099999991664,
+            "p90Ms": 0.05938099999991664,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.small.hot": {
+            "status": "passed",
+            "samples": [
+              0.01862400000004527
+            ],
+            "warmupSamples": [
+              0.024346000000036838,
+              0.022671999999943182
+            ],
+            "medianMs": 0.01862400000004527,
+            "minMs": 0.01862400000004527,
+            "p90Ms": 0.01862400000004527,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.large.cold": {
+            "status": "passed",
+            "samples": [
+              0.08473900000001322
+            ],
+            "warmupSamples": [
+              0.1488289999999779,
+              0.09067999999990661
+            ],
+            "medianMs": 0.08473900000001322,
+            "minMs": 0.08473900000001322,
+            "p90Ms": 0.08473900000001322,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.large.hot": {
+            "status": "passed",
+            "samples": [
+              0.10834199999999328
+            ],
+            "warmupSamples": [
+              0.10079799999994066,
+              0.08076200000004974
+            ],
+            "medianMs": 0.10834199999999328,
+            "minMs": 0.10834199999999328,
+            "p90Ms": 0.10834199999999328,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "child.cold": {
+            "status": "passed",
+            "samples": [
+              0.05846900000005917
+            ],
+            "warmupSamples": [
+              0.06265599999983351,
+              0.07304599999997663
+            ],
+            "medianMs": 0.05846900000005917,
+            "minMs": 0.05846900000005917,
+            "p90Ms": 0.05846900000005917,
+            "madMs": 0,
+            "expectedPath": "raw FFI child_tokens/childNodesTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              }
+            ]
+          },
+          "preorder.cold": {
+            "status": "passed",
+            "samples": [
+              0.08257400000002235
+            ],
+            "warmupSamples": [
+              0.0920019999998658,
+              0.03635800000006384
+            ],
+            "medianMs": 0.08257400000002235,
+            "minMs": 0.08257400000002235,
+            "p90Ms": 0.08257400000002235,
+            "madMs": 0,
+            "expectedPath": "raw FFI preorder_snapshot/preorderTokenSnapshot -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              }
+            ]
+          },
+          "child.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.02485700000011093
+            ],
+            "warmupSamples": [
+              0.027381000000104905,
+              0.03809200000000601
+            ],
+            "medianMs": 0.02485700000011093,
+            "minMs": 0.02485700000011093,
+            "p90Ms": 0.02485700000011093,
+            "madMs": 0,
+            "expectedPath": "raw FFI child_tokens/childNodesTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              }
+            ]
+          },
+          "preorder.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.04196699999988596
+            ],
+            "warmupSamples": [
+              0.024456000000100175,
+              0.03252100000008795
+            ],
+            "medianMs": 0.04196699999988596,
+            "minMs": 0.04196699999988596,
+            "p90Ms": 0.04196699999988596,
+            "madMs": 0,
+            "expectedPath": "raw FFI preorder_snapshot/preorderTokenSnapshot -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              }
+            ]
+          },
+          "innerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.04013500000019121
+            ],
+            "warmupSamples": [
+              0.04810999999995147,
+              0.034824000000071464
+            ],
+            "medianMs": 0.04013500000019121,
+            "minMs": 0.04013500000019121,
+            "p90Ms": 0.04013500000019121,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "innerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.035816000000068016
+            ],
+            "warmupSamples": [
+              0.04410299999995004,
+              0.041848000000072716
+            ],
+            "medianMs": 0.035816000000068016,
+            "minMs": 0.035816000000068016,
+            "p90Ms": 0.035816000000068016,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.04140799999981937
+            ],
+            "warmupSamples": [
+              0.035928000000012617,
+              0.037479999999959546
+            ],
+            "medianMs": 0.04140799999981937,
+            "minMs": 0.04140799999981937,
+            "p90Ms": 0.04140799999981937,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.08650099999999838
+            ],
+            "warmupSamples": [
+              0.045515000000023065,
+              0.04088600000000042
+            ],
+            "medianMs": 0.08650099999999838,
+            "minMs": 0.08650099999999838,
+            "p90Ms": 0.08650099999999838,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "innerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.020768999999972948
+            ],
+            "warmupSamples": [
+              0.027861999999913678,
+              0.017233000000032916
+            ],
+            "medianMs": 0.020768999999972948,
+            "minMs": 0.020768999999972948,
+            "p90Ms": 0.020768999999972948,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.020478000000139218
+            ],
+            "warmupSamples": [
+              0.05469300000004296,
+              0.017021999999997206
+            ],
+            "medianMs": 0.020478000000139218,
+            "minMs": 0.020478000000139218,
+            "p90Ms": 0.020478000000139218,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "create.1": {
+            "status": "passed",
+            "samples": [
+              0.02144999999995889
+            ],
+            "warmupSamples": [
+              0.037579999999934444,
+              0.026579999999967185
+            ],
+            "medianMs": 0.02144999999995889,
+            "minMs": 0.02144999999995889,
+            "p90Ms": 0.02144999999995889,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.8": {
+            "status": "passed",
+            "samples": [
+              0.04461300000002666
+            ],
+            "warmupSamples": [
+              0.05014400000004571,
+              0.021981000000096174
+            ],
+            "medianMs": 0.04461300000002666,
+            "minMs": 0.04461300000002666,
+            "p90Ms": 0.04461300000002666,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.32": {
+            "status": "passed",
+            "samples": [
+              0.038431999999829713
+            ],
+            "warmupSamples": [
+              0.027751999999964028,
+              0.04207899999983056
+            ],
+            "medianMs": 0.038431999999829713,
+            "minMs": 0.038431999999829713,
+            "p90Ms": 0.038431999999829713,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.128": {
+            "status": "passed",
+            "samples": [
+              0.040075000000115324
+            ],
+            "warmupSamples": [
+              0.04724700000019766,
+              0.11395399999992151
+            ],
+            "medianMs": 0.040075000000115324,
+            "minMs": 0.040075000000115324,
+            "p90Ms": 0.040075000000115324,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.256": {
+            "status": "passed",
+            "samples": [
+              0.04733899999996538
+            ],
+            "warmupSamples": [
+              0.07689400000003843,
+              0.1175789999999779
+            ],
+            "medianMs": 0.04733899999996538,
+            "minMs": 0.04733899999996538,
+            "p90Ms": 0.04733899999996538,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          }
+        },
+        "checks": {
+          "query.small.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "query.small.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "query.large.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "6d9f36c514582486478d4b226785d1b0b7d3440fd70aab33c9f3a61bfe0ed715"
+          },
+          "query.large.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "6d9f36c514582486478d4b226785d1b0b7d3440fd70aab33c9f3a61bfe0ed715"
+          },
+          "child.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "6d9f36c514582486478d4b226785d1b0b7d3440fd70aab33c9f3a61bfe0ed715"
+          },
+          "preorder.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 205,
+                "semanticSha256": "aeb7cde1b209a97755de7a472451c9b21ee9be1eff97606bf2a65caa95c68eec",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 205,
+                "semanticSha256": "aeb7cde1b209a97755de7a472451c9b21ee9be1eff97606bf2a65caa95c68eec",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 205,
+                "semanticSha256": "aeb7cde1b209a97755de7a472451c9b21ee9be1eff97606bf2a65caa95c68eec",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "93e3e4d1dab04436a4c8595345c2975f7af34bc883979676ad078eb9bcdce0ee"
+          },
+          "child.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "preorder.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 5,
+                "semanticSha256": "993e4dc8767b826eab75ab19ca9ad31b92c0e0ebb8ad3bd21a1047e7bba5183e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 5,
+                "semanticSha256": "993e4dc8767b826eab75ab19ca9ad31b92c0e0ebb8ad3bd21a1047e7bba5183e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 5,
+                "semanticSha256": "993e4dc8767b826eab75ab19ca9ad31b92c0e0ebb8ad3bd21a1047e7bba5183e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "26179a7476d953abfa4e07e904f53e7f71e15a551095639c9715f1e83961ba75"
+          },
+          "innerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "ed8def04ad54ecf66908ecccce4821ed16eeefa68c744729d71fc802f3dcdbad",
+                "utf8Bytes": 3448,
+                "utf16Units": 3448
+              },
+              {
+                "iterations": 1,
+                "sha256": "ed8def04ad54ecf66908ecccce4821ed16eeefa68c744729d71fc802f3dcdbad",
+                "utf8Bytes": 3448,
+                "utf16Units": 3448
+              },
+              {
+                "iterations": 1,
+                "sha256": "ed8def04ad54ecf66908ecccce4821ed16eeefa68c744729d71fc802f3dcdbad",
+                "utf8Bytes": 3448,
+                "utf16Units": 3448
+              }
+            ],
+            "fingerprint": "c38878260a27607719934f23109c2c6f3846db40f382ed771dbb752452660159"
+          },
+          "innerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "c35e572ecd208339a9f369d73fb9ea23db477f1fbbc4fe1288c25cb565bc8b13",
+                "utf8Bytes": 3805,
+                "utf16Units": 3448
+              },
+              {
+                "iterations": 1,
+                "sha256": "c35e572ecd208339a9f369d73fb9ea23db477f1fbbc4fe1288c25cb565bc8b13",
+                "utf8Bytes": 3805,
+                "utf16Units": 3448
+              },
+              {
+                "iterations": 1,
+                "sha256": "c35e572ecd208339a9f369d73fb9ea23db477f1fbbc4fe1288c25cb565bc8b13",
+                "utf8Bytes": 3805,
+                "utf16Units": 3448
+              }
+            ],
+            "fingerprint": "81cf081afd52d5f500bcefa8e1771c45cf6bf4c9bb1900b0afe872b4b581c7dd"
+          },
+          "outerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "943fd36789de305ae76a2e450bbe2c83a4c293a57cfd63a0cc48b50fdc44da03",
+                "utf8Bytes": 3467,
+                "utf16Units": 3467
+              },
+              {
+                "iterations": 1,
+                "sha256": "943fd36789de305ae76a2e450bbe2c83a4c293a57cfd63a0cc48b50fdc44da03",
+                "utf8Bytes": 3467,
+                "utf16Units": 3467
+              },
+              {
+                "iterations": 1,
+                "sha256": "943fd36789de305ae76a2e450bbe2c83a4c293a57cfd63a0cc48b50fdc44da03",
+                "utf8Bytes": 3467,
+                "utf16Units": 3467
+              }
+            ],
+            "fingerprint": "5675d10f496211b593f92490f77082eb1060fcebb6e7d00d4e00b12e08f6a372"
+          },
+          "outerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "7111ad5f8b4dc17ba4d70728b9cad2496960cd5e6c97fe1f5385f400bce4afa9",
+                "utf8Bytes": 3824,
+                "utf16Units": 3467
+              },
+              {
+                "iterations": 1,
+                "sha256": "7111ad5f8b4dc17ba4d70728b9cad2496960cd5e6c97fe1f5385f400bce4afa9",
+                "utf8Bytes": 3824,
+                "utf16Units": 3467
+              },
+              {
+                "iterations": 1,
+                "sha256": "7111ad5f8b4dc17ba4d70728b9cad2496960cd5e6c97fe1f5385f400bce4afa9",
+                "utf8Bytes": 3824,
+                "utf16Units": 3467
+              }
+            ],
+            "fingerprint": "7c1062ed2bfe75864b30f6b8efce150f3976f7aeee065304bc6642c0a7b8897e"
+          },
+          "innerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "7319f55e24f9c9def7808d2ff97165c60b38daf2bf71e72a3784c1980397cd4c",
+                "utf8Bytes": 73,
+                "utf16Units": 66
+              },
+              {
+                "iterations": 1,
+                "sha256": "7319f55e24f9c9def7808d2ff97165c60b38daf2bf71e72a3784c1980397cd4c",
+                "utf8Bytes": 73,
+                "utf16Units": 66
+              },
+              {
+                "iterations": 1,
+                "sha256": "7319f55e24f9c9def7808d2ff97165c60b38daf2bf71e72a3784c1980397cd4c",
+                "utf8Bytes": 73,
+                "utf16Units": 66
+              }
+            ],
+            "fingerprint": "4c5d5657bdeb282ac6f553f8a44d7554783a9d3fca9a3c0d89cbe069e5f54d22"
+          },
+          "outerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "0a3381f47bc51747a6bda456c958b3af0ef4745b57c6532ddcf8d8bac762889d",
+                "utf8Bytes": 92,
+                "utf16Units": 85
+              },
+              {
+                "iterations": 1,
+                "sha256": "0a3381f47bc51747a6bda456c958b3af0ef4745b57c6532ddcf8d8bac762889d",
+                "utf8Bytes": 92,
+                "utf16Units": 85
+              },
+              {
+                "iterations": 1,
+                "sha256": "0a3381f47bc51747a6bda456c958b3af0ef4745b57c6532ddcf8d8bac762889d",
+                "utf8Bytes": 92,
+                "utf16Units": 85
+              }
+            ],
+            "fingerprint": "7a24de49957391b854230f439690a1842eedf3ac73ccf884ec5068eb61028dc9"
+          },
+          "create.1": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "create.8": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "create.32": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1f4e45fee928076dcc8feb55d6e3e82a4ab5887c99645ff5fae3d0eeeb790bf5"
+          },
+          "create.128": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "7c15eea1b4ad186ae74147c305751bad346ccaa8226db4f13f1c05d96e00d676"
+          },
+          "create.256": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "204df7f0df86b4c7d540e9a3d2682fa66f09c518a2db2d514fcc242fcd63980a"
+          }
+        },
+        "valid": true,
+        "memory": {
+          "rss": 66412544,
+          "heapTotal": 5104640,
+          "heapUsed": 4863106,
+          "external": 1916946,
+          "arrayBuffers": 1228
+        }
+      },
+      {
+        "size": 2,
+        "workload": {
+          "runs": 1,
+          "iterations": 1,
+          "cases": {
+            "query.small.cold": {
+              "name": "query.small.cold",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.small.hot": {
+              "name": "query.small.hot",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.cold": {
+              "name": "query.large.cold",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.hot": {
+              "name": "query.large.hot",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.cold": {
+              "name": "child.cold",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.cold": {
+              "name": "preorder.cold",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.grow-shrink": {
+              "name": "child.grow-shrink",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.grow-shrink": {
+              "name": "preorder.grow-shrink",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.ascii": {
+              "name": "innerHTML.ascii",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "36a067408215beb1e045fdcf4464d05617119dbcfaaca51b443e8166945a6018",
+              "inputUtf8Bytes": 71508,
+              "innerUtf8Bytes": 71508,
+              "outerUtf8Bytes": 71527,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.unicode": {
+              "name": "innerHTML.unicode",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.ascii": {
+              "name": "outerHTML.ascii",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "36a067408215beb1e045fdcf4464d05617119dbcfaaca51b443e8166945a6018",
+              "inputUtf8Bytes": 71508,
+              "innerUtf8Bytes": 71508,
+              "outerUtf8Bytes": 71527,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.unicode": {
+              "name": "outerHTML.unicode",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.grow-shrink": {
+              "name": "innerHTML.grow-shrink",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.grow-shrink": {
+              "name": "outerHTML.grow-shrink",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.1": {
+              "name": "create.1",
+              "size": 2,
+              "iterations": 1,
+              "count": 1,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.8": {
+              "name": "create.8",
+              "size": 2,
+              "iterations": 1,
+              "count": 8,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.32": {
+              "name": "create.32",
+              "size": 2,
+              "iterations": 1,
+              "count": 32,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.128": {
+              "name": "create.128",
+              "size": 2,
+              "iterations": 1,
+              "count": 128,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.256": {
+              "name": "create.256",
+              "size": 2,
+              "iterations": 1,
+              "count": 256,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            }
+          }
+        },
+        "phases": {
+          "query.small.cold": {
+            "status": "passed",
+            "samples": [
+              0.07105200000000877
+            ],
+            "warmupSamples": [
+              0.054262000000107946,
+              0.05919099999982791
+            ],
+            "medianMs": 0.07105200000000877,
+            "minMs": 0.07105200000000877,
+            "p90Ms": 0.07105200000000877,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.small.hot": {
+            "status": "passed",
+            "samples": [
+              0.045755000000099244
+            ],
+            "warmupSamples": [
+              0.059070999999903506,
+              0.05477300000006835
+            ],
+            "medianMs": 0.045755000000099244,
+            "minMs": 0.045755000000099244,
+            "p90Ms": 0.045755000000099244,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.large.cold": {
+            "status": "passed",
+            "samples": [
+              0.4453439999999773
+            ],
+            "warmupSamples": [
+              0.46164299999986724,
+              0.4661020000000917
+            ],
+            "medianMs": 0.4453439999999773,
+            "minMs": 0.4453439999999773,
+            "p90Ms": 0.4453439999999773,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "query.large.hot": {
+            "status": "passed",
+            "samples": [
+              0.5118679999998221
+            ],
+            "warmupSamples": [
+              0.4051279999998769,
+              0.4481079999998201
+            ],
+            "medianMs": 0.5118679999998221,
+            "minMs": 0.5118679999998221,
+            "p90Ms": 0.5118679999998221,
+            "madMs": 0,
+            "expectedPath": "raw FFI query_snapshot/querySelectorAllTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_query_snapshot": 1
+              }
+            ]
+          },
+          "child.cold": {
+            "status": "passed",
+            "samples": [
+              0.17274300000008225
+            ],
+            "warmupSamples": [
+              0.1024609999999484,
+              0.13668600000005426
+            ],
+            "medianMs": 0.17274300000008225,
+            "minMs": 0.17274300000008225,
+            "p90Ms": 0.17274300000008225,
+            "madMs": 0,
+            "expectedPath": "raw FFI child_tokens/childNodesTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              }
+            ]
+          },
+          "preorder.cold": {
+            "status": "passed",
+            "samples": [
+              0.6755049999999301
+            ],
+            "warmupSamples": [
+              0.41344500000013795,
+              0.4972099999999955
+            ],
+            "medianMs": 0.6755049999999301,
+            "minMs": 0.6755049999999301,
+            "p90Ms": 0.6755049999999301,
+            "madMs": 0,
+            "expectedPath": "raw FFI preorder_snapshot/preorderTokenSnapshot -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              }
+            ]
+          },
+          "child.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.04175699999996141
+            ],
+            "warmupSamples": [
+              0.03300000000012915,
+              0.04250999999999294
+            ],
+            "medianMs": 0.04175699999996141,
+            "minMs": 0.04175699999996141,
+            "p90Ms": 0.04175699999996141,
+            "madMs": 0,
+            "expectedPath": "raw FFI child_tokens/childNodesTokens -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              },
+              {
+                "raw.mad_dom_ffi_child_tokens": 1
+              }
+            ]
+          },
+          "preorder.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.19329199999992852
+            ],
+            "warmupSamples": [
+              0.13527399999998124,
+              0.13959199999999328
+            ],
+            "medianMs": 0.19329199999992852,
+            "minMs": 0.19329199999992852,
+            "p90Ms": 0.19329199999992852,
+            "madMs": 0,
+            "expectedPath": "raw FFI preorder_snapshot/preorderTokenSnapshot -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              },
+              {
+                "raw.mad_dom_ffi_preorder_snapshot": 1
+              }
+            ]
+          },
+          "innerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.4442710000000716
+            ],
+            "warmupSamples": [
+              0.42312200000014855,
+              0.43056499999988773
+            ],
+            "medianMs": 0.4442710000000716,
+            "minMs": 0.4442710000000716,
+            "p90Ms": 0.4442710000000716,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "innerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.3528089999999793
+            ],
+            "warmupSamples": [
+              0.3541219999999612,
+              0.37482199999999466
+            ],
+            "medianMs": 0.3528089999999793,
+            "minMs": 0.3528089999999793,
+            "p90Ms": 0.3528089999999793,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.3548350000000937
+            ],
+            "warmupSamples": [
+              0.4289920000001075,
+              0.6150199999999586
+            ],
+            "medianMs": 0.3548350000000937,
+            "minMs": 0.3548350000000937,
+            "p90Ms": 0.3548350000000937,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.4346219999997629
+            ],
+            "warmupSamples": [
+              0.4654809999997269,
+              0.45222599999988233
+            ],
+            "medianMs": 0.4346219999997629,
+            "minMs": 0.4346219999997629,
+            "p90Ms": 0.4346219999997629,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "innerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.029816000000209897
+            ],
+            "warmupSamples": [
+              0.03006599999980608,
+              0.051406999999926484
+            ],
+            "medianMs": 0.029816000000209897,
+            "minMs": 0.029816000000209897,
+            "p90Ms": 0.029816000000209897,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "outerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.038352000000031694
+            ],
+            "warmupSamples": [
+              0.04552499999999782,
+              0.037559999999757565
+            ],
+            "medianMs": 0.038352000000031694,
+            "minMs": 0.038352000000031694,
+            "p90Ms": 0.038352000000031694,
+            "madMs": 0,
+            "expectedPath": "raw FFI serialize/NodeHandle HTML string -> preallocated output on FFI; no FFI string decode",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              },
+              {
+                "raw.mad_dom_ffi_serialize": 1
+              }
+            ]
+          },
+          "create.1": {
+            "status": "passed",
+            "samples": [
+              0.027602000000115368
+            ],
+            "warmupSamples": [
+              0.03615700000000288,
+              0.017713000000185275
+            ],
+            "medianMs": 0.027602000000115368,
+            "minMs": 0.027602000000115368,
+            "p90Ms": 0.027602000000115368,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.8": {
+            "status": "passed",
+            "samples": [
+              0.037070000000312575
+            ],
+            "warmupSamples": [
+              0.021780999999919004,
+              0.03687900000022637
+            ],
+            "medianMs": 0.037070000000312575,
+            "minMs": 0.037070000000312575,
+            "p90Ms": 0.037070000000312575,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.32": {
+            "status": "passed",
+            "samples": [
+              0.06317799999987983
+            ],
+            "warmupSamples": [
+              0.03209100000003673,
+              0.0348149999999805
+            ],
+            "medianMs": 0.06317799999987983,
+            "minMs": 0.06317799999987983,
+            "p90Ms": 0.06317799999987983,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.128": {
+            "status": "passed",
+            "samples": [
+              0.06010299999979907
+            ],
+            "warmupSamples": [
+              0.048792000000048574,
+              0.05859000000009473
+            ],
+            "medianMs": 0.06010299999979907,
+            "minMs": 0.06010299999979907,
+            "p90Ms": 0.06010299999979907,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          },
+          "create.256": {
+            "status": "passed",
+            "samples": [
+              0.20132699999976467
+            ],
+            "warmupSamples": [
+              0.07742599999983213,
+              0.11178999999992811
+            ],
+            "medianMs": 0.20132699999976467,
+            "minMs": 0.20132699999976467,
+            "p90Ms": 0.20132699999976467,
+            "madMs": 0,
+            "expectedPath": "raw FFI create_elements exact caller buffer",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              },
+              {
+                "raw.mad_dom_ffi_create_elements": 1
+              }
+            ]
+          }
+        },
+        "checks": {
+          "query.small.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "74782d5c94fb13f43ec39c06d2041177e7fc846612da7d4794493c253846b480"
+          },
+          "query.small.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "74782d5c94fb13f43ec39c06d2041177e7fc846612da7d4794493c253846b480"
+          },
+          "query.large.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "8451570e2988915f77f3fb7d0cb69908657c0c9bd0862cf3db605d3625c6adad"
+          },
+          "query.large.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "8451570e2988915f77f3fb7d0cb69908657c0c9bd0862cf3db605d3625c6adad"
+          },
+          "child.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "8451570e2988915f77f3fb7d0cb69908657c0c9bd0862cf3db605d3625c6adad"
+          },
+          "preorder.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 4097,
+                "semanticSha256": "89c50501fd5677ca0c42ccca1d58b3b2a6e19cf9d14d5c94bf6efd4994b1398c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 4097,
+                "semanticSha256": "89c50501fd5677ca0c42ccca1d58b3b2a6e19cf9d14d5c94bf6efd4994b1398c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 4097,
+                "semanticSha256": "89c50501fd5677ca0c42ccca1d58b3b2a6e19cf9d14d5c94bf6efd4994b1398c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "4e7c52225219edc5acc9cbe3e9c135249b76f6f3f1a8a008ee6bb6748a72d223"
+          },
+          "child.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "74782d5c94fb13f43ec39c06d2041177e7fc846612da7d4794493c253846b480"
+          },
+          "preorder.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 65,
+                "semanticSha256": "57c6dda1ad971882c698726b6225fc99f7c379fc1efbeec43582def3d9c64c48",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 65,
+                "semanticSha256": "57c6dda1ad971882c698726b6225fc99f7c379fc1efbeec43582def3d9c64c48",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 65,
+                "semanticSha256": "57c6dda1ad971882c698726b6225fc99f7c379fc1efbeec43582def3d9c64c48",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "7ac9ca0c3f7066c045773755f0d2e89fbe714600fbce432e8d50af4fb7d42e40"
+          },
+          "innerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "40f069d7fe92713804f3e32b5c4e2d15bdb811a7570f8d20dcbc7115b6e3131d",
+                "utf8Bytes": 71508,
+                "utf16Units": 71508
+              },
+              {
+                "iterations": 1,
+                "sha256": "40f069d7fe92713804f3e32b5c4e2d15bdb811a7570f8d20dcbc7115b6e3131d",
+                "utf8Bytes": 71508,
+                "utf16Units": 71508
+              },
+              {
+                "iterations": 1,
+                "sha256": "40f069d7fe92713804f3e32b5c4e2d15bdb811a7570f8d20dcbc7115b6e3131d",
+                "utf8Bytes": 71508,
+                "utf16Units": 71508
+              }
+            ],
+            "fingerprint": "992deca173dc2fca2e64dc5f0dc804deed92b5aa4a5c0a2571fde4845a479da8"
+          },
+          "innerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "f0f9e7d8152b3d8644271fb3f2168cf347661e2d3bad919b9dc356ecacebb249",
+                "utf8Bytes": 78676,
+                "utf16Units": 71508
+              },
+              {
+                "iterations": 1,
+                "sha256": "f0f9e7d8152b3d8644271fb3f2168cf347661e2d3bad919b9dc356ecacebb249",
+                "utf8Bytes": 78676,
+                "utf16Units": 71508
+              },
+              {
+                "iterations": 1,
+                "sha256": "f0f9e7d8152b3d8644271fb3f2168cf347661e2d3bad919b9dc356ecacebb249",
+                "utf8Bytes": 78676,
+                "utf16Units": 71508
+              }
+            ],
+            "fingerprint": "03f2f782f0b54065a1b4c488c82a4ca9e9cdf76d38fac42fc9f3e87d91703ebf"
+          },
+          "outerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "580ed1cdae8801909ef437401cde10f82f08a92fd79e0d7660c73427caf8395d",
+                "utf8Bytes": 71527,
+                "utf16Units": 71527
+              },
+              {
+                "iterations": 1,
+                "sha256": "580ed1cdae8801909ef437401cde10f82f08a92fd79e0d7660c73427caf8395d",
+                "utf8Bytes": 71527,
+                "utf16Units": 71527
+              },
+              {
+                "iterations": 1,
+                "sha256": "580ed1cdae8801909ef437401cde10f82f08a92fd79e0d7660c73427caf8395d",
+                "utf8Bytes": 71527,
+                "utf16Units": 71527
+              }
+            ],
+            "fingerprint": "3223c06881fee39555ebd7144ee27278e7de934b23c45f3955970a343bcc030b"
+          },
+          "outerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "0b757e444e8c61cbba2f325fda5e8f575f0884caf5c3777be839e613f3345a81",
+                "utf8Bytes": 78695,
+                "utf16Units": 71527
+              },
+              {
+                "iterations": 1,
+                "sha256": "0b757e444e8c61cbba2f325fda5e8f575f0884caf5c3777be839e613f3345a81",
+                "utf8Bytes": 78695,
+                "utf16Units": 71527
+              },
+              {
+                "iterations": 1,
+                "sha256": "0b757e444e8c61cbba2f325fda5e8f575f0884caf5c3777be839e613f3345a81",
+                "utf8Bytes": 78695,
+                "utf16Units": 71527
+              }
+            ],
+            "fingerprint": "126f1b90b246acfb1b414e27fd906a226cf6a1fa53546a4466081a78c021fe6d"
+          },
+          "innerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "7e6b101a7a67f9180a9f511bf8b58dd659322a710a40f02784b13dc9cb764320",
+                "utf8Bytes": 1180,
+                "utf16Units": 1068
+              },
+              {
+                "iterations": 1,
+                "sha256": "7e6b101a7a67f9180a9f511bf8b58dd659322a710a40f02784b13dc9cb764320",
+                "utf8Bytes": 1180,
+                "utf16Units": 1068
+              },
+              {
+                "iterations": 1,
+                "sha256": "7e6b101a7a67f9180a9f511bf8b58dd659322a710a40f02784b13dc9cb764320",
+                "utf8Bytes": 1180,
+                "utf16Units": 1068
+              }
+            ],
+            "fingerprint": "7785dd06f071f65b275919e2725dc43ee49d79a1687c9eb1123baa300489661c"
+          },
+          "outerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "7353a77b2e6b4b342a22f2c1a1c72880da2770811cdcffa67f677f43ca2eb794",
+                "utf8Bytes": 1199,
+                "utf16Units": 1087
+              },
+              {
+                "iterations": 1,
+                "sha256": "7353a77b2e6b4b342a22f2c1a1c72880da2770811cdcffa67f677f43ca2eb794",
+                "utf8Bytes": 1199,
+                "utf16Units": 1087
+              },
+              {
+                "iterations": 1,
+                "sha256": "7353a77b2e6b4b342a22f2c1a1c72880da2770811cdcffa67f677f43ca2eb794",
+                "utf8Bytes": 1199,
+                "utf16Units": 1087
+              }
+            ],
+            "fingerprint": "a24ce027d08cc5af1920270cb4a56964b4573aeb6ca2ef32c6486ac089efd15e"
+          },
+          "create.1": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "create.8": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "create.32": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1f4e45fee928076dcc8feb55d6e3e82a4ab5887c99645ff5fae3d0eeeb790bf5"
+          },
+          "create.128": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "7c15eea1b4ad186ae74147c305751bad346ccaa8226db4f13f1c05d96e00d676"
+          },
+          "create.256": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "204df7f0df86b4c7d540e9a3d2682fa66f09c518a2db2d514fcc242fcd63980a"
+          }
+        },
+        "valid": true,
+        "memory": {
+          "rss": 69242880,
+          "heapTotal": 5407744,
+          "heapUsed": 4976095,
+          "external": 2008655,
+          "arrayBuffers": 1228
+        }
+      }
+    ],
+    "valid": true
+  },
+  "metadata": {
+    "runtime": {
+      "bunVersion": "1.4.0",
+      "bunRevision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+      "platform": {
+        "platform": "linux",
+        "arch": "x64",
+        "libc": "gnu"
+      },
+      "expectedAbis": {
+        "nodeApi": 1,
+        "ffi": 1
+      },
+      "nodeApi": {
+        "status": "available",
+        "abiVersion": 1,
+        "path": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node"
+      },
+      "ffi": {
+        "status": "available",
+        "path": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+        "abiVersion": 1,
+        "advertisedCapabilities": 31,
+        "capabilities": 31,
+        "expectedAbiVersion": 1,
+        "expectedCapabilities": 31,
+        "symbols": [
+          "mad_dom_ffi_query_snapshot",
+          "mad_dom_ffi_preorder_snapshot",
+          "mad_dom_ffi_child_tokens",
+          "mad_dom_ffi_serialize",
+          "mad_dom_ffi_create_elements",
+          "mad_dom_ffi_read_batch"
+        ],
+        "missing": []
+      }
+    },
+    "executable": {
+      "path": "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+      "sha256": "33d56b070be6a9e3da0ab013038b43d1645d0534ca811ecdba4472599117eb4b",
+      "bytes": 80761952,
+      "dev": 64769,
+      "inode": 1087114
+    },
+    "source": {
+      "root": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b",
+      "sourceSha": "efaa64b3b9d90cf1988d8092d7de08e97e929630",
+      "productionSha256": "119652fe7235e5116a21adbb547e288ba6e31768e34c7ce59cb306936ad65fda",
+      "domWorkloadSha256": "659d912c62373970e22409ac20dd8d9d390956dd5718c875fa1d1a34a13ff1fc",
+      "lockSha256": "ca3827dae797c2697e507de835366ca953e81ce31234e8de763f6b0bfdc6204b"
+    },
+    "artifact": {
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+      "sha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96",
+      "bytes": 3866672,
+      "dev": 64784,
+      "inode": 2104807
+    },
+    "overrides": {
+      "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+      "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b/build/mad-dom.node",
+      "MAD_DOM_FFI_DISABLED": "0"
+    },
+    "libc": "2.39",
+    "rustToolchain": "[toolchain]\nchannel = \"1.93.1\"\nprofile = \"minimal\"\ncomponents = [\"clippy\", \"rustfmt\"]",
+    "handshake": "passed real document query + full UTF-8 serialization; same Node-API/FFI image"
+  }
+}

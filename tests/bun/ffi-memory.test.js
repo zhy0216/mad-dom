@@ -151,6 +151,76 @@ describe("Bun FFI memory and GC protocol", () => {
 // Loader-level protocol checks run in-process with a single Window so the
 // global counters stay readable and deterministic (this file owns its process).
 describe("FFI loader output memory protocol", () => {
+  test("bounded hints and length leases isolate real reentrant calls and recover after faults", () => {
+    if (!hasArtifact) return;
+    const result = Bun.spawnSync([process.execPath, resolve(import.meta.dir, "fixtures/ffi-adapter-reuse.mjs")], {
+      env: { ...process.env, MAD_DOM_FFI_DISABLED: "0", MAD_DOM_NATIVE_PATH: ARTIFACT, MAD_DOM_FFI_PATH: ARTIFACT },
+      stdout: "pipe", stderr: "pipe",
+    });
+    expect(result.exitCode, result.stderr.toString()).toBe(0);
+    expect(JSON.parse(result.stdout.toString())).toEqual({ bunVersion: Bun.version, passed: true });
+  });
+
+  test("all owned adapter outputs survive alternating multi-document results and destroy", async () => {
+    if (!hasArtifact) return;
+    const retained = [];
+    const copies = [];
+    for (let i = 0; i < 24; i++) {
+      const doc = createDocument();
+      try {
+        const { adapter: ffi, context } = ffiForDocument(doc);
+        doc.parseHtml(`<section>${`<span id="m${i}">你好 🦀</span>`.repeat(i % 2 ? 1200 : 1)}</section>`);
+        const query = ffi.querySnapshot(context, context[2], "span");
+        const section = ffi.querySnapshot(context, context[2], "section")[1];
+        const outputs = [query, ffi.serialize(context, section), ffi.childSnapshot(context, section),
+          ffi.preorderSnapshot(context, section), ffi.createElements(context, "span", i % 2 ? 4096 : 0),
+          ffi.readBatch(context, new Uint32Array([query[1]]), 1)];
+        for (const output of outputs) {
+          expect(output.buffer.byteLength).toBe(output.byteLength);
+          expect(output.byteOffset).toBe(0);
+          retained.push(output);
+          copies.push(Array.from(output));
+        }
+      } finally { doc.destroy(); }
+    }
+    const transferred = retained.map(value => structuredClone(value, { transfer: [value.buffer] }));
+    await collectGarbage();
+    for (let i = 0; i < transferred.length; i++) {
+      expect(retained[i].byteLength).toBe(0);
+      expect(Array.from(transferred[i])).toEqual(copies[i]);
+    }
+  });
+
+  test("live Worker adapters isolate owners and transferred results survive churn and destroy", async () => {
+    if (!hasArtifact) return;
+    const doc = createDocument();
+    const { adapter: ffi, context } = ffiForDocument(doc);
+    const worker = new Worker(new URL("./fixtures/ffi-retained-worker.mjs", import.meta.url), { type: "module" });
+    const exchange = (data, transfer = []) => new Promise((resolve, reject) => {
+      worker.onmessage = ({ data }) => data.error ? reject(new Error(data.error)) : resolve(data);
+      worker.onerror = event => reject(new Error(String(event.message)));
+      worker.postMessage(data, transfer);
+    });
+    try {
+      const result = await exchange({ action: "create", context: Array.from(context) });
+      expect(result.bunVersion).toBe(Bun.version);
+      expect(() => ffi.serialize(result.context, result.context[2])).toThrow(/DOCUMENT_INVALID/);
+      for (let i = 0; i < 12; i++) {
+        doc.parseHtml(`<div>${"m".repeat(i % 2 ? 160000 : 1)}</div>`);
+        const token = ffi.querySnapshot(context, context[2], "div")[1];
+        ffi.serialize(context, token);
+      }
+      doc.destroy();
+      await collectGarbage();
+      expect([Array.from(result.query), Array.from(result.bytes)]).toEqual(result.saved);
+      const returned = await exchange({ action: "destroy", query: result.query, bytes: result.bytes, saved: result.saved },
+        [result.query.buffer, result.bytes.buffer]);
+      expect(result.query.byteLength).toBe(0);
+      expect(result.bytes.byteLength).toBe(0);
+      expect([Array.from(returned.query), Array.from(returned.bytes)]).toEqual(result.saved);
+    } finally { await worker.terminate(); doc.destroy(); }
+  });
+
   test("corrupt output lengths cannot cause duplicate mutations or unbounded allocation", () => {
     if (!hasArtifact) return;
     const result = Bun.spawnSync([process.execPath, resolve(import.meta.dir, "fixtures/ffi-output-faults.mjs")], {

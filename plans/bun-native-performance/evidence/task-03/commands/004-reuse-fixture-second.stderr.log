@@ -1,0 +1,21 @@
+46 |   bh.setInnerHTML("<span>B</span>");
+47 |   const expectedA = ah.innerHTML();
+48 |   const expectedB = bh.innerHTML();
+49 |   const first = observe(() => serialize());
+50 |   assert.equal(decode(first.result), expectedA);
+51 |   assert.equal(first.calls.length, 2);
+              ^
+AssertionError: Expected values to be strictly equal:
+
+0 !== 2
+
+ generatedMessage: true,
+     actual: 0,
+   expected: 2,
+   operator: "strictEqual",
+       diff: "simple",
+       code: "ERR_ASSERTION"
+
+      at /home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/tests/bun/fixtures/ffi-adapter-reuse.mjs:51:10
+
+Bun v1.4.0 (Linux x64)

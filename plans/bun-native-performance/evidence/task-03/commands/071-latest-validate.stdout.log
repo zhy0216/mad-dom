@@ -1,0 +1,884 @@
+
+running 100 tests
+test affinity::tests::forged_token_is_always_rejected ... ok
+test affinity::tests::guard_is_lock_free_and_send_sync ... ok
+test affinity::tests::forged_tokens_are_not_real_tokens ... ok
+test affinity::tests::same_affinity_checks_pass_stably ... ok
+test affinity::tests::errors_carry_stable_codes_and_messages ... ok
+test affinity::tests::token_lifecycle_tracks_its_clones ... ok
+test affinity::tests::tokens_are_distinct_and_independent ... ok
+test affinity::tests::unobservable_identity_rejects_conservatively ... ok
+test affinity::tests::concurrent_wrong_thread_checks_always_fail ... ok
+test affinity::tests::concurrent_documents_do_not_interfere ... ok
+test error::tests::arena_failures_are_internal_errors ... ok
+test error::tests::binding_core_delegates_to_the_core_spec ... ok
+test affinity::tests::token_is_bound_to_its_creating_thread ... ok
+test error::tests::classification_is_pure_and_deterministic ... ok
+test error::tests::destroyed_document_is_a_lifecycle_error ... ok
+test error::tests::codes_are_unique_and_stable ... ok
+test error::tests::dom_exception_names_match_their_core_branches ... ok
+test error::tests::invalid_handle_is_an_argument_error ... ok
+test error::tests::every_branch_has_a_unique_classification ... ok
+test error::tests::message_prefix_is_stable ... ok
+test error::tests::messages_do_not_depend_on_rust_debug_formatting ... ok
+test error::tests::syntax_errors_map_to_syntax_error ... ok
+test extensions::attribute_nodes_api::tests::contract_has_no_foreign_surface ... ok
+test extensions::attribute_nodes_api::tests::frozen_contract_surface_is_the_attribute_node_api ... ok
+test extensions::attributes_api::tests::contract_entries_are_exactly_the_four_attribute_operations ... ok
+test extensions::attributes_api::tests::contract_has_no_text_query_collection_or_mutation_surface ... ok
+test extensions::attributes_api::tests::frozen_contract_surface_is_the_attribute_api ... ok
+test extensions::character_data_api::tests::contract_has_no_live_collection_iterator_or_event_surface ... ok
+test extensions::character_data_api::tests::doctype_reads_are_isolated_from_the_attribute_surface ... ok
+test extensions::character_data_api::tests::frozen_contract_surfaces_are_the_extended_node_api ... ok
+test extensions::collection_api::tests::collection_contract_does_not_own_mutation_symbols ... ok
+test extensions::collection_api::tests::collection_contract_has_no_index_or_html_collection_surface ... ok
+test extensions::collection_api::tests::frozen_collection_read_is_the_audited_handle_surface ... ok
+test extensions::collection_api::tests::live_collection_reads_only_child_nodes ... ok
+test extensions::custom_elements_api::tests::contract_has_no_foreign_surface ... ok
+test extensions::custom_elements_api::tests::frozen_contract_surfaces_are_the_custom_elements_api ... ok
+test extensions::custom_elements_api::tests::reaction_kind_strings_are_the_lifecycle_names ... ok
+test extensions::events_api::tests::contract_has_no_event_subclass_or_mutation_observer_surface ... ok
+test extensions::events_api::tests::frozen_contract_surfaces_are_the_event_api ... ok
+test extensions::form_api::tests::form_surface_has_no_foreign_symbols ... ok
+test extensions::form_api::tests::frozen_form_contract_surface ... ok
+test extensions::html_api::tests::contract_has_no_foreign_surface ... ok
+test extensions::html_api::tests::frozen_document_structure_surface ... ok
+test extensions::html_element_api::tests::contract_has_no_foreign_surface ... ok
+test extensions::html_element_api::tests::frozen_contract_surface_is_the_html_element_api ... ok
+test extensions::live_collections::tests::frozen_live_collection_surface_is_exactly_the_four_entries ... ok
+test extensions::live_collections::tests::live_collection_surface_does_not_own_foreign_seams ... ok
+test extensions::mutation_insert_api::tests::frozen_contract_surface_is_the_audited_handle_surface ... ok
+test extensions::mutation_insert_api::tests::insert_contract_is_append_and_insert_only ... ok
+test extensions::mutation_observer_api::tests::contract_has_no_foreign_surface ... ok
+test extensions::mutation_observer_api::tests::frozen_contract_surfaces_are_the_mutation_observer_api ... ok
+test extensions::mutation_remove_api::tests::frozen_contract_surface_is_the_audited_handle_surface ... ok
+test extensions::mutation_remove_api::tests::remove_contract_does_not_own_append_insert ... ok
+test extensions::node_api::tests::frozen_contract_surface_is_the_audited_handle_surface ... ok
+test extensions::node_api::tests::node_type_values_are_the_whatwg_numbers ... ok
+test extensions::query_api::tests::contract_has_no_live_collection_or_index_surface ... ok
+test extensions::query_api::tests::frozen_contract_surfaces_are_the_selector_query_api ... ok
+test extensions::query_api::tests::node_contract_owns_only_the_four_query_entries ... ok
+test extensions::range_api::tests::contract_has_no_traversal_mutation_or_event_surface ... ok
+test extensions::range_api::tests::frozen_contract_surfaces_are_the_range_selection_api ... ok
+test extensions::range_api::tests::range_ids_are_unique ... ok
+test extensions::shadow_dom_api::tests::contract_has_no_foreign_surface ... ok
+test extensions::shadow_dom_api::tests::frozen_contract_surface_is_the_shadow_dom_api ... ok
+test extensions::tests::every_boundary_starts_as_a_placeholder ... ok
+test extensions::template_api::tests::frozen_template_contract_surface ... ok
+test extensions::tests::every_registered_boundary_is_unique ... ok
+test extensions::tests::registry_lists_exactly_the_frozen_boundaries ... ok
+test extensions::tests::owners_and_gates_are_frozen ... ok
+test extensions::text_api::tests::contract_entries_are_exactly_the_getter_setter_pair ... ok
+test extensions::text_api::tests::contract_has_no_attribute_query_collection_or_mutation_surface ... ok
+test extensions::traversal_api::tests::contract_has_no_range_selection_or_foreign_seam_surface ... ok
+test extensions::text_api::tests::frozen_contract_surface_is_the_text_content_pair ... ok
+test extensions::traversal_api::tests::frozen_contract_surfaces_are_the_traversal_api ... ok
+test ffi::tests::batch_distinguishes_null_empty_and_unicode_and_is_atomic_on_error ... ok
+test ffi::tests::capacity_probe_is_exact_and_never_partially_writes_or_mints_tokens ... ok
+test ffi::tests::creation_batch_is_retryable_and_shared_with_node_api ... ok
+test ffi::tests::every_read_validates_owner_generation_token_and_destroy_before_pointers ... ok
+test ffi::tests::input_and_output_validation_empty_utf8_alignment_overlap_and_syntax ... ok
+test ffi::tests::versions_and_status_codes_are_frozen ... ok
+test ffi::tests::input_cannot_alias_output_or_written_even_during_capacity_probe ... ok
+test ffi::tests::panic_boundary_contains_unwind_and_poisoned_document_recovers ... ok
+test ffi::tests::real_query_traversal_and_serialization_share_node_api_tokens ... ok
+test ffi::tests::registration_count_tracks_lazy_owner_lifecycle ... ok
+test ffi::tests::registry_does_not_pin_documents_and_rejects_other_threads ... ok
+test ffi::tests::stale_arena_generation_after_adoption_cannot_alias_a_reused_slot ... ok
+test ffi::tests::wrapper_cache_counter_returns_to_baseline_after_destroy ... ok
+test handle::tests::destroy_clears_the_wrapper_cache_map ... ok
+test handle::tests::create_and_destroy_tracks_live_documents ... ok
+test handle::tests::create_element_ns_keeps_namespace_and_name ... ok
+test handle::tests::epoch_skips_destroy_sentinel_and_saturates_before_aba ... ok
+test handle::tests::destroy_releases_buffer_capacities_with_a_retained_handle ... ok
+test handle::tests::cross_document_handle_is_rejected ... ok
+test handle::tests::append_and_navigation_roundtrip ... ok
+test tests::sanity ... ok
+test handle::tests::create_element_returns_typed_node ... ok
+test handle::tests::destroyed_document_rejects_all_operations ... ok
+test handle::tests::dropping_last_handle_collects_document ... ok
+test handle::tests::every_document_mints_an_affinity_token_bound_to_its_thread ... ok
+test handle::tests::insert_remove_replace_roundtrip ... ok
+test handle::tests::node_handle_keeps_document_alive ... ok
+
+test result: ok. 100 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 284 tests
+test arena::tests::allocate_and_get ... ok
+test arena::tests::contains_tracks_liveness ... ok
+test arena::tests::dangling_handle_can_never_read_new_node ... ok
+test arena::tests::empty_slot_errors ... ok
+test arena::tests::generation_overflow_policy ... ok
+test arena::tests::generation_mismatch_errors ... ok
+test arena::tests::get_mut_mutates_value ... ok
+test arena::tests::len_and_capacity_observation ... ok
+test arena::tests::out_of_bounds_errors ... ok
+test arena::tests::remove_returns_structured_error_for_invalid_id ... ok
+test arena::tests::remove_returns_value_and_recycles_slot ... ok
+test arena::tests::repeated_reuse_bumps_generation ... ok
+test arena::tests::retired_slot_is_never_reused ... ok
+test dom::character_data::tests::utf16_substring_clamps_and_empty_out_of_range ... ok
+test dom::character_data::tests::utf16_insert_and_delete_match_dom_semantics ... ok
+test dom::character_data::tests::utf16_substring_handles_bmp_and_astral ... ok
+test arena::tests::property_fabricated_generation_defects_are_rejected ... ok
+test dom::cross_document::tests::adopt_detached_node_moves_ownership ... ok
+test dom::character_data::tests::utf16_len_counts_code_units ... ok
+test dom::cross_document::tests::adopt_frees_source_slot_for_safe_reuse ... ok
+test dom::cross_document::tests::adopt_rejects_document_nodes_and_leaves_source_untouched ... ok
+test dom::cross_document::tests::adopt_rejects_stale_handle ... ok
+test dom::cross_document::tests::adopt_rolls_back_without_mutation_on_foreign_handle ... ok
+test dom::cross_document::tests::adopt_detaches_from_source_parent_and_repairs_source_tree ... ok
+test dom::cross_document::tests::clone_node_rejects_document_nodes ... ok
+test dom::cross_document::tests::adopted_node_old_handle_is_rejected_by_target_document ... ok
+test dom::cross_document::tests::clone_node_rejects_foreign_handles ... ok
+test dom::cross_document::tests::adopt_moves_entire_subtree ... ok
+test dom::cross_document::tests::clone_text_and_comment_nodes ... ok
+test dom::cross_document::tests::cross_document_direct_mutation_returns_structured_error ... ok
+test dom::cross_document::tests::clone_survives_destruction_of_source_subtree ... ok
+test dom::cross_document::tests::deep_clone_of_fragment_copies_children ... ok
+test dom::cross_document::tests::deep_clone_does_not_share_mutable_tree_state ... ok
+test dom::cross_document::tests::import_node_rejects_document_nodes ... ok
+test dom::cross_document::tests::import_node_copies_data_into_target_document ... ok
+test dom::cross_document::tests::deep_clone_preserves_order_type_text_and_attributes ... ok
+test dom::cross_document::tests::deep_import_preserves_subtree_and_leaves_source_intact ... ok
+test dom::cross_document::tests::import_node_requires_handle_from_source_document ... ok
+test dom::cross_document::tests::import_node_rejects_stale_handles ... ok
+test dom::cross_document::tests::shallow_clone_copies_node_data_not_relations ... ok
+test dom::cross_document::tests::clone_node_rejects_stale_handles ... ok
+test dom::cross_document::tests::shallow_import_has_no_children ... ok
+test dom::custom_elements::tests::adopted_away_elements_are_forgotten ... ok
+test dom::cross_document::tests::imported_and_source_handles_share_slot_without_aliasing ... ok
+test dom::custom_elements::tests::append_to_connected_parent_enqueues_connected ... ok
+test dom::custom_elements::tests::append_to_detached_parent_enqueues_nothing ... ok
+test dom::custom_elements::tests::define_duplicate_name_replaces_the_observed_snapshot ... ok
+test dom::custom_elements::tests::foreign_and_stale_handles_fail_structured ... ok
+test dom::custom_elements::tests::mark_custom_elements_in_subtree_keeps_the_custom_class_on_clones ... ok
+test dom::custom_elements::tests::list_candidates_only_returns_custom_elements ... ok
+test dom::custom_elements::tests::define_replaces_connected_elements_and_leaves_old_plain ... ok
+test dom::custom_elements::tests::moving_a_connected_custom_element_fires_disconnected_then_connected ... ok
+test dom::custom_elements::tests::non_custom_elements_enqueue_nothing ... ok
+test dom::custom_elements::tests::observed_check_is_case_insensitive ... ok
+test dom::custom_elements::tests::nested_custom_elements_in_a_subtree_all_get_connected ... ok
+test dom::custom_elements::tests::reaction_queue_drains_in_order ... ok
+test dom::custom_elements::tests::removing_a_connected_custom_element_enqueues_disconnected ... ok
+test dom::custom_elements::tests::removing_a_detached_custom_element_enqueues_nothing ... ok
+test dom::custom_elements::tests::suppressed_reactions_are_dropped ... ok
+test dom::custom_elements::tests::upgrade_custom_elements_marks_and_queues_attrs_then_connected ... ok
+test dom::custom_elements::tests::set_remove_attribute_enqueue_observed_reactions ... ok
+test dom::custom_elements::tests::replace_with_connected_replacement_fires_disconnected_then_connected_then_disconnected ... ok
+test dom::document::tests::arena_errors_compose_through_core_error ... ok
+test dom::custom_elements::tests::replace_child_fires_connected_then_disconnected ... ok
+test dom::document::tests::create_document_fragment_has_fixed_name ... ok
+test dom::document::tests::create_element_ns_keeps_namespace_and_mixed_case_name ... ok
+test dom::document::tests::create_element_stores_name_and_attributes ... ok
+test dom::document::tests::create_comment_stores_data ... ok
+test dom::document::tests::create_elements_matches_individual_html_element_creation ... ok
+test dom::document::tests::create_elements_keeps_template_contents_independent_and_rejects_atomically ... ok
+test dom::document::tests::create_text_stores_data ... ok
+test dom::document::tests::cross_document_handle_never_misreads_same_slot ... ok
+test dom::document::tests::cross_document_handle_returns_wrong_document ... ok
+test dom::document::tests::element_attributes_mut_exposes_ordered_storage ... ok
+test dom::document::tests::element_attributes_mut_rejects_foreign_and_stale_handles ... ok
+test dom::document::tests::invalid_element_names_are_rejected ... ok
+test dom::document::tests::bounded_preorder_snapshot_is_complete_ordered_or_empty ... ok
+test dom::document::tests::preorder_chunk_reports_the_exact_next_depth_at_each_boundary ... ok
+test dom::document::tests::cross_document_handles_are_distinguishable ... ok
+test dom::document::tests::documents_have_distinct_ids ... ok
+test dom::document::tests::set_character_data_leaves_tree_relations_untouched ... ok
+test dom::document::tests::element_attributes_mut_rejects_non_elements ... ok
+test dom::document::tests::set_character_data_rejects_foreign_and_stale_handles ... ok
+test dom::document::tests::set_character_data_updates_text_and_comment_in_place ... ok
+test dom::document::tests::set_character_data_stores_nul_atomically ... ok
+test dom::document::tests::text_and_comment_data_is_stored_verbatim ... ok
+test dom::document::tests::set_character_data_rejects_non_character_data ... ok
+test dom::document::tests::wrong_document_handle_with_invalid_slot_still_reads_as_wrong_document ... ok
+test dom::document::tests::valid_element_names_are_accepted ... ok
+test dom::form::tests::custom_validity_roundtrip_and_clear ... ok
+test dom::form::tests::form_elements_lists_controls_in_document_order ... ok
+test dom::form::tests::checked_dirty_and_radio_group_exclusivity ... ok
+test dom::form::tests::form_reset_keeps_custom_validity ... ok
+test dom::form::tests::input_value_defaults_and_dirty ... ok
+test dom::form::tests::input_type_falls_back_to_text_and_lowercases ... ok
+test dom::form::tests::input_value_is_type_dependent ... ok
+test dom::form::tests::option_selected_setter_unselects_single_select_siblings ... ok
+test dom::form::tests::select_default_selection_and_value ... ok
+test dom::form::tests::textarea_value_and_reset ... ok
+test dom::form::tests::select_value_setter_materializes_selection ... ok
+test dom::form::tests::select_defaults_to_first_non_disabled ... ok
+test dom::html_element::tests::active_element_reads_clear_a_detached_focus ... ok
+test dom::form::tests::sanitize_number_and_text_strip_newlines ... ok
+test dom::html_element::tests::a_fragment_or_comment_is_never_connected ... ok
+test dom::html_element::tests::elements_under_the_document_root_are_connected ... ok
+test dom::html_element::tests::detached_elements_are_not_connected ... ok
+test dom::html_element::tests::foreign_and_stale_handles_fail_structured ... ok
+test dom::html_element::tests::inert_presence_is_attribute_driven ... ok
+test dom::html_element::tests::active_element_tracks_and_clears ... ok
+test dom::html_element::tests::is_inert_checks_the_ancestor_chain ... ok
+test dom::html_element::tests::node_type_helper_is_reachable ... ok
+test dom::mutation::tests::append_ancestor_into_descendant_rejected ... ok
+test dom::mutation::tests::append_builds_chain_with_full_linkage ... ok
+test dom::mutation::tests::append_document_fragment_splices_children_and_empties_fragment ... ok
+test dom::mutation::tests::append_existing_last_child_is_no_op ... ok
+test dom::mutation::tests::append_node_into_itself_rejected ... ok
+test dom::mutation::tests::a_sequence_of_removes_and_replaces_keeps_invariants ... ok
+test dom::mutation::tests::append_to_empty_parent_sets_first_and_last ... ok
+test dom::mutation::tests::append_moves_existing_child_to_end ... ok
+test dom::mutation::tests::a_sequence_of_reorders_keeps_invariants ... ok
+test dom::mutation::tests::append_to_parent_that_is_itself_a_child ... ok
+test dom::mutation::tests::detached_reference_node_rejected ... ok
+test dom::mutation::tests::fragment_as_parent_and_nested_fragment_insertion ... ok
+test dom::mutation::tests::fragment_insertion_into_own_descendant_rejected ... ok
+test dom::mutation::tests::fragment_insertion_where_fragment_child_is_parent_rejected ... ok
+test dom::mutation::tests::insert_before_already_in_place_is_no_op ... ok
+test dom::mutation::tests::document_node_cannot_be_parent_or_child ... ok
+test dom::mutation::tests::insert_before_at_first_position ... ok
+test dom::mutation::tests::insert_before_ancestor_into_descendant_rejected ... ok
+test dom::mutation::tests::insert_before_at_middle_position ... ok
+test dom::mutation::tests::insert_before_moves_existing_child_to_middle ... ok
+test dom::mutation::tests::insert_before_moves_existing_child_to_front ... ok
+test dom::mutation::tests::insert_before_at_last_position ... ok
+test dom::mutation::tests::insert_before_node_into_itself_rejected ... ok
+test dom::mutation::tests::insert_before_self_is_no_op ... ok
+test dom::mutation::tests::insert_document_fragment_before_reference ... ok
+test dom::mutation::tests::invalid_handle_returns_arena_error ... ok
+test dom::mutation::tests::moving_first_child_off_parent_updates_first_and_last ... ok
+test dom::mutation::tests::insert_document_fragment_in_middle ... ok
+test dom::mutation::tests::moving_last_child_off_parent_updates_first_and_last ... ok
+test dom::mutation::tests::moving_node_between_parents_repairs_both_lists ... ok
+test dom::mutation::tests::moving_only_child_leaves_old_parent_empty ... ok
+test dom::mutation::tests::moving_subtree_keeps_descendants_intact ... ok
+test dom::mutation::tests::remove_child_child_of_another_parent_rejected ... ok
+test dom::mutation::tests::reference_child_of_another_parent_rejected ... ok
+test dom::mutation::tests::remove_child_detached_node_rejected ... ok
+test dom::mutation::tests::remove_child_invalid_handle_rejected ... ok
+test dom::mutation::tests::remove_child_first_updates_first_child ... ok
+test dom::mutation::tests::remove_child_last_updates_last_child ... ok
+test dom::mutation::tests::remove_child_keeps_subtree_with_the_node ... ok
+test dom::mutation::tests::append_empty_fragment_is_no_op ... ok
+test dom::mutation::tests::remove_child_only_child_leaves_parent_empty ... ok
+test dom::mutation::tests::remove_child_middle_detaches_and_relinks_siblings ... ok
+test dom::mutation::tests::remove_does_not_release_the_arena_slot ... ok
+test dom::mutation::tests::removed_handle_stays_live_and_can_be_reinserted ... ok
+test dom::mutation::tests::remove_child_wrong_document_rejected ... ok
+test dom::mutation::tests::replace_child_adjacent_at_head ... ok
+test dom::mutation::tests::replace_child_adjacent_at_tail ... ok
+test dom::mutation::tests::replace_child_first_and_last_positions ... ok
+test dom::mutation::tests::replace_child_moves_node_from_other_parent ... ok
+test dom::mutation::tests::replace_child_only_child ... ok
+test dom::mutation::tests::replace_child_invalid_handle_rejected ... ok
+test dom::mutation::tests::replace_child_rejects_detached_child ... ok
+test dom::mutation::tests::replace_child_rejects_document_replacement ... ok
+test dom::mutation::tests::replace_child_rejects_child_of_another_parent ... ok
+test dom::mutation::tests::replace_child_rejects_ancestor_as_replacement ... ok
+test dom::mutation::tests::replace_child_rejects_fragment_with_ancestor_child ... ok
+test dom::mutation::tests::replace_child_rejects_parent_as_replacement ... ok
+test dom::mutation::tests::replace_child_self_is_no_op ... ok
+test dom::mutation::tests::replace_child_with_empty_fragment_removes_child ... ok
+test dom::mutation::tests::replace_child_with_detached_node ... ok
+test dom::mutation::tests::replace_child_with_next_sibling ... ok
+test dom::mutation::tests::replace_child_with_fragment ... ok
+test dom::mutation::tests::replace_child_with_descendant_of_child ... ok
+test dom::mutation::tests::replace_child_with_previous_sibling ... ok
+test dom::mutation::tests::text_and_comment_can_be_children ... ok
+test dom::mutation::tests::text_and_comment_nodes_cannot_be_parents ... ok
+test dom::mutation::tests::replace_child_wrong_document_rejected ... ok
+test dom::mutation::tests::wrong_document_child_rejected ... ok
+test dom::mutation::tests::replaced_child_handle_stays_live_and_can_be_reinserted ... ok
+test dom::mutation::tests::wrong_document_parent_rejected ... ok
+test dom::mutation_observer::tests::attribute_filter_selects_records ... ok
+test dom::mutation_observer::tests::observer_and_observation_keys_are_document_local ... ok
+test dom::mutation_observer::tests::re_observing_a_target_replaces_options_but_keeps_the_queue ... ok
+test dom::mutation::tests::wrong_document_reference_rejected ... ok
+test dom::mutation_observer::tests::subtree_observations_receive_records_of_descendant_mutations ... ok
+test dom::mutation_observer::tests::observe_queues_records_only_for_interested_listeners ... ok
+test dom::mutation_observer::tests::suppress_flag_skips_record_generation ... ok
+test dom::mutation_observer::tests::take_observer_records_after_disconnect_returns_empty ... ok
+test dom::mutation_observer::tests::pending_deliveries_are_marked_once_and_reset_on_take ... ok
+test dom::mutation_observer::tests::take_observer_records_resets_the_microtask_flag ... ok
+test dom::range::tests::boundary_compare_handles_following_via_siblings ... ok
+test dom::range::tests::boundary_compare_orders_same_node_and_ancestors ... ok
+test dom::range::tests::boundary_compare_element_contents_vs_child ... ok
+test dom::range::tests::delete_contents_same_text_node_truncates_without_collapse ... ok
+test dom::range::tests::clone_contents_copies_without_mutating ... ok
+test dom::range::tests::boundary_validate_rejects_doctype_and_oversized_offset ... ok
+test dom::range::tests::extract_contents_cross_node_moves_children_and_collapses ... ok
+test dom::range::tests::extract_contents_same_text_node_returns_clone_and_truncates ... ok
+test dom::range::tests::delete_contents_removes_and_collapses_cross_node ... ok
+test dom::range::tests::insert_node_rejects_invalid_start ... ok
+test dom::range::tests::insert_node_moves_collapsed_end ... ok
+test dom::range::tests::offsets_clamp_after_character_data_mutation ... ok
+test dom::range::tests::removed_container_stays_readable ... ok
+test dom::range::tests::node_length_matches_dom_units ... ok
+test dom::range::tests::range_to_string_matches_expected_text ... ok
+test dom::range::tests::range_to_string_over_text_and_mixed_trees ... ok
+test dom::range::tests::range_common_ancestor_finds_deepest_common ... ok
+test dom::range::tests::surround_contents_rejects_document_parent ... ok
+test dom::range::tests::selection_contains_node_matches_baseline ... ok
+test dom::range::tests::surround_contents_wraps_and_selects_new_parent ... ok
+test dom::shadow_root::tests::assigned_elements_filters_to_elements ... ok
+test dom::shadow_root::tests::a_closed_root_never_reads_through_the_public_shadow_root ... ok
+test dom::shadow_root::tests::assigned_nodes_matches_host_children_by_slot_attribute ... ok
+test dom::shadow_root::tests::assigned_nodes_skips_non_element_children_without_failing ... ok
+test dom::shadow_root::tests::assignment_outside_a_shadow_tree_is_empty ... ok
+test dom::shadow_root::tests::attach_shadow_creates_a_shadow_root_with_the_mode ... ok
+test dom::shadow_root::tests::foreign_and_stale_handles_fail_structured ... ok
+test dom::shadow_root::tests::flatten_recurses_through_slotted_slot_elements ... ok
+test dom::template::tests::content_requires_a_template_element ... ok
+test dom::template::tests::create_element_template_gets_an_empty_content_fragment ... ok
+test dom::template::tests::foreign_and_stale_handles_fail_structured ... ok
+test dom::shadow_root::tests::attach_shadow_rejects_non_elements_and_double_attach ... ok
+test dom::template::tests::is_template_is_html_namespace_and_case_insensitive ... ok
+test dom::template::tests::unregistered_template_has_no_content_link ... ok
+test dom::shadow_root::tests::the_shadow_tree_mutates_through_the_ordinary_mutation_api ... ok
+test dom::text_content::tests::document_node_text_content_reads_as_null ... ok
+test dom::text_content::tests::document_node_text_content_setter_is_a_noop ... ok
+test dom::tree::tests::broken_child_parent_is_detected ... ok
+test dom::tree::tests::broken_sibling_mirror_is_detected ... ok
+test dom::tree::tests::dangling_relation_is_detected ... ok
+test dom::tree::tests::duplicate_reach_is_detected ... ok
+test dom::tree::tests::lone_node_has_no_relations_and_passes ... ok
+test dom::tree::tests::missing_child_parent_back_pointer_is_detected ... ok
+test dom::tree::tests::navigation_rejects_wrong_document_handles ... ok
+test dom::tree::tests::node_type_still_works_for_tree_built_nodes ... ok
+test dom::tree::tests::root_with_parent_that_omits_it_is_detected ... ok
+test dom::tree::tests::sibling_cycle_is_detected ... ok
+test dom::tree::tests::valid_small_tree_navigates_correctly ... ok
+test dom::tree::tests::wrong_document_root_is_detected ... ok
+test html::sink::tests::append_merges_adjacent_text_nodes ... ok
+test html::sink::tests::attach_last_child_links_and_relinks ... ok
+test html::sink::tests::insert_before_handle_links_between_siblings ... ok
+test html::sink::tests::sink_collects_quirks_mode_and_parse_errors ... ok
+test selectors::live::tests::adaptive_id_index_mode_transitions_are_idempotent_and_exact ... ok
+test selectors::live::tests::adaptive_id_index_tracks_cross_document_adoption ... ok
+test selectors::live::tests::adaptive_id_index_tracks_duplicate_order_moves_detach_and_id_changes ... ok
+test dom::tree::tests::first_last_chain_mismatch_is_detected ... ok
+test selectors::live::tests::adaptive_id_index_tracks_parser_replacement_and_non_light_trees ... ok
+test selectors::live::tests::disabling_the_index_returns_to_traversal_queries ... ok
+test selectors::live::tests::enabling_the_index_builds_it_from_the_current_tree ... ok
+test selectors::live::tests::fragment_and_skelleton_mutations_keep_the_index_in_sync ... ok
+test selectors::live::tests::the_consistency_check_detects_index_corruption ... ok
+test serialize::escape::tests::attribute_escaping_also_escapes_the_quote ... ok
+test selectors::live::tests::mutations_keep_the_index_in_sync ... ok
+test serialize::escape::tests::text_escaping_leaves_ordinary_characters_alone ... ok
+test serialize::escape::tests::text_escaping_matches_whatwg ... ok
+test serialize::rules::tests::noscript_depends_on_scripting ... ok
+test serialize::rules::tests::raw_text_elements_apply_to_html_namespace_only ... ok
+test serialize::rules::tests::void_elements_are_the_whatwg_set ... ok
+test serialize::rules::tests::void_rules_are_case_insensitive_and_html_only ... ok
+test traversal::tests::a_detached_current_node_still_traverses_its_own_subtree ... ok
+test traversal::tests::first_and_last_child_navigate_directly ... ok
+test traversal::tests::first_child_skip_descends_into_the_subtree ... ok
+test traversal::tests::foreign_or_stale_handles_are_rejected ... ok
+test traversal::tests::next_node_from_a_leaf_backtracks_through_siblings ... ok
+test traversal::tests::next_node_reject_prunes_the_subtree ... ok
+test traversal::tests::next_node_skip_descends_into_the_subtree ... ok
+test traversal::tests::next_node_visits_preorder_with_all_nodes ... ok
+test traversal::tests::next_sibling_skip_descends_into_the_next_subtree ... ok
+test traversal::tests::next_sibling_walks_sibling_subtrees ... ok
+test traversal::tests::parent_node_climbs_to_the_root ... ok
+test traversal::tests::parent_node_filters_ancestors ... ok
+test traversal::tests::previous_node_skips_rejected_ancestors ... ok
+test traversal::tests::previous_sibling_reverse_direction ... ok
+test traversal::tests::traversal_mask_skips_matches_node_types ... ok
+test traversal::tests::what_to_show_masks_out_node_types ... ok
+test traversal::tests::previous_node_visits_reverse_preorder ... ok
+test dom::mutation::tests::random_tree_then_injected_relation_defect_fails_invariants ... ok
+test arena::tests::property_random_alloc_remove_reuse_never_aliases ... ok
+test dom::tree::tests::wide_tree_navigates_and_passes ... ok
+test dom::cross_document::tests::deep_clone_of_deep_chain_does_not_overflow ... ok
+test dom::text_content::tests::deep_tree_text_content_does_not_overflow ... ok
+test dom::tree::tests::deep_tree_navigates_and_passes ... ok
+
+test result: ok. 284 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.05s
+
+
+running 3 tests
+test adopted_handle_generation_defect_is_detected ... ok
+test same_seed_cross_document_replays_identically ... ok
+test fixed_seed_cross_document_sequences_keep_invariants ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+
+running 3 tests
+test harness_reports_seed_and_minimal_repro_on_failure ... ok
+test same_seed_replays_identical_outcomes ... ok
+test fixed_seed_sequences_keep_invariants ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+
+running 5 tests
+test relationship_oracle_rejects_a_deliberately_faulted_observation ... ok
+test repeated_cross_document_misuse_is_rejected_without_mutation ... ok
+test arena_reuse_never_revives_a_stale_generation ... ok
+test fixed_seed_mutation_sequences_are_stable_and_replayable ... ok
+test deep_and_wide_trees_stay_iterative_and_bounded ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.78s
+
+
+running 4 tests
+test stress_cross_document_misuse_never_corrupts ... ok
+test stress_frequent_arena_slot_reuse ... ok
+test stress_deep_tree ... ok
+test stress_wide_tree ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.15s
+
+
+running 18 tests
+test attribute_operations_reject_foreign_handles ... ok
+test attribute_operations_reject_non_elements ... ok
+test attribute_operations_reject_stale_handles ... ok
+test attribute_operations_never_touch_the_tree ... ok
+test attribute_generation_tracks_successful_writes_only ... ok
+test attribute_order_is_stable_across_updates_and_deletes ... ok
+test changes_are_immediately_visible_to_core_readers ... ok
+test each_element_keeps_its_own_attribute_state ... ok
+test get_attribute_returns_none_for_unknown_attribute ... ok
+test has_attribute_reports_absence_for_unknown_attribute ... ok
+test public_entry_points_have_fixed_return_types ... ok
+test re_setting_existing_attribute_updates_in_place_and_keeps_position ... ok
+test remove_attribute_removes_and_reports_presence ... ok
+test remove_attribute_is_no_op_for_unknown ... ok
+test set_appends_new_attributes_in_call_order ... ok
+test set_attribute_accepts_valid_names ... ok
+test set_attribute_rejects_invalid_names_atomically ... ok
+test set_then_get_round_trips_exact_string_value ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 20 tests
+test comment_node_reads_its_own_data ... ok
+test fragment_reads_descendant_text_in_tree_order ... ok
+test element_without_text_reads_empty_string ... ok
+test element_reads_descendant_text_in_tree_order_and_skips_comments ... ok
+test nested_element_without_text_reads_empty_string ... ok
+test set_comment_node_updates_data_in_place ... ok
+test set_element_stores_nul_verbatim ... ok
+test set_element_to_empty_removes_all_children ... ok
+test set_fragment_replaces_children_with_single_text_node ... ok
+test set_element_replaces_children_with_single_text_node ... ok
+test set_fragment_stores_nul_verbatim ... ok
+test set_text_node_to_empty_clears_data ... ok
+test set_text_node_updates_data_in_place ... ok
+test set_text_node_stores_nul_verbatim ... ok
+test setting_text_again_replaces_previous_content ... ok
+test text_content_rejects_foreign_handles ... ok
+test setting_text_content_leaves_tree_relations_untouched ... ok
+test text_content_rejects_stale_handles_after_adoption ... ok
+test text_node_reads_its_own_data ... ok
+test deep_tree_reads_concatenated_text ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.78s
+
+
+running 33 tests
+test doctype_public_and_system_identifiers_are_recorded ... ok
+test doctype_is_case_insensitive_and_selects_no_quirks ... ok
+test duplicate_attributes_keep_first ... ok
+test bogus_comments_and_processing_instruction_like_text ... ok
+test canonical_document_has_stable_tree_shape ... ok
+test cdata_in_svg_is_literal_text ... ok
+test block_start_auto_closes_open_paragraph ... ok
+test explicit_head_and_body_without_html_tag ... ok
+test duplicate_html_and_body_tags_are_ignored ... ok
+test foreign_object_re_enters_the_html_namespace ... ok
+test implied_html_head_body_are_created_for_bare_content ... ok
+test implied_body_gains_attributes_from_later_body_tag ... ok
+test mathml_annotation_xml_integration_point_parses_html ... ok
+test mathml_subtree_stays_in_the_mathml_namespace ... ok
+test misnested_inline_elements_follow_adoption_agency ... ok
+test non_html_doctype_name_selects_quirks ... ok
+test frameset_legacy_doctype_selects_quirks ... ok
+test named_and_numeric_entities_are_expanded ... ok
+test script_and_style_are_raw_text ... ok
+test stray_end_tag_recovers_and_reports ... ok
+test svg_subtree_stays_in_the_svg_namespace ... ok
+test svg_adjusts_element_names ... ok
+test table_foster_parenting_moves_phrasing_content_out ... ok
+test template_content_is_kept_in_a_contents_fragment ... ok
+test unknown_entity_is_left_literal ... ok
+test title_and_textarea_are_rcdata ... ok
+test xhtml_doctype_with_system_identifier_selects_no_quirks ... ok
+test whitespace_between_elements_becomes_text_nodes ... ok
+test xmp_is_raw_text ... ok
+test the_whole_parse_output_is_one_owned_document ... ok
+test seeded_generated_documents_keep_stable_trees ... ok
+test deeply_nested_input_parses_without_stack_overflow ... ok
+test wide_large_document_parses_with_linear_node_accounting ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.54s
+
+
+running 3 tests
+test canonical_context_differences_are_pass_scenarios ... ok
+test canonical_happy_dom_deviations_are_recorded_gaps ... ok
+test first_batch_fragment_scenarios_diff_against_happy_dom ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+running 19 tests
+test bare_cell_in_table_gets_implied_tbody_and_tr ... ok
+test annotation_xml_integration_point_depends_on_context_attributes ... ok
+test empty_context_name_is_rejected ... ok
+test entities_decode_and_comments_parse_in_a_div_context ... ok
+test every_handle_belongs_to_the_target_document ... ok
+test full_table_in_a_div_context_gets_implied_elements ... ok
+test malformed_input_recovers_and_reports_diagnostics ... ok
+test noscript_context_depends_on_scripting ... ok
+test script_and_style_contexts_are_raw_text ... ok
+test select_context_parses_options_and_drops_rejected_markup ... ok
+test svg_and_mathml_contexts_enter_foreign_content ... ok
+test template_context_parses_content ... ok
+test template_element_in_input_gets_a_contents_fragment ... ok
+test table_context_fosters_phrasing_content ... ok
+test textarea_and_title_contexts_are_rcdata ... ok
+test the_fragment_result_is_one_owned_document ... ok
+test table_row_markup_differs_across_contexts ... ok
+test seeded_generated_fragments_keep_stable_trees ... ok
+test deeply_nested_fragment_parses_without_stack_overflow ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.04s
+
+
+running 29 tests
+test attributes_match_happy_dom ... ok
+test doctype_matches_happy_dom_serializer ... ok
+test comments_void_and_empty_elements_match_happy_dom ... ok
+test doctype_system_only_uses_system_keyword ... ok
+test document_fragment_serializes_its_children ... ok
+test foreign_handle_is_rejected ... ok
+test entities_and_non_breaking_space_match_happy_dom ... ok
+test leaf_nodes_serialize_directly ... ok
+test gap_attribute_values_escape_more_than_happy_dom ... ok
+test canonical_document_matches_happy_dom ... ok
+test locates_comment_end_sequence_loss ... ok
+test gap_rcdata_markup_is_escaped ... ok
+test implied_structure_serializes_fully ... ok
+test gap_raw_text_xmp_iframe_noembed_noframes ... ok
+test locates_adjacent_text_node_merge ... ok
+test locates_pre_leading_newline_loss ... ok
+test noscript_text_depends_on_scripting_enabled ... ok
+test plain_doctype_has_no_identifiers ... ok
+test locates_foreign_element_namespace_loss ... ok
+test mathml_matches_happy_dom ... ok
+test plaintext_swallows_the_rest_of_the_document ... ok
+test scoped_serialize_switches_between_node_and_children ... ok
+test raw_text_script_and_style_match_happy_dom ... ok
+test stale_handle_is_rejected ... ok
+test svg_camel_case_names_are_preserved ... ok
+test template_matches_happy_dom ... ok
+test serialization_never_mutates_the_arena ... ok
+test serialization_is_idempotent ... ok
+test parse_serialize_parse_preserves_structure_for_corpus ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 26 tests
+test document_element_head_body_read_none_before_the_skeleton ... ok
+test document_accessors_are_live_reads_of_the_tree ... ok
+test inner_html_getter_rejects_non_element_and_fragment_nodes ... ok
+test inner_html_getter_on_a_fragment_serializes_its_children ... ok
+test document_root_is_allocated_lazily_and_is_stable ... ok
+test ensure_html_skeleton_builds_the_implied_structure_once ... ok
+test load_html_of_a_bare_fragment_builds_the_implied_skeleton ... ok
+test inner_html_serializes_children_only ... ok
+test parsed_nodes_belong_to_the_target_document ... ok
+test outer_html_serializes_the_node_itself ... ok
+test set_inner_html_fragment_target_uses_the_fallback_context ... ok
+test load_html_on_an_existing_skeleton_replaces_it ... ok
+test apply_round_trips_preserve_the_tree ... ok
+test set_inner_html_rejects_non_element_and_fragment_targets_atomically ... ok
+test set_inner_html_empty_clears_children ... ok
+test outer_html_getter_rejects_non_element_nodes ... ok
+test set_inner_html_replaces_children_and_leaves_old_handles_live ... ok
+test load_html_replaces_the_document_content ... ok
+test set_inner_html_title_context_stays_rcdata ... ok
+test set_inner_html_table_context_inserts_tbody ... ok
+test set_outer_html_rejects_non_element_targets ... ok
+test set_inner_html_select_context_keeps_option_rows ... ok
+test set_inner_html_wrong_document_and_stale_handles_leave_the_tree_unchanged ... ok
+test set_outer_html_on_a_detached_node_is_a_no_op ... ok
+test set_outer_html_body_replacement_uses_the_html_context ... ok
+test set_outer_html_replaces_the_node_in_its_parent ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test matcher_validates_the_element_handle ... ok
+test invalid_selectors_are_stable_structured_syntax_errors ... ok
+test selector_list_is_runtime_agnostic_and_reusable ... ok
+test fixed_corpus_hits_and_misses_on_every_element ... ok
+test generative_tree_matches_self_consistent_model ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+
+running 18 tests
+test get_element_by_id_is_a_pure_read_without_an_index ... ok
+test document_scope_covers_the_whole_tree_and_skeleton ... ok
+test get_element_by_id_returns_the_first_document_order_match ... ok
+test hand_built_tree_queries_in_document_order ... ok
+test indexed_simple_id_ignores_detached_and_shadow_tree_matches ... ok
+test invalid_selectors_fail_with_syntax_before_any_traversal ... ok
+test closest_walks_up_including_the_receiver_itself ... ok
+test of_type_pseudos_skip_interleaved_comment_nodes ... ok
+test element_scope_matches_descendants_only ... ok
+test matches_tests_a_single_element ... ok
+test query_selector_all_ignores_non_element_nodes ... ok
+test query_apis_validate_the_handle_boundary ... ok
+test query_selector_snapshot_handles_stale_ids_after_replacement ... ok
+test simple_id_fast_path_stays_document_scoped ... ok
+test query_selector_returns_the_first_match_in_document_order ... ok
+test query_selector_all_returns_a_static_snapshot ... ok
+test scope_resolves_to_query_scope_and_receiver ... ok
+test query_selector_all_returns_document_order_matches ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test duplicate_class_attribute_tokens_never_duplicate_index_results ... ok
+test collection_apis_validate_the_scope_boundary ... ok
+test element_scope_matches_descendants_only ... ok
+test empty_or_whitespace_class_name_is_an_empty_collection ... ok
+test get_elements_by_tag_name_returns_document_order_matches ... ok
+test get_elements_by_class_name_matches_every_token_in_document_order ... ok
+test live_results_reflect_tree_and_attribute_mutations ... ok
+test indexed_mode_traverses_detached_and_shadow_scopes_without_polluting_document_order ... ok
+test moving_and_reordering_reflect_in_document_order ... ok
+test count_fast_paths_match_node_queries_without_result_allocation ... ok
+test indexed_queries_agree_with_selector_matcher_after_each_mutation ... ok
+test indexed_and_traversal_runs_produce_identical_query_histories ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+running 26 tests
+test append_data_appends_and_insert_data_splices ... ok
+test character_data_ops_reject_foreign_and_stale_handles ... ok
+test clone_import_and_adopt_copy_processing_instruction_payload ... ok
+test create_processing_instruction_rejects_bad_targets_atomically ... ok
+test create_processing_instruction_rejects_question_greater_than_in_data ... ok
+test create_processing_instruction_stores_nul_in_data ... ok
+test create_processing_instruction_stores_target_and_data ... ok
+test delete_data_and_replace_data_follow_clamped_counts ... ok
+test data_and_length_read_text_comment_and_pi ... ok
+test clone_and_import_copy_doctype_payload ... ok
+test doctype_payload_is_none_for_non_doctype_nodes ... ok
+test fresh_document_has_no_doctype ... ok
+test insert_delete_replace_reject_out_of_range_offsets_atomically ... ok
+test mutators_leave_tree_relations_untouched ... ok
+test mutators_require_a_character_data_node ... ok
+test mutators_store_nul_verbatim ... ok
+test mutators_work_on_comments_and_pi ... ok
+test set_data_stores_nul_verbatim ... ok
+test doctype_returns_the_parsed_doctype_child ... ok
+test split_text_rejects_non_text_receivers ... ok
+test split_text_splits_and_inserts_tail_after_head ... ok
+test split_text_rejects_out_of_range_offsets ... ok
+test substring_data_follows_whatwg_offset_semantics ... ok
+test set_data_updates_data_kinds_and_is_a_noop_elsewhere ... ok
+test split_text_at_zero_and_at_length ... ok
+test split_text_of_detached_text_stays_detached ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 18 tests
+test attribute_pairs_are_live_reads ... ok
+test add_appends_and_deduplicates ... ok
+test attribute_pairs_reject_non_elements_and_foreign_handles ... ok
+test attribute_pairs_returns_the_ordered_list ... ok
+test element_namespace_uri_reads_the_html_namespace ... ok
+test empty_and_whitespace_tokens_are_rejected_atomically ... ok
+test attribute_pairs_reject_stale_handles ... ok
+test add_on_absent_attribute_creates_it ... ok
+test remove_filters_tokens_and_drops_missing_ones ... ok
+test remove_that_empties_the_set_removes_the_attribute ... ok
+test replace_returns_true_on_success_and_false_on_missing_old ... ok
+test toggle_adds_and_removes_with_and_without_force ... ok
+test token_contains_never_throws ... ok
+test token_mutations_keep_the_tree_invariants ... ok
+test token_mutators_reject_non_element_receivers ... ok
+test token_set_splits_on_ascii_whitespace_and_deduplicates ... ok
+test validate_attribute_name_shares_the_name_rule ... ok
+test token_operations_reject_foreign_stale_and_non_element_handles ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test foreign_root_is_rejected ... ok
+test a_mutating_filter_is_observed_by_the_next_step ... ok
+test previous_node_reverse_walk ... ok
+test next_node_full_preorder ... ok
+test reject_prunes_the_subtree ... ok
+test removing_a_subtree_mid_walk_never_touches_a_dangling_id ... ok
+test what_to_show_mask_skips_node_types_inline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test delete_contents_same_text_node_truncates_without_moving_boundaries ... ok
+test delete_contents_collapses_a_cross_node_range ... ok
+test insert_node_moves_the_collapsed_end_after_a_text_split ... ok
+test offsets_clamp_after_character_data_mutation ... ok
+test selection_contains_node_uses_the_baseline_rules ... ok
+test removed_container_never_dangles ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 22 tests
+test begin_dispatch_sets_target_and_dispatching_state ... ok
+test bubbling_event_visits_structs_in_capture_target_bubble_order ... ok
+test a_completed_event_can_be_dispatched_again_and_keeps_default_prevented ... ok
+test dispatch_event_return_is_false_only_when_cancelable_and_default_prevented ... ok
+test detached_target_only_visits_its_own_structs ... ok
+test event_operations_reject_foreign_and_stale_handles ... ok
+test finish_dispatch_resets_the_event_to_its_non_dispatching_state ... ok
+test listeners_added_during_dispatch_are_not_invoked_by_it ... ok
+test listener_ids_are_document_unique_and_reused_ids_are_filtered ... ok
+test listeners_fire_in_registration_order_within_a_struct ... ok
+test nested_dispatch_resumes_the_outer_dispatch ... ok
+test non_bubbling_event_stops_after_the_target ... ok
+test listeners_removed_after_their_struct_started_still_run ... ok
+test once_listener_is_removed_after_its_first_invocation ... ok
+test once_listener_removed_even_when_its_callback_throws ... ok
+test passive_flag_is_reported_per_invocation ... ok
+test prevent_default_respects_cancelable_and_persists ... ok
+test removed_listener_never_fires_and_removal_is_reported ... ok
+test stop_immediate_propagation_ends_dispatch_immediately ... ok
+test the_propagation_path_is_fixed_when_the_tree_mutates_during_dispatch ... ok
+test stop_propagation_ends_dispatch_after_the_current_struct ... ok
+test removing_a_listener_then_re_adding_it_produces_a_fresh_registration ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test init_event_reinitializes_values_and_resets_cancellation_flags ... ok
+test init_event_applies_unconditionally_while_dispatching ... ok
+test set_init_values_reinitializes_without_touching_cancellation_flags ... ok
+test propagation_path_is_target_followed_by_ancestors_up_to_the_root ... ok
+test propagation_path_of_a_detached_node_is_just_itself ... ok
+test propagation_path_is_fixed_at_capture_time_despite_mutation ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test create_element_template_has_content_from_creation ... ok
+test adopt_node_moves_template_content ... ok
+test clone_node_deep_copies_template_content ... ok
+test form_elements_are_live_and_ordered ... ok
+test button_select_option_surface ... ok
+test import_node_copies_template_content ... ok
+test template_content_is_not_an_ordinary_child ... ok
+test input_value_checked_and_defaults ... ok
+test form_reset_restores_defaults ... ok
+test template_parse_serialize_parse_round_trip_preserves_content ... ok
+test template_inner_html_populates_content_and_serializes_back ... ok
+test setting_inner_html_on_a_template_replaces_its_content ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test a_composed_event_propagates_across_the_shadow_boundary ... ok
+test a_non_composed_event_stops_at_the_shadow_root ... ok
+test attach_shadow_rejects_a_host_that_already_owns_a_root ... ok
+test assigned_nodes_matches_named_and_default_slots ... ok
+test cloning_a_shadow_root_clones_the_shadow_tree ... ok
+test cloning_a_host_does_not_clone_its_shadow_tree ... ok
+test closed_roots_never_leak_through_the_public_read ... ok
+test is_connected_crosses_the_shadow_boundary_to_the_host ... ok
+test serialization_stays_on_its_own_side_of_the_boundary ... ok
+test queries_stay_on_their_own_side_of_the_boundary ... ok
+test text_content_operates_per_tree ... ok
+test the_shadow_root_is_not_a_child_of_the_host ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+mad-dom TypeScript dual-target compatibility harness (T09 / ADR-0002 section 4)
+  typescript 5.9.3 · happy-dom 20.11.11 entry types · mad-dom index.d.ts 0.0.1-alpha.3
+
+fixture                             kind      happy-dom mad-dom  status
+-----------------------------------------------------------------------
+negative/invalid-members.ts         negative  0         0        pass
+negative/wrong-argument-types.ts    negative  0         0        pass
+positive/attributes-token.ts        positive  0         0        pass
+positive/constructor-options.ts     positive  0         0        pass
+positive/cssom.ts                   positive  0         0        pass
+positive/custom-elements.ts         positive  0         0        pass
+positive/enums-and-overloads.ts     positive  0         0        pass
+positive/event-callbacks.ts         positive  0         0        pass
+positive/event-classes.ts           positive  0         0        pass
+positive/extended-nodes.ts          positive  0         0        pass
+positive/fetch.ts                   positive  0         0        pass
+positive/html-element.ts            positive  0         0        pass
+positive/inner-outer-html.ts        positive  0         0        pass
+positive/live-collections.ts        positive  0         0        pass
+positive/mutation-observer.ts       positive  0         0        pass
+positive/query-selector.ts          positive  0         0        pass
+positive/range-selection.ts         positive  0         0        pass
+positive/shadow-dom.ts              positive  0         0        pass
+positive/template-forms.ts          positive  0         0        pass
+positive/timers.ts                  positive  0         0        pass
+positive/tree-traversal.ts          positive  0         0        pass
+positive/type-exports.ts            positive  0         0        pass
+positive/window-document-basics.ts  positive  0         0        pass
+positive/window-platform.ts         positive  0         0        pass
+
+totals: happy-dom 0 diagnostics · mad-dom 0 diagnostics · fixtures 24 (22 positive, 2 negative)
+divergences: 10 hc-types entries / 0 patterns (every pattern must match a live diagnostic; source: compat/ledger.json)
+result: PASS — hard gate holds: everything the happy-dom target accepts is either accepted by mad-dom or recorded as a known gap in compat/ledger.json
+bun test v1.4.2 (744846f84)
+mad-dom compatibility ledger gate (T11 / ADR-0002 sections 7)
+ledger: compat/ledger.json · 449 entries (pass 449 · known-gap 0 · not-applicable 0)
+upstream map: compat/upstream-map.json · 216 ported case(s) · upstream pinned to 64e2c774… (MIT)
+scenarios: 180 real-pair scenario(s) checked (css-condition-rule, css-container-rule, css-css, css-font-face-rule, css-grouping-rule, css-keyframe-rule, css-keyframes-rule, css-media-list, css-media-rule, css-parser, css-rule, css-scope-rule, css-style-declaration-computed-style, css-style-rule, dom-attributes, dom-attributes-token, dom-child-nodelist, dom-create-append-serialize, dom-cssom, dom-custom-elements, dom-custom-elements-upgrade, dom-event-classes, dom-events, dom-extended-nodes, dom-fetch-headers-request, dom-fetch-response-fetch, dom-form-controls, dom-form-validation, dom-form-validation-flags, dom-html-element, dom-inner-outer-html, dom-live-collections, dom-matrix, dom-matrix-readonly, dom-mutation-observer, dom-mutations, dom-node-navigation, dom-platform-location-history, dom-point-readonly, dom-query-selector-identity, dom-range-selection, dom-script-eval, dom-selector-query, dom-shadow-dom, dom-storage-cookie, dom-task-order, dom-template, dom-text-content, dom-timers, dom-token-list, dom-traversal, fetch-fetch, fetch-request, fetch-response, history-history, location-location, match-media-media-query-list, navigator-navigator, nodes-character-data-utility, nodes-charater-data, nodes-child-node-utility, nodes-document-fragment, nodes-element, nodes-html-anchor-element, nodes-html-area-element, nodes-html-button-element, nodes-html-element, nodes-html-form-element, nodes-html-iframe-element, nodes-html-input-element, nodes-html-link-element, nodes-html-object-element, nodes-html-output-element, nodes-html-script-element, nodes-html-select-element, nodes-html-table-cell-element, nodes-html-text-area-element, nodes-html-track-element, nodes-image, nodes-node, nodes-node-list, nodes-non-document-child-node-utility, nodes-svg-animate-element, nodes-svg-animate-motion-element, nodes-svg-animate-transform-element, nodes-svg-animation-element, nodes-svg-circle-element, nodes-svg-clip-path-element, nodes-svg-component-transfer-function-element, nodes-svg-defs-element, nodes-svg-desc-element, nodes-svg-element, nodes-svg-ellipse-element, nodes-svg-fe-blend-element, nodes-svg-fe-color-matrix-element, nodes-svg-fe-component-transfer-element, nodes-svg-fe-composite-element, nodes-svg-fe-convolve-matrix-element, nodes-svg-fe-diffuse-lighting-element, nodes-svg-fe-displacement-map-element, nodes-svg-fe-distant-light-element, nodes-svg-fe-drop-shadow-element, nodes-svg-fe-flood-element, nodes-svg-fe-func-a-element, nodes-svg-fe-func-b-element, nodes-svg-fe-func-g-element, nodes-svg-fe-func-r-element, nodes-svg-fe-gaussian-blur-element, nodes-svg-fe-image-element, nodes-svg-fe-merge-element, nodes-svg-fe-merge-node-element, nodes-svg-fe-morphology-element, nodes-svg-fe-offset-element, nodes-svg-fe-point-light-element, nodes-svg-fe-specular-lighting-element, nodes-svg-fe-spot-light-element, nodes-svg-fe-tile-element, nodes-svg-fe-turbulence-element, nodes-svg-filter-element, nodes-svg-foreign-object-element, nodes-svg-g-element, nodes-svg-geometry-element, nodes-svg-gradient-element, nodes-svg-graphics-element, nodes-svg-image-element, nodes-svg-line-element, nodes-svg-linear-gradient-element, nodes-svg-m-path-element, nodes-svg-marker-element, nodes-svg-mask-element, nodes-svg-metadata-element, nodes-svg-path-element, nodes-svg-pattern-element, nodes-svg-polygon-element, nodes-svg-polyline-element, nodes-svg-radial-gradient-element, nodes-svg-rect-element, nodes-svg-script-element, nodes-svg-set-element, nodes-svg-stop-element, nodes-svg-style-element, nodes-svg-svg-element, nodes-svg-switch-element, nodes-svg-symbol-element, nodes-svg-t-span-element, nodes-svg-text-content-element, nodes-svg-text-element, nodes-svg-text-positioning-element, nodes-svg-title-element, nodes-svg-use-element, nodes-svg-view-element, query-selector, selection-selection, svg-svg-angle, svg-svg-animated-angle, svg-svg-animated-boolean, svg-svg-animated-enumeration, svg-svg-animated-integer, svg-svg-animated-length, svg-svg-animated-length-list, svg-svg-animated-number, svg-svg-animated-number-list, svg-svg-animated-preserve-aspect-ratio, svg-svg-animated-rect, svg-svg-animated-string, svg-svg-animated-transform-list, svg-svg-length, svg-svg-length-list, svg-svg-matrix, svg-svg-number, svg-svg-number-list, svg-svg-point, svg-svg-point-list, svg-svg-preserve-aspect-ratio, svg-svg-rect, svg-svg-string-list, svg-svg-transform, svg-svg-transform-list, window-window, xml-http-request)
+result: OK — checked 180 real-pair scenario(s): 0 regression(s), 0 stale ledger entries
+
+─────────────────────────────
+happy-dom test-suite rewrite (hdunit T02)
+─────────────────────────────
+vendored files    352
+rewritten         308  (provenance header + import/API rewrite)
+byte-copied       35  (content fixtures / type decls / snapshots)
+skipped           9  (setup.ts → T03, upstream compiled artifacts)
+src imports       1221 mapped → shim, 406 unmapped (recorded)
+vitest imports    298 → bun:test (+ adapter)
+vi call rewrites  471
+adapter gaps      1 (vi.mock call sites)
+path repairs      1 (local-helper path bug)
+shim base         tests/happy-dom/shim/src/ (frozen contract)
+adapter import    tests/happy-dom/adapter/index.js
+
+[rewrite] wrote 308 rewritten files, 35 byte-copied files to tests/happy-dom/rewritten/
+[rewrite] wrote tests/happy-dom/rewrite-report.json
+[rewrite] done. Re-running in place is idempotent.
+mad-dom hdunit triage gate (T05 / ADR-0006)
+triage: tests/happy-dom/triage · 43 subsystem split(s) · 298 file(s) registered (enabled 69 · expected-fail 22 · skip 207)
+ledger: compat/ledger.json · 112 hdunit entries · upstream map: compat/upstream-map.json
+result: OK — every vendored test file has a declared terminal state, no regressions
+bun test v1.4.2 (744846f84)

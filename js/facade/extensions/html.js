@@ -51,6 +51,9 @@ import {
   upgradeParsedCandidates,
 } from "./custom-elements.js";
 
+// Non-streaming decode resets between calls and retains no document or bytes.
+const htmlDecoder = new TextDecoder();
+
 export const seam = Object.freeze({
   id: "facade/extensions/html",
   owner: "T29",
@@ -193,7 +196,7 @@ export function install(ctx) {
       const token = ctx.documentContext.tokenOf(this);
       if (state?.ffi?.serialize !== undefined && state.ffiContext !== null && token !== undefined) {
         const bytes = state.ffi.serialize(state.ffiContext, token, 1);
-        if (bytes !== undefined) return new TextDecoder().decode(bytes);
+        if (bytes !== undefined) return htmlDecoder.decode(bytes);
       }
       return facadeNodeHandle(ctx, this, "innerHTML").innerHTML();
     },
@@ -216,7 +219,7 @@ export function install(ctx) {
       const token = ctx.documentContext.tokenOf(this);
       if (state?.ffi?.serialize !== undefined && state.ffiContext !== null && token !== undefined) {
         const bytes = state.ffi.serialize(state.ffiContext, token, 1);
-        if (bytes !== undefined) return new TextDecoder().decode(bytes);
+        if (bytes !== undefined) return htmlDecoder.decode(bytes);
       }
       return facadeNodeHandle(ctx, this, "innerHTML").innerHTML();
     },
@@ -236,7 +239,7 @@ export function install(ctx) {
       const token = ctx.documentContext.tokenOf(this);
       if (state?.ffi?.serialize !== undefined && state.ffiContext !== null && token !== undefined) {
         const bytes = state.ffi.serialize(state.ffiContext, token, 0);
-        if (bytes !== undefined) return new TextDecoder().decode(bytes);
+        if (bytes !== undefined) return htmlDecoder.decode(bytes);
       }
       return facadeNodeHandle(ctx, this, "outerHTML").outerHTML();
     },

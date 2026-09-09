@@ -1,0 +1,4372 @@
+{
+  "id": "audit-A-facade",
+  "side": "A",
+  "position": 0,
+  "config": {
+    "root": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+    "image": {
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+      "sha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96",
+      "bytes": 3866672,
+      "dev": 64784,
+      "inode": 2111611
+    },
+    "source": {
+      "root": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "sourceSha": "fe77b7e28ba1ca24e40ce9272bc6a504cb32c191",
+      "productionSha256": "74ef5e3ca7a102422aeffd26280c4c743462de6230ca83cadfa977e6aeaf6aa7",
+      "inventoryVersion": 2,
+      "productionInputs": [
+        "index.js",
+        "index.d.ts",
+        "js",
+        "crates",
+        "scripts",
+        "benchmark/dom-bench",
+        "package.json",
+        "bun.lock",
+        "Cargo.lock",
+        "Cargo.toml",
+        "rust-toolchain.toml",
+        ".bun-version"
+      ],
+      "untrackedProductionFiles": [],
+      "sourceShaMeaning": "Git HEAD anchor; it does not assert that current production files match that commit",
+      "productionSha256Meaning": "Digest of the sorted path-to-current-file-SHA256 map; tracked plus nonignored untracked production inputs",
+      "lockSha256": "ca3827dae797c2697e507de835366ca953e81ce31234e8de763f6b0bfdc6204b",
+      "domWorkloadSha256": "659d912c62373970e22409ac20dd8d9d390956dd5718c875fa1d1a34a13ff1fc"
+    },
+    "bun": {
+      "path": "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+      "sha256": "33d56b070be6a9e3da0ab013038b43d1645d0534ca811ecdba4472599117eb4b",
+      "bytes": 80761952,
+      "dev": 64769,
+      "inode": 1087114,
+      "version": "1.4.0",
+      "revision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676"
+    },
+    "suite": "facade",
+    "ffi": "off",
+    "sizes": [
+      1,
+      0.1,
+      2
+    ],
+    "iterations": 1,
+    "runs": 1,
+    "diagnostic": true,
+    "metadataPath": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/plans/bun-native-performance/evidence/task-03/baseline-ffi/audit-A-facade.metadata.json"
+  },
+  "command": [
+    "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+    "--preload",
+    "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/benchmark/bun-performance/preload.mjs",
+    "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/benchmark/bun-performance/worker.mjs"
+  ],
+  "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+  "before": {
+    "at": "2026-09-08T16:24:08.070Z",
+    "loadavg": [
+      1.76,
+      1.38,
+      1.79
+    ],
+    "cpuCount": 8,
+    "cpuModel": "AMD EPYC Processor",
+    "freeMemory": 14858919936,
+    "totalMemory": 16760184832,
+    "kernel": "6.8.0-31-generic",
+    "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.15 total=2180381927\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+    "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=11673920\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=7990580",
+    "cpuStat": [
+      "cpu  8156970 32 1963023 39103244 132912 0 78977 412 0 0"
+    ],
+    "competingProcesses": [
+      "    PID    PPID COMMAND         %CPU %MEM",
+      "   4960       1 herdr            6.8  0.2",
+      "2289862 2282055 codex            2.1  1.5",
+      "2282496 2280131 codex            2.0  1.5",
+      "2289376 2281109 codex            1.9  1.4",
+      "2288138 2280668 codex            1.9  1.4",
+      "2285867 2285470 codex            1.6  1.6",
+      "2215465 2187131 codex            1.4  1.5",
+      "2256568 2252567 codex            0.8  1.3",
+      "2179835 2179426 codex            0.2  1.1",
+      "     17       2 rcu_preempt      0.1  0.0",
+      "2310274       2 kworker/u64:9-e  0.1  0.0",
+      "2310270       2 kworker/u64:0-e  0.1  0.0",
+      "     74       2 kcompactd0       0.0  0.0",
+      "    306       2 jbd2/vda1-8      0.0  0.0",
+      "2310272       2 kworker/u64:7-e  0.0  0.0"
+    ]
+  },
+  "after": {
+    "at": "2026-09-08T16:24:10.982Z",
+    "loadavg": [
+      1.7,
+      1.38,
+      1.79
+    ],
+    "cpuCount": 8,
+    "cpuModel": "AMD EPYC Processor",
+    "freeMemory": 14861811712,
+    "totalMemory": 16760184832,
+    "kernel": "6.8.0-31-generic",
+    "cpuPressure": "some avg10=0.18 avg60=0.03 avg300=0.16 total=2180436203\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+    "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=11673920\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=7990580",
+    "cpuStat": [
+      "cpu  8157423 32 1963170 39104924 132912 0 78979 412 0 0"
+    ],
+    "competingProcesses": [
+      "    PID    PPID COMMAND         %CPU %MEM",
+      "   4960       1 herdr            6.8  0.2",
+      "2289862 2282055 codex            2.1  1.5",
+      "2282496 2280131 codex            2.0  1.5",
+      "2289376 2281109 codex            1.9  1.4",
+      "2288138 2280668 codex            1.9  1.4",
+      "2285867 2285470 codex            1.6  1.6",
+      "2215465 2187131 codex            1.4  1.5",
+      "2256568 2252567 codex            0.8  1.3",
+      "2179835 2179426 codex            0.2  1.1",
+      "     17       2 rcu_preempt      0.1  0.0",
+      "2310274       2 kworker/u64:9-e  0.1  0.0",
+      "2310270       2 kworker/u64:0-e  0.1  0.0",
+      "     74       2 kcompactd0       0.0  0.0",
+      "    306       2 jbd2/vda1-8      0.0  0.0",
+      "2310272       2 kworker/u64:7-e  0.0  0.0"
+    ]
+  },
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSha256": "29cc1282ae10b2e100b89090828b317681f884ee75dcc2efc9e4deefb17fdfdd",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr": "",
+  "report": {
+    "schema": "mad-dom/bun-performance/1/hotspots",
+    "suite": "facade",
+    "engine": "mad-dom",
+    "runs": 1,
+    "host": {
+      "bun": "1.4.0",
+      "os": "linux",
+      "arch": "x64"
+    },
+    "sizes": [
+      1,
+      0.1,
+      2
+    ],
+    "results": [
+      {
+        "size": 1,
+        "workload": {
+          "runs": 1,
+          "iterations": 1,
+          "cases": {
+            "query.small.cold": {
+              "name": "query.small.cold",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.small.hot": {
+              "name": "query.small.hot",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.cold": {
+              "name": "query.large.cold",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.hot": {
+              "name": "query.large.hot",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.cold": {
+              "name": "child.cold",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.cold": {
+              "name": "preorder.cold",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.grow-shrink": {
+              "name": "child.grow-shrink",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.grow-shrink": {
+              "name": "preorder.grow-shrink",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.ascii": {
+              "name": "innerHTML.ascii",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "516182fb2dabc9883018e154a9e5b58129b8d531112d6cc6e57805b74b501354",
+              "inputUtf8Bytes": 35620,
+              "innerUtf8Bytes": 35620,
+              "outerUtf8Bytes": 35639,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.unicode": {
+              "name": "innerHTML.unicode",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.ascii": {
+              "name": "outerHTML.ascii",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "516182fb2dabc9883018e154a9e5b58129b8d531112d6cc6e57805b74b501354",
+              "inputUtf8Bytes": 35620,
+              "innerUtf8Bytes": 35620,
+              "outerUtf8Bytes": 35639,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.unicode": {
+              "name": "outerHTML.unicode",
+              "size": 1,
+              "iterations": 1,
+              "count": 512,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "1564fe5eeadda016ea313fab6dc5543c7d24dcab9cace64c928e39f69bbae35f",
+              "inputUtf8Bytes": 39204,
+              "innerUtf8Bytes": 39204,
+              "outerUtf8Bytes": 39223,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.grow-shrink": {
+              "name": "innerHTML.grow-shrink",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.grow-shrink": {
+              "name": "outerHTML.grow-shrink",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "9e7e0c049bcb9c8a02ff451060627ea9a761fc8f5e4fef7e5453df96051a4da4",
+              "inputUtf8Bytes": 584,
+              "innerUtf8Bytes": 584,
+              "outerUtf8Bytes": 603,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.1": {
+              "name": "create.1",
+              "size": 1,
+              "iterations": 1,
+              "count": 1,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.8": {
+              "name": "create.8",
+              "size": 1,
+              "iterations": 1,
+              "count": 8,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.32": {
+              "name": "create.32",
+              "size": 1,
+              "iterations": 1,
+              "count": 32,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.128": {
+              "name": "create.128",
+              "size": 1,
+              "iterations": 1,
+              "count": 128,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.256": {
+              "name": "create.256",
+              "size": 1,
+              "iterations": 1,
+              "count": 256,
+              "small": 8,
+              "large": 512,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            }
+          }
+        },
+        "phases": {
+          "query.small.cold": {
+            "status": "passed",
+            "samples": [
+              0.18139899999999898
+            ],
+            "warmupSamples": [
+              1.0783069999999952,
+              0.14530100000001767
+            ],
+            "medianMs": 0.18139899999999898,
+            "minMs": 0.18139899999999898,
+            "p90Ms": 0.18139899999999898,
+            "madMs": 0,
+            "expectedPath": "facade Node-API query_snapshot/querySelectorAllTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              }
+            ]
+          },
+          "query.small.hot": {
+            "status": "passed",
+            "samples": [
+              0.028864999999996144
+            ],
+            "warmupSamples": [
+              0.06729599999999891,
+              0.030597000000000207
+            ],
+            "medianMs": 0.028864999999996144,
+            "minMs": 0.028864999999996144,
+            "p90Ms": 0.028864999999996144,
+            "madMs": 0,
+            "expectedPath": "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)",
+            "observedPath": null,
+            "diagnostics": [
+              {},
+              {},
+              {}
+            ]
+          },
+          "query.large.cold": {
+            "status": "passed",
+            "samples": [
+              0.6459600000000023
+            ],
+            "warmupSamples": [
+              1.124975999999947,
+              0.9649360000000229
+            ],
+            "medianMs": 0.6459600000000023,
+            "minMs": 0.6459600000000023,
+            "p90Ms": 0.6459600000000023,
+            "madMs": 0,
+            "expectedPath": "facade Node-API query_snapshot/querySelectorAllTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              }
+            ]
+          },
+          "query.large.hot": {
+            "status": "passed",
+            "samples": [
+              0.08510899999998855
+            ],
+            "warmupSamples": [
+              0.11462299999999459,
+              0.13781899999997904
+            ],
+            "medianMs": 0.08510899999998855,
+            "minMs": 0.08510899999998855,
+            "p90Ms": 0.08510899999998855,
+            "madMs": 0,
+            "expectedPath": "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)",
+            "observedPath": null,
+            "diagnostics": [
+              {},
+              {},
+              {}
+            ]
+          },
+          "child.cold": {
+            "status": "passed",
+            "samples": [
+              0.4739759999999933
+            ],
+            "warmupSamples": [
+              1.1982920000000377,
+              0.489496000000031
+            ],
+            "medianMs": 0.4739759999999933,
+            "minMs": 0.4739759999999933,
+            "p90Ms": 0.4739759999999933,
+            "madMs": 0,
+            "expectedPath": "facade Node-API child_tokens/childNodesTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              }
+            ]
+          },
+          "preorder.cold": {
+            "status": "passed",
+            "samples": [
+              3.9917480000000296
+            ],
+            "warmupSamples": [
+              6.641154999999912,
+              4.856865999999968
+            ],
+            "medianMs": 3.9917480000000296,
+            "minMs": 3.9917480000000296,
+            "p90Ms": 3.9917480000000296,
+            "madMs": 0,
+            "expectedPath": "facade Node-API preorder_snapshot/preorderTokenSnapshot -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 512
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 512
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 512
+              }
+            ]
+          },
+          "child.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.11186899999995603
+            ],
+            "warmupSamples": [
+              0.09973600000000715,
+              0.06928900000002614
+            ],
+            "medianMs": 0.11186899999995603,
+            "minMs": 0.11186899999995603,
+            "p90Ms": 0.11186899999995603,
+            "madMs": 0,
+            "expectedPath": "facade Node-API child_tokens/childNodesTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              }
+            ]
+          },
+          "preorder.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.29018299999995634
+            ],
+            "warmupSamples": [
+              0.35273000000006505,
+              0.3690199999999777
+            ],
+            "medianMs": 0.29018299999995634,
+            "minMs": 0.29018299999995634,
+            "p90Ms": 0.29018299999995634,
+            "madMs": 0,
+            "expectedPath": "facade Node-API preorder_snapshot/preorderTokenSnapshot -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 8
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 8
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 8
+              }
+            ]
+          },
+          "innerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.3725160000000187
+            ],
+            "warmupSamples": [
+              0.40838399999995545,
+              0.3475909999999658
+            ],
+            "medianMs": 0.3725160000000187,
+            "minMs": 0.3725160000000187,
+            "p90Ms": 0.3725160000000187,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "innerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.23979799999995066
+            ],
+            "warmupSamples": [
+              0.3078649999999925,
+              0.2746839999999793
+            ],
+            "medianMs": 0.23979799999995066,
+            "minMs": 0.23979799999995066,
+            "p90Ms": 0.23979799999995066,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.1785139999999501
+            ],
+            "warmupSamples": [
+              0.22892899999999372,
+              0.24972700000000714
+            ],
+            "medianMs": 0.1785139999999501,
+            "minMs": 0.1785139999999501,
+            "p90Ms": 0.1785139999999501,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.3031679999999142
+            ],
+            "warmupSamples": [
+              0.3938069999999243,
+              0.3311499999999796
+            ],
+            "medianMs": 0.3031679999999142,
+            "minMs": 0.3031679999999142,
+            "p90Ms": 0.3031679999999142,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "innerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.028773999999998523
+            ],
+            "warmupSamples": [
+              0.07779499999992368,
+              0.04889200000002347
+            ],
+            "medianMs": 0.028773999999998523,
+            "minMs": 0.028773999999998523,
+            "p90Ms": 0.028773999999998523,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.042699999999967986
+            ],
+            "warmupSamples": [
+              0.09901600000000599,
+              0.02931499999999687
+            ],
+            "medianMs": 0.042699999999967986,
+            "minMs": 0.042699999999967986,
+            "p90Ms": 0.042699999999967986,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "create.1": {
+            "status": "passed",
+            "samples": [
+              0.041378000000122483
+            ],
+            "warmupSamples": [
+              0.21942000000001372,
+              0.061353999999937514
+            ],
+            "medianMs": 0.041378000000122483,
+            "minMs": 0.041378000000122483,
+            "p90Ms": 0.041378000000122483,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 1 -> Node-API scalar -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementToken": 1
+              },
+              {
+                "NodeAPI.createElementToken": 1
+              },
+              {
+                "NodeAPI.createElementToken": 1
+              }
+            ]
+          },
+          "create.8": {
+            "status": "passed",
+            "samples": [
+              0.09062000000017179
+            ],
+            "warmupSamples": [
+              0.16413600000009865,
+              0.10283300000014606
+            ],
+            "medianMs": 0.09062000000017179,
+            "minMs": 0.09062000000017179,
+            "p90Ms": 0.09062000000017179,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 8 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.32": {
+            "status": "passed",
+            "samples": [
+              0.11415299999998751
+            ],
+            "warmupSamples": [
+              0.2907940000000053,
+              0.12435200000004443
+            ],
+            "medianMs": 0.11415299999998751,
+            "minMs": 0.11415299999998751,
+            "p90Ms": 0.11415299999998751,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 32 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.128": {
+            "status": "passed",
+            "samples": [
+              0.37536100000011174
+            ],
+            "warmupSamples": [
+              0.5435569999999643,
+              0.4001899999998386
+            ],
+            "medianMs": 0.37536100000011174,
+            "minMs": 0.37536100000011174,
+            "p90Ms": 0.37536100000011174,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 128 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.256": {
+            "status": "passed",
+            "samples": [
+              0.4167889999998806
+            ],
+            "warmupSamples": [
+              0.8058579999999438,
+              0.5342600000001312
+            ],
+            "medianMs": 0.4167889999998806,
+            "minMs": 0.4167889999998806,
+            "p90Ms": 0.4167889999998806,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 256 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          }
+        },
+        "checks": {
+          "query.small.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "query.small.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "query.large.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "2b58dd0a29b5071692b5a13d91561d9d4c156863caae11c3f180f3fda590d8d5"
+          },
+          "query.large.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "2b58dd0a29b5071692b5a13d91561d9d4c156863caae11c3f180f3fda590d8d5"
+          },
+          "child.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 512,
+                "semanticSha256": "3a53ea2620cac83fb453dfe76a0472478800224c36f4dc10738829b96807ab1e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "2b58dd0a29b5071692b5a13d91561d9d4c156863caae11c3f180f3fda590d8d5"
+          },
+          "preorder.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 2049,
+                "semanticSha256": "a4fe6f244370b7bb97dc6f2854633e446c26c57ce11372edbb7327ade8643ae7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "bdb01d983e2acc2f781e1b54cb32c91c311ec63009f085eab95ba19e4d6b9fb9"
+          },
+          "child.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "preorder.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 33,
+                "semanticSha256": "2f1ab788f2195a9357b3161a21ef1380d8f5ffec82b1a4d1863abd7677e13aae",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "022277ed4ffeac0b029569e921a0862b4d4a1f53c9e1766755fb26a3b26aa06b"
+          },
+          "innerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 1,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 1,
+                "sha256": "a4d3c79c7bf7c150106e4bdfe63186352c4ef20625db6c126f2e90c67e9aa9a2",
+                "utf8Bytes": 35620,
+                "utf16Units": 35620
+              }
+            ],
+            "fingerprint": "7da4bb10708e59b2051bd82f18bb6d00b4da903d5039e0051fcccd485ef13ff7"
+          },
+          "innerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 1,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              },
+              {
+                "iterations": 1,
+                "sha256": "45d6d55142424b90f9f78b06ac6fe34a812251e55aaff092735126f93c0c1658",
+                "utf8Bytes": 39204,
+                "utf16Units": 35620
+              }
+            ],
+            "fingerprint": "2ce16e4f906058302605556d409a051d888c2a763eed0ccf6bf3dcef89fc9bc4"
+          },
+          "outerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 1,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 1,
+                "sha256": "db0ffb5844ce8c5f6008f33204fb018bb6bfdbab667118fb161158ecb4c702f9",
+                "utf8Bytes": 35639,
+                "utf16Units": 35639
+              }
+            ],
+            "fingerprint": "6702eafea13182f6f7fbeb5b5fb2bb226b97a4fa57948a80e08beb9e119e1c44"
+          },
+          "outerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 1,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              },
+              {
+                "iterations": 1,
+                "sha256": "521625a88f16cc655d939072adc9e0175f6ed7d81beb8da282c24a39954200b2",
+                "utf8Bytes": 39223,
+                "utf16Units": 35639
+              }
+            ],
+            "fingerprint": "7ff82dcfcb138731135b53d8c3da5d4d9d6705d97bb07b04f7d73528cd6063aa"
+          },
+          "innerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 1,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              },
+              {
+                "iterations": 1,
+                "sha256": "48710eed64664abd476916d875653e7b67432ef4af967528760d8a4c68194274",
+                "utf8Bytes": 584,
+                "utf16Units": 528
+              }
+            ],
+            "fingerprint": "9e55625574c46a3a028c5cfb74d1efe529a0e6f29aea18885296490ecd4dc732"
+          },
+          "outerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 1,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              },
+              {
+                "iterations": 1,
+                "sha256": "934a1be761cd5b6af1d785b20f45dbb004efea750d82940abd74d0982b33db77",
+                "utf8Bytes": 603,
+                "utf16Units": 547
+              }
+            ],
+            "fingerprint": "e14e766b39279ceb69df0407ff94dc964624a1a08ae42e28cb194c44832555eb"
+          },
+          "create.1": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "create.8": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "create.32": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1f4e45fee928076dcc8feb55d6e3e82a4ab5887c99645ff5fae3d0eeeb790bf5"
+          },
+          "create.128": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "7c15eea1b4ad186ae74147c305751bad346ccaa8226db4f13f1c05d96e00d676"
+          },
+          "create.256": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "204df7f0df86b4c7d540e9a3d2682fa66f09c518a2db2d514fcc242fcd63980a"
+          }
+        },
+        "valid": true,
+        "memory": {
+          "rss": 79204352,
+          "heapTotal": 5354496,
+          "heapUsed": 5632240,
+          "external": 2550336,
+          "arrayBuffers": 508
+        }
+      },
+      {
+        "size": 0.1,
+        "workload": {
+          "runs": 1,
+          "iterations": 1,
+          "cases": {
+            "query.small.cold": {
+              "name": "query.small.cold",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.small.hot": {
+              "name": "query.small.hot",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.cold": {
+              "name": "query.large.cold",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.hot": {
+              "name": "query.large.hot",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.cold": {
+              "name": "child.cold",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.cold": {
+              "name": "preorder.cold",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.grow-shrink": {
+              "name": "child.grow-shrink",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.grow-shrink": {
+              "name": "preorder.grow-shrink",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.ascii": {
+              "name": "innerHTML.ascii",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "330fd00b725bbf0ec141aae84c73a854186f0f5859daca527c7bab536b7125af",
+              "inputUtf8Bytes": 3448,
+              "innerUtf8Bytes": 3448,
+              "outerUtf8Bytes": 3467,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.unicode": {
+              "name": "innerHTML.unicode",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.ascii": {
+              "name": "outerHTML.ascii",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "330fd00b725bbf0ec141aae84c73a854186f0f5859daca527c7bab536b7125af",
+              "inputUtf8Bytes": 3448,
+              "innerUtf8Bytes": 3448,
+              "outerUtf8Bytes": 3467,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.unicode": {
+              "name": "outerHTML.unicode",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 51,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e1a0d44077efec06215e8b1c329deca0dad5575f6dc40c7b311c17b30407da3a",
+              "inputUtf8Bytes": 3805,
+              "innerUtf8Bytes": 3805,
+              "outerUtf8Bytes": 3824,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.grow-shrink": {
+              "name": "innerHTML.grow-shrink",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.grow-shrink": {
+              "name": "outerHTML.grow-shrink",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "3a1baf9119778b57016101a51d5b2423aa6b887a52aba4c433162176dea70b2e",
+              "inputUtf8Bytes": 73,
+              "innerUtf8Bytes": 73,
+              "outerUtf8Bytes": 92,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.1": {
+              "name": "create.1",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 1,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.8": {
+              "name": "create.8",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 8,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.32": {
+              "name": "create.32",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 32,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.128": {
+              "name": "create.128",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 128,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.256": {
+              "name": "create.256",
+              "size": 0.1,
+              "iterations": 1,
+              "count": 256,
+              "small": 1,
+              "large": 51,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            }
+          }
+        },
+        "phases": {
+          "query.small.cold": {
+            "status": "passed",
+            "samples": [
+              0.11349200000017845
+            ],
+            "warmupSamples": [
+              0.2078079999998863,
+              0.1409439999999904
+            ],
+            "medianMs": 0.11349200000017845,
+            "minMs": 0.11349200000017845,
+            "p90Ms": 0.11349200000017845,
+            "madMs": 0,
+            "expectedPath": "facade Node-API query_snapshot/querySelectorAllTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              }
+            ]
+          },
+          "query.small.hot": {
+            "status": "passed",
+            "samples": [
+              0.0645919999999478
+            ],
+            "warmupSamples": [
+              0.030287000000043918,
+              0.09025800000017625
+            ],
+            "medianMs": 0.0645919999999478,
+            "minMs": 0.0645919999999478,
+            "p90Ms": 0.0645919999999478,
+            "madMs": 0,
+            "expectedPath": "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)",
+            "observedPath": null,
+            "diagnostics": [
+              {},
+              {},
+              {}
+            ]
+          },
+          "query.large.cold": {
+            "status": "passed",
+            "samples": [
+              0.21923000000015236
+            ],
+            "warmupSamples": [
+              0.21285800000009658,
+              0.2833309999998619
+            ],
+            "medianMs": 0.21923000000015236,
+            "minMs": 0.21923000000015236,
+            "p90Ms": 0.21923000000015236,
+            "madMs": 0,
+            "expectedPath": "facade Node-API query_snapshot/querySelectorAllTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              }
+            ]
+          },
+          "query.large.hot": {
+            "status": "passed",
+            "samples": [
+              0.06682500000010805
+            ],
+            "warmupSamples": [
+              0.045214999999871,
+              0.10628799999994953
+            ],
+            "medianMs": 0.06682500000010805,
+            "minMs": 0.06682500000010805,
+            "p90Ms": 0.06682500000010805,
+            "madMs": 0,
+            "expectedPath": "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)",
+            "observedPath": null,
+            "diagnostics": [
+              {},
+              {},
+              {}
+            ]
+          },
+          "child.cold": {
+            "status": "passed",
+            "samples": [
+              0.1043449999999666
+            ],
+            "warmupSamples": [
+              0.25294399999984307,
+              0.12684699999999793
+            ],
+            "medianMs": 0.1043449999999666,
+            "minMs": 0.1043449999999666,
+            "p90Ms": 0.1043449999999666,
+            "madMs": 0,
+            "expectedPath": "facade Node-API child_tokens/childNodesTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              }
+            ]
+          },
+          "preorder.cold": {
+            "status": "passed",
+            "samples": [
+              0.5343700000000808
+            ],
+            "warmupSamples": [
+              0.883935000000065,
+              0.5298619999998664
+            ],
+            "medianMs": 0.5343700000000808,
+            "minMs": 0.5343700000000808,
+            "p90Ms": 0.5343700000000808,
+            "madMs": 0,
+            "expectedPath": "facade Node-API preorder_snapshot/preorderTokenSnapshot -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 51
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 51
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 51
+              }
+            ]
+          },
+          "child.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.09459700000002158
+            ],
+            "warmupSamples": [
+              0.0712029999999686,
+              0.039874999999938154
+            ],
+            "medianMs": 0.09459700000002158,
+            "minMs": 0.09459700000002158,
+            "p90Ms": 0.09459700000002158,
+            "madMs": 0,
+            "expectedPath": "facade Node-API child_tokens/childNodesTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              }
+            ]
+          },
+          "preorder.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.08336600000006911
+            ],
+            "warmupSamples": [
+              0.10749000000009801,
+              0.1536670000000413
+            ],
+            "medianMs": 0.08336600000006911,
+            "minMs": 0.08336600000006911,
+            "p90Ms": 0.08336600000006911,
+            "madMs": 0,
+            "expectedPath": "facade Node-API preorder_snapshot/preorderTokenSnapshot -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 1
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 1
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 1
+              }
+            ]
+          },
+          "innerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.12229900000011185
+            ],
+            "warmupSamples": [
+              0.13120600000002014,
+              0.05497299999979077
+            ],
+            "medianMs": 0.12229900000011185,
+            "minMs": 0.12229900000011185,
+            "p90Ms": 0.12229900000011185,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "innerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.07688299999995252
+            ],
+            "warmupSamples": [
+              0.13605499999994208,
+              0.06227699999999459
+            ],
+            "medianMs": 0.07688299999995252,
+            "minMs": 0.07688299999995252,
+            "p90Ms": 0.07688299999995252,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.04750899999999092
+            ],
+            "warmupSamples": [
+              0.054310999999870546,
+              0.05197700000007899
+            ],
+            "medianMs": 0.04750899999999092,
+            "minMs": 0.04750899999999092,
+            "p90Ms": 0.04750899999999092,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.13020399999982146
+            ],
+            "warmupSamples": [
+              0.07073300000001836,
+              0.06387899999981528
+            ],
+            "medianMs": 0.13020399999982146,
+            "minMs": 0.13020399999982146,
+            "p90Ms": 0.13020399999982146,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "innerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.04447299999992538
+            ],
+            "warmupSamples": [
+              0.0582889999998315,
+              0.023343999999951848
+            ],
+            "medianMs": 0.04447299999992538,
+            "minMs": 0.04447299999992538,
+            "p90Ms": 0.04447299999992538,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.019487000000026455
+            ],
+            "warmupSamples": [
+              0.027712000000065018,
+              0.01938600000016777
+            ],
+            "medianMs": 0.019487000000026455,
+            "minMs": 0.019487000000026455,
+            "p90Ms": 0.019487000000026455,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "create.1": {
+            "status": "passed",
+            "samples": [
+              0.05575500000009015
+            ],
+            "warmupSamples": [
+              0.07925799999998162,
+              0.08939600000007886
+            ],
+            "medianMs": 0.05575500000009015,
+            "minMs": 0.05575500000009015,
+            "p90Ms": 0.05575500000009015,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 1 -> Node-API scalar -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementToken": 1
+              },
+              {
+                "NodeAPI.createElementToken": 1
+              },
+              {
+                "NodeAPI.createElementToken": 1
+              }
+            ]
+          },
+          "create.8": {
+            "status": "passed",
+            "samples": [
+              0.08093099999996411
+            ],
+            "warmupSamples": [
+              0.06608400000004622,
+              0.055673999999953594
+            ],
+            "medianMs": 0.08093099999996411,
+            "minMs": 0.08093099999996411,
+            "p90Ms": 0.08093099999996411,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 8 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.32": {
+            "status": "passed",
+            "samples": [
+              0.15914699999984805
+            ],
+            "warmupSamples": [
+              0.1373869999999897,
+              0.09468799999990551
+            ],
+            "medianMs": 0.15914699999984805,
+            "minMs": 0.15914699999984805,
+            "p90Ms": 0.15914699999984805,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 32 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.128": {
+            "status": "passed",
+            "samples": [
+              0.407903000000033
+            ],
+            "warmupSamples": [
+              0.4463949999999386,
+              0.4594790000001012
+            ],
+            "medianMs": 0.407903000000033,
+            "minMs": 0.407903000000033,
+            "p90Ms": 0.407903000000033,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 128 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.256": {
+            "status": "passed",
+            "samples": [
+              0.6312110000001212
+            ],
+            "warmupSamples": [
+              0.6734710000000632,
+              0.5426549999999679
+            ],
+            "medianMs": 0.6312110000001212,
+            "minMs": 0.6312110000001212,
+            "p90Ms": 0.6312110000001212,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 256 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          }
+        },
+        "checks": {
+          "query.small.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "query.small.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "query.large.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "6d9f36c514582486478d4b226785d1b0b7d3440fd70aab33c9f3a61bfe0ed715"
+          },
+          "query.large.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "6d9f36c514582486478d4b226785d1b0b7d3440fd70aab33c9f3a61bfe0ed715"
+          },
+          "child.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 51,
+                "semanticSha256": "c4066d9ca43c687d1442bc115536ead54d24a228abfc70a0f862182a4d1858c7",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "6d9f36c514582486478d4b226785d1b0b7d3440fd70aab33c9f3a61bfe0ed715"
+          },
+          "preorder.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 205,
+                "semanticSha256": "aeb7cde1b209a97755de7a472451c9b21ee9be1eff97606bf2a65caa95c68eec",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 205,
+                "semanticSha256": "aeb7cde1b209a97755de7a472451c9b21ee9be1eff97606bf2a65caa95c68eec",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 205,
+                "semanticSha256": "aeb7cde1b209a97755de7a472451c9b21ee9be1eff97606bf2a65caa95c68eec",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "93e3e4d1dab04436a4c8595345c2975f7af34bc883979676ad078eb9bcdce0ee"
+          },
+          "child.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "preorder.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 5,
+                "semanticSha256": "993e4dc8767b826eab75ab19ca9ad31b92c0e0ebb8ad3bd21a1047e7bba5183e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 5,
+                "semanticSha256": "993e4dc8767b826eab75ab19ca9ad31b92c0e0ebb8ad3bd21a1047e7bba5183e",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 5,
+                "semanticSha256": "993e4dc8767b826eab75ab19ca9ad31b92c0e0ebb8ad3bd21a1047e7bba5183e",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "26179a7476d953abfa4e07e904f53e7f71e15a551095639c9715f1e83961ba75"
+          },
+          "innerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "ed8def04ad54ecf66908ecccce4821ed16eeefa68c744729d71fc802f3dcdbad",
+                "utf8Bytes": 3448,
+                "utf16Units": 3448
+              },
+              {
+                "iterations": 1,
+                "sha256": "ed8def04ad54ecf66908ecccce4821ed16eeefa68c744729d71fc802f3dcdbad",
+                "utf8Bytes": 3448,
+                "utf16Units": 3448
+              },
+              {
+                "iterations": 1,
+                "sha256": "ed8def04ad54ecf66908ecccce4821ed16eeefa68c744729d71fc802f3dcdbad",
+                "utf8Bytes": 3448,
+                "utf16Units": 3448
+              }
+            ],
+            "fingerprint": "c38878260a27607719934f23109c2c6f3846db40f382ed771dbb752452660159"
+          },
+          "innerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "c35e572ecd208339a9f369d73fb9ea23db477f1fbbc4fe1288c25cb565bc8b13",
+                "utf8Bytes": 3805,
+                "utf16Units": 3448
+              },
+              {
+                "iterations": 1,
+                "sha256": "c35e572ecd208339a9f369d73fb9ea23db477f1fbbc4fe1288c25cb565bc8b13",
+                "utf8Bytes": 3805,
+                "utf16Units": 3448
+              },
+              {
+                "iterations": 1,
+                "sha256": "c35e572ecd208339a9f369d73fb9ea23db477f1fbbc4fe1288c25cb565bc8b13",
+                "utf8Bytes": 3805,
+                "utf16Units": 3448
+              }
+            ],
+            "fingerprint": "81cf081afd52d5f500bcefa8e1771c45cf6bf4c9bb1900b0afe872b4b581c7dd"
+          },
+          "outerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "943fd36789de305ae76a2e450bbe2c83a4c293a57cfd63a0cc48b50fdc44da03",
+                "utf8Bytes": 3467,
+                "utf16Units": 3467
+              },
+              {
+                "iterations": 1,
+                "sha256": "943fd36789de305ae76a2e450bbe2c83a4c293a57cfd63a0cc48b50fdc44da03",
+                "utf8Bytes": 3467,
+                "utf16Units": 3467
+              },
+              {
+                "iterations": 1,
+                "sha256": "943fd36789de305ae76a2e450bbe2c83a4c293a57cfd63a0cc48b50fdc44da03",
+                "utf8Bytes": 3467,
+                "utf16Units": 3467
+              }
+            ],
+            "fingerprint": "5675d10f496211b593f92490f77082eb1060fcebb6e7d00d4e00b12e08f6a372"
+          },
+          "outerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "7111ad5f8b4dc17ba4d70728b9cad2496960cd5e6c97fe1f5385f400bce4afa9",
+                "utf8Bytes": 3824,
+                "utf16Units": 3467
+              },
+              {
+                "iterations": 1,
+                "sha256": "7111ad5f8b4dc17ba4d70728b9cad2496960cd5e6c97fe1f5385f400bce4afa9",
+                "utf8Bytes": 3824,
+                "utf16Units": 3467
+              },
+              {
+                "iterations": 1,
+                "sha256": "7111ad5f8b4dc17ba4d70728b9cad2496960cd5e6c97fe1f5385f400bce4afa9",
+                "utf8Bytes": 3824,
+                "utf16Units": 3467
+              }
+            ],
+            "fingerprint": "7c1062ed2bfe75864b30f6b8efce150f3976f7aeee065304bc6642c0a7b8897e"
+          },
+          "innerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "7319f55e24f9c9def7808d2ff97165c60b38daf2bf71e72a3784c1980397cd4c",
+                "utf8Bytes": 73,
+                "utf16Units": 66
+              },
+              {
+                "iterations": 1,
+                "sha256": "7319f55e24f9c9def7808d2ff97165c60b38daf2bf71e72a3784c1980397cd4c",
+                "utf8Bytes": 73,
+                "utf16Units": 66
+              },
+              {
+                "iterations": 1,
+                "sha256": "7319f55e24f9c9def7808d2ff97165c60b38daf2bf71e72a3784c1980397cd4c",
+                "utf8Bytes": 73,
+                "utf16Units": 66
+              }
+            ],
+            "fingerprint": "4c5d5657bdeb282ac6f553f8a44d7554783a9d3fca9a3c0d89cbe069e5f54d22"
+          },
+          "outerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "0a3381f47bc51747a6bda456c958b3af0ef4745b57c6532ddcf8d8bac762889d",
+                "utf8Bytes": 92,
+                "utf16Units": 85
+              },
+              {
+                "iterations": 1,
+                "sha256": "0a3381f47bc51747a6bda456c958b3af0ef4745b57c6532ddcf8d8bac762889d",
+                "utf8Bytes": 92,
+                "utf16Units": 85
+              },
+              {
+                "iterations": 1,
+                "sha256": "0a3381f47bc51747a6bda456c958b3af0ef4745b57c6532ddcf8d8bac762889d",
+                "utf8Bytes": 92,
+                "utf16Units": 85
+              }
+            ],
+            "fingerprint": "7a24de49957391b854230f439690a1842eedf3ac73ccf884ec5068eb61028dc9"
+          },
+          "create.1": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "create.8": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "create.32": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1f4e45fee928076dcc8feb55d6e3e82a4ab5887c99645ff5fae3d0eeeb790bf5"
+          },
+          "create.128": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "7c15eea1b4ad186ae74147c305751bad346ccaa8226db4f13f1c05d96e00d676"
+          },
+          "create.256": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "204df7f0df86b4c7d540e9a3d2682fa66f09c518a2db2d514fcc242fcd63980a"
+          }
+        },
+        "valid": true,
+        "memory": {
+          "rss": 73531392,
+          "heapTotal": 5354496,
+          "heapUsed": 5739608,
+          "external": 2626248,
+          "arrayBuffers": 508
+        }
+      },
+      {
+        "size": 2,
+        "workload": {
+          "runs": 1,
+          "iterations": 1,
+          "cases": {
+            "query.small.cold": {
+              "name": "query.small.cold",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.small.hot": {
+              "name": "query.small.hot",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.cold": {
+              "name": "query.large.cold",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "query.large.hot": {
+              "name": "query.large.hot",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "one exact untimed query per fresh fixture; facade result cache hit",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.cold": {
+              "name": "child.cold",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.cold": {
+              "name": "preorder.cold",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "child.grow-shrink": {
+              "name": "child.grow-shrink",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "preorder.grow-shrink": {
+              "name": "preorder.grow-shrink",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "retain full packed output / consume every public wrapper; ordered semantic digest outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.ascii": {
+              "name": "innerHTML.ascii",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "36a067408215beb1e045fdcf4464d05617119dbcfaaca51b443e8166945a6018",
+              "inputUtf8Bytes": 71508,
+              "innerUtf8Bytes": 71508,
+              "outerUtf8Bytes": 71527,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.unicode": {
+              "name": "innerHTML.unicode",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.ascii": {
+              "name": "outerHTML.ascii",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "36a067408215beb1e045fdcf4464d05617119dbcfaaca51b443e8166945a6018",
+              "inputUtf8Bytes": 71508,
+              "innerUtf8Bytes": 71508,
+              "outerUtf8Bytes": 71527,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.unicode": {
+              "name": "outerHTML.unicode",
+              "size": 2,
+              "iterations": 1,
+              "count": 1024,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "5304922c670c9d2ed6d3218e9f6f53020c67e48c707c3c3a1b08e65d0b144d5c",
+              "inputUtf8Bytes": 78676,
+              "innerUtf8Bytes": 78676,
+              "outerUtf8Bytes": 78695,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document per operation; no descendant wrappers primed",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "innerHTML.grow-shrink": {
+              "name": "innerHTML.grow-shrink",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "outerHTML.grow-shrink": {
+              "name": "outerHTML.grow-shrink",
+              "size": 2,
+              "iterations": 1,
+              "count": 16,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "54f77660c124a1c5d23d96d79f91ebc8e8c58b06cda36aa5e5e274b6be92a567",
+              "inputUtf8Bytes": 1180,
+              "innerUtf8Bytes": 1180,
+              "outerUtf8Bytes": 1199,
+              "nonAscii": true,
+              "selector": "span.hit[data-i]",
+              "cache": "same document: large result consumed, replace with small fixture outside timing",
+              "consumption": "complete string generation and length; SHA256 and exact content check outside timing; raw FFI decode outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.1": {
+              "name": "create.1",
+              "size": 2,
+              "iterations": 1,
+              "count": 1,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.8": {
+              "name": "create.8",
+              "size": 2,
+              "iterations": 1,
+              "count": 8,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.32": {
+              "name": "create.32",
+              "size": 2,
+              "iterations": 1,
+              "count": 32,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.128": {
+              "name": "create.128",
+              "size": 2,
+              "iterations": 1,
+              "count": 128,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            },
+            "create.256": {
+              "name": "create.256",
+              "size": 2,
+              "iterations": 1,
+              "count": 256,
+              "small": 16,
+              "large": 1024,
+              "htmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "inputUtf8Bytes": 0,
+              "innerUtf8Bytes": 0,
+              "outerUtf8Bytes": 19,
+              "nonAscii": false,
+              "selector": "span.hit[data-i]",
+              "cache": "fresh document; drain earlier pool tiers outside timing; time one complete tier",
+              "consumption": "retain every token/wrapper; validate all unique detached SPAN nodes outside timing",
+              "setupTimed": false,
+              "validationTimed": false,
+              "forcedGcTimed": false,
+              "normalGcTimed": true
+            }
+          }
+        },
+        "phases": {
+          "query.small.cold": {
+            "status": "passed",
+            "samples": [
+              0.22395899999992253
+            ],
+            "warmupSamples": [
+              0.2921969999999874,
+              0.13481100000012702
+            ],
+            "medianMs": 0.22395899999992253,
+            "minMs": 0.22395899999992253,
+            "p90Ms": 0.22395899999992253,
+            "madMs": 0,
+            "expectedPath": "facade Node-API query_snapshot/querySelectorAllTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              }
+            ]
+          },
+          "query.small.hot": {
+            "status": "passed",
+            "samples": [
+              0.028011000000105923
+            ],
+            "warmupSamples": [
+              0.047238000000106695,
+              0.04322099999990314
+            ],
+            "medianMs": 0.028011000000105923,
+            "minMs": 0.028011000000105923,
+            "p90Ms": 0.028011000000105923,
+            "madMs": 0,
+            "expectedPath": "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)",
+            "observedPath": null,
+            "diagnostics": [
+              {},
+              {},
+              {}
+            ]
+          },
+          "query.large.cold": {
+            "status": "passed",
+            "samples": [
+              1.2295110000000022
+            ],
+            "warmupSamples": [
+              1.3579900000001999,
+              1.1580780000001596
+            ],
+            "medianMs": 1.2295110000000022,
+            "minMs": 1.2295110000000022,
+            "p90Ms": 1.2295110000000022,
+            "madMs": 0,
+            "expectedPath": "facade Node-API query_snapshot/querySelectorAllTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              },
+              {
+                "NodeAPI.querySelectorAllTokens": 1
+              }
+            ]
+          },
+          "query.large.hot": {
+            "status": "passed",
+            "samples": [
+              0.10571899999990819
+            ],
+            "warmupSamples": [
+              0.16878599999995458,
+              0.09236300000020492
+            ],
+            "medianMs": 0.10571899999990819,
+            "minMs": 0.10571899999990819,
+            "p90Ms": 0.10571899999990819,
+            "madMs": 0,
+            "expectedPath": "public scoped query -> new StaticNodeList over cached wrappers -> full iteration (no boundary on hit)",
+            "observedPath": null,
+            "diagnostics": [
+              {},
+              {},
+              {}
+            ]
+          },
+          "child.cold": {
+            "status": "passed",
+            "samples": [
+              0.6909029999999348
+            ],
+            "warmupSamples": [
+              0.7019830000001548,
+              0.8955359999999928
+            ],
+            "medianMs": 0.6909029999999348,
+            "minMs": 0.6909029999999348,
+            "p90Ms": 0.6909029999999348,
+            "madMs": 0,
+            "expectedPath": "facade Node-API child_tokens/childNodesTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              }
+            ]
+          },
+          "preorder.cold": {
+            "status": "passed",
+            "samples": [
+              8.736866000000191
+            ],
+            "warmupSamples": [
+              9.374378999999863,
+              7.42864899999995
+            ],
+            "medianMs": 8.736866000000191,
+            "minMs": 8.736866000000191,
+            "p90Ms": 8.736866000000191,
+            "madMs": 0,
+            "expectedPath": "facade Node-API preorder_snapshot/preorderTokenSnapshot -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 1024
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 1024
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 1024
+              }
+            ]
+          },
+          "child.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.0821139999998195
+            ],
+            "warmupSamples": [
+              0.08860600000025443,
+              0.13159700000005614
+            ],
+            "medianMs": 0.0821139999998195,
+            "minMs": 0.0821139999998195,
+            "p90Ms": 0.0821139999998195,
+            "madMs": 0,
+            "expectedPath": "facade Node-API child_tokens/childNodesTokens -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              },
+              {
+                "NodeAPI.childNodesTokens": 1
+              }
+            ]
+          },
+          "preorder.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.37443000000030224
+            ],
+            "warmupSamples": [
+              0.2601559999998244,
+              0.38636300000007395
+            ],
+            "medianMs": 0.37443000000030224,
+            "minMs": 0.37443000000030224,
+            "p90Ms": 0.37443000000030224,
+            "madMs": 0,
+            "expectedPath": "facade Node-API preorder_snapshot/preorderTokenSnapshot -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 16
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 16
+              },
+              {
+                "NodeAPI.preorderTokenSnapshot": 1,
+                "NodeAPI.materializeNodeToken": 16
+              }
+            ]
+          },
+          "innerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.6319319999997788
+            ],
+            "warmupSamples": [
+              0.5963550000001305,
+              0.5479440000003706
+            ],
+            "medianMs": 0.6319319999997788,
+            "minMs": 0.6319319999997788,
+            "p90Ms": 0.6319319999997788,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "innerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              1.0501350000004095
+            ],
+            "warmupSamples": [
+              0.7941569999998137,
+              0.5036320000003798
+            ],
+            "medianMs": 1.0501350000004095,
+            "minMs": 1.0501350000004095,
+            "p90Ms": 1.0501350000004095,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.ascii": {
+            "status": "passed",
+            "samples": [
+              0.5265449999997145
+            ],
+            "warmupSamples": [
+              0.4133529999999155,
+              0.4016410000003816
+            ],
+            "medianMs": 0.5265449999997145,
+            "minMs": 0.5265449999997145,
+            "p90Ms": 0.5265449999997145,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.unicode": {
+            "status": "passed",
+            "samples": [
+              0.6620989999996709
+            ],
+            "warmupSamples": [
+              0.7456050000000687,
+              0.6365019999998367
+            ],
+            "medianMs": 0.6620989999996709,
+            "minMs": 0.6620989999996709,
+            "p90Ms": 0.6620989999996709,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "innerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.10331200000018725
+            ],
+            "warmupSamples": [
+              0.046076000000084605,
+              0.08647199999995792
+            ],
+            "medianMs": 0.10331200000018725,
+            "minMs": 0.10331200000018725,
+            "p90Ms": 0.10331200000018725,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              },
+              {
+                "NodeAPI.innerHTML": 1
+              }
+            ]
+          },
+          "outerHTML.grow-shrink": {
+            "status": "passed",
+            "samples": [
+              0.08356499999990774
+            ],
+            "warmupSamples": [
+              0.06051400000023932,
+              0.049011999999947875
+            ],
+            "medianMs": 0.08356499999990774,
+            "minMs": 0.08356499999990774,
+            "p90Ms": 0.08356499999990774,
+            "madMs": 0,
+            "expectedPath": "facade Node-API serialize/NodeHandle HTML string -> decode/hydrate -> full public consumption",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              },
+              {
+                "NodeAPI.outerHTML": 1
+              }
+            ]
+          },
+          "create.1": {
+            "status": "passed",
+            "samples": [
+              0.10831199999984165
+            ],
+            "warmupSamples": [
+              0.10198099999979604,
+              0.11774100000002363
+            ],
+            "medianMs": 0.10831199999984165,
+            "minMs": 0.10831199999984165,
+            "p90Ms": 0.10831199999984165,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 1 -> Node-API scalar -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementToken": 1
+              },
+              {
+                "NodeAPI.createElementToken": 1
+              },
+              {
+                "NodeAPI.createElementToken": 1
+              }
+            ]
+          },
+          "create.8": {
+            "status": "passed",
+            "samples": [
+              0.07270599999992555
+            ],
+            "warmupSamples": [
+              0.09613899999976638,
+              0.15254600000025675
+            ],
+            "medianMs": 0.07270599999992555,
+            "minMs": 0.07270599999992555,
+            "p90Ms": 0.07270599999992555,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 8 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.32": {
+            "status": "passed",
+            "samples": [
+              0.1544989999997597
+            ],
+            "warmupSamples": [
+              0.187460000000101,
+              0.0906489999997575
+            ],
+            "medianMs": 0.1544989999997597,
+            "minMs": 0.1544989999997597,
+            "p90Ms": 0.1544989999997597,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 32 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.128": {
+            "status": "passed",
+            "samples": [
+              0.4694690000001174
+            ],
+            "warmupSamples": [
+              0.36879099999987375,
+              0.3121129999999539
+            ],
+            "medianMs": 0.4694690000001174,
+            "minMs": 0.4694690000001174,
+            "p90Ms": 0.4694690000001174,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 128 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          },
+          "create.256": {
+            "status": "passed",
+            "samples": [
+              0.4066800000000512
+            ],
+            "warmupSamples": [
+              0.8036040000001776,
+              0.6345369999999093
+            ],
+            "medianMs": 0.4066800000000512,
+            "minMs": 0.4066800000000512,
+            "p90Ms": 0.4066800000000512,
+            "madMs": 0,
+            "expectedPath": "public createElement -> tier 256 -> Node-API scalar range -> canonical wrappers",
+            "observedPath": null,
+            "diagnostics": [
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              },
+              {
+                "NodeAPI.createElementTokenRange": 1
+              }
+            ]
+          }
+        },
+        "checks": {
+          "query.small.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "74782d5c94fb13f43ec39c06d2041177e7fc846612da7d4794493c253846b480"
+          },
+          "query.small.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "74782d5c94fb13f43ec39c06d2041177e7fc846612da7d4794493c253846b480"
+          },
+          "query.large.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "8451570e2988915f77f3fb7d0cb69908657c0c9bd0862cf3db605d3625c6adad"
+          },
+          "query.large.hot": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "8451570e2988915f77f3fb7d0cb69908657c0c9bd0862cf3db605d3625c6adad"
+          },
+          "child.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1024,
+                "semanticSha256": "29e5e0f519b25b1bd4d7022b48d0249b2d083c9eebe3a6c45104dc0a5e04b5ca",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "8451570e2988915f77f3fb7d0cb69908657c0c9bd0862cf3db605d3625c6adad"
+          },
+          "preorder.cold": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 4097,
+                "semanticSha256": "89c50501fd5677ca0c42ccca1d58b3b2a6e19cf9d14d5c94bf6efd4994b1398c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 4097,
+                "semanticSha256": "89c50501fd5677ca0c42ccca1d58b3b2a6e19cf9d14d5c94bf6efd4994b1398c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 4097,
+                "semanticSha256": "89c50501fd5677ca0c42ccca1d58b3b2a6e19cf9d14d5c94bf6efd4994b1398c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "4e7c52225219edc5acc9cbe3e9c135249b76f6f3f1a8a008ee6bb6748a72d223"
+          },
+          "child.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 16,
+                "semanticSha256": "d7c4b5f2be8b1dace4c66172babd373d0225e18da731571b52925121d2268d21",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "74782d5c94fb13f43ec39c06d2041177e7fc846612da7d4794493c253846b480"
+          },
+          "preorder.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 65,
+                "semanticSha256": "57c6dda1ad971882c698726b6225fc99f7c379fc1efbeec43582def3d9c64c48",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 65,
+                "semanticSha256": "57c6dda1ad971882c698726b6225fc99f7c379fc1efbeec43582def3d9c64c48",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 65,
+                "semanticSha256": "57c6dda1ad971882c698726b6225fc99f7c379fc1efbeec43582def3d9c64c48",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "7ac9ca0c3f7066c045773755f0d2e89fbe714600fbce432e8d50af4fb7d42e40"
+          },
+          "innerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "40f069d7fe92713804f3e32b5c4e2d15bdb811a7570f8d20dcbc7115b6e3131d",
+                "utf8Bytes": 71508,
+                "utf16Units": 71508
+              },
+              {
+                "iterations": 1,
+                "sha256": "40f069d7fe92713804f3e32b5c4e2d15bdb811a7570f8d20dcbc7115b6e3131d",
+                "utf8Bytes": 71508,
+                "utf16Units": 71508
+              },
+              {
+                "iterations": 1,
+                "sha256": "40f069d7fe92713804f3e32b5c4e2d15bdb811a7570f8d20dcbc7115b6e3131d",
+                "utf8Bytes": 71508,
+                "utf16Units": 71508
+              }
+            ],
+            "fingerprint": "992deca173dc2fca2e64dc5f0dc804deed92b5aa4a5c0a2571fde4845a479da8"
+          },
+          "innerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "f0f9e7d8152b3d8644271fb3f2168cf347661e2d3bad919b9dc356ecacebb249",
+                "utf8Bytes": 78676,
+                "utf16Units": 71508
+              },
+              {
+                "iterations": 1,
+                "sha256": "f0f9e7d8152b3d8644271fb3f2168cf347661e2d3bad919b9dc356ecacebb249",
+                "utf8Bytes": 78676,
+                "utf16Units": 71508
+              },
+              {
+                "iterations": 1,
+                "sha256": "f0f9e7d8152b3d8644271fb3f2168cf347661e2d3bad919b9dc356ecacebb249",
+                "utf8Bytes": 78676,
+                "utf16Units": 71508
+              }
+            ],
+            "fingerprint": "03f2f782f0b54065a1b4c488c82a4ca9e9cdf76d38fac42fc9f3e87d91703ebf"
+          },
+          "outerHTML.ascii": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "580ed1cdae8801909ef437401cde10f82f08a92fd79e0d7660c73427caf8395d",
+                "utf8Bytes": 71527,
+                "utf16Units": 71527
+              },
+              {
+                "iterations": 1,
+                "sha256": "580ed1cdae8801909ef437401cde10f82f08a92fd79e0d7660c73427caf8395d",
+                "utf8Bytes": 71527,
+                "utf16Units": 71527
+              },
+              {
+                "iterations": 1,
+                "sha256": "580ed1cdae8801909ef437401cde10f82f08a92fd79e0d7660c73427caf8395d",
+                "utf8Bytes": 71527,
+                "utf16Units": 71527
+              }
+            ],
+            "fingerprint": "3223c06881fee39555ebd7144ee27278e7de934b23c45f3955970a343bcc030b"
+          },
+          "outerHTML.unicode": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "0b757e444e8c61cbba2f325fda5e8f575f0884caf5c3777be839e613f3345a81",
+                "utf8Bytes": 78695,
+                "utf16Units": 71527
+              },
+              {
+                "iterations": 1,
+                "sha256": "0b757e444e8c61cbba2f325fda5e8f575f0884caf5c3777be839e613f3345a81",
+                "utf8Bytes": 78695,
+                "utf16Units": 71527
+              },
+              {
+                "iterations": 1,
+                "sha256": "0b757e444e8c61cbba2f325fda5e8f575f0884caf5c3777be839e613f3345a81",
+                "utf8Bytes": 78695,
+                "utf16Units": 71527
+              }
+            ],
+            "fingerprint": "126f1b90b246acfb1b414e27fd906a226cf6a1fa53546a4466081a78c021fe6d"
+          },
+          "innerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "7e6b101a7a67f9180a9f511bf8b58dd659322a710a40f02784b13dc9cb764320",
+                "utf8Bytes": 1180,
+                "utf16Units": 1068
+              },
+              {
+                "iterations": 1,
+                "sha256": "7e6b101a7a67f9180a9f511bf8b58dd659322a710a40f02784b13dc9cb764320",
+                "utf8Bytes": 1180,
+                "utf16Units": 1068
+              },
+              {
+                "iterations": 1,
+                "sha256": "7e6b101a7a67f9180a9f511bf8b58dd659322a710a40f02784b13dc9cb764320",
+                "utf8Bytes": 1180,
+                "utf16Units": 1068
+              }
+            ],
+            "fingerprint": "7785dd06f071f65b275919e2725dc43ee49d79a1687c9eb1123baa300489661c"
+          },
+          "outerHTML.grow-shrink": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "sha256": "7353a77b2e6b4b342a22f2c1a1c72880da2770811cdcffa67f677f43ca2eb794",
+                "utf8Bytes": 1199,
+                "utf16Units": 1087
+              },
+              {
+                "iterations": 1,
+                "sha256": "7353a77b2e6b4b342a22f2c1a1c72880da2770811cdcffa67f677f43ca2eb794",
+                "utf8Bytes": 1199,
+                "utf16Units": 1087
+              },
+              {
+                "iterations": 1,
+                "sha256": "7353a77b2e6b4b342a22f2c1a1c72880da2770811cdcffa67f677f43ca2eb794",
+                "utf8Bytes": 1199,
+                "utf16Units": 1087
+              }
+            ],
+            "fingerprint": "a24ce027d08cc5af1920270cb4a56964b4573aeb6ca2ef32c6486ac089efd15e"
+          },
+          "create.1": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 1,
+                "semanticSha256": "ac55c8892548c58fc76ab9290c93ce6c05299992392fb98442b2592de7f4257c",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "13189a08dbff4082aec2c5bb467c1592385af29386e7a0fb039e43677142d687"
+          },
+          "create.8": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 8,
+                "semanticSha256": "20b84695607e1ee13920493f81c982cab6697fb73b29ffa132e24e4726d21037",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1c87a5fecea5cde977d63afc1b5a538bbab525e16c63b35f8767a098fbb9695e"
+          },
+          "create.32": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 32,
+                "semanticSha256": "c0fe0ce89dd035fa5d813e3676deb28d355d95addc22118fc649cf2222cbccd5",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "1f4e45fee928076dcc8feb55d6e3e82a4ab5887c99645ff5fae3d0eeeb790bf5"
+          },
+          "create.128": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 128,
+                "semanticSha256": "037997b94b66eb2c1d59eb39a9917bbbf6d581831542c4aba47c8c1439b8344a",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "7c15eea1b4ad186ae74147c305751bad346ccaa8226db4f13f1c05d96e00d676"
+          },
+          "create.256": {
+            "rounds": [
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              },
+              {
+                "iterations": 1,
+                "count": 256,
+                "semanticSha256": "d273dd48749d52de2284f346b04f0289f3a474fb7f1a6c0c2eb50fc4c33fe7e1",
+                "orderedContents": "verified",
+                "unique": true
+              }
+            ],
+            "fingerprint": "204df7f0df86b4c7d540e9a3d2682fa66f09c518a2db2d514fcc242fcd63980a"
+          }
+        },
+        "valid": true,
+        "memory": {
+          "rss": 80748544,
+          "heapTotal": 5932032,
+          "heapUsed": 5970381,
+          "external": 2832349,
+          "arrayBuffers": 508
+        }
+      }
+    ],
+    "valid": true
+  },
+  "metadata": {
+    "runtime": {
+      "bunVersion": "1.4.0",
+      "bunRevision": "34cbb9a40b4bd1bd767d134a7065e66c2432a676",
+      "platform": {
+        "platform": "linux",
+        "arch": "x64",
+        "libc": "gnu"
+      },
+      "expectedAbis": {
+        "nodeApi": 1,
+        "ffi": 1
+      },
+      "nodeApi": {
+        "status": "available",
+        "abiVersion": 1,
+        "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node"
+      },
+      "ffi": {
+        "status": "disabled",
+        "reason": "MAD_DOM_FFI_DISABLED is set",
+        "expectedAbiVersion": 1,
+        "expectedCapabilities": 31,
+        "symbols": []
+      }
+    },
+    "executable": {
+      "path": "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+      "sha256": "33d56b070be6a9e3da0ab013038b43d1645d0534ca811ecdba4472599117eb4b",
+      "bytes": 80761952,
+      "dev": 64769,
+      "inode": 1087114
+    },
+    "source": {
+      "root": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "sourceSha": "fe77b7e28ba1ca24e40ce9272bc6a504cb32c191",
+      "productionSha256": "74ef5e3ca7a102422aeffd26280c4c743462de6230ca83cadfa977e6aeaf6aa7",
+      "domWorkloadSha256": "659d912c62373970e22409ac20dd8d9d390956dd5718c875fa1d1a34a13ff1fc",
+      "lockSha256": "ca3827dae797c2697e507de835366ca953e81ce31234e8de763f6b0bfdc6204b"
+    },
+    "artifact": {
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+      "sha256": "2d1f85d40ea55e79d2564004716cd9b68c48cde31baea3b9335d63a7c102fa96",
+      "bytes": 3866672,
+      "dev": 64784,
+      "inode": 2111611
+    },
+    "overrides": {
+      "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+      "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+      "MAD_DOM_FFI_DISABLED": "1"
+    },
+    "libc": "2.39",
+    "rustToolchain": "[toolchain]\nchannel = \"1.93.1\"\nprofile = \"minimal\"\ncomponents = [\"clippy\", \"rustfmt\"]",
+    "handshake": "passed real document query + full UTF-8 serialization; same Node-API/FFI image"
+  }
+}

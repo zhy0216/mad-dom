@@ -1,0 +1,36 @@
+
+tests/bun/safety.test.js:
+
+thread '<unnamed>' (1668093) panicked at crates/mad-dom-bun/src/handle.rs:1922:9:
+diagnostic panic: the native panic boundary is contained
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+(pass) native safety boundary (T21) > a Rust panic is contained and the document stays usable [0.41ms]
+(pass) native safety boundary (T21) > dangling handles fail every operation without crashing [0.19ms]
+(pass) native safety boundary (T21) > hostile inputs fail or succeed cleanly and never crash the process [1.89ms]
+(pass) native safety boundary (T21) > the affinity guard passes on the owning thread [0.05ms]
+(pass) native safety boundary (T21) > the affinity guard rejects a foreign thread with the frozen T21B code [0.29ms]
+(pass) native safety boundary (T21) > a worker-created document works inside its own isolate [46.54ms]
+(pass) native safety boundary (T21) > first-phase cross-thread DOM use fails explicitly, never silently [3.02ms]
+(pass) native safety boundary (T21) > live Workers reject foreign FFI owners and report the correct counter scopes [80.60ms]
+
+tests/bun/ffi-loader.test.js:
+(pass) Bun FFI loader capability matrix > enabled probe is additive and records the independent ABI [14.53ms]
+(pass) Bun FFI loader capability matrix > disabled FFI keeps the process on Node-API [12.24ms]
+(pass) Bun FFI loader capability matrix > missing FFI artifact is a data report, not a load failure [12.41ms]
+(pass) Bun FFI loader capability matrix > ABI mismatch falls back without throwing from the loader [18.02ms]
+(pass) Bun FFI loader capability matrix > partial capabilities retain the supported operation and report the gap [15.73ms]
+(pass) Bun FFI loader capability matrix > a genuinely missing advertised symbol is a per-symbol partial, not available [16.37ms]
+(pass) Bun FFI loader capability matrix > a second same-ABI image cannot bind documents and records the image reason [24.48ms]
+(pass) Bun FFI loader capability matrix > the exact Node-API image binds documents [15.22ms]
+(pass) in-process report remains resettable for fallback tests [1.52ms]
+
+tests/bun/ffi-facade-hot-path.test.js:
+(pass) Bun FFI facade hot path > FFI-enabled workload actually calls the FFI methods [75.80ms]
+(pass) Bun FFI facade hot path > facade digest is identical across every FFI capability state [549.63ms]
+(pass) Bun FFI facade hot path > a second same-ABI image is refused for documents and falls back to Node-API [189.66ms]
+(pass) Bun FFI facade hot path > FFI-disabled and missing scenarios report the mounted-method gap [352.83ms]
+
+ 21 pass
+ 0 fail
+ 121 expect() calls
+Ran 21 tests across 3 files. [1493.00ms]

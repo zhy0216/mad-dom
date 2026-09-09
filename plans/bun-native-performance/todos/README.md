@@ -21,7 +21,7 @@ medium：Codex / `gpt-6-astra` / `xhigh`。启动时逐任务显式传模型、�
 | --- | --- | --- | --- | --- | --- |
 | `done/01-balanced-baseline.md` | P0 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | 已完成：公共 runner、完整 ABBA/profiles 与不可变 reference；待协调器复核集成 |
 | `done/02-native-snapshot-packing.md` | P1 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | 已完成：无可复现公开收益，保留最小实现并如实披露；逐条证据在 ../evidence/task-02/ |
-| `03-ffi-adapter-performance.md` | P1 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | 有界 buffer 复用、编码解码与公开 facade 路径选择 |
+| `done/03-ffi-adapter-performance.md` | P1 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | 已完成：保留有界 scratch 复用 + UTF-8 解码优化；不引入新静态路径，materialize-state 路由被 probe 证伪；null control 归因位点效应；证据在 ../evidence/task-03/ |
 | `done/04-checksum-io-performance.md` | P1 | medium | inherit → codex（继承默认） | `gpt-6-astra` / `xhigh` | 已完成：单次目录扫描、真实 CLI ABBA 与写入 oracle；有界并发未纳入生产 |
 | `05-integrated-performance-validation.md` | P0 | hard | inherit → codex（继承默认） | `gpt-6-astra` / `max` | 验证最终 baseline/latest 矩阵、全部 phase、内存与回归门禁 |
 
@@ -29,7 +29,7 @@ medium：Codex / `gpt-6-astra` / `xhigh`。启动时逐任务显式传模型、�
 
 1. [done/01-balanced-baseline.md](done/01-balanced-baseline.md) — 已完成；[逐条验收证据](../evidence/baseline/README.md)
 2. [done/02-native-snapshot-packing.md](done/02-native-snapshot-packing.md) — 已完成；[逐条验收证据](../evidence/task-02/README.md)
-3. [03-ffi-adapter-performance.md](03-ffi-adapter-performance.md) — 依赖 01-balanced-baseline
+3. [done/03-ffi-adapter-performance.md](done/03-ffi-adapter-performance.md) — 已完成；[逐条验收证据](../evidence/task-03/README.md)
 4. [done/04-checksum-io-performance.md](done/04-checksum-io-performance.md) — 已完成；[逐条验收证据](../evidence/task-04/acceptance.md)
 5. [05-integrated-performance-validation.md](05-integrated-performance-validation.md) — 依赖 01-balanced-baseline、02-native-snapshot-packing、03-ffi-adapter-performance、04-checksum-io-performance
 

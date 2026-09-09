@@ -441,7 +441,11 @@ function ffiContextValues(context) {
   if (context === null || context === undefined || context.length < 3) {
     throw ffiError(1, "ffiContext");
   }
-  return [0, 1, 2].map((index) => ffiU32(context[index], "ffiContext"));
+  return [
+    ffiU32(context[0], "ffiContext"),
+    ffiU32(context[1], "ffiContext"),
+    ffiU32(context[2], "ffiContext"),
+  ];
 }
 
 function ffiU32(value, operation) {
@@ -470,8 +474,10 @@ function ffiInput(view, Type, operation) {
   return [view, ffiU32(typedArrayLength.call(view), operation)];
 }
 
+const ffiEncoder = new TextEncoder();
+
 function ffiBytes(value, operation) {
-  return ffiInput(typeof value === "string" ? new TextEncoder().encode(value) : value, Uint8Array, operation);
+  return ffiInput(typeof value === "string" ? ffiEncoder.encode(value) : value, Uint8Array, operation);
 }
 
 // Sanity ceiling for a single caller-owned output buffer. Exceeding it is not
@@ -497,63 +503,80 @@ const FFI_MAX_OUTPUT_BYTES = 64_000_000;
 // reported length beyond `capacity`, and never grows past
 // FFI_MAX_OUTPUT_WORDS / FFI_MAX_OUTPUT_BYTES; both violations fall back to
 // Node-API instead of allocating from an untrusted count.
-function outputWords(call, operation) {
-  let capacity = 256;
-  for (let attempt = 0; attempt !== 8; attempt += 1) {
-    const output = new Uint32Array(capacity);
-    const written = new Uint32Array(1);
-    const status = call(output, capacity, written);
-    if (status === FFI_STATUS.BUFFER_TOO_SMALL) {
-      if (written[0] <= capacity) return undefined;
-      if (written[0] > FFI_MAX_OUTPUT_WORDS) return undefined;
-      capacity = written[0];
-      continue;
+// Each operation keeps only a numeric hint and one length word, never an
+// output buffer or document. Hints cover ordinary snapshots/HTML without a
+// second native traversal. A small success shrinks immediately; very large
+// results and exceptions reset to the original minimum. The maximum output
+// budget and retry protocol above are unchanged.
+function outputBuffer(words, initialCapacity, maximum, hintMaximum) {
+  let hint = initialCapacity;
+  const scratch = new Uint32Array(1);
+  let busy = false;
+  return function output(call, operation) {
+    const reuse = !busy;
+    if (reuse) busy = true;
+    let nextHint = initialCapacity;
+    try {
+      // Reentry (including during output allocation/copy) cannot overwrite
+      // the outer call's length. Only the outer lease updates the next hint.
+      const written = reuse ? scratch : new Uint32Array(1);
+      let capacity = hint;
+      for (let attempt = 0; attempt !== 8; attempt += 1) {
+        const output = words ? new Uint32Array(capacity) : new Uint8Array(capacity);
+        written[0] = 0;
+        const status = call(output, capacity, written);
+        const length = written[0];
+        if (status === FFI_STATUS.BUFFER_TOO_SMALL) {
+          if (length <= capacity || length > maximum) return undefined;
+          capacity = length;
+          continue;
+        }
+        if (status !== FFI_STATUS.OK) throw ffiError(status, operation);
+        if (length > capacity) return undefined;
+        // A fresh exact-size allocation already satisfies independent
+        // ownership. Smaller results must not retain the oversized buffer.
+        const owned = length === capacity ? output : output.slice(0, length);
+        if (length <= hintMaximum) nextHint = Math.max(initialCapacity, length);
+        return owned;
+      }
+      return undefined;
+    } finally {
+      if (reuse) {
+        hint = nextHint;
+        busy = false;
+      }
     }
-    if (status !== FFI_STATUS.OK) throw ffiError(status, operation);
-    if (written[0] > capacity) return undefined;
-    return output.slice(0, written[0]);
-  }
-  return undefined;
-}
-
-function outputBytes(call, operation) {
-  let capacity = 1024;
-  for (let attempt = 0; attempt !== 8; attempt += 1) {
-    const output = new Uint8Array(capacity);
-    const written = new Uint32Array(1);
-    const status = call(output, capacity, written);
-    if (status === FFI_STATUS.BUFFER_TOO_SMALL) {
-      if (written[0] <= capacity) return undefined;
-      if (written[0] > FFI_MAX_OUTPUT_BYTES) return undefined;
-      capacity = written[0];
-      continue;
-    }
-    if (status !== FFI_STATUS.OK) throw ffiError(status, operation);
-    if (written[0] > capacity) return undefined;
-    return output.slice(0, written[0]);
-  }
-  return undefined;
+  };
 }
 
 // Creation is single-shot with exact capacity. Native capacity failures are
 // side-effect free; a malformed success may already have mutated the document
 // and must throw instead of retrying through either channel.
-function outputWordsExact(call, operation, requiredWords) {
-  const required = ffiU32(requiredWords, operation);
-  if (required > 4096) throw ffiError(1, operation);
-  const output = new Uint32Array(required);
-  const written = new Uint32Array(1);
-  const status = call(output, required, written);
-  if (status === FFI_STATUS.OK) {
-    // Success may already have mutated the document. A malformed result must
-    // throw: falling back here would create a second batch of detached nodes.
-    if (written[0] !== required) throw ffiError(1, `${operation}: invalid output length`);
-    return output;
-  }
-  // BUFFER_TOO_SMALL on a correctly sized buffer is a protocol anomaly: report
-  // the Node-API fallback signal rather than calling the mutating entry again.
-  if (status === FFI_STATUS.BUFFER_TOO_SMALL) return undefined;
-  throw ffiError(status, operation);
+function exactOutputWords() {
+  const scratch = new Uint32Array(1);
+  let busy = false;
+  return function outputWordsExact(call, operation, requiredWords) {
+    const required = ffiU32(requiredWords, operation);
+    if (required > 4096) throw ffiError(1, operation);
+    const reuse = !busy;
+    if (reuse) busy = true;
+    try {
+      const written = reuse ? scratch : new Uint32Array(1);
+      const output = new Uint32Array(required);
+      written[0] = 0;
+      const status = call(output, required, written);
+      if (status === FFI_STATUS.OK) {
+        // Success may already have mutated the document. Never fall back and
+        // create a second batch when the native success length is malformed.
+        if (written[0] !== required) throw ffiError(1, `${operation}: invalid output length`);
+        return output;
+      }
+      if (status === FFI_STATUS.BUFFER_TOO_SMALL) return undefined;
+      throw ffiError(status, operation);
+    } finally {
+      if (reuse) busy = false;
+    }
+  };
 }
 
 function openFfiSymbols(ffi, path, names, declarations = FFI_SYMBOL_DECLARATIONS) {
@@ -625,6 +648,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
   // any resolved symbol could still be called.
   Object.defineProperty(adapter, "libraries", { value: libraries, enumerable: false });
   if (symbols[FFI_SYMBOLS.querySnapshot] !== undefined) {
+    const outputWords = outputBuffer(true, 256, FFI_MAX_OUTPUT_WORDS, 16_384);
     adapter.querySnapshot = function querySnapshot(context, scopeToken, selector) {
       const [owner, generation, scope] = ffiContextValues(context);
       const root = ffiU32(scopeToken ?? scope, "query snapshot");
@@ -634,6 +658,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
     };
   }
   if (symbols[FFI_SYMBOLS.preorderSnapshot] !== undefined) {
+    const outputWords = outputBuffer(true, 256, FFI_MAX_OUTPUT_WORDS, 16_384);
     adapter.preorderSnapshot = function preorderSnapshot(context, rootToken) {
       const [owner, generation] = ffiContextValues(context);
       ffiU32(rootToken, "preorder snapshot");
@@ -642,6 +667,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
     };
   }
   if (symbols[FFI_SYMBOLS.childSnapshot] !== undefined) {
+    const outputWords = outputBuffer(true, 256, FFI_MAX_OUTPUT_WORDS, 16_384);
     adapter.childSnapshot = function childSnapshot(context, rootToken) {
       const [owner, generation] = ffiContextValues(context);
       ffiU32(rootToken, "child snapshot");
@@ -650,6 +676,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
     };
   }
   if (symbols[FFI_SYMBOLS.serialize] !== undefined) {
+    const outputBytes = outputBuffer(false, 1024, FFI_MAX_OUTPUT_BYTES, 131_072);
     adapter.serialize = function serialize(context, rootToken, mode = 0) {
       const [owner, generation] = ffiContextValues(context);
       ffiU32(rootToken, "serialize");
@@ -659,6 +686,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
     };
   }
   if (symbols[FFI_SYMBOLS.createElements] !== undefined) {
+    const outputWordsExact = exactOutputWords();
     adapter.createElements = function createElements(context, name, count) {
       const [owner, generation] = ffiContextValues(context);
       ffiU32(count, "create elements");
@@ -676,6 +704,7 @@ function buildFfiAdapter(ffi, path, baseLibrary, abiVersion, advertisedCapabilit
     };
   }
   if (symbols[FFI_SYMBOLS.readBatch] !== undefined) {
+    const outputBytes = outputBuffer(false, 1024, FFI_MAX_OUTPUT_BYTES, 131_072);
     adapter.readBatch = function readBatch(context, tokens, field) {
       const [owner, generation] = ffiContextValues(context);
       ffiU32(field, "read batch");
