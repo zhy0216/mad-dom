@@ -1,0 +1,57 @@
+
+benchmark/dom-bench/report.test.js:
+(pass) benchmark timing summaries > operation total preserves round pairing instead of adding medians [0.63ms]
+(pass) benchmark timing summaries > rejects empty, invalid or unpaired samples [0.20ms]
+(pass) benchmark comparison validity > requires identical complete workload metadata and checks [0.53ms]
+(pass) benchmark comparison validity > invalid core results publish no speedup [1.16ms]
+(pass) benchmark comparison validity > testing comparisons reject missing checks, changed runs and skipped cases [0.11ms]
+
+benchmark/dom-bench/testing-worker.test.js:
+(pass) unit-test benchmark fixtures > fixtureLifecycle satisfies its oracle on the reference engine [14.03ms]
+(pass) unit-test benchmark fixtures > windowLifecycle satisfies its oracle on the reference engine [6.43ms]
+(pass) unit-test benchmark fixtures > testingLibraryText satisfies its oracle on the reference engine [14.69ms]
+(pass) unit-test benchmark fixtures > testingLibraryEvents satisfies its oracle on the reference engine [4.55ms]
+(pass) unit-test benchmark fixtures > testingLibraryRole satisfies its oracle on the reference engine [37.10ms]
+(pass) unit-test benchmark fixtures > testingLibraryLabel satisfies its oracle on the reference engine [11.64ms]
+(pass) unit-test benchmark fixtures > todoInteractions satisfies its oracle on the reference engine [17.35ms]
+(pass) unit-test benchmark fixtures > formSubmission satisfies its oracle on the reference engine [8.88ms]
+(pass) unit-test benchmark fixtures > templateClone satisfies its oracle on the reference engine [8.75ms]
+(pass) unit-test benchmark fixtures > keyedReconcile satisfies its oracle on the reference engine [5.10ms]
+(pass) unit-test benchmark fixtures > asyncObserver satisfies its oracle on the reference engine [3.60ms]
+(pass) unit-test benchmark fixtures > shadowComponent satisfies its oracle on the reference engine [3.86ms]
+(pass) unit-test benchmark fixtures > snapshotRoundTrip satisfies its oracle on the reference engine [4.07ms]
+(pass) unit-test benchmark fixtures > scaling changes case count, with at least one case [0.06ms]
+(pass) unit-test benchmark validity > discards two warmup samples and verifies every round [67.91ms]
+(pass) unit-test benchmark validity > reports a failure and continues the other scenarios [52.04ms]
+(pass) unit-test benchmark validity > a later failure invalidates earlier measured samples [45.21ms]
+(pass) unit-test benchmark validity > reports non-Error throws without crashing the worker [11.54ms]
+(pass) unit-test benchmark validity > different outcomes across rounds invalidate the timing [22.32ms]
+(pass) unit-test benchmark validity > matching fingerprints cannot conceal a skipped case [10.56ms]
+(pass) unit-test benchmark validity > rejects invalid timing NaN [11.13ms]
+(pass) unit-test benchmark validity > rejects invalid timing Infinity [10.22ms]
+(pass) unit-test benchmark validity > rejects invalid timing -1 [10.68ms]
+
+benchmark/bun-performance/report.test.js:
+(pass) strict result validation against real native samples > accepts both real modes and retains complete per-round sums [16.34ms]
+(pass) strict result validation against real native samples > rejects missing timing even with a plausible median [8.20ms]
+(pass) strict result validation against real native samples > rejects NaN timing even with a plausible median [0.30ms]
+(pass) strict result validation against real native samples > rejects infinite timing even with a plausible median [0.15ms]
+(pass) strict result validation against real native samples > rejects negative timing even with a plausible median [0.14ms]
+(pass) strict result validation against real native samples > rejects null timing even with a plausible median [0.14ms]
+(pass) strict result validation against real native samples > rejects absent samples, fabricated summaries, skipped phase and missing oracle [1.86ms]
+(pass) strict result validation against real native samples > rejects missing capability, another image, unexpected fallback and changed source [1.39ms]
+(pass) strict result validation against real native samples > rejects runtime mismatch even if each isolated report is internally consistent [0.52ms]
+(pass) strict result validation against real native samples > rejects changed correctness fingerprint and skipped testing case [1.65ms]
+(pass) strict result validation against real native samples > rejects nonzero exit, signal, spawn error and skipped ABBA processes [1.03ms]
+(pass) strict result validation against real native samples > protocol must agree with otherwise valid child configs [0.65ms]
+(pass) strict result validation against real native samples > a profile command cannot masquerade as valid formal timings [35.71ms]
+(pass) an untracked production helper changes the working-tree digest without changing HEAD [39.32ms]
+(pass) actual command exit and same-executable FFI smoke > missing image cannot silently use a locally installed native package [160.82ms]
+(pass) actual command exit and same-executable FFI smoke > tampered saved report exits nonzero and publishes no valid speedup [245.56ms]
+(pass) actual command exit and same-executable FFI smoke > new processes run raw, adapter and public facade on/off with equal real results [9524.80ms]
+(pass) actual command exit and same-executable FFI smoke > the frozen audit proves available FFI does not imply public FFI use [0.82ms]
+
+ 46 pass
+ 0 fail
+ 187 expect() calls
+Ran 46 tests across 3 files. [10.63s]

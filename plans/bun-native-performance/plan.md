@@ -221,3 +221,31 @@ baseline 必须从 `.bun-version` 读取（当前 1.4.0），latest 在执行时
   不同使用方式；实际策略以本仓库 workload 为准。
 - [Bun profiling 文档](https://bun.com/docs/project/benchmarking)：独立运行 CPU profile；
   本机 `bun --help` 已确认 `--cpu-prof`、`--cpu-prof-dir` 与 `--cpu-prof-md`。
+
+## 执行结果（2026-09-07 → 09-10）
+
+队列 `01 → (02 ∥ 03 ∥ 04) → 05` 全部完成，另有两项计划内修正。逐任务合入 commit
+（各为单 commit、ff-only、协调器独立复验，见 `evidence/coordinator/README.md`）：
+
+| 项 | commit | 结果 |
+| --- | --- | --- |
+| 01 balanced baseline | `fe77b7e` | 公共 runner、ABBA/2+9 协议、不可变 reference 与两 runtime 冻结 |
+| 04 checksum IO | `24d8912` | 单次目录扫描；公开 many.verify −29.9%~−33.7%；有界并发原型拒纳 |
+| 01-metadata followup | `5cf2163` | preload/handshake 标签如实化 + metadata.test.js 回归防护 |
+| 02 native snapshot packing | `834f5ff` | direct-fill 实现保留；无可复现公开端到端收益（中位 +0.6%~+2.8%），如实收小 |
+| 03 FFI adapter | `09c6a68` | 有界 scratch 复用 + UTF-8 解码保留；probe 证伪 materialize-state 路由，无新增静态路径 |
+| offlane test robustness | `050a685` | 16 个 global-FFI-disabled 假设冲突修复（tests-only，05-T1 前置） |
+| 05 integrated validation | `3f82c4f` | 终验：双 runtime on/off 全 validate、13h29m 单锁 campaign（472/472 valid）、正式收益达标 |
+
+最终结论（详见 `evidence/final/results.md` 与 `docs/performance.md` 追加段）：
+重点 facade 公开操作在 FFI-on 默认路径取得 −27%~−41% 稳定收益（双批次、全 ABBA 组
+同号、无噪声旗标），归因 03 的 adapter 复用/解码优化；02 的直接填充保留为无回退的
+内存路径精简；Core/Testing 聚合无本轮改动导致的 >5% 确认回归；mode-only 内部成本
+（serialize/create 大小档）与 ±6–16% 布局漂移带作为已知限制披露。历史 macOS headline、
+旧 Bun-native 数据、RSS v2 漏检均未覆写；未测平台不宣称收益。
+
+过程与资源：09-08 事故中断的 Codex 会话由 qwen3.8-flash OpenCode 在原 worktree 续跑
+完成 01-meta/02/03/05 收尾与 05 全程（另有一次协调器侧 OpenCode 共享 SQLite 锁故障，
+05 以 WORKLOG 无丢点重启）。任务 worktree、分支与冻结 reference 已全部清理；
+runtime/profile 归档保留于 /tmp（见 coordinator README 限制节）。无 push、无 PR、
+无版本号/依赖/CI 变更。

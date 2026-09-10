@@ -1,0 +1,211 @@
+{
+  "started": "2026-09-09T17:29:20.561870+00:00",
+  "groupedIntegrationReservation": true,
+  "worktree": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+  "sourceHead": "09c6a68edfd4a6929c3c404222a11a518f75f095",
+  "artifact": {
+    "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+    "sha256": "6b7e7398119fe255a3aead79cf81d6e68da40923359dc2c8b2595c9663331903"
+  },
+  "commands": [
+    {
+      "label": "01-latest-validate",
+      "command": [
+        "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+        "run",
+        "validate"
+      ],
+      "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "started": "2026-09-09T17:29:20.570265+00:00",
+      "overrides": {
+        "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_DISABLED": "0",
+        "RUSTUP_TOOLCHAIN": "1.93.1"
+      },
+      "ended": "2026-09-09T17:34:47.279133+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "file": "01-latest-validate.stdout.log",
+        "sha256": "453b3d5ad4432fe2e2ef34f420f639b1fc07a9103f91b86f02ad9839f60035b5"
+      },
+      "stderr": {
+        "file": "01-latest-validate.stderr.log",
+        "sha256": "ac13d50a6b39b185f14292e80abfa62bf6b322127d67c3654ab5995087205777"
+      }
+    },
+    {
+      "label": "02-baseline-native-targeted",
+      "command": [
+        "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+        "test",
+        "tests/bun/native-loader.test.js",
+        "tests/bun/ffi-memory.test.js",
+        "tests/bun/lazy-token-fast-path.test.js",
+        "tests/bun/navigation-memo.test.js",
+        "tests/bun/query-api.test.js",
+        "tests/bun/html-api.test.js",
+        "tests/bun/nodelist-live.test.js"
+      ],
+      "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "started": "2026-09-09T17:34:47.279560+00:00",
+      "overrides": {
+        "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_DISABLED": "0",
+        "RUSTUP_TOOLCHAIN": "1.93.1"
+      },
+      "ended": "2026-09-09T17:34:50.071192+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "file": "02-baseline-native-targeted.stdout.log",
+        "sha256": "335ab4d3d0d98d4c3b3478fa50c807da6d2740deb186a27fa4aed967dcd71e94"
+      },
+      "stderr": {
+        "file": "02-baseline-native-targeted.stderr.log",
+        "sha256": "0790f6ba26e075aec3f8a5c3625f875162afd595abc4823d56fc21f015819e38"
+      }
+    },
+    {
+      "label": "03-baseline-runtime",
+      "command": [
+        "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+        "run",
+        "report:runtime"
+      ],
+      "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "started": "2026-09-09T17:34:50.071608+00:00",
+      "overrides": {
+        "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_DISABLED": "0",
+        "RUSTUP_TOOLCHAIN": "1.93.1"
+      },
+      "ended": "2026-09-09T17:34:50.101928+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "file": "03-baseline-runtime.stdout.log",
+        "sha256": "88270920dd03a39f24cccbcff7a57d15273ac5ee835383e4c16b117dc9952c8e"
+      },
+      "stderr": {
+        "file": "03-baseline-runtime.stderr.log",
+        "sha256": "26266f3d5b80a02961751e0ac1f4107559bf3ef658bbeebff2eb3f0864a2d401"
+      }
+    },
+    {
+      "label": "04-baseline-selftest",
+      "command": [
+        "/tmp/mad-dom-bun-performance-01/runtimes/baseline/bun-linux-x64/bun",
+        "run",
+        "bench:bun-native:selftest"
+      ],
+      "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "started": "2026-09-09T17:34:50.102381+00:00",
+      "overrides": {
+        "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_DISABLED": "0",
+        "RUSTUP_TOOLCHAIN": "1.93.1"
+      },
+      "ended": "2026-09-09T17:34:50.252589+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "file": "04-baseline-selftest.stdout.log",
+        "sha256": "fdd3b7b8fa4bbe8e3dc5616f860a41bc4ef3769a2b8845c64ce4b5b345f9e29a"
+      },
+      "stderr": {
+        "file": "04-baseline-selftest.stderr.log",
+        "sha256": "e4e47b9879ad19afd43e197320d453f6af483f11bf6a2828df5995d450dd9e94"
+      }
+    },
+    {
+      "label": "05-latest-native-targeted",
+      "command": [
+        "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+        "test",
+        "tests/bun/native-loader.test.js",
+        "tests/bun/ffi-memory.test.js",
+        "tests/bun/lazy-token-fast-path.test.js",
+        "tests/bun/navigation-memo.test.js",
+        "tests/bun/query-api.test.js",
+        "tests/bun/html-api.test.js",
+        "tests/bun/nodelist-live.test.js"
+      ],
+      "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "started": "2026-09-09T17:34:50.252999+00:00",
+      "overrides": {
+        "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_DISABLED": "0",
+        "RUSTUP_TOOLCHAIN": "1.93.1"
+      },
+      "ended": "2026-09-09T17:34:52.761995+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "file": "05-latest-native-targeted.stdout.log",
+        "sha256": "6043908c8d26d62698476b88f737f39d5d3e91008d4155a81730902f5a37479c"
+      },
+      "stderr": {
+        "file": "05-latest-native-targeted.stderr.log",
+        "sha256": "3134a0777736c832e319ebf32fb9014097a17a211a83b7ecc71583abcf5d6c59"
+      }
+    },
+    {
+      "label": "06-latest-runtime",
+      "command": [
+        "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+        "run",
+        "report:runtime"
+      ],
+      "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "started": "2026-09-09T17:34:52.762507+00:00",
+      "overrides": {
+        "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_DISABLED": "0",
+        "RUSTUP_TOOLCHAIN": "1.93.1"
+      },
+      "ended": "2026-09-09T17:34:52.786830+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "file": "06-latest-runtime.stdout.log",
+        "sha256": "ed52971dcc526d19f09793788d7823b3c1c84b55be82191a9d2db8a14ea505bd"
+      },
+      "stderr": {
+        "file": "06-latest-runtime.stderr.log",
+        "sha256": "26266f3d5b80a02961751e0ac1f4107559bf3ef658bbeebff2eb3f0864a2d401"
+      }
+    },
+    {
+      "label": "07-latest-selftest",
+      "command": [
+        "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+        "run",
+        "bench:bun-native:selftest"
+      ],
+      "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance",
+      "started": "2026-09-09T17:34:52.787256+00:00",
+      "overrides": {
+        "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-03-ffi-adapter-performance/build/mad-dom.node",
+        "MAD_DOM_FFI_DISABLED": "0",
+        "RUSTUP_TOOLCHAIN": "1.93.1"
+      },
+      "ended": "2026-09-09T17:34:52.918625+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "file": "07-latest-selftest.stdout.log",
+        "sha256": "fdd3b7b8fa4bbe8e3dc5616f860a41bc4ef3769a2b8845c64ce4b5b345f9e29a"
+      },
+      "stderr": {
+        "file": "07-latest-selftest.stderr.log",
+        "sha256": "e4e47b9879ad19afd43e197320d453f6af483f11bf6a2828df5995d450dd9e94"
+      }
+    }
+  ],
+  "ended": "2026-09-09T17:34:52.937135+00:00",
+  "finalHead": "09c6a68edfd4a6929c3c404222a11a518f75f095",
+  "finalStatus": "",
+  "finalArtifactSha256": "6b7e7398119fe255a3aead79cf81d6e68da40923359dc2c8b2595c9663331903",
+  "passed": true
+}
