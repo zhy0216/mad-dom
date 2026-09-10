@@ -1,0 +1,1358 @@
+{
+  "id": "010-testing-2-B",
+  "side": "B",
+  "position": 1,
+  "config": {
+    "root": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation",
+    "image": {
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node",
+      "sha256": "6b7e7398119fe255a3aead79cf81d6e68da40923359dc2c8b2595c9663331903",
+      "bytes": 3869072,
+      "dev": 64784,
+      "inode": 2109157
+    },
+    "source": {
+      "root": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation",
+      "sourceSha": "09c6a68edfd4a6929c3c404222a11a518f75f095",
+      "productionSha256": "8e6a4b0173acc0dc475ac926b730caa130097d0720477ae73cf9f2169edaaae6",
+      "inventoryVersion": 2,
+      "productionInputs": [
+        "index.js",
+        "index.d.ts",
+        "js",
+        "crates",
+        "scripts",
+        "benchmark/dom-bench",
+        "package.json",
+        "bun.lock",
+        "Cargo.lock",
+        "Cargo.toml",
+        "rust-toolchain.toml",
+        ".bun-version"
+      ],
+      "untrackedProductionFiles": [],
+      "sourceShaMeaning": "Git HEAD anchor; it does not assert that current production files match that commit",
+      "productionSha256Meaning": "Digest of the sorted path-to-current-file-SHA256 map; tracked plus nonignored untracked production inputs",
+      "lockSha256": "ca3827dae797c2697e507de835366ca953e81ce31234e8de763f6b0bfdc6204b",
+      "domWorkloadSha256": "659d912c62373970e22409ac20dd8d9d390956dd5718c875fa1d1a34a13ff1fc"
+    },
+    "bun": {
+      "path": "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+      "sha256": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c",
+      "bytes": 79500640,
+      "dev": 64769,
+      "inode": 1087116,
+      "version": "1.4.2",
+      "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
+    },
+    "suite": "testing",
+    "ffi": "on",
+    "sizes": [
+      1,
+      0.1,
+      2
+    ],
+    "iterations": 32,
+    "runs": 9,
+    "diagnostic": false,
+    "metadataPath": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/plans/bun-native-performance/evidence/final/latest-source-on/010-testing-2-B.metadata.json"
+  },
+  "command": [
+    "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+    "--preload",
+    "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/benchmark/bun-performance/preload.mjs",
+    "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/benchmark/dom-bench/testing-worker.mjs",
+    "--engine",
+    "mad-dom",
+    "--runs",
+    "9",
+    "--sizes",
+    "1,0.1,2",
+    "--json"
+  ],
+  "cwd": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation",
+  "before": {
+    "at": "2026-09-09T23:58:53.291Z",
+    "loadavg": [
+      5.29,
+      5.69,
+      5.41
+    ],
+    "cpuCount": 8,
+    "cpuModel": "AMD EPYC Processor",
+    "freeMemory": 10933452800,
+    "totalMemory": 16760184832,
+    "kernel": "6.8.0-31-generic",
+    "cpuPressure": "some avg10=13.74 avg60=13.20 avg300=12.15 total=6679659884\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+    "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=48513730\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=35422702",
+    "cpuStat": [
+      "cpu  23695998 3020921 5418915 106521431 738309 0 131533 1288 0 0"
+    ],
+    "competingProcesses": [
+      "    PID    PPID COMMAND         %CPU %MEM",
+      "4131534    4960 opencode         100  7.1",
+      "3470321 3275800 opencode        90.3  9.9",
+      " 136214    4960 opencode        85.7  5.6",
+      "   4960       1 herdr            7.2  0.1",
+      "3888313 3143197 opencode         3.6  4.0",
+      "2256568 2252567 codex            1.1  1.5",
+      "3200455       1 herdr            0.5  0.0",
+      "3267880 3153452 herdr-gui        0.5  0.4",
+      "3162914 3162429 codex            0.3  0.6",
+      "3693178 3691529 cloudflared      0.2  0.1",
+      "     17       2 rcu_preempt      0.1  0.0",
+      " 169546       2 kworker/u64:1-e  0.1  0.0",
+      " 169161  132134 bun              0.0  0.2",
+      " 169183  169161 bun              0.0  0.2",
+      "     74       2 kcompactd0       0.0  0.0"
+    ]
+  },
+  "after": {
+    "at": "2026-09-09T23:59:17.129Z",
+    "loadavg": [
+      5.04,
+      5.62,
+      5.39
+    ],
+    "cpuCount": 8,
+    "cpuModel": "AMD EPYC Processor",
+    "freeMemory": 10939559936,
+    "totalMemory": 16760184832,
+    "kernel": "6.8.0-31-generic",
+    "cpuPressure": "some avg10=12.98 avg60=13.25 avg300=12.25 total=6682895263\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+    "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=48513730\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=35422702",
+    "cpuStat": [
+      "cpu  23701540 3024429 5420128 106529874 738313 0 131542 1289 0 0"
+    ],
+    "competingProcesses": [
+      "    PID    PPID COMMAND         %CPU %MEM",
+      "4131534    4960 opencode         100  7.1",
+      "3470321 3275800 opencode        90.3  9.9",
+      " 136214    4960 opencode        85.7  5.6",
+      "   4960       1 herdr            7.2  0.1",
+      "3888313 3143197 opencode         3.6  4.0",
+      "2256568 2252567 codex            1.1  1.5",
+      "3200455       1 herdr            0.5  0.0",
+      "3267880 3153452 herdr-gui        0.5  0.4",
+      "3162914 3162429 codex            0.3  0.6",
+      "3693178 3691529 cloudflared      0.2  0.1",
+      "     17       2 rcu_preempt      0.1  0.0",
+      " 169546       2 kworker/u64:1-e  0.1  0.0",
+      "     74       2 kcompactd0       0.0  0.0",
+      " 169161  132134 bun              0.0  0.2",
+      " 169183  169161 bun              0.0  0.2"
+    ]
+  },
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSha256": "2b7f84230bcde7d695118643a91e98f218e7baa304d99ee46c94258af39d7152",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr": "",
+  "report": {
+    "schema": "mad-dom-testing-bench/1",
+    "engine": "mad-dom",
+    "host": {
+      "os": "linux",
+      "arch": "x64",
+      "bun": "1.4.2"
+    },
+    "sizes": [
+      1,
+      0.1,
+      2
+    ],
+    "runs": 9,
+    "phases": [
+      "fixtureLifecycle",
+      "windowLifecycle",
+      "testingLibraryText",
+      "testingLibraryEvents",
+      "testingLibraryRole",
+      "testingLibraryLabel",
+      "todoInteractions",
+      "formSubmission",
+      "templateClone",
+      "keyedReconcile",
+      "asyncObserver",
+      "shadowComponent",
+      "snapshotRoundTrip"
+    ],
+    "results": [
+      {
+        "size": 1,
+        "workload": {
+          "runs": 9,
+          "cases": {
+            "fixtureLifecycle": 100,
+            "windowLifecycle": 25,
+            "testingLibraryText": 50,
+            "testingLibraryEvents": 50,
+            "testingLibraryRole": 25,
+            "testingLibraryLabel": 25,
+            "todoInteractions": 50,
+            "formSubmission": 50,
+            "templateClone": 50,
+            "keyedReconcile": 50,
+            "asyncObserver": 25,
+            "shadowComponent": 50,
+            "snapshotRoundTrip": 50
+          }
+        },
+        "phases": {
+          "fixtureLifecycle": {
+            "status": "passed",
+            "samples": [
+              8.698129000000108,
+              9.126432000000023,
+              9.842902000000322,
+              9.833734000000277,
+              8.7234669999998,
+              9.136989999999969,
+              8.35689100000036,
+              8.967732999999498,
+              8.94135499999993
+            ],
+            "medianMs": 8.967732999999498,
+            "minMs": 8.35689100000036,
+            "p90Ms": 9.842902000000322,
+            "madMs": 0.24426599999969767
+          },
+          "windowLifecycle": {
+            "status": "passed",
+            "samples": [
+              33.35533899999996,
+              31.61624299999994,
+              36.30866600000036,
+              34.39128699999992,
+              33.4759839999997,
+              32.016843000000335,
+              32.964006000000154,
+              34.59472900000037,
+              32.597749999999905
+            ],
+            "medianMs": 33.35533899999996,
+            "minMs": 31.61624299999994,
+            "p90Ms": 36.30866600000036,
+            "madMs": 1.0359479999999621
+          },
+          "testingLibraryText": {
+            "status": "passed",
+            "samples": [
+              45.93294900000001,
+              53.591803999999684,
+              63.108744000000115,
+              56.16339599999992,
+              53.09058499999992,
+              48.47602900000038,
+              48.61610099999962,
+              49.94022800000039,
+              39.82839399999921
+            ],
+            "medianMs": 49.94022800000039,
+            "minMs": 39.82839399999921,
+            "p90Ms": 63.108744000000115,
+            "madMs": 3.651575999999295
+          },
+          "testingLibraryEvents": {
+            "status": "passed",
+            "samples": [
+              7.3261220000001686,
+              7.395911999999953,
+              7.249499000000014,
+              6.8450699999998506,
+              7.641813000000184,
+              6.558684999999969,
+              7.787294999999176,
+              6.379891000000498,
+              7.577312000000347
+            ],
+            "medianMs": 7.3261220000001686,
+            "minMs": 6.379891000000498,
+            "p90Ms": 7.787294999999176,
+            "madMs": 0.31569100000001526
+          },
+          "testingLibraryRole": {
+            "status": "passed",
+            "samples": [
+              60.089383,
+              55.31446799999958,
+              51.73059999999987,
+              56.21267899999975,
+              50.92827699999998,
+              46.907922999999755,
+              46.53353299999981,
+              50.42887200000041,
+              51.01694399999997
+            ],
+            "medianMs": 51.01694399999997,
+            "minMs": 46.53353299999981,
+            "p90Ms": 60.089383,
+            "madMs": 4.109021000000212
+          },
+          "testingLibraryLabel": {
+            "status": "passed",
+            "samples": [
+              20.47199599999999,
+              22.52249299999994,
+              22.84071800000038,
+              25.652571999999964,
+              21.816341000000648,
+              20.446838999999272,
+              19.863255999999637,
+              20.099637999999686,
+              21.91956399999981
+            ],
+            "medianMs": 21.816341000000648,
+            "minMs": 19.863255999999637,
+            "p90Ms": 25.652571999999964,
+            "madMs": 1.3443450000006578
+          },
+          "todoInteractions": {
+            "status": "passed",
+            "samples": [
+              57.80632199999991,
+              56.206236999999874,
+              63.475782000000436,
+              66.16926300000023,
+              57.678711999999905,
+              59.54834200000005,
+              57.866995000000315,
+              58.305656000000454,
+              59.05758199999946
+            ],
+            "medianMs": 58.305656000000454,
+            "minMs": 56.206236999999874,
+            "p90Ms": 66.16926300000023,
+            "madMs": 0.7519259999990027
+          },
+          "formSubmission": {
+            "status": "passed",
+            "samples": [
+              14.103026,
+              18.105497000000014,
+              15.337144999999964,
+              13.347933000000012,
+              13.520132999999987,
+              14.057040000000598,
+              13.704518999999891,
+              13.096050000000105,
+              14.046078000000307
+            ],
+            "medianMs": 14.046078000000307,
+            "minMs": 13.096050000000105,
+            "p90Ms": 18.105497000000014,
+            "madMs": 0.5259450000003199
+          },
+          "templateClone": {
+            "status": "passed",
+            "samples": [
+              43.53473000000031,
+              45.54171699999961,
+              39.884187999999995,
+              43.1014380000006,
+              42.04745599999933,
+              42.04839799999991,
+              43.93568099999993,
+              50.255489000000125,
+              45.51123900000039
+            ],
+            "medianMs": 43.53473000000031,
+            "minMs": 39.884187999999995,
+            "p90Ms": 50.255489000000125,
+            "madMs": 1.4872740000009799
+          },
+          "keyedReconcile": {
+            "status": "passed",
+            "samples": [
+              22.188158000000385,
+              29.126682999999957,
+              17.652858999999808,
+              18.04910099999961,
+              18.152093000000605,
+              16.37550800000008,
+              19.441125999999713,
+              19.054924000000028,
+              22.38939399999981
+            ],
+            "medianMs": 19.054924000000028,
+            "minMs": 16.37550800000008,
+            "p90Ms": 29.126682999999957,
+            "madMs": 1.4020650000002206
+          },
+          "asyncObserver": {
+            "status": "passed",
+            "samples": [
+              2.927146999999877,
+              3.3276569999998173,
+              4.1092610000000604,
+              3.5150979999998526,
+              2.838923999999679,
+              2.518673999999919,
+              3.2159990000000107,
+              2.777629000000161,
+              3.5937969999995403
+            ],
+            "medianMs": 3.2159990000000107,
+            "minMs": 2.518673999999919,
+            "p90Ms": 4.1092610000000604,
+            "madMs": 0.3770750000003318
+          },
+          "shadowComponent": {
+            "status": "passed",
+            "samples": [
+              5.85945700000002,
+              8.145856000000094,
+              6.300691999999799,
+              5.79534700000022,
+              5.959714000000531,
+              6.20828899999924,
+              5.469057000000248,
+              5.752247000000352,
+              5.405867999999828
+            ],
+            "medianMs": 5.85945700000002,
+            "minMs": 5.405867999999828,
+            "p90Ms": 8.145856000000094,
+            "madMs": 0.34883199999922
+          },
+          "snapshotRoundTrip": {
+            "status": "passed",
+            "samples": [
+              5.384218000000146,
+              8.225032999999712,
+              5.686482999999953,
+              8.116612000000714,
+              6.8824610000001485,
+              6.487442999999985,
+              4.824048000000403,
+              6.740847000000031,
+              6.061754999999721
+            ],
+            "medianMs": 6.487442999999985,
+            "minMs": 4.824048000000403,
+            "p90Ms": 8.225032999999712,
+            "madMs": 0.8009600000000319
+          }
+        },
+        "checks": {
+          "fixtureLifecycle": {
+            "cases": 100,
+            "fingerprint": "cc1aba55b12fdcdd22425a7cd975dfd9cc408b79d51d4c4b249756ee8472cbf8"
+          },
+          "windowLifecycle": {
+            "cases": 25,
+            "fingerprint": "13168d075a7e40443af454f1f70ce949dc7e802c50edeebcd401940a981a740c"
+          },
+          "testingLibraryText": {
+            "cases": 50,
+            "fingerprint": "1680cb2f5654f970e39e9286b20e3d54190d5e0ab4aa1a73652b17ce9e677f4a"
+          },
+          "testingLibraryEvents": {
+            "cases": 50,
+            "fingerprint": "6b992fdfc57f54e2c25aaba40386bf3e776969022cf4934059fc564d31dca209"
+          },
+          "testingLibraryRole": {
+            "cases": 25,
+            "fingerprint": "ffe06fc6e10895bce8850eebb755b0986d7433c944492aa5832b196bec19b6bf"
+          },
+          "testingLibraryLabel": {
+            "cases": 25,
+            "fingerprint": "7c4bbf3997a6e1aee7251fd9b582824c4ae8939ce41ff8e188ccfe19f530bac4"
+          },
+          "todoInteractions": {
+            "cases": 50,
+            "fingerprint": "fdb3755dd2163a2100435a3d2c4fe26b520a50879672fb6e4b4dc5ed5271dcbb"
+          },
+          "formSubmission": {
+            "cases": 50,
+            "fingerprint": "64e018be3e880752e4b542ec95c02453c9dea2526b17a219081dcd6179458c13"
+          },
+          "templateClone": {
+            "cases": 50,
+            "fingerprint": "33c0bb45059b0e979aeeed8fcdb5bbb2692ca97e942a84c1139e3c933a6e4321"
+          },
+          "keyedReconcile": {
+            "cases": 50,
+            "fingerprint": "40cb550c3f134c7d8d88ec974b60025d3146a9d42e4cae3d9264a50cabe92f49"
+          },
+          "asyncObserver": {
+            "cases": 25,
+            "fingerprint": "183795d3085c852fab5e5495a0658fb0c840af6800e91062d091c8616ed6614f"
+          },
+          "shadowComponent": {
+            "cases": 50,
+            "fingerprint": "63db2bd207ab275f3d81c2d891fc57c638ccaaf893c914c5aa799a65f080c812"
+          },
+          "snapshotRoundTrip": {
+            "cases": 50,
+            "fingerprint": "4a2e2a258b73c2831df4460257afc3ada7d7a0c4bd2e8f93e016b375a5d072cc"
+          }
+        },
+        "rss": {
+          "baseline": 112939008,
+          "perPhase": {
+            "fixtureLifecycle": {
+              "peak": 135782400,
+              "after": 135782400
+            },
+            "windowLifecycle": {
+              "peak": 135913472,
+              "after": 135913472
+            },
+            "testingLibraryText": {
+              "peak": 137486336,
+              "after": 137089024
+            },
+            "testingLibraryEvents": {
+              "peak": 137089024,
+              "after": 136814592
+            },
+            "testingLibraryRole": {
+              "peak": 137601024,
+              "after": 137064448
+            },
+            "testingLibraryLabel": {
+              "peak": 137981952,
+              "after": 137850880
+            },
+            "todoInteractions": {
+              "peak": 139956224,
+              "after": 139812864
+            },
+            "formSubmission": {
+              "peak": 139812864,
+              "after": 139812864
+            },
+            "templateClone": {
+              "peak": 141942784,
+              "after": 141680640
+            },
+            "keyedReconcile": {
+              "peak": 142336000,
+              "after": 142204928
+            },
+            "asyncObserver": {
+              "peak": 142204928,
+              "after": 140734464
+            },
+            "shadowComponent": {
+              "peak": 140734464,
+              "after": 136933376
+            },
+            "snapshotRoundTrip": {
+              "peak": 136933376,
+              "after": 137064448
+            }
+          }
+        },
+        "valid": true
+      },
+      {
+        "size": 0.1,
+        "workload": {
+          "runs": 9,
+          "cases": {
+            "fixtureLifecycle": 10,
+            "windowLifecycle": 3,
+            "testingLibraryText": 5,
+            "testingLibraryEvents": 5,
+            "testingLibraryRole": 3,
+            "testingLibraryLabel": 3,
+            "todoInteractions": 5,
+            "formSubmission": 5,
+            "templateClone": 5,
+            "keyedReconcile": 5,
+            "asyncObserver": 3,
+            "shadowComponent": 5,
+            "snapshotRoundTrip": 5
+          }
+        },
+        "phases": {
+          "fixtureLifecycle": {
+            "status": "passed",
+            "samples": [
+              1.2521639999995386,
+              1.3156730000009702,
+              1.3724189999993541,
+              1.3448370000005525,
+              1.274295000001075,
+              1.2085209999986546,
+              1.056747999999061,
+              1.227407000000312,
+              1.3058440000004339
+            ],
+            "medianMs": 1.274295000001075,
+            "minMs": 1.056747999999061,
+            "p90Ms": 1.3724189999993541,
+            "madMs": 0.046888000000762986
+          },
+          "windowLifecycle": {
+            "status": "passed",
+            "samples": [
+              4.072903000000224,
+              4.020304000001488,
+              4.38338400000066,
+              3.925506999999925,
+              4.733799999999974,
+              4.032638000000588,
+              3.981963000000178,
+              3.980279999999766,
+              3.9805099999994127
+            ],
+            "medianMs": 4.020304000001488,
+            "minMs": 3.925506999999925,
+            "p90Ms": 4.733799999999974,
+            "madMs": 0.040024000001722015
+          },
+          "testingLibraryText": {
+            "status": "passed",
+            "samples": [
+              5.2840590000014345,
+              6.332892999998876,
+              5.978158000001713,
+              5.791610000000219,
+              4.957137999999759,
+              5.1845439999997325,
+              5.6243759999997565,
+              5.04870899999878,
+              4.544315000001006
+            ],
+            "medianMs": 5.2840590000014345,
+            "minMs": 4.544315000001006,
+            "p90Ms": 6.332892999998876,
+            "madMs": 0.340316999998322
+          },
+          "testingLibraryEvents": {
+            "status": "passed",
+            "samples": [
+              1.3053629999994882,
+              1.463690000000497,
+              1.2389079999993555,
+              1.0885069999985717,
+              0.9537049999998999,
+              1.0067950000011479,
+              0.9827800000002753,
+              1.0680310000007012,
+              1.1922219999996742
+            ],
+            "medianMs": 1.0885069999985717,
+            "minMs": 0.9537049999998999,
+            "p90Ms": 1.463690000000497,
+            "madMs": 0.10572699999829638
+          },
+          "testingLibraryRole": {
+            "status": "passed",
+            "samples": [
+              6.730846000000383,
+              6.681604999999763,
+              6.69984900000054,
+              7.066826999998739,
+              7.7756829999998445,
+              7.518901999999798,
+              7.009278999999879,
+              7.639739000000191,
+              6.813312000000224
+            ],
+            "medianMs": 7.009278999999879,
+            "minMs": 6.681604999999763,
+            "p90Ms": 7.7756829999998445,
+            "madMs": 0.3094299999993382
+          },
+          "testingLibraryLabel": {
+            "status": "passed",
+            "samples": [
+              3.2262289999998757,
+              3.0092120000008435,
+              3.645683000000645,
+              3.177798000000621,
+              2.998091999999815,
+              2.893475999999282,
+              3.2502839999997377,
+              3.3065889999998035,
+              3.2684659999995347
+            ],
+            "medianMs": 3.2262289999998757,
+            "minMs": 2.893475999999282,
+            "p90Ms": 3.645683000000645,
+            "madMs": 0.08035999999992782
+          },
+          "todoInteractions": {
+            "status": "passed",
+            "samples": [
+              6.4796970000006695,
+              5.999228000000585,
+              5.925250000000233,
+              6.659254000000146,
+              6.422780999999304,
+              6.803964000000633,
+              5.662588000001051,
+              6.735426000001098,
+              6.038241000000198
+            ],
+            "medianMs": 6.422780999999304,
+            "minMs": 5.662588000001051,
+            "p90Ms": 6.803964000000633,
+            "madMs": 0.38118300000132876
+          },
+          "formSubmission": {
+            "status": "passed",
+            "samples": [
+              1.758150999999998,
+              1.7210919999997714,
+              1.5890650000001187,
+              1.7845400000005611,
+              1.7093899999999849,
+              1.5063399999999092,
+              1.525724999999511,
+              1.5887230000007548,
+              1.8058209999999235
+            ],
+            "medianMs": 1.7093899999999849,
+            "minMs": 1.5063399999999092,
+            "p90Ms": 1.8058209999999235,
+            "madMs": 0.09643099999993865
+          },
+          "templateClone": {
+            "status": "passed",
+            "samples": [
+              5.594510999999329,
+              4.74927899999966,
+              4.061811999999918,
+              4.061652000000322,
+              4.230317999999897,
+              4.6769230000008974,
+              6.936251999999513,
+              4.364208000000872,
+              4.570705000000089
+            ],
+            "medianMs": 4.570705000000089,
+            "minMs": 4.061652000000322,
+            "p90Ms": 6.936251999999513,
+            "madMs": 0.3403870000001916
+          },
+          "keyedReconcile": {
+            "status": "passed",
+            "samples": [
+              3.431072999999742,
+              4.098940999998376,
+              2.4037500000013097,
+              2.456897999998546,
+              2.3844429999990098,
+              2.233410000000731,
+              2.3930700000000797,
+              2.2814610000004905,
+              2.3722500000003492
+            ],
+            "medianMs": 2.3930700000000797,
+            "minMs": 2.233410000000731,
+            "p90Ms": 4.098940999998376,
+            "madMs": 0.06382799999846611
+          },
+          "asyncObserver": {
+            "status": "passed",
+            "samples": [
+              0.6983560000007856,
+              0.6330649999999878,
+              0.5712690000000293,
+              0.624428999999509,
+              0.6275949999999284,
+              0.4635179999986576,
+              0.70136199999979,
+              0.6226740000001882,
+              0.6201510000009876
+            ],
+            "medianMs": 0.624428999999509,
+            "minMs": 0.4635179999986576,
+            "p90Ms": 0.70136199999979,
+            "madMs": 0.008636000000478816
+          },
+          "shadowComponent": {
+            "status": "passed",
+            "samples": [
+              0.8661810000012338,
+              0.8023110000012821,
+              0.794597000000067,
+              0.7950280000004568,
+              0.8339300000006915,
+              1.0146089999998367,
+              0.8629849999997532,
+              0.8561919999992824,
+              0.770833999999013
+            ],
+            "medianMs": 0.8339300000006915,
+            "minMs": 0.770833999999013,
+            "p90Ms": 1.0146089999998367,
+            "madMs": 0.03225100000054226
+          },
+          "snapshotRoundTrip": {
+            "status": "passed",
+            "samples": [
+              1.0952390000002197,
+              0.9721499999996013,
+              0.9654460000001563,
+              0.9911649999994552,
+              0.9665690000001632,
+              0.7806319999999687,
+              0.8706499999989319,
+              1.0231149999999616,
+              0.7558549999994284
+            ],
+            "medianMs": 0.9665690000001632,
+            "minMs": 0.7558549999994284,
+            "p90Ms": 1.0952390000002197,
+            "madMs": 0.05654599999979837
+          }
+        },
+        "checks": {
+          "fixtureLifecycle": {
+            "cases": 10,
+            "fingerprint": "769bd3ffdaf6664ef27493e11ecfe1613f37af30699be7a2f7c7bfbf32718e04"
+          },
+          "windowLifecycle": {
+            "cases": 3,
+            "fingerprint": "c8182d1b22241f9cda5a1a9e4730dd3b43b9bb72ea0ebf232449076ced09e7aa"
+          },
+          "testingLibraryText": {
+            "cases": 5,
+            "fingerprint": "b7a017301094723008eb6b57de5939206b10bafe3fe233eb1303fa21510f8636"
+          },
+          "testingLibraryEvents": {
+            "cases": 5,
+            "fingerprint": "967d8608da22b99a99ad3c3abfb09da2b258ba5010244e5777409bf543dccba0"
+          },
+          "testingLibraryRole": {
+            "cases": 3,
+            "fingerprint": "ed1169e63f2421aafd3a26a4e1edee0fbdfb3ba0151e2391d56ba738ed96f0e3"
+          },
+          "testingLibraryLabel": {
+            "cases": 3,
+            "fingerprint": "b55b011ab3f3f14484b75921673a5b9a46570c3cddc8783dc25f14d3547f3d9e"
+          },
+          "todoInteractions": {
+            "cases": 5,
+            "fingerprint": "b07abfb2efdc8914ee9a55e1e8ed22a4f839be4598f9a6bdee1ec18b56be9506"
+          },
+          "formSubmission": {
+            "cases": 5,
+            "fingerprint": "30a2d18fe03911825c60c89bad2c5ba59cced6c27da5641c36b1f4a6cc84735f"
+          },
+          "templateClone": {
+            "cases": 5,
+            "fingerprint": "8a60548c975cc7a02bc70d93c207c312e3f4932c9cdbbb0cf954222007a46730"
+          },
+          "keyedReconcile": {
+            "cases": 5,
+            "fingerprint": "56bd951e44a6f4510a705c009913bd15f49714e667e449f9e2e67ad299fe51aa"
+          },
+          "asyncObserver": {
+            "cases": 3,
+            "fingerprint": "4a3f1ca407558e3aa40d3d34605f13c2bde2ac9464e8ae8b38efc701c1108323"
+          },
+          "shadowComponent": {
+            "cases": 5,
+            "fingerprint": "d493ab65d60f081e71d4eda94505fe9cf41e1df1c707d9dc1eba9146041bb371"
+          },
+          "snapshotRoundTrip": {
+            "cases": 5,
+            "fingerprint": "3a8db017a2e8320f3e0d93a024681da0afc43fc8843d263ec9894389640b4c4e"
+          }
+        },
+        "rss": {
+          "baseline": 137392128,
+          "perPhase": {
+            "fixtureLifecycle": {
+              "peak": 132206592,
+              "after": 132206592
+            },
+            "windowLifecycle": {
+              "peak": 132206592,
+              "after": 132206592
+            },
+            "testingLibraryText": {
+              "peak": 132861952,
+              "after": 132861952
+            },
+            "testingLibraryEvents": {
+              "peak": 132861952,
+              "after": 132861952
+            },
+            "testingLibraryRole": {
+              "peak": 132993024,
+              "after": 132993024
+            },
+            "testingLibraryLabel": {
+              "peak": 132993024,
+              "after": 132993024
+            },
+            "todoInteractions": {
+              "peak": 132993024,
+              "after": 132993024
+            },
+            "formSubmission": {
+              "peak": 132993024,
+              "after": 132632576
+            },
+            "templateClone": {
+              "peak": 132349952,
+              "after": 132481024
+            },
+            "keyedReconcile": {
+              "peak": 132481024,
+              "after": 132481024
+            },
+            "asyncObserver": {
+              "peak": 132481024,
+              "after": 132481024
+            },
+            "shadowComponent": {
+              "peak": 132481024,
+              "after": 132481024
+            },
+            "snapshotRoundTrip": {
+              "peak": 132481024,
+              "after": 132481024
+            }
+          }
+        },
+        "valid": true
+      },
+      {
+        "size": 2,
+        "workload": {
+          "runs": 9,
+          "cases": {
+            "fixtureLifecycle": 200,
+            "windowLifecycle": 50,
+            "testingLibraryText": 100,
+            "testingLibraryEvents": 100,
+            "testingLibraryRole": 50,
+            "testingLibraryLabel": 50,
+            "todoInteractions": 100,
+            "formSubmission": 100,
+            "templateClone": 100,
+            "keyedReconcile": 100,
+            "asyncObserver": 50,
+            "shadowComponent": 100,
+            "snapshotRoundTrip": 100
+          }
+        },
+        "phases": {
+          "fixtureLifecycle": {
+            "status": "passed",
+            "samples": [
+              16.36199300000044,
+              15.859742999999071,
+              15.744488000000274,
+              15.440489000000525,
+              18.48239199999807,
+              15.479730999999447,
+              17.355792999998812,
+              15.76141799999823,
+              17.71453400000246
+            ],
+            "medianMs": 15.859742999999071,
+            "minMs": 15.440489000000525,
+            "p90Ms": 18.48239199999807,
+            "madMs": 0.4192539999985456
+          },
+          "windowLifecycle": {
+            "status": "passed",
+            "samples": [
+              64.76771000000008,
+              62.2255520000017,
+              62.92384799999854,
+              62.06381899999906,
+              65.38099599999987,
+              63.86543999999776,
+              62.175858000002336,
+              60.823787000001175,
+              67.47636799999964
+            ],
+            "medianMs": 62.92384799999854,
+            "minMs": 60.823787000001175,
+            "p90Ms": 67.47636799999964,
+            "madMs": 0.9415919999992184
+          },
+          "testingLibraryText": {
+            "status": "passed",
+            "samples": [
+              93.98876000000018,
+              83.43017899999904,
+              88.54937900000004,
+              91.94084600000133,
+              91.16805999999997,
+              92.73179600000003,
+              94.1812890000001,
+              93.75436999999874,
+              96.70103500000187
+            ],
+            "medianMs": 92.73179600000003,
+            "minMs": 83.43017899999904,
+            "p90Ms": 96.70103500000187,
+            "madMs": 1.449493000000075
+          },
+          "testingLibraryEvents": {
+            "status": "passed",
+            "samples": [
+              15.490351999998893,
+              12.34885199999917,
+              11.152853999999934,
+              11.888059000000794,
+              12.531262999997125,
+              10.920057999999699,
+              11.09928299999956,
+              12.120043999999325,
+              13.647573000002012
+            ],
+            "medianMs": 12.120043999999325,
+            "minMs": 10.920057999999699,
+            "p90Ms": 15.490351999998893,
+            "madMs": 0.9671899999993911
+          },
+          "testingLibraryRole": {
+            "status": "passed",
+            "samples": [
+              103.7478859999992,
+              93.83079400000133,
+              108.98773100000108,
+              83.20918299999903,
+              83.26941699999952,
+              86.46938500000033,
+              88.0028659999989,
+              80.69513800000277,
+              89.63389800000004
+            ],
+            "medianMs": 88.0028659999989,
+            "minMs": 80.69513800000277,
+            "p90Ms": 108.98773100000108,
+            "madMs": 4.793682999999874
+          },
+          "testingLibraryLabel": {
+            "status": "passed",
+            "samples": [
+              34.13366499999938,
+              44.36755799999992,
+              41.45788200000243,
+              34.121290999999474,
+              34.71328999999969,
+              45.234339999999065,
+              42.947180000002845,
+              34.3660490000002,
+              37.061062999997375
+            ],
+            "medianMs": 37.061062999997375,
+            "minMs": 34.121290999999474,
+            "p90Ms": 45.234339999999065,
+            "madMs": 2.9397719999979017
+          },
+          "todoInteractions": {
+            "status": "passed",
+            "samples": [
+              108.50451600000088,
+              106.78022000000055,
+              126.64948799999911,
+              113.50007699999696,
+              104.68247300000075,
+              100.68349799999851,
+              103.97799400000076,
+              102.73780400000032,
+              101.16702300000179
+            ],
+            "medianMs": 104.68247300000075,
+            "minMs": 100.68349799999851,
+            "p90Ms": 126.64948799999911,
+            "madMs": 3.515449999998964
+          },
+          "formSubmission": {
+            "status": "passed",
+            "samples": [
+              23.9669959999992,
+              24.26317100000051,
+              27.637706999998045,
+              26.993330999997852,
+              23.487779999999475,
+              22.8838399999986,
+              22.645864000001893,
+              24.17181100000016,
+              27.109799000001658
+            ],
+            "medianMs": 24.17181100000016,
+            "minMs": 22.645864000001893,
+            "p90Ms": 27.637706999998045,
+            "madMs": 1.287971000001562
+          },
+          "templateClone": {
+            "status": "passed",
+            "samples": [
+              68.75128500000028,
+              83.2753990000001,
+              74.60357800000202,
+              65.98933599999873,
+              69.81845199999952,
+              65.84566600000107,
+              71.10109200000079,
+              65.7070879999992,
+              67.87417300000016
+            ],
+            "medianMs": 68.75128500000028,
+            "minMs": 65.7070879999992,
+            "p90Ms": 83.2753990000001,
+            "madMs": 2.7619490000015503
+          },
+          "keyedReconcile": {
+            "status": "passed",
+            "samples": [
+              31.362678000001324,
+              40.48946000000069,
+              29.406526999999187,
+              29.634722999999212,
+              35.29925599999842,
+              30.323663000002853,
+              34.17881900000066,
+              30.548835000001418,
+              32.73207099999854
+            ],
+            "medianMs": 31.362678000001324,
+            "minMs": 29.406526999999187,
+            "p90Ms": 40.48946000000069,
+            "madMs": 1.7279550000021118
+          },
+          "asyncObserver": {
+            "status": "passed",
+            "samples": [
+              4.715937000000849,
+              4.408280999999988,
+              4.3986819999990985,
+              4.444527999999991,
+              4.432184999997844,
+              4.574190999999701,
+              4.172620000001189,
+              4.4425240000018675,
+              4.351373000001331
+            ],
+            "medianMs": 4.432184999997844,
+            "minMs": 4.172620000001189,
+            "p90Ms": 4.715937000000849,
+            "madMs": 0.03350299999874551
+          },
+          "shadowComponent": {
+            "status": "passed",
+            "samples": [
+              8.912529999999606,
+              9.373693999999887,
+              8.919033000001946,
+              9.316395999998349,
+              15.896080999998958,
+              9.398261000002094,
+              8.9233009999989,
+              9.743044999999256,
+              10.712939999997616
+            ],
+            "medianMs": 9.373693999999887,
+            "minMs": 8.912529999999606,
+            "p90Ms": 15.896080999998958,
+            "madMs": 0.4503930000009859
+          },
+          "snapshotRoundTrip": {
+            "status": "passed",
+            "samples": [
+              11.929186999999729,
+              9.654709000000366,
+              9.664226999997481,
+              16.346574000002875,
+              9.847689999998693,
+              9.707088000002841,
+              9.158289999999397,
+              11.014654999999038,
+              11.508057999999437
+            ],
+            "medianMs": 9.847689999998693,
+            "minMs": 9.158289999999397,
+            "p90Ms": 16.346574000002875,
+            "madMs": 0.6893999999992957
+          }
+        },
+        "checks": {
+          "fixtureLifecycle": {
+            "cases": 200,
+            "fingerprint": "78eb6175c1838db4496405edf73bdfe4cd2c49ba33b72ce1fb140c04eb21eb72"
+          },
+          "windowLifecycle": {
+            "cases": 50,
+            "fingerprint": "125331cc4a2a3c5b5fdace639f00a9bec8ff2c983dcd4a9d7237e9efc62ceeb5"
+          },
+          "testingLibraryText": {
+            "cases": 100,
+            "fingerprint": "8970794f0559b8fc5c2893e89ce55beae50b2cc92e5b91d11af2a77026a90a17"
+          },
+          "testingLibraryEvents": {
+            "cases": 100,
+            "fingerprint": "d0ff74ac66999921745f4b779ba91e484cbdc7e8eae401f94a5a89e3c97a16e9"
+          },
+          "testingLibraryRole": {
+            "cases": 50,
+            "fingerprint": "a93273866ffd7ccf69fb285044b5c1f1b27dfc5f57299dcee0f1bdcbfeba1644"
+          },
+          "testingLibraryLabel": {
+            "cases": 50,
+            "fingerprint": "679435d008d4c31b640b30a4bd498f9efc2581a85e453aa0846f0abe8ca58ab3"
+          },
+          "todoInteractions": {
+            "cases": 100,
+            "fingerprint": "6392ca651591d48839f32a143a5aed060b43bfa5e7b19245464ece745696fb23"
+          },
+          "formSubmission": {
+            "cases": 100,
+            "fingerprint": "1f8ef0aaeae0c10b2c2703e6026309bbe2717ac478b6ddbbda0393d9e5dc2e4d"
+          },
+          "templateClone": {
+            "cases": 100,
+            "fingerprint": "b86c013244bffb7fff34a3e95379aa2c9e28c2ab34bc7fd2879bbd2cc7f2f31a"
+          },
+          "keyedReconcile": {
+            "cases": 100,
+            "fingerprint": "a73e4dfc260720a1d16df2cfb1084e04ef7c37348bc3336612b7e93fd0b84f1b"
+          },
+          "asyncObserver": {
+            "cases": 50,
+            "fingerprint": "4a029e0045ea775b0f8f3d373b5728b94d82607d478d5509fd728214b2e7229d"
+          },
+          "shadowComponent": {
+            "cases": 100,
+            "fingerprint": "7cf5f242d8ef143e606902889990916cbdfe79a747cf9ce9f36f5133504ccaf7"
+          },
+          "snapshotRoundTrip": {
+            "cases": 100,
+            "fingerprint": "8bf33f8739e82b6eb12ff787c866d1fd6720c7a0109e30ac506b1d124a914ae9"
+          }
+        },
+        "rss": {
+          "baseline": 160690176,
+          "perPhase": {
+            "fixtureLifecycle": {
+              "peak": 186617856,
+              "after": 187011072
+            },
+            "windowLifecycle": {
+              "peak": 185589760,
+              "after": 185589760
+            },
+            "testingLibraryText": {
+              "peak": 194502656,
+              "after": 193961984
+            },
+            "testingLibraryEvents": {
+              "peak": 191950848,
+              "after": 191819776
+            },
+            "testingLibraryRole": {
+              "peak": 194908160,
+              "after": 193662976
+            },
+            "testingLibraryLabel": {
+              "peak": 196153344,
+              "after": 194314240
+            },
+            "todoInteractions": {
+              "peak": 197083136,
+              "after": 196665344
+            },
+            "formSubmission": {
+              "peak": 196796416,
+              "after": 196657152
+            },
+            "templateClone": {
+              "peak": 195006464,
+              "after": 195268608
+            },
+            "keyedReconcile": {
+              "peak": 197365760,
+              "after": 196927488
+            },
+            "asyncObserver": {
+              "peak": 196927488,
+              "after": 189837312
+            },
+            "shadowComponent": {
+              "peak": 190099456,
+              "after": 189378560
+            },
+            "snapshotRoundTrip": {
+              "peak": 189902848,
+              "after": 189902848
+            }
+          }
+        },
+        "valid": true
+      }
+    ]
+  },
+  "metadata": {
+    "runtime": {
+      "bunVersion": "1.4.2",
+      "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "platform": {
+        "platform": "linux",
+        "arch": "x64",
+        "libc": "gnu"
+      },
+      "expectedAbis": {
+        "nodeApi": 1,
+        "ffi": 1
+      },
+      "nodeApi": {
+        "status": "available",
+        "abiVersion": 1,
+        "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node"
+      },
+      "ffi": {
+        "status": "available",
+        "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node",
+        "abiVersion": 1,
+        "advertisedCapabilities": 31,
+        "capabilities": 31,
+        "expectedAbiVersion": 1,
+        "expectedCapabilities": 31,
+        "symbols": [
+          "mad_dom_ffi_query_snapshot",
+          "mad_dom_ffi_preorder_snapshot",
+          "mad_dom_ffi_child_tokens",
+          "mad_dom_ffi_serialize",
+          "mad_dom_ffi_create_elements",
+          "mad_dom_ffi_read_batch"
+        ],
+        "missing": []
+      }
+    },
+    "executable": {
+      "path": "/tmp/mad-dom-bun-performance-01/runtimes/latest/bun-linux-x64/bun",
+      "sha256": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c",
+      "bytes": 79500640,
+      "dev": 64769,
+      "inode": 1087116
+    },
+    "source": {
+      "root": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation",
+      "sourceSha": "09c6a68edfd4a6929c3c404222a11a518f75f095",
+      "productionSha256": "8e6a4b0173acc0dc475ac926b730caa130097d0720477ae73cf9f2169edaaae6",
+      "domWorkloadSha256": "659d912c62373970e22409ac20dd8d9d390956dd5718c875fa1d1a34a13ff1fc",
+      "lockSha256": "ca3827dae797c2697e507de835366ca953e81ce31234e8de763f6b0bfdc6204b"
+    },
+    "artifact": {
+      "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node",
+      "sha256": "6b7e7398119fe255a3aead79cf81d6e68da40923359dc2c8b2595c9663331903",
+      "bytes": 3869072,
+      "dev": 64784,
+      "inode": 2109157
+    },
+    "overrides": {
+      "MAD_DOM_NATIVE_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node",
+      "MAD_DOM_FFI_PATH": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node",
+      "MAD_DOM_FFI_DISABLED": "0"
+    },
+    "libc": "2.39",
+    "rustToolchain": "[toolchain]\nchannel = \"1.93.1\"\nprofile = \"minimal\"\ncomponents = [\"clippy\", \"rustfmt\"]",
+    "handshake": "preload: verified native runtime/path and FFI binding; real document query + full UTF-8 serialization; document destroyed; same Node-API/FFI image"
+  }
+}

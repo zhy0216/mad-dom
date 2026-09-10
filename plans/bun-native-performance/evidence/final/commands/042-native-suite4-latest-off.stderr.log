@@ -1,0 +1,145 @@
+
+thread '<unnamed>' (4147455) panicked at crates/mad-dom-bun/src/handle.rs:1946:9:
+diagnostic panic: the native panic boundary is contained
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+tests/bun/ffi-loader.test.js:
+45 | 
+46 | describe("Bun FFI loader capability matrix", () => {
+47 |   test("enabled probe is additive and records the independent ABI", () => {
+48 |     if (!existsSync(ARTIFACT)) return;
+49 |     const result = runProbe();
+50 |     expect(["available", "partial"]).toContain(result.status);
+                                          ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "disabled"
+Received: [ "available", "partial" ]
+
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-loader.test.js:50:38)
+(fail) Bun FFI loader capability matrix > enabled probe is additive and records the independent ABI [12.60ms]
+59 |     expect(result.reason).toContain("MAD_DOM_FFI_DISABLED");
+60 |   });
+61 | 
+62 |   test("missing FFI artifact is a data report, not a load failure", () => {
+63 |     const result = runProbe({ MAD_DOM_FFI_PATH: resolve("build/does-not-exist-ffi") });
+64 |     expect(result.status).toBe("unavailable");
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: "unavailable"
+Received: "disabled"
+
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-loader.test.js:64:27)
+(fail) Bun FFI loader capability matrix > missing FFI artifact is a data report, not a load failure [13.55ms]
+66 |   });
+67 | 
+68 |   test("ABI mismatch falls back without throwing from the loader", () => {
+69 |     if (!existsSync(ARTIFACT)) return;
+70 |     const result = runProbe({ MAD_DOM_TEST_FFI_ABI_VERSION: "999" });
+71 |     expect(result.status).toBe("mismatch");
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: "mismatch"
+Received: "disabled"
+
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-loader.test.js:71:27)
+(fail) Bun FFI loader capability matrix > ABI mismatch falls back without throwing from the loader [13.40ms]
+74 |   });
+75 | 
+76 |   test("partial capabilities retain the supported operation and report the gap", () => {
+77 |     if (!existsSync(ARTIFACT)) return;
+78 |     const result = runProbe({ MAD_DOM_TEST_FFI_CAPABILITIES: String(FFI_CAPABILITIES.querySnapshot) });
+79 |     expect(result.status).toBe("partial");
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: "partial"
+Received: "disabled"
+
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-loader.test.js:79:27)
+(fail) Bun FFI loader capability matrix > partial capabilities retain the supported operation and report the gap [13.25ms]
+88 |     // childSnapshot and preorderSnapshot advertise the same bit. Forcing only
+89 |     // preorderSnapshot to fail dlopen must NOT leave a preorderSnapshot method
+90 |     // pointing at undefined, and must NOT report available just because the
+91 |     // sibling child symbol kept the shared bit set.
+92 |     const result = runProbe({ MAD_DOM_TEST_FFI_MISSING_SYMBOLS: "preorderSnapshot" });
+93 |     expect(result.status).toBe("partial");
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: "partial"
+Received: "disabled"
+
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-loader.test.js:93:27)
+(fail) Bun FFI loader capability matrix > a genuinely missing advertised symbol is a per-symbol partial, not available [12.92ms]
+102 |     try {
+103 |       const copy = join(copyDir, "mad-dom.node");
+104 |       copyFileSync(ARTIFACT, copy);
+105 |       const result = runProbeFile("ffi-binding-probe.mjs", { MAD_DOM_FFI_PATH: copy });
+106 |       expect(result.bound).toBe(false);
+107 |       expect(result.imageReason).toContain("different file");
+                                       ^
+error: Received value must be an array type, or both received and expected values must be strings.
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-loader.test.js:107:34)
+(fail) Bun FFI loader capability matrix > a second same-ABI image cannot bind documents and records the image reason [21.72ms]
+112 |   });
+113 | 
+114 |   test("the exact Node-API image binds documents", () => {
+115 |     if (!existsSync(ARTIFACT)) return;
+116 |     const result = runProbeFile("ffi-binding-probe.mjs", { MAD_DOM_FFI_PATH: ARTIFACT });
+117 |     expect(result.bound).toBe(true);
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-loader.test.js:117:26)
+(fail) Bun FFI loader capability matrix > the exact Node-API image binds documents [17.21ms]
+
+tests/bun/ffi-facade-hot-path.test.js:
+55 |   test("FFI-enabled workload actually calls the FFI methods", () => {
+56 |     if (!hasArtifact) return;
+57 |     const json = runFixture(TRACE);
+58 |     const trace = JSON.parse(json);
+59 |     expect(trace.bunVersion).toBe(Bun.version);
+60 |     expect(trace.bound).toBe(true);
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-facade-hot-path.test.js:60:25)
+(fail) Bun FFI facade hot path > FFI-enabled workload actually calls the FFI methods [55.48ms]
+114 |     expect(disabled.ffiMethods).toEqual([]);
+115 |     expect(missing.ffiMethods).toEqual([]);
+116 |     expect(mismatch.ffiMethods).toEqual([]);
+117 |     // The FFI-enabled run mounts the whole first-stage adapter.
+118 |     const enabled = digest({});
+119 |     expect(enabled.ffiMethods.sort()).toEqual(
+                                            ^
+error: expect(received).toEqual(expected)
+
+- [
+-   "childSnapshot",
+-   "createElements",
+-   "preorderSnapshot",
+-   "querySnapshot",
+-   "readBatch",
+-   "serialize",
+- ]
++ []
+
+- Expected  - 8
++ Received  + 1
+
+      at <anonymous> (/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/tests/bun/ffi-facade-hot-path.test.js:119:39)
+(fail) Bun FFI facade hot path > FFI-disabled and missing scenarios report the mounted-method gap [360.46ms]
+
+ 12 pass
+ 9 fail
+ 102 expect() calls
+Ran 21 tests across 3 files. [1455.00ms]

@@ -1,0 +1,219 @@
+{
+  "schema": "mad-dom/runtime-report/1",
+  "lane": "local",
+  "selection": "local executable; no latest claim",
+  "contract": {
+    "schema": 1,
+    "packageVersion": "0.0.1-alpha.3",
+    "nodeApiAbiVersion": 1,
+    "ffiAbiVersion": 1,
+    "ffiCapabilities": 31,
+    "ffiRequired": false
+  },
+  "bunVersion": "1.4.2",
+  "bunRevision": "744846f844374847c902b5e7fd59b4342a51ef99",
+  "platform": {
+    "platform": "linux",
+    "arch": "x64",
+    "libc": "gnu"
+  },
+  "expectedAbis": {
+    "nodeApi": 1,
+    "ffi": 1
+  },
+  "nodeApi": {
+    "status": "available",
+    "abiVersion": 1,
+    "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node"
+  },
+  "ffi": {
+    "status": "available",
+    "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node",
+    "abiVersion": 1,
+    "advertisedCapabilities": 31,
+    "capabilities": 31,
+    "expectedAbiVersion": 1,
+    "expectedCapabilities": 31,
+    "symbols": [
+      "mad_dom_ffi_query_snapshot",
+      "mad_dom_ffi_preorder_snapshot",
+      "mad_dom_ffi_child_tokens",
+      "mad_dom_ffi_serialize",
+      "mad_dom_ffi_create_elements",
+      "mad_dom_ffi_read_batch"
+    ],
+    "missing": []
+  },
+  "capabilityMatrix": {
+    "schema": "mad-dom/bun-capabilities/1",
+    "runtime": {
+      "name": "bun",
+      "version": "1.4.2",
+      "baselineVersion": "1.4.0",
+      "versionSource": "Bun.version",
+      "minimumSupported": ">=1.4.0"
+    },
+    "capabilities": {
+      "ffi": {
+        "status": "available",
+        "module": "bun:ffi",
+        "exports": [
+          "CFunction",
+          "CString",
+          "FFIType",
+          "JSCallback",
+          "cc",
+          "default",
+          "dlopen",
+          "linkSymbols",
+          "native",
+          "ptr",
+          "read",
+          "suffix",
+          "toArrayBuffer",
+          "toBuffer",
+          "viewSource"
+        ],
+        "dlopen": true,
+        "toArrayBuffer": true,
+        "jsCallback": true,
+        "contract": {
+          "abiVersion": 1,
+          "byteOrder": "native",
+          "capabilityBits": {
+            "querySnapshot": 1,
+            "preorderSnapshot": 2,
+            "tokenBatch": 4,
+            "serializeIntoBuffer": 8,
+            "attributeTextBatch": 16
+          },
+          "ownership": {
+            "input": "caller-owned; native reads only during the synchronous call",
+            "output": "caller-owned TypedArray first; external ArrayBuffer only with a deallocator",
+            "generation": "document-local monotonic generation and owner token"
+          },
+          "symbols": {
+            "abiVersion": "mad_dom_ffi_abi_version",
+            "capabilities": "mad_dom_ffi_capabilities",
+            "querySnapshot": "mad_dom_ffi_query_snapshot",
+            "preorderSnapshot": "mad_dom_ffi_preorder_snapshot",
+            "childSnapshot": "mad_dom_ffi_child_tokens",
+            "serialize": "mad_dom_ffi_serialize",
+            "createElements": "mad_dom_ffi_create_elements",
+            "readBatch": "mad_dom_ffi_read_batch"
+          }
+        },
+        "candidate": {
+          "status": "available",
+          "path": "/home/ubuntu/.herdr/worktrees/mad-dom/herdr-plan-bun-native-performance-05-integrated-performance-validation/build/mad-dom.node",
+          "abiVersion": 1,
+          "expectedAbiVersion": 1,
+          "capabilities": 31,
+          "expectedCapabilities": 31,
+          "symbols": [
+            "mad_dom_ffi_abi_version",
+            "mad_dom_ffi_capabilities",
+            "mad_dom_ffi_query_snapshot",
+            "mad_dom_ffi_preorder_snapshot",
+            "mad_dom_ffi_child_tokens",
+            "mad_dom_ffi_serialize",
+            "mad_dom_ffi_create_elements",
+            "mad_dom_ffi_read_batch"
+          ]
+        }
+      },
+      "gc": {
+        "status": "available",
+        "callable": true,
+        "forcedCollection": true,
+        "probe": "callable-only"
+      },
+      "arrayBuffer": {
+        "status": "available",
+        "byteLength": 16,
+        "typedArray": true,
+        "sentinel": 165,
+        "transfer": true,
+        "externalDeallocator": {
+          "status": "api-present-unverified",
+          "api": "bun:ffi.toArrayBuffer",
+          "tested": false
+        },
+        "ownershipDefault": "caller-owned"
+      },
+      "io": {
+        "file": {
+          "status": "available",
+          "callable": true,
+          "methods": [
+            "text",
+            "arrayBuffer",
+            "stream",
+            "exists",
+            "size",
+            "type"
+          ]
+        },
+        "spawn": {
+          "status": "available",
+          "callable": true,
+          "sideEffectProbe": "not-run"
+        },
+        "spawnSync": {
+          "status": "available",
+          "callable": true,
+          "sideEffectProbe": "not-run"
+        },
+        "serve": {
+          "status": "available",
+          "callable": true,
+          "lifecycleProbe": "not-run; test servers own Bun.serve startup/shutdown"
+        },
+        "fetch": {
+          "status": "available",
+          "callable": true
+        },
+        "webSocket": {
+          "status": "available",
+          "callable": true
+        }
+      },
+      "jscPrivateApi": {
+        "status": "spike-only",
+        "defaultPath": false,
+        "probed": false,
+        "reason": "No stable public Bun contract; keep JavaScriptCore private APIs out of production."
+      }
+    },
+    "matrix": {
+      "latest": {
+        "meaning": "CI lane using the current Bun release selected by the runner",
+        "observedVersion": "1.4.2",
+        "compatibleWithBaseline": true,
+        "selection": "runtime Bun.version; never an ABI pin"
+      },
+      "baseline": {
+        "meaning": "reproducible regression lane from .bun-version",
+        "expectedVersion": "1.4.0",
+        "observedVersion": "1.4.2",
+        "matches": false,
+        "selection": ".bun-version"
+      },
+      "ffiDisabled": {
+        "meaning": "explicitly exercise the Node-API fallback",
+        "selector": "MAD_DOM_FFI_DISABLED=1",
+        "observed": false,
+        "expectedPath": "node-api"
+      },
+      "ffiUnavailable": {
+        "meaning": "bun:ffi or the candidate cdylib is absent",
+        "observed": false,
+        "expectedPath": "node-api"
+      }
+    },
+    "diagnostics": {
+      "nativeFallback": "Node-API object/lifecycle ABI remains required until an FFI capability probe passes.",
+      "missingCapabilitiesAreData": true
+    }
+  }
+}

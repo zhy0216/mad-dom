@@ -1,12 +1,13 @@
 # Benchmarks: mad-dom vs happy-dom
 
-This repository provides three kinds of performance measurements:
+This repository provides four kinds of performance measurements:
 
 | Command | Measurement | Purpose |
 | --- | --- | --- |
 | `bun run bench:dom` | 16 DOM operation phases + 13 small testing workflows | Compare deterministic DOM workloads across the two engines |
 | `bun run bench:integration` | Process wall-clock time for two integration test suites | Observe the combined end-to-end cost of module loading, the runner, DOM operations, and networking |
 | `bun run bench:check` | Internal Rust Core + raw binding metrics | Check mad-dom for large regressions against applicable baselines; see [bench/README.md](../bench/README.md) |
+| `bun run bench:bun-performance` | Frozen-source vs candidate and FFI off vs on, in balanced ABBA new-process groups | Public-API Bun-native boundary comparisons; see [bun-performance runner](bun-performance/README.md) |
 
 ## Latest results: 2026-09-05
 

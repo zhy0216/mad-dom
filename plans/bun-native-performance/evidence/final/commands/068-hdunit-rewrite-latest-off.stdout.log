@@ -1,0 +1,19 @@
+
+─────────────────────────────
+happy-dom test-suite rewrite (hdunit T02)
+─────────────────────────────
+vendored files    352
+rewritten         308  (provenance header + import/API rewrite)
+byte-copied       35  (content fixtures / type decls / snapshots)
+skipped           9  (setup.ts → T03, upstream compiled artifacts)
+src imports       1221 mapped → shim, 406 unmapped (recorded)
+vitest imports    298 → bun:test (+ adapter)
+vi call rewrites  471
+adapter gaps      1 (vi.mock call sites)
+path repairs      1 (local-helper path bug)
+shim base         tests/happy-dom/shim/src/ (frozen contract)
+adapter import    tests/happy-dom/adapter/index.js
+
+[rewrite] wrote 308 rewritten files, 35 byte-copied files to tests/happy-dom/rewritten/
+[rewrite] wrote tests/happy-dom/rewrite-report.json
+[rewrite] done. Re-running in place is idempotent.

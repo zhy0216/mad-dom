@@ -187,3 +187,14 @@ An invalid prerequisite audit stops dependent timings. `summary.json` exists onl
 after full validation; smoke/profile/diagnostic rows carry no speedup. Verification
 cross-checks protocol versus child runs/sizes/suites/iterations/order and rejects
 internally consistent children that executed a different protocol.
+
+## Package script (task 05)
+
+The runner is also reachable as `bun run bench:bun-performance -- <args>`; the script
+forwards directly to `run.mjs`, so `bun run bench:bun-performance --help` prints the
+same executable documentation shown above. Every formal comparison still requires
+explicit absolute `--bun`, source roots and images as above; nothing resolves
+through PATH. Task 05 ran its full integrated acceptance (six paired campaigns,
+supplements, smokes and profiles, all in one serial sampling reservation) with
+these commands; see [results.md](../../plans/bun-native-performance/results.md) and
+[the final evidence directory](../../plans/bun-native-performance/evidence/final/).

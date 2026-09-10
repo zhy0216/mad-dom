@@ -220,6 +220,28 @@ record Linux Bun 1.4.0/1.4.2 with FFI enabled and disabled, cold/warm boundary
 and host IO samples, GC/heap/RSS pressure, and the corrected signed-RSS gate.
 They are separate from the dated macOS results above.
 
+## Bun-native boundary comparison (2026-09-10, plan bun-native-performance)
+
+A separate frozen-source program measured the Bun public API boundary with
+balanced two-ABBA new-process campaigns: the frozen reference versus the
+merged candidate (snapshot packing, FFI adapter scratch reuse, facade UTF-8
+decoder), plus same-image FFI off/on and a Node-API fallback lane, on Bun
+1.4.0 and 1.4.2 (dated observation) on Linux x86_64. On the default public
+configuration the facade HTML getters are 36–44% faster and large cold queries
+27–31% faster than the reference, stable on both runtimes; Core/Testing
+aggregates show no regression. The internal FFI serializer remains slower for
+large serialization (mode-comparison only), which is why it is not the default
+there; a disclosed ±6–16% binary-layout drift band on untouched Node-API
+micro paths persists on the shared VM. All 472 formal processes, noise flags,
+regression dispositions and limits are recorded in
+[results.md](https://github.com/zhy0216/mad-dom/blob/main/plans/bun-native-performance/results.md),
+[the final conclusions](https://github.com/zhy0216/mad-dom/blob/main/plans/bun-native-performance/evidence/final/conclusion.md)
+and the raw
+[phase tables](https://github.com/zhy0216/mad-dom/blob/main/plans/bun-native-performance/evidence/final/combined-tables.md).
+Reproduce with `bun run bench:bun-performance` (see the
+[runner documentation](https://github.com/zhy0216/mad-dom/blob/main/benchmark/bun-performance/README.md));
+these Linux boundary numbers are separate from every other record above.
+
 ## Implementation
 
 The Rust arena stores the DOM tree; a JavaScript facade and native binding
