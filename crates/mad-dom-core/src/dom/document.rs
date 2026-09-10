@@ -240,7 +240,6 @@ impl Document {
                     namespace: namespace.clone(),
                     attributes: Vec::new(),
                     mathml_annotation_xml_integration_point: false,
-                    had_duplicate_attributes: false,
                 }),
             );
             if is_template {
@@ -274,7 +273,6 @@ impl Document {
                 namespace: Namespace::from(namespace.to_string()),
                 attributes: Vec::new(),
                 mathml_annotation_xml_integration_point: false,
-                had_duplicate_attributes: false,
             }),
         );
         // A `<template>` element owns a template-contents DocumentFragment
@@ -446,6 +444,7 @@ impl Document {
     /// `None` instead of a partial prefix lets callers distinguish a complete
     /// relation snapshot (safe to memoize, including terminal null links) from
     /// a large tree that must stay on a bounded/lazy path.
+    #[cfg(test)]
     pub fn preorder_subtree_limited(
         &self,
         id: NodeId,
@@ -602,7 +601,6 @@ impl Document {
     ///
     /// Dormant by design: T25B consumes this entry after T25A archives, so the
     /// crate does not reference it yet.
-    #[allow(dead_code)]
     pub(crate) fn element_attributes_mut(
         &mut self,
         id: NodeId,
@@ -641,7 +639,6 @@ impl Document {
     ///
     /// Dormant by design: T25C consumes this entry after T25A archives, so the
     /// crate does not reference it yet.
-    #[allow(dead_code)]
     pub(crate) fn set_character_data(&mut self, id: NodeId, data: &str) -> Result<(), CoreError> {
         let node = self.node_mut(id)?;
         if !matches!(

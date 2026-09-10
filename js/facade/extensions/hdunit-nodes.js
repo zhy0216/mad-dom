@@ -68,15 +68,7 @@ import { HTMLCollection } from "./live-collections.js";
 import { NodeList } from "./child-nodelist.js";
 import { DOMTokenList } from "./attribute-nodes.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
-import { rethrowDomError, webidlMessage } from "./dom-error.js";
 import { Event } from "./events.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/hdunit-nodes",
-  owner: "T06",
-  gate: "T06",
-  status: "implemented",
-});
 
 // DOMException / File: happy-dom tests construct and assert `instanceof` these
 // classes. `DOMException` reuses the Bun / Web host constructor (the same one

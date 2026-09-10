@@ -113,7 +113,7 @@ CARGO_BUILD_JOBS=3 bun run dev:build
 export MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node"
 export MAD_DOM_FFI_PATH="$MAD_DOM_NATIVE_PATH"
 export CARGO_BUILD_JOBS=3
-bun run compat:hdunit:rewrite
+bun run compat:hdunit:prepare
 bun run validate
 bun run docs:build
 MAD_DOM_FFI_DISABLED=0 bun scripts/probe-ffi-memory.mjs

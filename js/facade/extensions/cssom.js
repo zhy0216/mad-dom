@@ -83,51 +83,9 @@ import { Document } from "../document.js";
 import { Window } from "../window.js";
 import { Node } from "./node.js";
 import { Event } from "./events.js";
-import { nodeDocumentStateOf } from "./classes.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/cssom",
-  owner: "T44",
-  gate: "T44",
-  status: "implemented",
-});
+import { nodeDocumentStateOf, isNodeHandle, facadeNodeHandle, facadeDocumentHandle } from "./classes.js";
 
 // ─── handle helpers ──────────────────────────────────────────────────────────
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function isDocumentHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.destroy === "function" &&
-    typeof handle.appendChild === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
-
-function facadeDocumentHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isDocumentHandle(handle)) {
-    throw new TypeError(`Document.${role} requires a genuine Document facade wrapper`);
-  }
-  return handle;
-}
 
 // ─── CSS declaration value parser (happy-dom port) ───────────────────────────
 

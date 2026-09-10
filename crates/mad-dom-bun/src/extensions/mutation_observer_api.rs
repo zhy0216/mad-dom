@@ -103,17 +103,7 @@ use mad_dom_core::arena::NodeId;
 use mad_dom_core::dom::{MutationRecord, ObserverOptions, RecordType};
 
 use crate::error::BindingError;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, NodeHandle, SharedDocument};
-
-/// Seam metadata for the M7 `mutation_observer_api` boundary.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "mutation_observer_api",
-    owner: "T41",
-    gate: "T41",
-    status: "implemented",
-};
 
 /// The frozen native `MutationObserver` surface on [`MutationObserverHandle`].
 #[allow(dead_code)]

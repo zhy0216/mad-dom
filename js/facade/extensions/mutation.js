@@ -16,34 +16,15 @@
 // canonical wrapper directly instead of looking it up again through `ctx.wrap`.
 
 import { Document } from "../document.js";
-import { nodeInternalsOf } from "./classes.js";
+import { nodeInternalsOf, facadeNodeHandle } from "./classes.js";
 import { Node } from "./node.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
 import { loadNative } from "../../native-loader.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/mutation",
-  owner: "T24C",
-  gate: "T24",
-  // The seam status was flipped from "placeholder" to "implemented" by the T24
-  // gate (tests/bun/seam.test.js pins that shape).
-  status: "implemented",
-});
 
 // Mutation methods are already exported by the audited native binding. Keep
 // their lookup lazy so importing the facade (and running structural tests) does
 // not require a locally built `.node` artifact; the resolution chain is owned
 // by js/native-loader.js (ADR-0005 §3/§6/§8/§9).
-
-function isNativeNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
 
 function isNativeDocumentHandle(handle) {
   return (
@@ -52,18 +33,6 @@ function isNativeDocumentHandle(handle) {
     typeof handle.appendChild === "function" &&
     typeof handle.createDocumentFragment === "function"
   );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNativeNodeHandle(handle)) {
-    // A manually constructed Node around a native handle is intentionally not
-    // part of the reverse conversion cache. Mutation accepts only wrappers
-    // for which the facade can recover the owning native handle, so native
-    // affinity and ownership checks remain authoritative.
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
 }
 
 function facadeDocumentHandle(ctx, value) {

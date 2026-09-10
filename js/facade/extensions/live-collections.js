@@ -53,13 +53,6 @@ import { Document } from "../document.js";
 import { nodeInternalsOf } from "./classes.js";
 import { Node } from "./node.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/live-collections",
-  owner: "T32",
-  gate: "T32",
-  status: "implemented",
-});
-
 // Native scope, query key and count memo behind each HTMLCollection. Keeping
 // this state off the Proxy target preserves the built-in Proxy invariants for
 // reflection and lets callers seal/freeze a collection without freezing the

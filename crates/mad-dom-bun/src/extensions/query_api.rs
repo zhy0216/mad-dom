@@ -103,23 +103,9 @@ use napi_derive::napi;
 
 use mad_dom_core::arena::NodeId;
 
-use crate::extensions::ExtensionSeam;
 use crate::handle::{
     check_affinity, node_snapshot_descriptor, with_document, DocumentHandle, NodeHandle,
     SharedDocument,
-};
-
-/// Seam metadata for the M6 `query_api` boundary.
-///
-/// Like the M5 `html_api` seam this constant is not referenced by the frozen
-/// [`REGISTRY`](crate::extensions::REGISTRY) (T31 owns its own integration and
-/// there is no separate M6 gate), so it is allowed to be otherwise unused.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "query_api",
-    owner: "T31",
-    gate: "T31",
-    status: "implemented",
 };
 
 /// The frozen native selector-query surface on

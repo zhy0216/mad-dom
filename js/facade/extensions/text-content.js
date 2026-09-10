@@ -28,22 +28,11 @@
 // WebIDL message while preserving the stable `code` (see `dom-error.js`).
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
-// by exporting `install(ctx)`; nothing in the registry changes. The `seam`
-// metadata was flipped from `"placeholder"` to `"implemented"` by the T25 gate
-// (tests/bun/seam.test.js pins that shape).
+// by exporting `install(ctx)`.
 
 import { Node } from "./node.js";
 import { nodeInternalsOf } from "./classes.js";
 import { rethrowDomError, webidlMessage } from "./dom-error.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/text-content",
-  owner: "T25E",
-  gate: "T25",
-  // The seam status was flipped from "placeholder" to "implemented" by the T25
-  // gate (tests/bun/seam.test.js pins that shape).
-  status: "implemented",
-});
 
 function isNodeHandle(handle) {
   return (

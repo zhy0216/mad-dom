@@ -126,7 +126,6 @@ export function createBrowserSettings(settings) {
   };
 }
 
-
 export function defaultUserAgent() {
   const platform = process.platform;
   const label = platform.charAt(0).toUpperCase() + platform.slice(1);

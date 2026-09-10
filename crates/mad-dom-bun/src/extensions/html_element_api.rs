@@ -89,21 +89,7 @@ use napi_derive::napi;
 
 use mad_dom_core::arena::NodeId;
 
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle, SharedDocument};
-
-/// Seam metadata for the M7 `html_element_api` boundary.
-///
-/// Like the M5/M6/M7 seams this constant is not referenced by the frozen
-/// [`REGISTRY`](crate::extensions::REGISTRY) (T39 owns its own integration), so
-/// it is allowed to be otherwise unused.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "html_element_api",
-    owner: "T39",
-    gate: "T39",
-    status: "implemented",
-};
 
 /// The frozen native interaction surface on
 /// [`NodeHandle`](crate::handle::NodeHandle).

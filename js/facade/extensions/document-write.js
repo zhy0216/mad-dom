@@ -6,13 +6,6 @@ import { fetchScriptSync } from "./fetch.js";
 import { windowTasks } from "../window-tasks.js";
 import { Event } from "./events.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/document-write",
-  owner: "integration",
-  gate: "integration",
-  status: "implemented",
-});
-
 const WRITTEN_DOCUMENTS = new WeakSet();
 const CURRENT_SCRIPT = new WeakMap();
 let ctx = null;

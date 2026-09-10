@@ -95,17 +95,7 @@ use napi_derive::napi;
 
 use mad_dom_core::arena::NodeId;
 
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, NodeHandle, SharedDocument};
-
-/// Seam metadata for the M7 `form_api` boundary.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "form_api",
-    owner: "T40",
-    gate: "T40",
-    status: "implemented",
-};
 
 /// The frozen native form surface on [`NodeHandle`](crate::handle::NodeHandle).
 #[allow(dead_code)]

@@ -196,6 +196,7 @@ impl CustomElementState {
 impl Document {
     /// Returns whether `name` has been defined as a custom element in this
     /// document.
+    #[cfg(test)]
     pub fn is_custom_element_defined(&self, name: &str) -> bool {
         self.custom_elements.is_defined(name)
     }
@@ -206,6 +207,7 @@ impl Document {
     ///
     /// [`CoreError::WrongDocument`] / [`CoreError::Arena`] for a foreign or
     /// stale `id`.
+    #[cfg(test)]
     pub fn is_custom_element(&self, id: NodeId) -> Result<bool, CoreError> {
         self.get(id)?;
         Ok(self.custom_elements.is_custom(id))

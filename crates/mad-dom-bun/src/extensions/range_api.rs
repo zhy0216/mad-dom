@@ -82,17 +82,7 @@ use mad_dom_core::arena::NodeId;
 use mad_dom_core::dom::{BoundaryPoint, SelectionDirection};
 
 use crate::error::BindingError;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle, SharedDocument};
-
-/// Seam metadata for the M7 `range_api` boundary.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "range_api",
-    owner: "T36",
-    gate: "T36",
-    status: "implemented",
-};
 
 /// The frozen native `Range` surface.
 #[allow(dead_code)]

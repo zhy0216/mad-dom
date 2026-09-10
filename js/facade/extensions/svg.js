@@ -45,13 +45,6 @@ import { DOMMatrix } from "./dom-matrix.js";
 import { DOMRect } from "./dom-geometry.js";
 import { NodeList } from "./child-nodelist.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/svg",
-  owner: "W7",
-  gate: "W7",
-  status: "implemented",
-});
-
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 // The value-class "illegal constructor" mint token. happy-dom guards these
@@ -1278,7 +1271,6 @@ const PRESERVE_ASPECT_RATIO_ALIGN = [
   "xMidYMax",
   "xMaxYMax",
 ];
-const PRESERVE_ASPECT_RATIO_MEET_OR_SLICE = ["meet", "slice"];
 
 class SVGPreserveAspectRatio {
   static SVG_MEETORSLICE_UNKNOWN = 0;

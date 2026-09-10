@@ -43,19 +43,12 @@
 //! the JS facade milestone maps the Core error to the appropriate exception.
 
 use crate::arena::NodeId;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
 use super::node::NodeType;
 use super::Document;
 
 use std::collections::{HashMap, HashSet};
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
-}
 
 impl Document {
     /// Clones the node for `id`, optionally including its subtree, and returns

@@ -74,15 +74,6 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::extensions::ExtensionSeam;
-
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "affinity",
-    owner: "T21B",
-    gate: "T21",
-    status: "placeholder",
-};
-
 /// The observed origin of a call — the proxy for the unreadable isolate
 /// identity (see the module docs).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -146,7 +137,6 @@ impl AffinityError {
     ///
     /// Dormant until T21 wires the guard into the FFI entries; exercised by
     /// the pure tests below.
-    #[allow(dead_code)]
     pub(crate) fn code(&self) -> &'static str {
         match self {
             Self::Mismatch { .. } => "ERR_MAD_DOM_AFFINITY_MISMATCH",
@@ -208,7 +198,6 @@ impl AffinityToken {
     ///
     /// Dormant until T21 wires the guard into the FFI entries; exercised by
     /// the pure tests below.
-    #[allow(dead_code)]
     pub(crate) fn create() -> Self {
         Self(Arc::new(TokenInner {
             affinity: AffinityId::current(),
@@ -219,7 +208,6 @@ impl AffinityToken {
     ///
     /// Dormant until T21 wires the guard into the FFI entries; exercised by
     /// the pure tests below.
-    #[allow(dead_code)]
     pub(crate) fn check(&self) -> Result<(), AffinityError> {
         self.check_with(AffinityId::current())
     }
@@ -232,7 +220,6 @@ impl AffinityToken {
     ///
     /// Dormant until T21 wires the guard into the FFI entries; exercised by
     /// the pure tests below.
-    #[allow(dead_code)]
     pub(crate) fn check_with(&self, observed: AffinityId) -> Result<(), AffinityError> {
         match (self.0.affinity, observed) {
             (AffinityId::Observed(expected), AffinityId::Observed(observed)) => {

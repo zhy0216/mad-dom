@@ -69,21 +69,7 @@ use napi_derive::napi;
 
 use mad_dom_core::dom::ShadowRootMode;
 
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, NodeHandle};
-
-/// Seam metadata for the M8 `shadow_dom_api` boundary.
-///
-/// Like the M5-M7 seams this constant is not referenced by the frozen
-/// [`REGISTRY`](crate::extensions::REGISTRY) (T43 owns its own integration), so
-/// it is allowed to be otherwise unused.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "shadow_dom_api",
-    owner: "T43",
-    gate: "T43",
-    status: "implemented",
-};
 
 /// The frozen native Shadow DOM surface on
 /// [`NodeHandle`](crate::handle::NodeHandle).

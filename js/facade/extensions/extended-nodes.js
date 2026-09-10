@@ -50,51 +50,7 @@ import {
   markSubtreeCustomAndUpgrade,
 } from "./custom-elements.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/extended-nodes",
-  owner: "T33",
-  gate: "T33",
-  status: "implemented",
-});
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function isDocumentHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.destroy === "function" &&
-    typeof handle.appendChild === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    // A manually constructed Node around a native handle is intentionally not
-    // part of the reverse conversion cache. The extended-node methods accept
-    // only wrappers for which the facade can recover the owning native handle,
-    // so native affinity and ownership checks remain authoritative.
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
-
-function facadeDocumentHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isDocumentHandle(handle)) {
-    throw new TypeError(`Document.${role} requires a genuine Document facade wrapper`);
-  }
-  return handle;
-}
+import { facadeNodeHandle, facadeDocumentHandle } from "./classes.js";
 
 /**
  * Installs the T33 extended-node surface.

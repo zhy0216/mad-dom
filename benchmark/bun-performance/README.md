@@ -16,9 +16,10 @@ bun test benchmark/bun-performance
 The frozen task-01 reference is
 `/home/ubuntu/.herdr/worktrees/mad-dom/bun-native-performance-reference-efaa64b`,
 source `efaa64b3b9d90cf1988d8092d7de08e97e929630`. It has its own build and target.
-Do not rebuild, change or remove it before task 05 finishes. The committed
-[reference manifest](../../plans/bun-native-performance/evidence/baseline/reference-manifest.json)
-contains source/file, artifact, archive and executable SHA256s and actual revisions.
+Do not rebuild, change or remove it before task 05 finishes. The task-01
+reference manifest (not committed; see
+[the baseline notes](../../plans/bun-native-performance/evidence/baseline/README.md))
+records source/file, artifact, archive and executable SHA256s and actual revisions.
 The current harness imports that checkout's production modules and starts that
 checkout's original DOM workers. No harness is copied into the reference.
 
@@ -92,8 +93,8 @@ the declared `productionInputs`. A new `js/` helper changes this digest before
 that cannot be read fails the inventory. The lock and original DOM-worker
 inventories are also bound to the production digest.
 
-The complete task-01 campaign used one frozen harness, preserved byte-for-byte in
-[measured-harness-source.json](../../plans/bun-native-performance/evidence/baseline/measured-harness-source.json).
+The complete task-01 campaign used one frozen harness, preserved byte-for-byte
+in the task-01 evidence (raw evidence is not committed).
 After the campaign, inventory and verification were strengthened; the timed
 worker and workload/statistical protocol stayed unchanged. Original manifests,
 samples and recorded harness hashes were retained. Saved-evidence verification
@@ -197,4 +198,4 @@ explicit absolute `--bun`, source roots and images as above; nothing resolves
 through PATH. Task 05 ran its full integrated acceptance (six paired campaigns,
 supplements, smokes and profiles, all in one serial sampling reservation) with
 these commands; see [results.md](../../plans/bun-native-performance/results.md) and
-[the final evidence directory](../../plans/bun-native-performance/evidence/final/).
+[the final conclusions](../../plans/bun-native-performance/evidence/final/conclusion.md).

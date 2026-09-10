@@ -49,17 +49,10 @@
 
 use crate::arena::NodeId;
 use crate::dom::NodeData;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
 use super::node::ShadowRootMode;
 use super::{Document, NodeType, HTML_NAMESPACE};
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
-}
 
 impl Document {
     /// Creates a shadow root of `mode` for the `Element` host `host` and

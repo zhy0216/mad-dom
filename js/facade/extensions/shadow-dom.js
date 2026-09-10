@@ -45,12 +45,7 @@
 import { Node, DocumentFragment } from "./node.js";
 import { Window } from "../window.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/shadow-dom",
-  owner: "T43",
-  gate: "T43",
-  status: "implemented",
-});
+import { facadeNodeHandle } from "./classes.js";
 
 /**
  * `ShadowRoot` facade class (T43).
@@ -63,24 +58,6 @@ export const seam = Object.freeze({
  * reachable. The class body is empty; `install` wires the surface.
  */
 export class ShadowRoot {}
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
 
 /**
  * Wraps a native shadow-root handle into the `ShadowRoot` facade class.

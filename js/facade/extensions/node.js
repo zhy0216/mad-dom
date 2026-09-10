@@ -1,6 +1,5 @@
 // `Node` facade plus node creation and navigation extension (T23B).
 //
-// The first capability extension to take over its T20A placeholder seam. It
 // implements the frozen native node contract
 // (tests/bun/fixtures/native-node-contract.json, T23A) as JavaScript surface:
 //
@@ -18,7 +17,6 @@
 //
 // It deliberately does **not** implement mutation, attributes, `textContent`
 // or the live `childNodes` collection — those belong to T24C / T25E / T25D and
-// are explicitly out of scope here (js/facade/CONTRACT.md). The facade keeps no
 // second DOM state: a `Node` wrapper holds either an opaque native `NodeHandle`
 // or a document-scoped primitive token. A Core `NodeId` never crosses this
 // seam and only the binding can resolve a token.
@@ -31,9 +29,7 @@
 // facade form of `childNodes` disappears.
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
-// by exporting `install(ctx)`; nothing in the registry changes. The `seam`
-// metadata was flipped from `"placeholder"` to `"implemented"` by the T23 gate
-// (tests/bun/seam.test.js pins that shape).
+// by exporting `install(ctx)`.
 
 import {
   Node,
@@ -65,13 +61,6 @@ export {
   setElementFallbackClasses,
 };
 
-export const seam = Object.freeze({
-  id: "facade/extensions/node",
-  owner: "T23B",
-  gate: "T23",
-  status: "implemented",
-});
-
 // The WHATWG HTML namespace URI (mirrors crates/mad-dom-core/src/dom/node.rs):
 // `nodeName` / `tagName` report the tag name uppercased only for elements in
 // this namespace, matching happy-dom.
@@ -85,7 +74,6 @@ const stringSlice = Function.prototype.call.bind(String.prototype.slice);
 const stringFromCharCode = String.fromCharCode;
 const weakSetAdd = Function.prototype.call.bind(WeakSet.prototype.add);
 const weakSetHas = Function.prototype.call.bind(WeakSet.prototype.has);
-
 
 function createElementToken(documentHandle, documentState, localName, structureEpoch) {
   const elementTokenMethod = documentState.nativeMethods.createElementToken;
@@ -532,7 +520,6 @@ export function install(ctx) {
     }
     return result;
   }
-
 
   // Hydrates a bounded subtree prefix and seeds every relation memo whose
   // terminal link is proven by that prefix. Current bindings prefix the pairs

@@ -81,12 +81,7 @@ import {
 import { Window } from "../window.js";
 import { Event, MouseEvent } from "./events.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/forms",
-  owner: "T40",
-  gate: "T40",
-  status: "implemented",
-});
+import { facadeNodeHandle } from "./classes.js";
 
 // --- constructor accessor classes (single-class model) ----------------------
 
@@ -143,24 +138,6 @@ const OPTIONS_OWNER_SELECT = new WeakMap();
 // keyed by the live collection proxy (its prototype methods receive the proxy
 // as `this`).
 const LIVE_READS = new WeakMap();
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
 
 function tagOf(handle) {
   return String(handle.nodeName());

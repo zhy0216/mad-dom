@@ -25,9 +25,9 @@
 //! # Classification table
 //!
 //! Every current [`CoreError`] / [`BindingError`] branch maps to exactly one
-//! row. A row fixes the JS class ([`JsErrorKind`]), the `name` property
-//! ([`error_name`]), a stable string `code` ([`error_code`]) and a message
-//! template ([`error_message`]):
+//! row. A row fixes the JS class ([`JsErrorKind`]), the `name` property,
+//! a stable string `code` and a message template (all returned by
+//! [`spec_of_core`]):
 //!
 //! | branch                 | class          | name                    | code                              | message template                                                       |
 //! |------------------------|----------------|-------------------------|-----------------------------------|------------------------------------------------------------------------|
@@ -116,67 +116,6 @@ pub(crate) struct ErrorSpec {
     pub message: String,
 }
 
-/// Classifies a Core error into the exception class fixed by the taxonomy.
-pub(crate) fn classify(err: &CoreError) -> JsErrorKind {
-    match err {
-        CoreError::InvalidHandle(_) => JsErrorKind::TypeError,
-        CoreError::Hierarchy { .. }
-        | CoreError::WrongDocument { .. }
-        | CoreError::InvalidCharacter { .. }
-        | CoreError::IndexOutOfBounds { .. } => JsErrorKind::DomException,
-        CoreError::Syntax { .. } => JsErrorKind::SyntaxError,
-        CoreError::Arena(_) => JsErrorKind::Error,
-    }
-}
-
-/// The stable `name` property of the raised JavaScript error.
-pub(crate) fn error_name(err: &CoreError) -> &'static str {
-    match err {
-        CoreError::InvalidHandle(_) => "TypeError",
-        CoreError::Hierarchy { .. } => "HierarchyRequestError",
-        CoreError::WrongDocument { .. } => "WrongDocumentError",
-        CoreError::InvalidCharacter { .. } => "InvalidCharacterError",
-        CoreError::Syntax { .. } => "SyntaxError",
-        CoreError::IndexOutOfBounds { .. } => "IndexSizeError",
-        CoreError::Arena(_) => "Error",
-    }
-}
-
-/// Stable machine-readable code attached to the thrown JavaScript error.
-pub(crate) fn error_code(err: &CoreError) -> &'static str {
-    match err {
-        CoreError::InvalidHandle(_) => "ERR_MAD_DOM_INVALID_HANDLE",
-        CoreError::Hierarchy { .. } => "ERR_MAD_DOM_HIERARCHY",
-        CoreError::WrongDocument { .. } => "ERR_MAD_DOM_WRONG_DOCUMENT",
-        CoreError::InvalidCharacter { .. } => "ERR_MAD_DOM_INVALID_CHARACTER",
-        CoreError::Syntax { .. } => "ERR_MAD_DOM_SYNTAX",
-        CoreError::IndexOutOfBounds { .. } => "ERR_MAD_DOM_INDEX_OUT_OF_BOUNDS",
-        CoreError::Arena(_) => "ERR_MAD_DOM_STALE_HANDLE",
-    }
-}
-
-/// Stable template-based message for a Core error, independent of Rust debug
-/// formatting.
-pub(crate) fn error_message(err: &CoreError) -> String {
-    match err {
-        CoreError::InvalidHandle(id) => format!("invalid node handle {id}"),
-        CoreError::Hierarchy { message } => {
-            format!("the operation would yield an incorrect document tree: {message}")
-        }
-        CoreError::WrongDocument {
-            expected_document, ..
-        } => format!(
-            "the node belongs to a different document (expected document {expected_document})"
-        ),
-        CoreError::InvalidCharacter { what, .. } => format!("invalid character in {what}"),
-        CoreError::Syntax { message } => format!("syntax error: {message}"),
-        CoreError::IndexOutOfBounds { index, len } => {
-            format!("index {index} out of bounds (len {len})")
-        }
-        CoreError::Arena(inner) => arena_message(inner),
-    }
-}
-
 /// Stable per-variant message for an arena (stale-handle) failure.
 fn arena_message(err: &ArenaError) -> String {
     match err {
@@ -186,13 +125,63 @@ fn arena_message(err: &ArenaError) -> String {
     }
 }
 
-/// The full frozen classification of a Core error.
+/// The full frozen classification of a Core error: JS class, `name`, stable
+/// `code` and a stable template-based message, independent of Rust debug
+/// formatting.
 pub(crate) fn spec_of_core(err: &CoreError) -> ErrorSpec {
+    let (kind, name, code, message) = match err {
+        CoreError::InvalidHandle(id) => (
+            JsErrorKind::TypeError,
+            "TypeError",
+            "ERR_MAD_DOM_INVALID_HANDLE",
+            format!("invalid node handle {id}"),
+        ),
+        CoreError::Hierarchy { message } => (
+            JsErrorKind::DomException,
+            "HierarchyRequestError",
+            "ERR_MAD_DOM_HIERARCHY",
+            format!("the operation would yield an incorrect document tree: {message}"),
+        ),
+        CoreError::WrongDocument {
+            expected_document, ..
+        } => (
+            JsErrorKind::DomException,
+            "WrongDocumentError",
+            "ERR_MAD_DOM_WRONG_DOCUMENT",
+            format!(
+                "the node belongs to a different document (expected document {expected_document})"
+            ),
+        ),
+        CoreError::InvalidCharacter { what, .. } => (
+            JsErrorKind::DomException,
+            "InvalidCharacterError",
+            "ERR_MAD_DOM_INVALID_CHARACTER",
+            format!("invalid character in {what}"),
+        ),
+        CoreError::Syntax { message } => (
+            JsErrorKind::SyntaxError,
+            "SyntaxError",
+            "ERR_MAD_DOM_SYNTAX",
+            format!("syntax error: {message}"),
+        ),
+        CoreError::IndexOutOfBounds { index, len } => (
+            JsErrorKind::DomException,
+            "IndexSizeError",
+            "ERR_MAD_DOM_INDEX_OUT_OF_BOUNDS",
+            format!("index {index} out of bounds (len {len})"),
+        ),
+        CoreError::Arena(inner) => (
+            JsErrorKind::Error,
+            "Error",
+            "ERR_MAD_DOM_STALE_HANDLE",
+            arena_message(inner),
+        ),
+    };
     ErrorSpec {
-        kind: classify(err),
-        name: error_name(err),
-        code: error_code(err),
-        message: error_message(err),
+        kind,
+        name,
+        code,
+        message,
     }
 }
 
@@ -353,9 +342,10 @@ mod tests {
             ),
         ];
         for (err, name, code) in cases {
-            assert_eq!(classify(&err), JsErrorKind::DomException, "{err:?}");
-            assert_eq!(error_name(&err), name, "{err:?}");
-            assert_eq!(error_code(&err), code, "{err:?}");
+            let spec = spec_of_core(&err);
+            assert_eq!(spec.kind, JsErrorKind::DomException, "{err:?}");
+            assert_eq!(spec.name, name, "{err:?}");
+            assert_eq!(spec.code, code, "{err:?}");
         }
     }
 
@@ -427,7 +417,10 @@ mod tests {
         ];
         let mut seen = std::collections::HashSet::new();
         for err in &distinct_branches {
-            assert!(seen.insert(error_code(err)), "duplicate code: {err:?}");
+            assert!(
+                seen.insert(spec_of_core(err).code),
+                "duplicate code: {err:?}"
+            );
         }
         assert_eq!(seen.len(), distinct_branches.len());
         // Plus the binding-level code; all eight are distinct.
@@ -445,7 +438,7 @@ mod tests {
             "ERR_MAD_DOM_STALE_HANDLE",
         ];
         for (err, code) in distinct_branches.iter().zip(expected) {
-            assert_eq!(error_code(err), code, "{err:?}");
+            assert_eq!(spec_of_core(err).code, code, "{err:?}");
         }
         assert_eq!(
             spec_of_binding(&BindingError::Destroyed).code,

@@ -59,7 +59,7 @@ export const FFI_CAPABILITIES = Object.freeze({
   serializeIntoBuffer: 1 << 3,
   attributeTextBatch: 1 << 4,
 });
-export const FFI_SYMBOLS = Object.freeze({
+const FFI_SYMBOLS = Object.freeze({
   abiVersion: "mad_dom_ffi_abi_version",
   capabilities: "mad_dom_ffi_capabilities",
   querySnapshot: "mad_dom_ffi_query_snapshot",
@@ -151,7 +151,7 @@ export function isSupportedPlatform(platform, arch) {
 /// Detects the linux libc flavor by probing for the musl dynamic loader
 /// (ADR-0005 §6): the presence of a musl loader path means musl, otherwise
 /// glibc is assumed.
-export function detectLinuxLibc(arch) {
+function detectLinuxLibc(arch) {
   const loaderArch = MUSL_LOADER_ARCH[arch] ?? arch;
   const probes = [`/lib/ld-musl-${loaderArch}.so.1`, `/usr/lib/ld-musl-${loaderArch}.so.1`];
   if (probes.some((path) => existsSync(path))) return "musl";
@@ -810,7 +810,7 @@ export function loadNativeFfi() {
   return ffiState;
 }
 
-export const loadFfi = loadNativeFfi;
+
 
 export function ffiCapabilityReport() {
   const report = loadNativeFfi();

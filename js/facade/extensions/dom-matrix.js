@@ -27,13 +27,6 @@
 import { Window } from "../window.js";
 import { DOMPoint } from "./dom-geometry.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/dom-matrix",
-  owner: "W2",
-  gate: "W2",
-  status: "implemented",
-});
-
 const DEFAULT_MATRIX_JSON = {
   a: 1,
   b: 0,

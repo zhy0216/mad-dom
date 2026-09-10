@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Window, VirtualConsolePrinter, isNativeAvailable } from "../../index.js";
-import { VirtualConsole } from "../../js/facade/extensions/lightweight.js";
+import { Window, VirtualConsole, VirtualConsolePrinter, isNativeAvailable } from "../../index.js";
 
 // T08 lightweight-wave facade tests.
 //

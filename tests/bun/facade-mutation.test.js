@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { Document } from "../../js/facade/document.js";
 import { Node } from "../../js/facade/extensions/node.js";
-import { install, seam as mutationSeam } from "../../js/facade/extensions/mutation.js";
+import { install } from "../../js/facade/extensions/mutation.js";
 import { createWindow } from "../../js/facade/window.js";
 import { isNativeAvailable } from "../../index.js";
 
@@ -34,14 +34,9 @@ function destroy(window) {
 }
 
 describe("facade mutation export shape (T24C)", () => {
-  test("mutation.js exports only install and its frozen seam", async () => {
+  test("mutation.js exports only install", async () => {
     const mod = await import("../../js/facade/extensions/mutation.js");
-    expect(Object.keys(mod).sort()).toEqual(["install", "seam"]);
-    expect(mutationSeam.id).toBe("facade/extensions/mutation");
-    expect(mutationSeam.owner).toBe("T24C");
-    expect(mutationSeam.gate).toBe("T24");
-    expect(mutationSeam.status).toBe("implemented");
-    expect(Object.isFrozen(mutationSeam)).toBe(true);
+    expect(Object.keys(mod).sort()).toEqual(["install"]);
   });
 });
 

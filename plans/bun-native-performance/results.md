@@ -63,9 +63,9 @@ measured candidate above is exactly the post-`050a685` tree.
 
 ## 4. T1 — correctness and robustness matrix
 
-Ledger: [evidence/final/commands/commands.json](evidence/final/commands/commands.json)
-(gated commands with stdout/stderr logs and real exits; seq 1–115 pre-rebase,
-116–125 post-rebase re-verification on the `050a685` base).
+Ledger: `evidence/final/commands/commands.json` (gated commands with
+stdout/stderr logs and real exits; seq 1–115 pre-rebase, 116–125 post-rebase
+re-verification on the `050a685` base). Raw evidence is not committed.
 
 Final state on the rebased tree (`050a685`; production bytes unchanged):
 
@@ -122,17 +122,14 @@ Primary reference-vs-candidate (FFI on, size 1, pooled, stable):
 Campaign: completed in-reservation 2026-09-10T08:22:30Z (17 steps, all exit 0,
 integrity `unchanged: true`); final analysis re-ran and
 `tables.md` / `combined.json` / `combined-tables.md` are byte-identical to the
-pre-profile interim outputs (`evidence/final/analysis-consistency.json`), with
-only the expected `kind: "profile"` additions to `analysis.json` and
-`sample-files.json`. (Per the 01–03 precedent, raw `.cpuprofile` binaries under
-`evidence/final/profiles/` are not committed — `evidence/final/.gitignore`
-excludes `profiles/**/*.cpuprofile`, and `profiles/INDEX.json` binds all 12 of
-them (64,421,282 bytes) by path/bytes/SHA-256 to their committed batch records;
-`profiles/README.md` explains the split. `evidence/final/.gitattributes` marks
-`commands/*.log -whitespace` so captured output is never rewritten, matching
-the vendored-tree rule in the root `.gitattributes`; the two generated tables
-had only their single trailing blank EOF line removed, recorded with
-generated-vs-committed SHA-256 in `analysis-consistency.json`.)
+pre-profile interim outputs, with only the expected `kind: "profile"`
+additions to `analysis.json` and `sample-files.json`. Per the 01–03 precedent,
+the raw `.cpuprofile` binaries under `evidence/final/profiles/` were never
+committed; `profiles/INDEX.json` bound all 12 of them (64,421,282 bytes) by
+path/bytes/SHA-256 to their batch records, and `profiles/README.md` explains
+the split. The two generated tables had only their single trailing blank EOF
+line removed. All raw evidence (analysis, samples, profiles, logs, manifests)
+lives outside the repository; only the markdown summaries are committed.
 
 T3 entry points and docs, all verified on the actual clean-source
 install/build flow of this worktree (`bun install --frozen-lockfile` +

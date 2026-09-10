@@ -24,7 +24,6 @@
 // classes directly would fail the T46 differential gates (exception types,
 // promise timing, `bodyUsed`), so each class replicates the baseline surface
 // while the I/O underneath stays on Bun. The classes keep **no DOM tree state**
-// (CONTRACT.md): they are pure per-window platform objects, exactly like the
 // T45 storage / cookie jar, so Core is untouched.
 //
 // # The per-window context (`WINDOW`)
@@ -57,13 +56,6 @@ import { windowTasks } from "../window-tasks.js";
 import { Window } from "../window.js";
 import { fetchCookieJar } from "./window-platform.js";
 import { isFormData, serializeFormData } from "./form-data.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/fetch",
-  owner: "T46",
-  gate: "T46",
-  status: "implemented",
-});
 
 // --- internal slots ----------------------------------------------------------
 

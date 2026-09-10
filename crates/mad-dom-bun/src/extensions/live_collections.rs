@@ -93,22 +93,7 @@ use napi::bindgen_prelude::Reference;
 use napi::Env;
 use napi_derive::napi;
 
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle, SharedDocument};
-
-/// Seam metadata for the M6 `live_collections` boundary.
-///
-/// Like the M5 `html_api` and M6 `query_api` seams this constant is not
-/// referenced by the frozen [`REGISTRY`](crate::extensions::REGISTRY) (T32
-/// owns its own integration and there is no separate M6 gate), so it is
-/// allowed to be otherwise unused.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "live_collections",
-    owner: "T32",
-    gate: "T32",
-    status: "implemented",
-};
 
 /// The frozen native live-collection surface on
 /// [`DocumentHandle`](crate::handle::DocumentHandle) and

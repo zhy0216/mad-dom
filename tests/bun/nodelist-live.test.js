@@ -9,7 +9,6 @@ import {
   NodeList,
   install as installNodeList,
   liveChildNodes,
-  seam,
 } from "../../js/facade/extensions/child-nodelist.js";
 
 // T25D live childNodes / NodeList facade tests.
@@ -66,14 +65,7 @@ async function collectGarbage() {
 describe("live childNodes facade module shape (T25D)", () => {
   test("child-nodelist.js exports exactly the live collection surface", async () => {
     const mod = await import("../../js/facade/extensions/child-nodelist.js");
-    expect(Object.keys(mod).sort()).toEqual(["NodeList", "install", "liveChildNodes", "seam"]);
-  });
-
-  test("the seam is flipped to implemented by the T25 gate", () => {
-    expect(seam.owner).toBe("T25D");
-    expect(seam.gate).toBe("T25");
-    expect(seam.status).toBe("implemented");
-    expect(Object.isFrozen(seam)).toBe(true);
+    expect(Object.keys(mod).sort()).toEqual(["NodeList", "install", "liveChildNodes"]);
   });
 
   test("NodeList sits one level under Object.prototype with no enumerable surface", () => {

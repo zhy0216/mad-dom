@@ -16,34 +16,17 @@
 | `source` | 来源：npm registry 与锁定 tarball、上游仓库、分支策略（不读上游 main） |
 | `adr` | 指向 ADR-0002 的相对路径 |
 
-清单值必须与 ADR-0002 第 1 节精确一致：`validate-baseline.js` 内置的锁定基线常量即取自该表，任何一端漂移都会校验失败。schema 拒绝未知字段。
-
-## 校验
-
-```sh
-bun compat/validate-baseline.js
-```
-
-零依赖、离线、可重复运行：只读取清单与仓库 `.bun-version`，不访问网络。校验覆盖：
-
-- 必填字段存在且非空；未知字段拒绝；
-- 版本号为 semver 格式；commit 为 40 位小写 hex；tag 必须等于 `v<npmVersion>`；
-- 时间字段为可解析的 ISO 8601 UTC；
-- `schemaVersion` 匹配；
-- 交叉验证：`bun.version` 与 `.bun-version` 一致；`happyDom` 三元组与 ADR-0002 锁定值一致。
-
-失败时逐字段输出错误并以 exit 1 退出；通过时输出简明 OK 摘要。也可显式传入清单路径（用于临时副本或篡改演练）：
-
-```sh
-bun compat/validate-baseline.js <path/to/manifest.json>
-```
+清单值必须与 ADR-0002 第 1 节精确一致：`compat/ledger-lib.js` 的 schema
+校验与 `tests/compat/public-api-snapshot.test.js` 的锚点断言都会交叉核对
+`happyDom` 三元组与 ADR-0002 锁定值；任何一端漂移都会让 `compat:ledger`
+或快照测试失败。schema 拒绝未知字段。
 
 ## 基线升级操作
 
 按 [ADR-0002 第 9 节](../adr/0002-happy-dom-compatibility-baseline-and-differential-protocol.md) 执行，一次升级一个独立提交：
 
 1. 更新 `happy-dom-baseline.json` 的 `happyDom`（npm 版本、commit、tag，必要时 `npmPublishTime`）与 `bun`（如需），并把 `generatedAt`、`generator.version` 刷新为本次生成值；
-2. 同步更新 `validate-baseline.js` 顶部的 `PINNED` 锁定常量与 ADR-0002 第 1 节基线表（或由新 ADR 取代）；
+2. 同步更新 ADR-0002 第 1 节基线表（或由新 ADR 取代）；
 3. 在同一独立提交中重新生成快照与类型/差分结果，恢复全部兼容门禁（快照、类型、黑盒差分、退化检查）；新增差异逐项归入 `pass` 或 `known-gap` 并写明原因，不得静默跳过；
 4. 提交说明列出新旧版本、新旧 commit 与差异摘要；该提交只做基线升级，不混入功能改动。
 
@@ -156,7 +139,7 @@ npm run compat:hdunit:validate           # 门禁：schema + 交叉核对 + 活�
 npm run compat:hdunit:report             # 离线汇总：各子系统计数、通过率、与基线 delta
 npm run compat:hdunit:report -- --json   # 同上，机器可读（totals/bySubsystem 含 passRate + baseline/delta）
 npm run compat:hdunit:report:baseline    # 把当前汇总写为基线（report-baseline.json），波次收尾/有意变更后运行
-bun tests/happy-dom/validate-triage.mjs --self-test   # 4 个篡改演练（临时副本）
+npm run compat:hdunit:validate:selftest  # 4 个篡改演练（临时副本）
 ```
 
 报告口径（T11）：`report.mjs --json` 输出每子系统的 `enabled` / `expectedFail` / `skip` /
@@ -170,13 +153,15 @@ bun tests/happy-dom/validate-triage.mjs --self-test   # 4 个篡改演练（临�
 之后、包打包检查之前运行 hdunit 步骤（顺序执行，不与其他步骤并行占用同一 tmp）：
 
 1. `git clone --branch v20.11.11` 锁定的上游 checkout 到 `/tmp/happy-dom-upstream`；
-2. `HAPPY_DOM_UPSTREAM_DIR=… bun scripts/vendor-happy-dom-tests.mjs --verify`（幂等 + 逐字节）；
-3. `bun scripts/rewrite-happy-dom-tests.mjs --verify`（幂等 + 逐字节）；
-4. `npm run compat:hdunit:validate`（triage 门禁）。
+2. `HAPPY_DOM_UPSTREAM_DIR=… bun run compat:hdunit:vendor`（生成 vendor 树与清单）；
+3. `bun run compat:hdunit:shim`（生成 shim 层）；
+4. `bun run compat:hdunit:rewrite`（生成 rewritten/ 与 rewrite-report.json）；
+5. `npm run compat:hdunit:validate`（triage 门禁）。
 
-任一步失败即 CI 失败（含把 enabled 改 skip、把 known-gap 置 enabled 等篡改都会以
-exit 1/2 拦截）。`npm run validate` 链同样追加了 `compat:hdunit:validate`，本地验证路径
-与 CI 等价（本地 vendor/rewrite `--verify` 需要上游 checkout，见
+生成产物均不入库（见 `.gitignore`）。任一步失败即 CI 失败（含把 enabled 改 skip、
+把 known-gap 置 enabled 等篡改都会以 exit 1/2 拦截）。`npm run validate` 链同样追加了
+`compat:hdunit:prepare` + `compat:hdunit:validate`，本地验证路径与 CI 等价（本地
+prepare 需要上游 checkout，见
 [tests/happy-dom/README.md](../tests/happy-dom/README.md#vendor-需要上游-checkout)）。
 
 `compat:ledger` 门禁同时扩展：`hdunit` 作为新 suite 纳入 schema 校验，upstream-map

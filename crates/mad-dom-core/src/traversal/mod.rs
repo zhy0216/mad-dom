@@ -81,16 +81,8 @@ pub const FILTER_SKIP: u32 = 3;
 pub const SHOW_ALL: u32 = 0xFFFF_FFFF;
 /// `NodeFilter.SHOW_ELEMENT`.
 pub const SHOW_ELEMENT: u32 = 0x1;
-/// `NodeFilter.SHOW_ATTRIBUTE`.
-pub const SHOW_ATTRIBUTE: u32 = 0x2;
 /// `NodeFilter.SHOW_TEXT`.
 pub const SHOW_TEXT: u32 = 0x4;
-/// `NodeFilter.SHOW_CDATA_SECTION`.
-pub const SHOW_CDATA_SECTION: u32 = 0x8;
-/// `NodeFilter.SHOW_ENTITY_REFERENCE`.
-pub const SHOW_ENTITY_REFERENCE: u32 = 0x10;
-/// `NodeFilter.SHOW_ENTITY`.
-pub const SHOW_ENTITY: u32 = 0x20;
 /// `NodeFilter.SHOW_PROCESSING_INSTRUCTION`.
 pub const SHOW_PROCESSING_INSTRUCTION: u32 = 0x40;
 /// `NodeFilter.SHOW_COMMENT`.
@@ -101,8 +93,6 @@ pub const SHOW_DOCUMENT: u32 = 0x100;
 pub const SHOW_DOCUMENT_TYPE: u32 = 0x200;
 /// `NodeFilter.SHOW_DOCUMENT_FRAGMENT`.
 pub const SHOW_DOCUMENT_FRAGMENT: u32 = 0x400;
-/// `NodeFilter.SHOW_NOTATION`.
-pub const SHOW_NOTATION: u32 = 0x800;
 
 /// The `whatToShow` mask flag for one node type, mirroring
 /// `NodeFilterMask` in the baseline.

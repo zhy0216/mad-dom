@@ -2,14 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { Window, isNativeAvailable } from "../../index.js";
 import { Node, Element } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
-import {
-  install as installAttributes,
-  seam as attributesSeam,
-} from "../../js/facade/extensions/attributes.js";
-import {
-  install as installTextContent,
-  seam as textContentSeam,
-} from "../../js/facade/extensions/text-content.js";
+import { install as installAttributes } from "../../js/facade/extensions/attributes.js";
+import { install as installTextContent } from "../../js/facade/extensions/text-content.js";
 
 // T25E attribute and textContent binding/facade tests.
 //
@@ -59,26 +53,14 @@ function thrown(fn) {
 }
 
 describe("attribute facade module shape (T25E)", () => {
-  test("attributes.js exports exactly the install function and the frozen seam", async () => {
+  test("attributes.js exports exactly the install function", async () => {
     const mod = await import("../../js/facade/extensions/attributes.js");
-    expect(Object.keys(mod).sort()).toEqual(["install", "seam"]);
+    expect(Object.keys(mod).sort()).toEqual(["install"]);
   });
 
-  test("text-content.js exports exactly the install function and the frozen seam", async () => {
+  test("text-content.js exports exactly the install function", async () => {
     const mod = await import("../../js/facade/extensions/text-content.js");
-    expect(Object.keys(mod).sort()).toEqual(["install", "seam"]);
-  });
-
-  test("the seams are flipped to implemented by the T25 gate", () => {
-    expect(attributesSeam.owner).toBe("T25E");
-    expect(attributesSeam.gate).toBe("T25");
-    expect(attributesSeam.status).toBe("implemented");
-    expect(Object.isFrozen(attributesSeam)).toBe(true);
-
-    expect(textContentSeam.owner).toBe("T25E");
-    expect(textContentSeam.gate).toBe("T25");
-    expect(textContentSeam.status).toBe("implemented");
-    expect(Object.isFrozen(textContentSeam)).toBe(true);
+    expect(Object.keys(mod).sort()).toEqual(["install"]);
   });
 
   test("the T48A hierarchy: Element over Node, HTMLElement over Element, with no enumerable surface", () => {

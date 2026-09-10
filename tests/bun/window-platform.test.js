@@ -41,21 +41,20 @@ function thrown(fn) {
 }
 
 describe("window platform export shapes (T45)", () => {
-  test("window-platform.js exports the platform classes and the frozen seam", async () => {
+  test("window-platform.js exports the platform classes", async () => {
     const mod = await import("../../js/facade/extensions/window-platform.js");
     expect(Object.keys(mod).sort()).toEqual([
       "History",
+      "HistoryItemList",
       "Location",
       "Navigator",
       "Storage",
       "closeWindow",
       "fetchCookieJar",
       "install",
-      "seam",
+      "resolveNavigationURL",
       "setWindowCookieContainer",
     ]);
-    expect(mod.seam.owner).toBe("T45");
-    expect(Object.isFrozen(mod.seam)).toBe(true);
   });
 
   test("the platform classes are reachable and not user-constructible through the entry", () => {

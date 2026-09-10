@@ -89,21 +89,7 @@ use napi_derive::napi;
 
 use crate::error::BindingError;
 use crate::extensions::mutation_observer_api::schedule_pending_observer_deliveries;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle};
-
-/// Seam metadata for the M7 `attribute_nodes_api` boundary.
-///
-/// Like the M5/M6/M7 seams this constant is not referenced by the frozen
-/// [`REGISTRY`](crate::extensions::REGISTRY) (T34 owns its own integration), so
-/// it is allowed to be otherwise unused.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "attribute_nodes_api",
-    owner: "T34",
-    gate: "T34",
-    status: "implemented",
-};
 
 /// The frozen native attribute-node/token surface on
 /// [`DocumentHandle`](crate::handle::DocumentHandle).

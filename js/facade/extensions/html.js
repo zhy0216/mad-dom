@@ -54,13 +54,6 @@ import {
 // Non-streaming decode resets between calls and retains no document or bytes.
 const htmlDecoder = new TextDecoder();
 
-export const seam = Object.freeze({
-  id: "facade/extensions/html",
-  owner: "T29",
-  gate: "T29",
-  status: "implemented",
-});
-
 function isNodeHandle(handle) {
   return (
     handle !== null &&

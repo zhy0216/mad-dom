@@ -1,6 +1,5 @@
 // Facade registry / extension contract (T22B).
 //
-// Per js/facade/CONTRACT.md every capability extension is an ESM module that
 // exports one named `install(ctx)` function; this registry drives them. It is
 // called exactly once at facade initialization by js/facade/window.js with the
 // `ctx` that window.js builds:
@@ -15,14 +14,11 @@
 //   - `ctx.registerHandleType(name, makeWrapper)` — wrapper-type registry.
 //
 // The registry imports every extension file and calls its `install` when the
-// module exports one. Placeholder modules (T20A) export only frozen `seam`
 // metadata and are skipped, so the registry runs cleanly before any capability
 // lands; a later subtask picks itself up by adding `install` to its own file —
 // nothing in this registry needs to change (T22B acceptance: later facade
 // subtasks only add or modify their own extension file).
 //
-// The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
-// tests/bun/seam.test.js pins that shape.
 
 import * as attributeNodesExtension from "./attribute-nodes.js";
 import * as attributesExtension from "./attributes.js";
@@ -58,13 +54,6 @@ import * as domMatrixExtension from "./dom-matrix.js";
 import * as dndExtension from "./dnd.js";
 import * as hdunitNodesExtension from "./hdunit-nodes.js";
 import * as svgExtension from "./svg.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/index",
-  owner: "T22B",
-  gate: "T22",
-  status: "implemented",
-});
 
 const EXTENSIONS = [
   nodeExtension,

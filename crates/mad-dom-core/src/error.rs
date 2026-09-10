@@ -99,3 +99,10 @@ impl From<ArenaError> for CoreError {
         Self::Arena(inner)
     }
 }
+
+/// Builds a [`CoreError::Hierarchy`] with `message`.
+pub(crate) fn hierarchy(message: impl Into<String>) -> CoreError {
+    CoreError::Hierarchy {
+        message: message.into(),
+    }
+}

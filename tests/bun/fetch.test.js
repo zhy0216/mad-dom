@@ -52,7 +52,7 @@ async function thrownAsync(fn) {
 }
 
 describe("fetch export shapes (T46)", () => {
-  test("fetch.js exports the compat classes and the frozen seam", async () => {
+  test("fetch.js exports the compat classes", async () => {
     const mod = await import("../../js/facade/extensions/fetch.js");
     expect(Object.keys(mod).sort()).toEqual([
       "ABORT_IMPL",
@@ -64,10 +64,7 @@ describe("fetch export shapes (T46)", () => {
       "fetchScriptSync",
       "install",
       "isHeaderForbidden",
-      "seam",
     ]);
-    expect(mod.seam.owner).toBe("T46");
-    expect(Object.isFrozen(mod.seam)).toBe(true);
     // T12: the facade-owned abort symbol that the hdunit PropertySymbol shim
     // aliases `PropertySymbol.abort` to (name/signature alignment only).
     expect(typeof mod.ABORT_IMPL).toBe("symbol");

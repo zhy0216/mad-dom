@@ -86,15 +86,6 @@
 //! (`tests/bun/fixtures/native-mutation-remove-contract.json`) and
 //! `tests/bun/mutation-remove-api.test.js` carry the end-to-end evidence.
 
-use crate::extensions::ExtensionSeam;
-
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "mutation_remove_api",
-    owner: "T24B",
-    gate: "T24",
-    status: "placeholder",
-};
-
 /// The frozen native remove/replace surface on [`DocumentHandle`](crate::handle::DocumentHandle).
 ///
 /// Exactly the audited T19/T20 low-level methods — no renamed or added symbol.

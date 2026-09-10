@@ -319,14 +319,6 @@ impl Document {
         out
     }
 
-    /// Whether any observer is registered in this document.
-    ///
-    /// Cheap pre-check for the binding's delivery scheduler (avoids the record
-    /// scan when no observer exists).
-    pub fn has_observers(&self) -> bool {
-        !self.observers.is_empty()
-    }
-
     /// Runs `f` with observer record generation suppressed (used by
     /// [`Document::replace_child`] to re-order its records and by the T29
     /// implied-skeleton build, which the baseline never records).

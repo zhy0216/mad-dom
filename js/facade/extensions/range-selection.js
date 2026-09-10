@@ -40,12 +40,7 @@ import { Document } from "../document.js";
 import { Event } from "./events.js";
 import { Window } from "../window.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/range-selection",
-  owner: "T36",
-  gate: "T36",
-  status: "implemented",
-});
+import { facadeNodeHandle, facadeDocumentHandle } from "./classes.js";
 
 // Native handle behind each facade range / selection.
 const RANGE_HANDLES = new WeakMap();
@@ -74,41 +69,6 @@ function isSelectionHandle(handle) {
     typeof handle.addRange === "function" &&
     typeof handle.getRangeAt === "function" &&
     typeof handle.setBaseAndExtent === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`Range/Selection.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function facadeDocumentHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isDocumentHandle(handle)) {
-    throw new TypeError(`Document.${role} requires a genuine Document facade wrapper`);
-  }
-  return handle;
-}
-
-function isDocumentHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.destroy === "function" &&
-    typeof handle.appendChild === "function"
   );
 }
 
@@ -235,35 +195,35 @@ export function install(ctx) {
   }, undefined);
 
   ctx.defineMethod(Range.prototype, "setStart", function setStart(node, offset = 0) {
-    RANGE_HANDLES.get(this).setStart(facadeNodeHandle(ctx, node, "setStart"), offset >>> 0);
+    RANGE_HANDLES.get(this).setStart(facadeNodeHandle(ctx, node, "setStart", "Range/Selection"), offset >>> 0);
   });
 
   ctx.defineMethod(Range.prototype, "setEnd", function setEnd(node, offset = 0) {
-    RANGE_HANDLES.get(this).setEnd(facadeNodeHandle(ctx, node, "setEnd"), offset >>> 0);
+    RANGE_HANDLES.get(this).setEnd(facadeNodeHandle(ctx, node, "setEnd", "Range/Selection"), offset >>> 0);
   });
 
   ctx.defineMethod(Range.prototype, "setStartBefore", function setStartBefore(node) {
-    RANGE_HANDLES.get(this).setStartBefore(facadeNodeHandle(ctx, node, "setStartBefore"));
+    RANGE_HANDLES.get(this).setStartBefore(facadeNodeHandle(ctx, node, "setStartBefore", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "setStartAfter", function setStartAfter(node) {
-    RANGE_HANDLES.get(this).setStartAfter(facadeNodeHandle(ctx, node, "setStartAfter"));
+    RANGE_HANDLES.get(this).setStartAfter(facadeNodeHandle(ctx, node, "setStartAfter", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "setEndBefore", function setEndBefore(node) {
-    RANGE_HANDLES.get(this).setEndBefore(facadeNodeHandle(ctx, node, "setEndBefore"));
+    RANGE_HANDLES.get(this).setEndBefore(facadeNodeHandle(ctx, node, "setEndBefore", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "setEndAfter", function setEndAfter(node) {
-    RANGE_HANDLES.get(this).setEndAfter(facadeNodeHandle(ctx, node, "setEndAfter"));
+    RANGE_HANDLES.get(this).setEndAfter(facadeNodeHandle(ctx, node, "setEndAfter", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "selectNode", function selectNode(node) {
-    RANGE_HANDLES.get(this).selectNode(facadeNodeHandle(ctx, node, "selectNode"));
+    RANGE_HANDLES.get(this).selectNode(facadeNodeHandle(ctx, node, "selectNode", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "selectNodeContents", function selectNodeContents(node) {
-    RANGE_HANDLES.get(this).selectNodeContents(facadeNodeHandle(ctx, node, "selectNodeContents"));
+    RANGE_HANDLES.get(this).selectNodeContents(facadeNodeHandle(ctx, node, "selectNodeContents", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "collapse", function collapse(toStart = false) {
@@ -280,15 +240,15 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(Range.prototype, "comparePoint", function comparePoint(node, offset = 0) {
-    return RANGE_HANDLES.get(this).comparePoint(facadeNodeHandle(ctx, node, "comparePoint"), offset >>> 0);
+    return RANGE_HANDLES.get(this).comparePoint(facadeNodeHandle(ctx, node, "comparePoint", "Range/Selection"), offset >>> 0);
   });
 
   ctx.defineMethod(Range.prototype, "isPointInRange", function isPointInRange(node, offset = 0) {
-    return RANGE_HANDLES.get(this).isPointInRange(facadeNodeHandle(ctx, node, "isPointInRange"), offset >>> 0);
+    return RANGE_HANDLES.get(this).isPointInRange(facadeNodeHandle(ctx, node, "isPointInRange", "Range/Selection"), offset >>> 0);
   });
 
   ctx.defineMethod(Range.prototype, "intersectsNode", function intersectsNode(node) {
-    return RANGE_HANDLES.get(this).intersectsNode(facadeNodeHandle(ctx, node, "intersectsNode"));
+    return RANGE_HANDLES.get(this).intersectsNode(facadeNodeHandle(ctx, node, "intersectsNode", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "cloneContents", function cloneContents() {
@@ -304,11 +264,11 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(Range.prototype, "insertNode", function insertNode(newNode) {
-    RANGE_HANDLES.get(this).insertNode(facadeNodeHandle(ctx, newNode, "insertNode"));
+    RANGE_HANDLES.get(this).insertNode(facadeNodeHandle(ctx, newNode, "insertNode", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "surroundContents", function surroundContents(newParent) {
-    RANGE_HANDLES.get(this).surroundContents(facadeNodeHandle(ctx, newParent, "surroundContents"));
+    RANGE_HANDLES.get(this).surroundContents(facadeNodeHandle(ctx, newParent, "surroundContents", "Range/Selection"));
   });
 
   ctx.defineMethod(Range.prototype, "cloneRange", function cloneRange() {
@@ -403,7 +363,7 @@ export function install(ctx) {
     dispatchSelectionChange(
       this,
       SELECTION_HANDLES.get(this).collapse(
-        node == null ? null : facadeNodeHandle(ctx, node, "collapse"),
+        node == null ? null : facadeNodeHandle(ctx, node, "collapse", "Range/Selection"),
         offset >>> 0,
       ),
     );
@@ -413,7 +373,7 @@ export function install(ctx) {
     dispatchSelectionChange(
       this,
       SELECTION_HANDLES.get(this).setPosition(
-        node == null ? null : facadeNodeHandle(ctx, node, "setPosition"),
+        node == null ? null : facadeNodeHandle(ctx, node, "setPosition", "Range/Selection"),
         offset >>> 0,
       ),
     );
@@ -430,7 +390,7 @@ export function install(ctx) {
   ctx.defineMethod(Selection.prototype, "extend", function extend(node, offset = 0) {
     dispatchSelectionChange(
       this,
-      SELECTION_HANDLES.get(this).extend(facadeNodeHandle(ctx, node, "extend"), offset >>> 0),
+      SELECTION_HANDLES.get(this).extend(facadeNodeHandle(ctx, node, "extend", "Range/Selection"), offset >>> 0),
     );
   });
 
@@ -443,9 +403,9 @@ export function install(ctx) {
     dispatchSelectionChange(
       this,
       SELECTION_HANDLES.get(this).setBaseAndExtent(
-        facadeNodeHandle(ctx, anchorNode, "setBaseAndExtent"),
+        facadeNodeHandle(ctx, anchorNode, "setBaseAndExtent", "Range/Selection"),
         anchorOffset >>> 0,
-        facadeNodeHandle(ctx, focusNode, "setBaseAndExtent"),
+        facadeNodeHandle(ctx, focusNode, "setBaseAndExtent", "Range/Selection"),
         focusOffset >>> 0,
       ),
     );
@@ -454,13 +414,13 @@ export function install(ctx) {
   ctx.defineMethod(Selection.prototype, "selectAllChildren", function selectAllChildren(node) {
     dispatchSelectionChange(
       this,
-      SELECTION_HANDLES.get(this).selectAllChildren(facadeNodeHandle(ctx, node, "selectAllChildren")),
+      SELECTION_HANDLES.get(this).selectAllChildren(facadeNodeHandle(ctx, node, "selectAllChildren", "Range/Selection")),
     );
   });
 
   ctx.defineMethod(Selection.prototype, "containsNode", function containsNode(node, allowPartialContainment = false) {
     return SELECTION_HANDLES.get(this).containsNode(
-      facadeNodeHandle(ctx, node, "containsNode"),
+      facadeNodeHandle(ctx, node, "containsNode", "Range/Selection"),
       Boolean(allowPartialContainment),
     );
   });

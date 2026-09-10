@@ -59,15 +59,7 @@ use napi::bindgen_prelude::Reference;
 use napi::Env;
 use napi_derive::napi;
 
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, DocumentHandle};
-
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "window_document",
-    owner: "T22A",
-    gate: "T22",
-    status: "placeholder",
-};
 
 /// JavaScript-facing opaque wrapper for a native `Window`.
 ///

@@ -25,13 +25,6 @@
 // This module is picked up by the facade registry (extensions/index.js)
 // purely by exporting `install(ctx)`.
 
-export const seam = Object.freeze({
-  id: "facade/extensions/dnd",
-  owner: "T07",
-  gate: "T07",
-  status: "implemented",
-});
-
 // --- DataTransferItem --------------------------------------------------------
 
 /**

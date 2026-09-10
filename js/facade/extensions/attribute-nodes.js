@@ -67,15 +67,8 @@
 
 import { Document } from "../document.js";
 import { Node } from "./node.js";
-import { Element } from "./classes.js";
+import { Element, isNodeHandle, facadeNodeHandle, facadeDocumentHandle } from "./classes.js";
 import { HTMLAnchorElement, HTMLLinkElement } from "./html-element.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/attribute-nodes",
-  owner: "T34",
-  gate: "T34",
-  status: "implemented",
-});
 
 // Native element handle behind each NamedNodeMap / DOMTokenList, and the
 // element handle + name behind each Attr. Attr identity is cached per
@@ -89,41 +82,6 @@ const ATTR_STATE = new WeakMap();
 const ELEMENT_NAMED_NODE_MAPS = new WeakMap();
 const ELEMENT_TOKEN_LISTS = new WeakMap();
 const ELEMENT_ATTRS = new WeakMap();
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function isDocumentHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.destroy === "function" &&
-    typeof handle.appendChild === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
-
-function facadeDocumentHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isDocumentHandle(handle)) {
-    throw new TypeError(`Document.${role} requires a genuine Document facade wrapper`);
-  }
-  return handle;
-}
 
 // NamedNodeMap / DOMTokenList / Attr wrappers are minted by module functions;
 // the install-time `ctx` is closed over by the accessors that must wrap a node

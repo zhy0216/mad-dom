@@ -52,17 +52,10 @@
 
 use crate::arena::NodeId;
 use crate::dom::{Document, NodeData, NodeType};
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 use crate::html::fragment::{FragmentContext, ParsedFragment};
 use crate::html::{parse_html_document, parse_html_fragment};
 use crate::serialize::{serialize_children, serialize_node};
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
-}
 
 /// Returns the first `Element` child of `parent`, in document order.
 fn first_element_child(doc: &Document, parent: NodeId) -> Result<Option<NodeId>, CoreError> {

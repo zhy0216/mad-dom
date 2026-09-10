@@ -41,12 +41,7 @@ import { Document } from "../document.js";
 import { Node } from "./node.js";
 import { Window } from "../window.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/tree-traversal",
-  owner: "T35",
-  gate: "T35",
-  status: "implemented",
-});
+import { facadeNodeHandle, facadeDocumentHandle } from "./classes.js";
 
 // Native handle behind each facade walker/iterator.
 const WALKER_HANDLES = new WeakMap();
@@ -85,25 +80,6 @@ export const NodeFilter = Object.freeze({
   SHOW_NOTATION: 2048,
 });
 
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function isDocumentHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.destroy === "function" &&
-    typeof handle.appendChild === "function"
-  );
-}
-
 function isTreeWalkerHandle(handle) {
   return (
     handle !== null &&
@@ -122,22 +98,6 @@ function isNodeIteratorHandle(handle) {
     typeof handle.whatToShow === "function" &&
     typeof handle.setCurrentNode !== "function"
   );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
-
-function facadeDocumentHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isDocumentHandle(handle)) {
-    throw new TypeError(`Document.${role} requires a genuine Document facade wrapper`);
-  }
-  return handle;
 }
 
 /**

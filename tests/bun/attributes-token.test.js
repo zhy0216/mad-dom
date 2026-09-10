@@ -8,7 +8,6 @@ import {
   DOMTokenList,
   NamedNodeMap,
   install as installAttributeNodes,
-  seam as attributeNodesSeam,
 } from "../../js/facade/extensions/attribute-nodes.js";
 
 // T34 attribute-node and token-list binding/facade tests.
@@ -58,22 +57,14 @@ function thrown(fn) {
 }
 
 describe("attribute-node facade module shape (T34)", () => {
-  test("attribute-nodes.js exports the classes, install and the frozen seam", async () => {
+  test("attribute-nodes.js exports the classes and install", async () => {
     const mod = await import("../../js/facade/extensions/attribute-nodes.js");
     expect(Object.keys(mod).sort()).toEqual([
       "Attr",
       "DOMTokenList",
       "NamedNodeMap",
       "install",
-      "seam",
     ]);
-  });
-
-  test("the seam is flipped to implemented by the T34 gate", () => {
-    expect(attributeNodesSeam.owner).toBe("T34");
-    expect(attributeNodesSeam.gate).toBe("T34");
-    expect(attributeNodesSeam.status).toBe("implemented");
-    expect(Object.isFrozen(attributeNodesSeam)).toBe(true);
   });
 
   test("the T48A hierarchy: Element over Node, HTMLElement over Element, with no enumerable surface", () => {

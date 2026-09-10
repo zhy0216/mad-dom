@@ -10,7 +10,6 @@
 // None of these objects describe *tree* state: they are per-window platform /
 // navigation state (the current URL, the session history, the fixed mock
 // navigator values, the two storage areas and the cookie jar). The facade keeps
-// **no second DOM state** (CONTRACT.md), and these objects are not DOM state —
 // so they legitimately live here, exactly one copy per window, reachable from
 // both the `Window` facade and the `Document` facade through the same key.
 //
@@ -67,10 +66,6 @@
 // (T37 wired Node/Document only) and the T45 differential surface is
 // synchronous.
 
-import { createRequire } from "node:module";
-import { isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { Document } from "../document.js";
 import { Window } from "../window.js";
 import { Event } from "./events.js";
@@ -80,13 +75,6 @@ import { clearWindowListeners } from "./timers.js";
 import { windowTasks } from "../window-tasks.js";
 import { createBrowserSettings, defaultUserAgent } from "../browser-settings.js";
 import { VirtualConsole, VirtualConsolePrinter } from "./virtual-console.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/window-platform",
-  owner: "T45",
-  gate: "T45",
-  status: "implemented",
-});
 
 // --- per-window platform state ----------------------------------------------
 
@@ -262,7 +250,7 @@ function nativeDocumentOfWindow(ctx, windowFacade) {
 
 // --- history stack (mirrors happy-dom HistoryItemList) ------------------------
 
-class HistoryItemList {
+export class HistoryItemList {
   constructor() {
     this.currentItem = {
       title: "",
@@ -301,13 +289,13 @@ class HistoryItemList {
 
 // --- relative URL resolution (mirrors happy-dom BrowserFrameURL) -------------
 
-function resolveRelativeURL(state, url) {
+export function resolveNavigationURL(baseHref, url) {
   url = url ? String(url) : "about:blank";
   if (url.startsWith("about:") || url.startsWith("javascript:")) {
     return new URL(url);
   }
   try {
-    return new URL(url, state.url.href);
+    return new URL(url, baseHref);
   } catch {
     return new URL("about:blank");
   }
@@ -453,7 +441,7 @@ export class Location {
    * no window replacement, no browser process behavior (T45 boundary).
    */
   _navigate(href) {
-    const targetURL = resolveRelativeURL(this[STATE], href);
+    const targetURL = resolveNavigationURL(this[STATE].url.href, href);
     const history = this[STATE].history;
     const targetURLWithoutHash = targetURL.href.split("#")[0];
     const currentURLWithoutHash = this[STATE].url.href.split("#")[0];
@@ -561,7 +549,7 @@ export class History {
       );
     }
     const location = this[STATE].location;
-    const newURL = url ? resolveRelativeURL(this[STATE], url) : this[STATE].url;
+    const newURL = url ? resolveNavigationURL(this[STATE].url.href, url) : this[STATE].url;
     if (url && newURL.origin !== location.origin) {
       throw new DOMException(
         `Failed to execute 'pushState' on 'History': A history state object with URL '${String(
@@ -591,7 +579,7 @@ export class History {
       );
     }
     const location = this[STATE].location;
-    const newURL = url ? resolveRelativeURL(this[STATE], url) : this[STATE].url;
+    const newURL = url ? resolveNavigationURL(this[STATE].url.href, url) : this[STATE].url;
     if (url && newURL.origin !== location.origin) {
       throw new DOMException(
         `Failed to execute 'pushState' on 'History': A history state object with URL '${String(
@@ -617,8 +605,6 @@ export class History {
 }
 
 // --- Navigator ----------------------------------------------------------------
-
-
 
 class MimeTypeArray {
   constructor(mimeTypes) {

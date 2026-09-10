@@ -11,13 +11,6 @@ import { Window } from "../window.js";
 // otherwise unreachable native documents. User callbacks may retain their own
 // references; explicit abort/close cancels those callbacks.
 
-export const seam = Object.freeze({
-  id: "facade/extensions/timers",
-  owner: "T47",
-  gate: "T47",
-  status: "implemented",
-});
-
 // The `ctx` handed to `install`; captured so the timer callbacks and the
 // per-window state accessors can resolve the native document handle.
 let ctx = null;

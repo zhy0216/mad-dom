@@ -36,24 +36,13 @@
 // `dom-error.js`); lifecycle/argument errors pass through unchanged.
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
-// by exporting `install(ctx)`; nothing in the registry changes. The `seam`
-// metadata was flipped from `"placeholder"` to `"implemented"` by the T25 gate
-// (tests/bun/seam.test.js pins that shape).
+// by exporting `install(ctx)`.
 
 import { Element } from "./node.js";
 import { nodeDocumentStateOf } from "./classes.js";
 import { readCachedAttribute } from "./attribute-cache.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
 import { domErrorName, rethrowDomError, webidlMessage } from "./dom-error.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/attributes",
-  owner: "T25E",
-  gate: "T25",
-  // The seam status was flipped from "placeholder" to "implemented" by the T25
-  // gate (tests/bun/seam.test.js pins that shape).
-  status: "implemented",
-});
 
 function isNodeHandle(handle) {
   return (

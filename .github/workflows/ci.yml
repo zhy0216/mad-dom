@@ -66,7 +66,11 @@ jobs:
           bun run probe:bun:selftest
           bun run test:native
       - name: Prepare generated compatibility assets
-        run: bun run compat:hdunit:rewrite
+        run: |
+          git clone --quiet --depth 1 --branch v20.11.11 https://github.com/capricorn86/happy-dom /tmp/happy-dom-upstream
+          HAPPY_DOM_UPSTREAM_DIR=/tmp/happy-dom-upstream bun run compat:hdunit:vendor
+          bun run compat:hdunit:shim
+          bun run compat:hdunit:rewrite
       - name: Run native, compatibility and WPT gates
         run: |
           bun run compat:types
@@ -74,10 +78,6 @@ jobs:
           bun run compat:ledger
           bun run compat:hdunit:validate
           bun run wpt:test
-      - name: Verify vendored hdunit source
-        run: |
-          git clone --quiet --depth 1 --branch v20.11.11 https://github.com/capricorn86/happy-dom /tmp/happy-dom-upstream
-          HAPPY_DOM_UPSTREAM_DIR=/tmp/happy-dom-upstream bun scripts/vendor-happy-dom-tests.mjs --verify
       - name: Install locked integration dependencies
         working-directory: benchmark/mad-dom-integration-test
         run: bun install --frozen-lockfile

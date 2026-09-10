@@ -35,32 +35,9 @@
 import { Node } from "./node.js";
 import { HTMLTemplateElement } from "./html-element.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/template",
-  owner: "T40",
-  gate: "T40",
-  status: "implemented",
-});
+import { facadeNodeHandle } from "./classes.js";
 
 export { HTMLTemplateElement };
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
 
 function isTemplate(handle) {
   return String(handle.nodeName()) === "template";

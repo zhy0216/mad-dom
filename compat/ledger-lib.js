@@ -42,14 +42,14 @@ export const SUBSYSTEMS = {
 };
 
 // ADR-0002 section 1 pinned upstream commit; must stay identical to the
-// PINNED constant in compat/validate-baseline.js.
+// `happyDom.gitCommit` in compat/happy-dom-baseline.json.
 export const PINNED_HAPPY_DOM_COMMIT = "64e2c774cadbb8eda5416c1e2bcca5006d1b5df9";
 
 // happy-dom upstream is MIT-licensed; ported cases must keep that provenance.
 export const UPSTREAM_LICENSE = "MIT";
 
 export const LEDGER_ID_PATTERN = /^hc-(api|types|diff|up|hdunit)-[a-z0-9]+(?:-[a-z0-9]+)+$/;
-// Identical ISO 8601 UTC rule as compat/validate-baseline.js.
+// ISO 8601 UTC rule shared by the ledger and baseline documents.
 export const ISO_8601_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 export const HTTPS_URL = /^https:\/\/\S+$/;
 export const GIT_COMMIT_SHA = /^[0-9a-f]{40}$/;

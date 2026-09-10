@@ -20,14 +20,7 @@
 import { Window } from "../window.js";
 import { Blob, File } from "./lightweight.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/form-data",
-  owner: "integration",
-  gate: "integration",
-  status: "implemented",
-});
-
-export const FORM_DATA_BRAND = Symbol("mad-dom-form-data");
+const FORM_DATA_BRAND = Symbol("mad-dom-form-data");
 
 // The multipart boundary prefix + random tail. The tail is alphanumeric
 // ([0-9a-z]) so the regex the happy-dom integration test uses

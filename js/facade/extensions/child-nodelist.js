@@ -33,21 +33,10 @@
 // same parent hands back one and the same `NodeList` object while it is alive.
 //
 // This module is picked up by the facade registry (extensions/index.js) purely
-// by exporting `install(ctx)`; nothing in the registry changes. The `seam`
-// metadata was flipped from `"placeholder"` to `"implemented"` by the T25 gate
-// (tests/bun/seam.test.js pins that shape).
+// by exporting `install(ctx)`.
 
-import { nodeInternalsOf, nodeHandleOf } from "./classes.js";
+import { nodeInternalsOf, nodeHandleOf, isNodeHandle, toArrayIndex } from "./classes.js";
 import { snapshotNodes } from "./snapshot-node.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/child-nodelist",
-  owner: "T25D",
-  gate: "T25",
-  // The seam status was flipped from "placeholder" to "implemented" by the T25
-  // gate (tests/bun/seam.test.js pins that shape).
-  status: "implemented",
-});
 
 // The owning Window facade of a native node handle (happy-dom NodeList.forEach
 // defaults the callback `this` to the Window instance). `ctx.wrap` converts the
@@ -105,25 +94,7 @@ function readNodes(ctx, list) {
   return handle.childNodes().map((node) => ctx.wrap(node));
 }
 
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
 
-// True canonical array indices ("0", "1", …, "4294967294"); everything else
-// returns null so non-index properties fall through to the prototype surface.
-function toArrayIndex(property) {
-  if (typeof property !== "string") return null;
-  const index = Number(property);
-  if (!Number.isInteger(index) || index < 0 || index > 0xfffffffe) return null;
-  if (String(index) !== property) return null;
-  return index;
-}
 
 /**
  * Live `NodeList` facade for one parent node.

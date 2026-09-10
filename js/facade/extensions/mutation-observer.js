@@ -40,12 +40,7 @@ import { loadNative } from "../../native-loader.js";
 
 import { Window } from "../window.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/mutation-observer",
-  owner: "T41",
-  gate: "T41",
-  status: "implemented",
-});
+import { isNodeHandle } from "./classes.js";
 
 // Native handle behind each facade observer / record.
 const OBSERVER_HANDLES = new WeakMap();
@@ -73,16 +68,6 @@ let ctx = null;
 
 // --- handle guards -----------------------------------------------------------
 
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
 function isMutationObserverHandle(handle) {
   return (
     handle !== null &&
@@ -91,14 +76,6 @@ function isMutationObserverHandle(handle) {
     typeof handle.disconnect === "function" &&
     typeof handle.takeRecords === "function"
   );
-}
-
-function facadeNodeHandle(value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
 }
 
 // --- delivery scheduler -------------------------------------------------------

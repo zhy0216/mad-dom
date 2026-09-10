@@ -47,7 +47,7 @@
 
 use crate::arena::NodeId;
 use crate::dom::Document;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
 use std::collections::HashMap;
 
@@ -104,13 +104,6 @@ pub struct FormState {
     /// string clears the entry, so the `customError` validity flag reads this
     /// map's presence.
     pub(crate) custom_validity: HashMap<NodeId, String>,
-}
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
 }
 
 /// Returns the element's tag name (local name) for an `Element` node, or

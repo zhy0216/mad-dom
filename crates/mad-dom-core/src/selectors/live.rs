@@ -52,22 +52,9 @@ use std::collections::{HashMap, HashSet};
 
 use crate::arena::NodeId;
 use crate::dom::{Document, NodeType};
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
-/// Whether a node kind may act as a `ParentNode` collection scope.
-fn is_query_scope(node_type: NodeType) -> bool {
-    matches!(
-        node_type,
-        NodeType::Element | NodeType::Document | NodeType::DocumentFragment | NodeType::ShadowRoot
-    )
-}
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
-}
+use super::is_query_scope;
 
 /// The adaptive/full light-document-tree query index of one [`Document`].
 ///
@@ -364,6 +351,7 @@ impl Document {
     ///
     /// The private adaptive IdOnly mode deliberately reports `false` so this
     /// diagnostic contract retains its original meaning.
+    #[cfg(test)]
     pub fn query_index_enabled(&self) -> bool {
         self.query_index.has_full_index()
     }
@@ -411,7 +399,7 @@ impl Document {
     /// whose local name matches `name` (or every element for `"*"`).
     fn traverse_by_tag(&self, scope: NodeId, name: &str) -> Result<Vec<NodeId>, CoreError> {
         let mut out = Vec::new();
-        self.walk_collection_descendants(scope, |doc, node| {
+        self.walk_descendants(scope, |doc, node| {
             if doc.node_type(node)? != NodeType::Element {
                 return Ok(true);
             }
@@ -427,7 +415,7 @@ impl Document {
     /// whose `class` attribute contains all of `tokens`.
     fn traverse_by_class(&self, scope: NodeId, tokens: &[&str]) -> Result<Vec<NodeId>, CoreError> {
         let mut out = Vec::new();
-        self.walk_collection_descendants(scope, |doc, node| {
+        self.walk_descendants(scope, |doc, node| {
             if doc.node_type(node)? != NodeType::Element {
                 return Ok(true);
             }
@@ -964,26 +952,6 @@ impl Document {
         }
     }
 
-    /// Visits every descendant of `root` (excluding `root` itself) in document
-    /// (pre) order, calling `visit` for each. Iterative, so deeply nested trees
-    /// never overflow the stack (the same guarantee the HTML parser pinned).
-    fn walk_collection_descendants(
-        &self,
-        root: NodeId,
-        mut visit: impl FnMut(&Document, NodeId) -> Result<bool, CoreError>,
-    ) -> Result<(), CoreError> {
-        let mut stack: Vec<NodeId> = self.children(root)?.into_iter().rev().collect();
-        while let Some(node) = stack.pop() {
-            if !visit(self, node)? {
-                return Ok(());
-            }
-            for &child in self.children(node)?.iter().rev() {
-                stack.push(child);
-            }
-        }
-        Ok(())
-    }
-
     /// Visits every descendant without allocating the explicit stack used by
     /// the node-producing query. Parent/first-child/next-sibling links are
     /// sufficient to advance in document pre-order while staying below
@@ -1083,7 +1051,7 @@ mod tests {
     fn traversal_elements(doc: &Document) -> Vec<NodeId> {
         let root = doc.cached_document_root().expect("corpus has a root");
         let mut out = Vec::new();
-        doc.walk_collection_descendants(root, |d, node| {
+        doc.walk_descendants(root, |d, node| {
             if d.node_type(node).unwrap() == NodeType::Element {
                 out.push(node);
             }

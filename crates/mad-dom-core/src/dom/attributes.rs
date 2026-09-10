@@ -72,7 +72,7 @@
 //! [`super::document`], [`super::node`].
 
 use crate::arena::NodeId;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
 use super::Document;
 
@@ -192,13 +192,6 @@ impl Document {
             self.enqueue_attribute_changed(id, name, old_value.as_deref(), None);
         }
         Ok(removed)
-    }
-}
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
     }
 }
 

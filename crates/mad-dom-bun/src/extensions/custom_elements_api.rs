@@ -89,17 +89,7 @@ use mad_dom_core::arena::NodeId;
 use mad_dom_core::dom::{CustomElementReaction, CustomElementReactionKind};
 
 use crate::error::BindingError;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle, SharedDocument};
-
-/// Seam metadata for the M8 `custom_elements_api` boundary.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "custom_elements_api",
-    owner: "T42",
-    gate: "T42",
-    status: "implemented",
-};
 
 /// The frozen native registry surface on the module.
 #[allow(dead_code)]

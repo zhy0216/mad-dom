@@ -81,15 +81,6 @@
 //! `tests/compat/scenarios/dom/dom-child-nodelist.js` carry the end-to-end
 //! evidence.
 
-use crate::extensions::ExtensionSeam;
-
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "collection_api",
-    owner: "T25D",
-    gate: "T25",
-    status: "placeholder",
-};
-
 /// The frozen native collection read on [`NodeHandle`](crate::handle::NodeHandle).
 ///
 /// Exactly the audited T19/T20 low-level method — no renamed or added symbol —

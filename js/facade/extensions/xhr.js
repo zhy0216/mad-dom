@@ -30,13 +30,6 @@ import { Window } from "../window.js";
 import { isFormData, serializeFormData } from "./form-data.js";
 import { isHeaderForbidden } from "./fetch.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/xhr",
-  owner: "integration",
-  gate: "integration",
-  status: "implemented",
-});
-
 const METHOD = Symbol("mad-dom-xhr-method");
 const URL = Symbol("mad-dom-xhr-url");
 const ASYNC = Symbol("mad-dom-xhr-async");

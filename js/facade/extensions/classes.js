@@ -40,11 +40,21 @@ const objectCreate = Object.create;
 const objectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 const objectHasOwn = Object.hasOwn;
 
-function ownNativeStamp(handle, name) {
+export function ownNativeStamp(handle, name) {
   const descriptor = objectGetOwnPropertyDescriptor(handle, name);
   return descriptor !== undefined && objectHasOwn(descriptor, "value")
     ? descriptor.value
     : undefined;
+}
+
+// True canonical array indices ("0", "1", …, "4294967294"); everything else
+// returns null so non-index properties fall through to the prototype surface.
+export function toArrayIndex(property) {
+  if (typeof property !== "string") return null;
+  const index = Number(property);
+  if (!Number.isInteger(index) || index < 0 || index > 0xfffffffe) return null;
+  if (String(index) !== property) return null;
+  return index;
 }
 
 function ensureNodeInternals(wrapper) {
@@ -93,7 +103,7 @@ export function nodeTokenOf(wrapper) {
   return nodeInternalsOf(wrapper)?.token;
 }
 
-function isNodeHandle(handle) {
+export function isNodeHandle(handle) {
   return (
     handle !== null &&
     typeof handle === "object" &&
@@ -101,6 +111,40 @@ function isNodeHandle(handle) {
     typeof handle.nodeName === "function" &&
     typeof handle.childNodes === "function"
   );
+}
+
+export function isDocumentHandle(handle) {
+  return (
+    handle !== null &&
+    typeof handle === "object" &&
+    typeof handle.destroy === "function" &&
+    typeof handle.appendChild === "function"
+  );
+}
+
+/**
+ * Recovers the native node handle behind a facade wrapper, throwing a
+ * `TypeError` when `value` is not a genuine Node facade wrapper. `label`
+ * names the calling facade in the error message (default `Node`).
+ */
+export function facadeNodeHandle(ctx, value, role, label = "Node") {
+  const handle = ctx.documentContext.handleOf(value);
+  if (!isNodeHandle(handle)) {
+    throw new TypeError(`${label}.${role} requires a genuine Node facade wrapper`);
+  }
+  return handle;
+}
+
+/**
+ * Recovers the native document handle behind a facade wrapper, throwing a
+ * `TypeError` when `value` is not a genuine Document facade wrapper.
+ */
+export function facadeDocumentHandle(ctx, value, role) {
+  const handle = ctx.documentContext.handleOf(value);
+  if (!isDocumentHandle(handle)) {
+    throw new TypeError(`Document.${role} requires a genuine Document facade wrapper`);
+  }
+  return handle;
 }
 
 /**
@@ -337,11 +381,6 @@ export function elementClassForName(tag, namespace) {
   if (known !== undefined) return known;
   const fallback = tag.includes("-") ? hyphenFallbackClass : unknownFallbackClass;
   return fallback ?? Element;
-}
-
-/** The `elementClassForName` convenience for a live native element handle. */
-export function elementClassFor(handle) {
-  return elementClassForName(String(handle.nodeName()), handle.namespaceUri());
 }
 
 /**

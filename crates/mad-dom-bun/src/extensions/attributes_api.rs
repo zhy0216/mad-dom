@@ -76,15 +76,7 @@ use napi_derive::napi;
 
 use crate::error::BindingError;
 use crate::extensions::mutation_observer_api::schedule_pending_observer_deliveries;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, NodeHandle};
-
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "attributes_api",
-    owner: "T25E",
-    gate: "T25",
-    status: "placeholder",
-};
 
 /// The frozen native attribute surface on [`NodeHandle`].
 ///

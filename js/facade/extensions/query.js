@@ -46,15 +46,14 @@
 
 import { Document } from "../document.js";
 import { Element, DocumentFragment } from "./node.js";
-import { nodeDocumentStateOf, nodeInternalsOf } from "./classes.js";
+import {
+  nodeDocumentStateOf,
+  nodeInternalsOf,
+  facadeNodeHandle,
+  facadeDocumentHandle,
+  toArrayIndex,
+} from "./classes.js";
 import { snapshotNodes } from "./snapshot-node.js";
-
-export const seam = Object.freeze({
-  id: "facade/extensions/query",
-  owner: "T31",
-  gate: "T31",
-  status: "implemented",
-});
 
 // Wrapped snapshot items behind each StaticNodeList instance, keyed by the
 // live proxy object: the Proxy forwards every method receiver to the proxy
@@ -122,55 +121,6 @@ function rememberSubjectType(selector) {
     name: lowerCase(match[1]), plain: match[1].length === selector.length,
   });
   subjectTypeCount++;
-}
-
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function isDocumentHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.destroy === "function" &&
-    typeof handle.appendChild === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    // A manually constructed Node around a native handle is intentionally not
-    // part of the reverse conversion cache. The query methods accept only
-    // wrappers for which the facade can recover the owning native handle, so
-    // native affinity and ownership checks remain authoritative.
-    throw new TypeError(`Node.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
-
-function facadeDocumentHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isDocumentHandle(handle)) {
-    throw new TypeError(`Document.${role} requires a genuine Document facade wrapper`);
-  }
-  return handle;
-}
-
-// True canonical array indices ("0", "1", …, "4294967294"); everything else
-// returns null so non-index properties fall through to the prototype surface.
-function toArrayIndex(property) {
-  if (typeof property !== "string") return null;
-  const index = Number(property);
-  if (!Number.isInteger(index) || index < 0 || index > 0xfffffffe) return null;
-  if (String(index) !== property) return null;
-  return index;
 }
 
 /**

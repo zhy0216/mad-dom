@@ -41,8 +41,6 @@
 //     values, while a Core `NodeId` never leaves the binding;
 //   - `ctx.registerHandleType(name, makeWrapper)` — wrapper-type registry.
 //
-// The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
-// tests/bun/seam.test.js pins that shape.
 
 import { windowTasks } from "./window-tasks.js";
 import { createBrowserSettings } from "./browser-settings.js";
@@ -54,6 +52,7 @@ import {
   createLazyNodeWrapper,
   nodeHandleOf,
   nodeInternalsOf,
+  ownNativeStamp,
   releaseNodeDocumentState,
   setNodeDocumentState,
   setNodeHandle,
@@ -96,12 +95,6 @@ function ownNativeMethod(prototype, name) {
     : undefined;
 }
 
-function ownNativeStamp(handle, name) {
-  const descriptor = objectGetOwnPropertyDescriptor(handle, name);
-  return descriptor !== undefined && objectHasOwn(descriptor, "value")
-    ? descriptor.value
-    : undefined;
-}
 
 function boundNativeMethod(prototype, name, receiver) {
   const method = ownNativeMethod(prototype, name);
@@ -184,13 +177,6 @@ function nodeNativeMethodsOf(handle) {
     countElementsByClassName: nativeMethodInvoker(prototype, "countElementsByClassName"),
   };
 }
-
-export const seam = Object.freeze({
-  id: "facade/window",
-  owner: "T22B",
-  gate: "T22",
-  status: "implemented",
-});
 
 // --- Native binding (T19 / T49) --------------------------------------------
 //
@@ -526,7 +512,6 @@ function defineAccessor(target, name, get, set, descriptor = {}) {
 const documentContext = Object.freeze({
   // Read-only access to the document ownership reference a wrapper carries.
   // The returned native handle is opaque — a Core `NodeId` never crosses this
-  // seam as a primitive value (CONTRACT.md / native-window-document contract).
   handleOf(wrapper) {
     const handle = getWrapperHandle(wrapper);
     if (handle !== undefined) return handle;

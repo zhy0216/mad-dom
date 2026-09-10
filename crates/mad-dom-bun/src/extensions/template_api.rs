@@ -54,17 +54,7 @@ use napi::bindgen_prelude::Reference;
 use napi::Env;
 use napi_derive::napi;
 
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, NodeHandle};
-
-/// Seam metadata for the M7 `template_api` boundary.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "template_api",
-    owner: "T40",
-    gate: "T40",
-    status: "implemented",
-};
 
 /// The frozen native template surface on [`NodeHandle`](crate::handle::NodeHandle).
 #[allow(dead_code)]

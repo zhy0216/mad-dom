@@ -53,17 +53,11 @@
 //! keeps the observable behavior in lock step.
 
 use crate::arena::NodeId;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
+use super::character_data::utf16_len;
 use super::node::{NodeData, NodeType};
 use super::Document;
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
-}
 
 /// A WHATWG boundary point: a node plus an offset into it.
 ///
@@ -105,11 +99,6 @@ impl SelectionDirection {
             Self::Backwards => -1,
         }
     }
-}
-
-/// Returns the number of UTF-16 code units in `s` (the DOM `length` unit).
-fn utf16_len(s: &str) -> usize {
-    s.encode_utf16().count()
 }
 
 impl Document {

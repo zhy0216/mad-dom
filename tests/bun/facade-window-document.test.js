@@ -4,9 +4,9 @@ import { createRequire } from "node:module";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createWindow, Window, seam as windowSeam } from "../../js/facade/window.js";
-import { Document, seam as documentSeam } from "../../js/facade/document.js";
-import { installExtensions, seam as registrySeam } from "../../js/facade/extensions/index.js";
+import { createWindow, Window } from "../../js/facade/window.js";
+import { Document } from "../../js/facade/document.js";
+import { installExtensions } from "../../js/facade/extensions/index.js";
 import { isNativeAvailable, liveDocumentCount } from "../../index.js";
 
 // T22B JavaScript Window/Document facade tests.
@@ -80,25 +80,19 @@ describe("facade contract fixture (T22B)", () => {
 });
 
 describe("facade export shapes (T22B)", () => {
-  test("window.js exports exactly createWindow, Window and the frozen seam", async () => {
+  test("window.js exports exactly createWindow and Window", async () => {
     const mod = await import("../../js/facade/window.js");
-    expect(Object.keys(mod).sort()).toEqual(["Window", "createWindow", "seam"]);
-    expect(windowSeam.owner).toBe("T22B");
-    expect(Object.isFrozen(windowSeam)).toBe(true);
+    expect(Object.keys(mod).sort()).toEqual(["Window", "createWindow"]);
   });
 
-  test("document.js exports exactly Document and the frozen seam", async () => {
+  test("document.js exports exactly Document", async () => {
     const mod = await import("../../js/facade/document.js");
-    expect(Object.keys(mod).sort()).toEqual(["Document", "seam"]);
-    expect(documentSeam.owner).toBe("T22B");
-    expect(Object.isFrozen(documentSeam)).toBe(true);
+    expect(Object.keys(mod).sort()).toEqual(["Document"]);
   });
 
-  test("extensions/index.js exports exactly installExtensions and the frozen seam", async () => {
+  test("extensions/index.js exports exactly installExtensions", async () => {
     const mod = await import("../../js/facade/extensions/index.js");
-    expect(Object.keys(mod).sort()).toEqual(["installExtensions", "seam"]);
-    expect(registrySeam.owner).toBe("T22B");
-    expect(Object.isFrozen(registrySeam)).toBe(true);
+    expect(Object.keys(mod).sort()).toEqual(["installExtensions"]);
   });
 });
 

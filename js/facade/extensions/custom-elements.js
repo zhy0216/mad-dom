@@ -86,13 +86,6 @@ import { Window } from "../window.js";
 import { Node, Element } from "./node.js";
 import { setElementMint } from "./classes.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/custom-elements",
-  owner: "T42",
-  gate: "T42",
-  status: "implemented",
-});
-
 // --- Native binding (T19 / T49) ---------------------------------------------
 //
 // Shares the unified resolution chain and load-time ABI probe with the entry

@@ -41,3 +41,13 @@ pub use parser::{
     parse_selector_list, DomAttrValue, DomIdent, DomNamespace, DomParseError, DomSelectorImpl,
     DomSelectorParser,
 };
+
+use crate::dom::NodeType;
+
+/// Whether a node kind may act as a `ParentNode` query/collection scope.
+pub(crate) fn is_query_scope(node_type: NodeType) -> bool {
+    matches!(
+        node_type,
+        NodeType::Element | NodeType::Document | NodeType::DocumentFragment | NodeType::ShadowRoot
+    )
+}

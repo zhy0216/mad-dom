@@ -35,17 +35,7 @@ use napi::{check_status, Env};
 use napi_derive::napi;
 
 use crate::error::BindingError;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, DocumentHandle};
-
-/// Seam metadata for the navigation-memo epoch boundary.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "epoch_api",
-    owner: "perf-navigation-memo",
-    gate: "none",
-    status: "implemented",
-};
 
 /// Creates an ordinary JavaScript-owned four-byte buffer initialized to
 /// `value`. The backing-store pointer is used only while this call is active.

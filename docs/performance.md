@@ -123,9 +123,8 @@ With Bun 1.4.0 on darwin/arm64, size 1 and nine measured rounds, the 25-Window
 lifecycle workload took **29.842 ms** in mad-dom and **34.385 ms** in happy-dom
 20.11.11 (**1.15×**). Both engines passed all correctness checks. The added
 cleanup has a real cost; the old lifecycle speedup is not an acceptance target.
-[New raw samples](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/lifecycle-bench.json)
-and [implementation evidence](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/results.md)
-are recorded separately.
+[Implementation evidence](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/results.md)
+is recorded separately.
 
 Fixture mounting, querying, interaction, result reads and DOM cleanup are
 timed. Only `windowLifecycle` also times Window construction and

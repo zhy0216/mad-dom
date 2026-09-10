@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url";
 
 import { createWindow, Window } from "../../js/facade/window.js";
 import { Document } from "../../js/facade/document.js";
-import { Node, Element, seam as nodeSeam } from "../../js/facade/extensions/node.js";
+import { Node, Element } from "../../js/facade/extensions/node.js";
 import { HTMLElement } from "../../js/facade/extensions/html-element.js";
-import { installExtensions, seam as registrySeam } from "../../js/facade/extensions/index.js";
+import { installExtensions } from "../../js/facade/extensions/index.js";
 import { isNativeAvailable } from "../../index.js";
 
 // T23B JavaScript node creation and navigation facade tests.
@@ -112,7 +112,7 @@ describe("facade node contract fixture (T23B)", () => {
 });
 
 describe("facade node export shapes (T23B)", () => {
-  test("node.js exports the base classes, install and the frozen seam", async () => {
+  test("node.js exports the base classes and install", async () => {
     const mod = await import("../../js/facade/extensions/node.js");
     expect(Object.keys(mod).sort()).toEqual([
       "DocumentFragment",
@@ -121,16 +121,8 @@ describe("facade node export shapes (T23B)", () => {
       "Node",
       "install",
       "registerElementClass",
-      "seam",
       "setElementFallbackClasses",
     ]);
-    expect(nodeSeam.owner).toBe("T23B");
-    expect(nodeSeam.gate).toBe("T23");
-    expect(Object.isFrozen(nodeSeam)).toBe(true);
-  });
-
-  test("node.js seam is flipped to implemented by the T23 gate", () => {
-    expect(nodeSeam.status).toBe("implemented");
   });
 });
 
@@ -253,10 +245,6 @@ describe("facade registry drives the node extension (T23B)", () => {
     ]);
   });
 
-  test("the registry seam shape is unchanged", () => {
-    expect(registrySeam.owner).toBe("T22B");
-    expect(registrySeam.status).toBe("implemented");
-  });
 });
 
 describe.skipIf(!nativeAvailable)("facade node creation and navigation (T23B)", () => {

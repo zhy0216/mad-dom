@@ -35,17 +35,10 @@
 //! template element).
 
 use crate::arena::NodeId;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
 use super::Document;
 use super::NodeData;
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
-}
 
 impl Document {
     /// Returns whether the node for `id` is an HTML-namespace `<template>`
@@ -107,15 +100,6 @@ impl Document {
     /// element of this document.
     pub(crate) fn set_template_content(&mut self, template: NodeId, content: NodeId) {
         self.template_contents.insert(template, content);
-    }
-
-    /// Crate-internal: removes the template-content association for `template`
-    /// (used when a template node leaves the live tree through the T40
-    /// adoption path, so a replaced/removed template cannot leak a stale
-    /// content link back into a re-read).
-    #[allow(dead_code)]
-    pub(crate) fn remove_template_content(&mut self, template: NodeId) {
-        self.template_contents.remove(&template);
     }
 }
 

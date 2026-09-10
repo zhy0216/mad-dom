@@ -265,7 +265,6 @@ impl<M: SinkMode> TreeSink for HtmlSink<M> {
                 attributes,
                 mathml_annotation_xml_integration_point: flags
                     .mathml_annotation_xml_integration_point,
-                had_duplicate_attributes: flags.had_duplicate_attributes,
             })
         };
         if flags.template {
@@ -566,7 +565,6 @@ mod tests {
             namespace: Namespace::from(crate::dom::HTML_NAMESPACE),
             attributes: Vec::new(),
             mathml_annotation_xml_integration_point: false,
-            had_duplicate_attributes: false,
         })
     }
 

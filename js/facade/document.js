@@ -18,35 +18,18 @@
 // user-visible constructor that mints a document out of thin air — windows are
 // created through `createWindow()` (js/facade/window.js).
 //
-// The `seam` metadata below is flipped to `"implemented"` by the T22 gate;
-// tests/bun/seam.test.js pins that shape.
 
 import {
   nodeDocumentStateOf,
   releaseNodeDocumentState,
+  isDocumentHandle,
 } from "./extensions/classes.js";
-
-export const seam = Object.freeze({
-  id: "facade/document",
-  owner: "T22B",
-  gate: "T22",
-  status: "implemented",
-});
 
 // Native handle behind each Document facade. Weak so a facade never pins its
 // document; the native handle itself keeps the Core arena alive (T20).
 const DOCUMENT_HANDLES = new WeakMap();
 const getDocumentHandle = DOCUMENT_HANDLES.get.bind(DOCUMENT_HANDLES);
 const setDocumentHandle = DOCUMENT_HANDLES.set.bind(DOCUMENT_HANDLES);
-
-function isDocumentHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.destroy === "function" &&
-    typeof handle.appendChild === "function"
-  );
-}
 
 /**
  * Facade wrapper for a native `DocumentHandle`.

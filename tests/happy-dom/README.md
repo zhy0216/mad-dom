@@ -9,31 +9,33 @@
 
 | 路径 | 职责 | 管线步骤 |
 | --- | --- | --- |
-| `vendor/` | 上游 `packages/happy-dom/test/` 逐字节原样拷贝 + `UPSTREAM.md` provenance | T01 输入 |
-| `vendor-src-enums/` | 上游纯 enum/常量 `src/` 模块（带 provenance 头，供 shim 原样消费） | T01 输入 |
-| `vendor-scan.json` / `vendor-scan.summary.md` | 模块清单：每个 vendored 文件的 import 分类（`src-runtime` / `src-type` / `local-helper` / `vitest-api` / `external`）与 `shimPath` 映射（T01/T02/T03/T04 的接口契约） | T01 产物 |
+| `vendor/` | 上游 `packages/happy-dom/test/` 逐字节原样拷贝 + `UPSTREAM.md` provenance。生成产物，不入库 | T01 输入 |
+| `vendor-src-enums/` | 上游纯 enum/常量 `src/` 模块（带 provenance 头，供 shim 原样消费）。生成产物，不入库 | T01 输入 |
+| `vendor-scan.json` / `vendor-scan.summary.md` | 模块清单：每个 vendored 文件的 import 分类（`src-runtime` / `src-type` / `local-helper` / `vitest-api` / `external`）与 `shimPath` 映射。生成产物，不入库 | T01 产物 |
 | `rewritten/` | 机械重写后的镜像：`src/…` 内部导入重指向 `shim/src/…`，vitest → `bun:test` + adapter。生成产物，不入库（`compat:hdunit:test` 缺失时自动重建） | T02 产物 |
-| `rewrite-report.json` | 重写报告：文件清单、`fileKind`（`test-source` 等）、import 映射统计 | T02 产物 |
-| `rewrite-selftest/` | 重写管线的自测（`rewrite-selftest.test.ts`） | T02 |
-| `shim/src/` | re-export shim 层：每个可映射 `src/` 模块在 `shim/src/<srcPath>` 生成 re-export，指向 `mad-dom` 公开入口或本地 shim | T04 产物 |
-| `shim/adapters/` + `shim/shim-manifest.json` + `shim/shim.test.ts` | shim 层自测与清单 | T04 |
-| `adapter/` | bun 测试适配层：`index.ts`（`vi` 兼容 API）、`preload.ts`、`setup.ts`/`setup.test.ts`、`smoke.sample.ts`、`fixtures/`、`run-compat-hdunit-test.mjs` | T03 产物 |
+| `rewrite-report.json` | 重写报告：文件清单、`fileKind`（`test-source` 等）、import 映射统计。生成产物，不入库 | T02 产物 |
+| `shim/src/` | re-export shim 层：每个可映射 `src/` 模块在 `shim/src/<srcPath>` 生成 re-export，指向 `mad-dom` 公开入口或本地 shim。生成产物，不入库 | T04 产物 |
+| `shim/adapters/` + `shim/shim-manifest.json` | 手写 shim 适配器与生成清单 | T04 产物 |
+| `adapter/` | bun 测试适配层：`index.ts`（`vi` 兼容 API）、`preload.ts`、`setup.ts`、`smoke.sample.ts`、`run-compat-hdunit-test.mjs` | T03 产物 |
 | `triage/` | 每子系统一个分片 JSON，声明该子系统每个测试文件的终态 | T05 起，波次维护 |
 | `validate-triage.mjs` | triage 门禁：schema 校验 + 文件存在性/唯一性 + 与 ledger/upstream-map 交叉核对 + 活体运行比对（含 `--self-test`） | 门禁 |
 | `report.mjs` | 离线汇总报告：每子系统计数、通过率、与上次基线 delta | 报告 |
 | `report-baseline.json` | 上次记录的分片汇总（`compat:hdunit:report:baseline` 写入），供 delta 比对 | 报告基线 |
 | `adapter-gaps.json` | 机械重写无法覆盖的 vi 用法登记（如 `vi.mock` 调用点） | T02 产物 |
 
-vendor 输入（`vendor/`、`vendor-src-enums/`）与所有产物（`rewritten/`、`shim/`、triage、
-报告）都**禁止手改**：改动必须回到对应管线脚本重生成，或经 triage 状态机声明。
+vendor 输入（`vendor/`、`vendor-src-enums/`）与所有生成产物（`vendor-scan.*`、`rewritten/`、
+`shim/src/`、`rewrite-report.json`）都**不入库且禁止手改**：改动必须回到对应管线脚本
+重生成（`compat:hdunit:prepare`），或经 triage 状态机声明。
 
 ## 各命令
 
 ```sh
 npm run compat:hdunit:vendor            # T01 重 vendor（需上游 checkout，见下）
-npm run compat:hdunit:rewrite           # T02 重写 rewritten/ + rewrite-report.json
 npm run compat:hdunit:shim              # T04 生成 shim 层
+npm run compat:hdunit:rewrite           # T02 重写 rewritten/ + rewrite-report.json
+npm run compat:hdunit:prepare           # vendor + shim + rewrite（全新 checkout 用）
 npm run compat:hdunit:validate          # 门禁：schema + 交叉核对 + 活体运行（exit 0/1/2）
+npm run compat:hdunit:validate:selftest # 门禁自测：4 个篡改演练（临时副本）
 npm run compat:hdunit:report            # 离线汇总（含各子系统通过率）
 npm run compat:hdunit:report -- --json  # 机器可读 JSON（含 baseline delta）
 npm run compat:hdunit:report:baseline   # 把当前汇总写为基线（波次收尾/有意变更后运行）
@@ -51,7 +53,7 @@ bun tests/happy-dom/validate-triage.mjs --self-test # 4 个篡改演练（临时
 
 ### vendor 需要上游 checkout
 
-`compat:hdunit:vendor`（及 CI 中的 `--verify`）需要一个带锁定 tag 的 happy-dom checkout，
+`compat:hdunit:vendor` 需要一个带锁定 tag 的 happy-dom checkout，
 按 `--upstream <dir>` → `HAPPY_DOM_UPSTREAM_DIR` → `~/workspace/happy-dom` 的顺序解析；
 本地默认用 `~/workspace/happy-dom`。tag `v20.11.11` 必须解析到锁定的
 `64e2c774…`，否则拒绝 vendor。
@@ -151,10 +153,11 @@ hdunit 的 vendor 基线 = [ADR-0002 第 1 节](../adr/0002-happy-dom-compatibil
 
 ## CI
 
-`.github/workflows/ci.yml` 的 `validate` job 在 "Validate compatibility ledger" 之后、
-"Smoke test package packing" 之前运行 hdunit 步骤：先克隆锁定 tag 的上游 checkout 并
-`--verify` vendor/rewrite（幂等 + 逐字节），再 `npm run compat:hdunit:validate`；任一步
-失败即 CI 失败。`npm run validate` 链同样包含 `compat:hdunit:validate`（本地验证路径）。
+`.github/workflows/ci.yml` 的 `validate` job 在 "Run native, compatibility and WPT gates"
+之前运行 hdunit 准备步骤：克隆锁定 tag 的上游 checkout，依次 `compat:hdunit:vendor`、
+`compat:hdunit:shim`、`compat:hdunit:rewrite`，再执行 `npm run compat:hdunit:validate`；
+任一步失败即 CI 失败。`npm run validate` 链改为 `compat:hdunit:prepare` + 
+`compat:hdunit:validate`（本地验证路径）。
 
 ## 边界
 

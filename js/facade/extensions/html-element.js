@@ -64,12 +64,7 @@ import { Event } from "./events.js";
 import { flushCustomElementReactions } from "./custom-elements.js";
 import { readCachedAttribute } from "./attribute-cache.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/html-element",
-  owner: "T39",
-  gate: "T39",
-  status: "implemented",
-});
+import { facadeNodeHandle, facadeDocumentHandle } from "./classes.js";
 
 /**
  * `HTMLElement` facade base class (T39, T48A).
@@ -243,41 +238,6 @@ function camelCaseToKebab(text) {
   );
 }
 
-function isNodeHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.nodeType === "function" &&
-    typeof handle.nodeName === "function" &&
-    typeof handle.childNodes === "function"
-  );
-}
-
-function isDocumentHandle(handle) {
-  return (
-    handle !== null &&
-    typeof handle === "object" &&
-    typeof handle.destroy === "function" &&
-    typeof handle.appendChild === "function"
-  );
-}
-
-function facadeNodeHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isNodeHandle(handle)) {
-    throw new TypeError(`HTMLElement.${role} requires a genuine Node facade wrapper`);
-  }
-  return handle;
-}
-
-function facadeDocumentHandle(ctx, value, role) {
-  const handle = ctx.documentContext.handleOf(value);
-  if (!isDocumentHandle(handle)) {
-    throw new TypeError(`Document.${role} requires a genuine Document facade wrapper`);
-  }
-  return handle;
-}
-
 /**
  * Returns the cached live `dataset` Proxy for `element`.
  *
@@ -384,53 +344,53 @@ export function install(ctx) {
   // Element-level string reflection (T48A: on `Element.prototype`, matching
   // happy-dom; Text/Comment never reach them).
   ctx.defineAccessor(Element.prototype, "id", function id() {
-    const handle = facadeNodeHandle(ctx, this, "id");
+    const handle = facadeNodeHandle(ctx, this, "id", "HTMLElement");
     return readCachedAttribute(this, handle, "id") || "";
   }, function id(value) {
-    const handle = facadeNodeHandle(ctx, this, "id");
+    const handle = facadeNodeHandle(ctx, this, "id", "HTMLElement");
     handle.setAttribute("id", String(value));
     flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineAccessor(Element.prototype, "className", function className() {
-    const handle = facadeNodeHandle(ctx, this, "className");
+    const handle = facadeNodeHandle(ctx, this, "className", "HTMLElement");
     return readCachedAttribute(this, handle, "class") || "";
   }, function className(value) {
-    const handle = facadeNodeHandle(ctx, this, "className");
+    const handle = facadeNodeHandle(ctx, this, "className", "HTMLElement");
     handle.setAttribute("class", String(value));
     flushCustomElementReactions(ctx, handle);
   });
 
   // HTMLElement-level string reflection.
   ctx.defineAccessor(HTMLElement.prototype, "title", function title() {
-    return facadeNodeHandle(ctx, this, "title").getAttribute("title") || "";
+    return facadeNodeHandle(ctx, this, "title", "HTMLElement").getAttribute("title") || "";
   }, function title(value) {
-    const handle = facadeNodeHandle(ctx, this, "title");
+    const handle = facadeNodeHandle(ctx, this, "title", "HTMLElement");
     handle.setAttribute("title", String(value));
     flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineAccessor(HTMLElement.prototype, "dir", function dir() {
-    return facadeNodeHandle(ctx, this, "dir").getAttribute("dir") || "";
+    return facadeNodeHandle(ctx, this, "dir", "HTMLElement").getAttribute("dir") || "";
   }, function dir(value) {
-    const handle = facadeNodeHandle(ctx, this, "dir");
+    const handle = facadeNodeHandle(ctx, this, "dir", "HTMLElement");
     handle.setAttribute("dir", String(value));
     flushCustomElementReactions(ctx, handle);
   });
 
   ctx.defineAccessor(HTMLElement.prototype, "lang", function lang() {
-    return facadeNodeHandle(ctx, this, "lang").getAttribute("lang") || "";
+    return facadeNodeHandle(ctx, this, "lang", "HTMLElement").getAttribute("lang") || "";
   }, function lang(value) {
-    const handle = facadeNodeHandle(ctx, this, "lang");
+    const handle = facadeNodeHandle(ctx, this, "lang", "HTMLElement");
     handle.setAttribute("lang", String(value));
     flushCustomElementReactions(ctx, handle);
   });
 
   // Boolean reflection: presence of the attribute.
   ctx.defineAccessor(HTMLElement.prototype, "hidden", function hidden() {
-    return facadeNodeHandle(ctx, this, "hidden").getAttribute("hidden") !== null;
+    return facadeNodeHandle(ctx, this, "hidden", "HTMLElement").getAttribute("hidden") !== null;
   }, function hidden(value) {
-    const handle = facadeNodeHandle(ctx, this, "hidden");
+    const handle = facadeNodeHandle(ctx, this, "hidden", "HTMLElement");
     if (!value) {
       handle.removeAttribute("hidden");
     } else {
@@ -440,9 +400,9 @@ export function install(ctx) {
   });
 
   ctx.defineAccessor(HTMLElement.prototype, "inert", function inert() {
-    return facadeNodeHandle(ctx, this, "inert").getAttribute("inert") !== null;
+    return facadeNodeHandle(ctx, this, "inert", "HTMLElement").getAttribute("inert") !== null;
   }, function inert(value) {
-    const handle = facadeNodeHandle(ctx, this, "inert");
+    const handle = facadeNodeHandle(ctx, this, "inert", "HTMLElement");
     if (!value) {
       handle.removeAttribute("inert");
     } else {
@@ -454,14 +414,14 @@ export function install(ctx) {
   // Number reflection: happy-dom's `long` rules (`Number` on the attribute,
   // `Number` on the setter with a `"0"` fallback for `NaN`).
   ctx.defineAccessor(HTMLElement.prototype, "tabIndex", function tabIndex() {
-    const raw = facadeNodeHandle(ctx, this, "tabIndex").getAttribute("tabindex");
+    const raw = facadeNodeHandle(ctx, this, "tabIndex", "HTMLElement").getAttribute("tabindex");
     if (raw !== null) {
       const parsed = Number(raw);
       return Number.isNaN(parsed) ? -1 : parsed;
     }
     return -1;
   }, function tabIndex(value) {
-    const handle = facadeNodeHandle(ctx, this, "tabIndex");
+    const handle = facadeNodeHandle(ctx, this, "tabIndex", "HTMLElement");
     const parsed = Number(value);
     if (Number.isNaN(parsed)) {
       handle.setAttribute("tabindex", "0");
@@ -475,7 +435,7 @@ export function install(ctx) {
   // value; `isContentEditable` walks the parent chain for `inherit`).
   ctx.defineAccessor(HTMLElement.prototype, "contentEditable", function contentEditable() {
     const value = String(
-      facadeNodeHandle(ctx, this, "contentEditable").getAttribute("contenteditable"),
+      facadeNodeHandle(ctx, this, "contentEditable", "HTMLElement").getAttribute("contenteditable"),
     ).toLowerCase();
     switch (value) {
       case "false":
@@ -493,7 +453,7 @@ export function install(ctx) {
       normalized === "plaintext-only" ||
       normalized === "inherit"
     ) {
-      const handle = facadeNodeHandle(ctx, this, "contentEditable");
+      const handle = facadeNodeHandle(ctx, this, "contentEditable", "HTMLElement");
       handle.setAttribute("contenteditable", normalized);
       flushCustomElementReactions(ctx, handle);
       return;
@@ -520,7 +480,7 @@ export function install(ctx) {
   // runs with newlines. The setter clears the children and rebuilds them as text
   // nodes separated by `<br>` for every `\n` / `\r`.
   ctx.defineAccessor(HTMLElement.prototype, "innerText", function innerText() {
-    const handle = facadeNodeHandle(ctx, this, "innerText");
+    const handle = facadeNodeHandle(ctx, this, "innerText", "HTMLElement");
     if (!handle.isConnected()) {
       return this.textContent;
     }
@@ -564,7 +524,7 @@ export function install(ctx) {
     }
     return result;
   }, function innerText(text) {
-    const handle = facadeNodeHandle(ctx, this, "innerText");
+    const handle = facadeNodeHandle(ctx, this, "innerText", "HTMLElement");
     const childNodes = this.childNodes;
     while (childNodes.length) {
       this.removeChild(childNodes[0]);
@@ -588,9 +548,9 @@ export function install(ctx) {
   // `accesskey` attribute reflection and the always-zero offset/client box
   // getters on HTMLElement (no layout engine).
   ctx.defineAccessor(HTMLElement.prototype, "accessKey", function accessKey() {
-    return facadeNodeHandle(ctx, this, "accessKey").getAttribute("accesskey") || "";
+    return facadeNodeHandle(ctx, this, "accessKey", "HTMLElement").getAttribute("accesskey") || "";
   }, function accessKey(v) {
-    facadeNodeHandle(ctx, this, "accessKey").setAttribute("accesskey", String(v));
+    facadeNodeHandle(ctx, this, "accessKey", "HTMLElement").setAttribute("accesskey", String(v));
   });
   for (const property of [
     "offsetHeight",
@@ -610,7 +570,7 @@ export function install(ctx) {
   // popover enum reflection (happy-dom: null default, "auto" for the empty
   // value, "manual" for any other value).
   ctx.defineAccessor(HTMLElement.prototype, "popover", function popover() {
-    const value = facadeNodeHandle(ctx, this, "popover").getAttribute("popover");
+    const value = facadeNodeHandle(ctx, this, "popover", "HTMLElement").getAttribute("popover");
     switch (value) {
       case null:
         return null;
@@ -621,7 +581,7 @@ export function install(ctx) {
         return "manual";
     }
   }, function popover(value) {
-    const handle = facadeNodeHandle(ctx, this, "popover");
+    const handle = facadeNodeHandle(ctx, this, "popover", "HTMLElement");
     if (value === null) {
       handle.removeAttribute("popover");
       return;
@@ -639,7 +599,7 @@ export function install(ctx) {
   }, { configurable: true });
 
   ctx.defineMethod(HTMLElement.prototype, "focus", function focus() {
-    const handle = facadeNodeHandle(ctx, this, "focus");
+    const handle = facadeNodeHandle(ctx, this, "focus", "HTMLElement");
     if (!handle.canFocus()) return;
     const previous = handle.previousActive();
     handle.clearActiveElement();
@@ -658,7 +618,7 @@ export function install(ctx) {
   });
 
   ctx.defineMethod(HTMLElement.prototype, "blur", function blur() {
-    const handle = facadeNodeHandle(ctx, this, "blur");
+    const handle = facadeNodeHandle(ctx, this, "blur", "HTMLElement");
     if (!handle.isActive()) return;
     handle.clearActiveElement();
     this.dispatchEvent(new Event("blur", { bubbles: false, composed: true, cancelable: true }));

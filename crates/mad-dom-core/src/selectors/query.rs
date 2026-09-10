@@ -39,18 +39,11 @@ use selectors::parser::SelectorList;
 
 use crate::arena::NodeId;
 use crate::dom::{Document, NodeType};
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
+use super::is_query_scope;
 use super::matcher::{match_selector_list, match_selector_list_with_scope};
 use super::parser::{parse_selector_list, DomSelectorImpl};
-
-/// Whether a node kind may act as a `ParentNode` query scope.
-fn is_query_scope(node_type: NodeType) -> bool {
-    matches!(
-        node_type,
-        NodeType::Element | NodeType::Document | NodeType::DocumentFragment | NodeType::ShadowRoot
-    )
-}
 
 /// Extracts the id from the common, unescaped ASCII `#id` selector subset.
 ///
@@ -301,7 +294,7 @@ impl Document {
     /// (pre) order, calling `visit` for each. The visitor returns `Ok(false)`
     /// to stop early. Iterative, so deeply nested trees never overflow the
     /// stack (the same guarantee the HTML parser milestone pinned).
-    fn walk_descendants(
+    pub(crate) fn walk_descendants(
         &self,
         root: NodeId,
         mut visit: impl FnMut(&Document, NodeId) -> Result<bool, CoreError>,
@@ -316,12 +309,5 @@ impl Document {
             }
         }
         Ok(())
-    }
-}
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
     }
 }

@@ -35,13 +35,6 @@
 
 import { Window } from "../window.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/dom-geometry",
-  owner: "T07",
-  gate: "T07",
-  status: "implemented",
-});
-
 // --- DOMPoint ----------------------------------------------------------------
 
 /**

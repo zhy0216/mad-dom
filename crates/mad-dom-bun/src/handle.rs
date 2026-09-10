@@ -279,36 +279,6 @@ pub(crate) struct SharedDocument {
     attribute_epoch_has_raw_views: AtomicBool,
 }
 
-/// Probes a wrapper-cache entry for the "collected but not yet finalized"
-/// window, upgrading it to a live [`Reference`] when the JS object is still
-/// alive.
-///
-/// A [`WeakReference`] survives JS-side collection until the Node-API
-/// finalizer runs, yet the reference value already reads back empty at that
-/// point. This probe reads the raw value — one of the module's confined
-/// `unsafe` islands, one plain Node-API read through the `napi` conversion
-/// trait: a null value (measured on Bun 1.4.0 for a collected object) or a
-/// finalized entry marks the wrapper dead and the caller mints a replacement;
-/// a live value takes the regular [`WeakReference::upgrade`] path, so the
-/// return machinery hands back the same JS object (identity preserved).
-fn reference_value_if_live<T: 'static>(
-    env: Env,
-    weak: WeakReference<T>,
-) -> napi::Result<Option<Reference<T>>> {
-    let raw_env = env.raw();
-    let probe = weak.clone();
-    let value = match unsafe { ToNapiValue::to_napi_value(raw_env, probe) } {
-        Ok(value) => value,
-        // The finalizer already ran and dropped the entry's value: dead.
-        Err(_) => return Ok(None),
-    };
-    if value.is_null() {
-        // Collected but not yet finalized: the value reads back empty.
-        return Ok(None);
-    }
-    weak.upgrade(env)
-}
-
 /// Raw-value variant of the liveness probe: returns the live wrapper's JS
 /// value directly, without upgrading the weak reference into a refcounted
 /// [`Reference`].
@@ -318,8 +288,7 @@ fn reference_value_if_live<T: 'static>(
 /// reference-value read of the return conversion) exists only to satisfy the
 /// `Reference` return type; the JS heap alone keeps a synchronously returned
 /// object alive, so the raw value is sufficient and the per-read cost drops
-/// to a single Node-API reference read. Same `unsafe` island shape as
-/// [`reference_value_if_live`].
+/// to a single Node-API reference read.
 fn raw_value_if_live<T: 'static>(
     env: napi::sys::napi_env,
     weak: &WeakReference<T>,
@@ -836,8 +805,8 @@ impl SharedDocument {
     /// reads back empty (measured on Bun 1.4.0: `napi_get_reference_value`
     /// yields an empty handle for a collected object). Returning such an entry
     /// would hand JavaScript `undefined` instead of a node. Every cache hit
-    /// therefore probes the raw reference value ([`reference_value_if_live`])
-    /// and falls through to a fresh mint when it is empty. The re-mint
+    /// therefore probes the raw reference value ([`raw_value_if_live`]) and
+    /// falls through to a fresh mint when it is empty. The re-mint
     /// overwrites the stale entry; the stale value's delayed [`Drop`] compares
     /// mint stamps and only evicts its own entry, so the replacement's
     /// identity survives.
@@ -989,34 +958,19 @@ impl SharedDocument {
     /// Every route that hands the document to JavaScript — the window
     /// (`WindowHandle.document`) and any node (`NodeHandle.owner_document`) —
     /// goes through this point, so the same native handle object is returned
-    /// on every read while it stays alive. Like `wrap_node`, the cache is
-    /// weak and probes for the "collected but not yet finalized" window before
-    /// handing back a cached entry. No stamp is needed here: `DocumentHandle`
-    /// has no evicting [`Drop`], so a re-mint simply overwrites the entry and
-    /// no late drop can clobber the replacement.
+    /// on every read while it stays alive. Like [`wrap_node`], this re-adopts
+    /// the value minted by [`wrap_document_value`] (same identity and
+    /// staleness semantics). No stamp is needed here: `DocumentHandle` has no
+    /// evicting [`Drop`], so a re-mint simply overwrites the entry and no late
+    /// drop can clobber the replacement.
     pub(crate) fn wrap_document(
         self: &Arc<Self>,
         env: Env,
     ) -> napi::Result<Reference<DocumentHandle>> {
-        let cached = self
-            .document_wrapper
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone();
-        if let Some(weak) = cached {
-            if let Some(reference) = reference_value_if_live(env, weak)? {
-                return Ok(reference);
-            }
-        }
-        let reference = DocumentHandle {
-            shared: Arc::clone(self),
-        }
-        .into_reference(env)?;
-        *self
-            .document_wrapper
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(reference.downgrade());
-        Ok(reference)
+        let value = self.wrap_document_value(env)?;
+        // SAFETY: the value is the `DocumentHandle` class wrapper minted (or
+        // cache-handed-back) by `wrap_document_value` above.
+        unsafe { Reference::from_napi_value(env.raw(), value) }
     }
 
     /// Raw-value variant of [`wrap_document`] for the hot entries that return
@@ -1311,7 +1265,6 @@ impl DocumentHandle {
     ///
     /// Dormant until the first M4 extension lands; consumed by downstream
     /// subtasks through the frozen seam, not by current production code.
-    #[allow(dead_code)]
     pub(crate) fn shared(&self) -> &Arc<SharedDocument> {
         &self.shared
     }
@@ -1538,6 +1491,30 @@ impl DocumentHandle {
     /// keeps the returned detached tokens in a small per-document pool, so a
     /// run of `createElement("div")` calls pays one string conversion, lock
     /// acquisition and JS/native crossing per batch instead of per node.
+    /// Shared validation and creation behind `createElementTokenBatch` and
+    /// `createElementTokenRange`.
+    fn create_element_tokens(
+        &self,
+        env: &Env,
+        name: &str,
+        count: u32,
+        label: &str,
+    ) -> napi::Result<Vec<NodeId>> {
+        check_affinity(&self.shared, env)?;
+        if self.shared.is_destroyed() {
+            return Err(BindingError::Destroyed.into_napi(env));
+        }
+        if count == 0 || count > 4096 {
+            let message = format!("{label} count must be between 1 and 4096");
+            return Err(NapiError::new(Status::InvalidArg, message));
+        }
+        self.run(|doc| {
+            doc.create_elements(name, count as usize)
+                .map_err(BindingError::Core)
+        })
+        .map_err(|err| err.into_napi(env))
+    }
+
     #[napi(catch_unwind)]
     pub fn create_element_token_batch(
         &self,
@@ -1545,20 +1522,7 @@ impl DocumentHandle {
         name: String,
         count: u32,
     ) -> napi::Result<Vec<u32>> {
-        check_affinity(&self.shared, &env)?;
-        if self.shared.is_destroyed() {
-            return Err(BindingError::Destroyed.into_napi(&env));
-        }
-        if count == 0 || count > 4096 {
-            let message = "createElementTokenBatch count must be between 1 and 4096";
-            return Err(NapiError::new(Status::InvalidArg, message));
-        }
-        let ids = self
-            .run(|doc| {
-                doc.create_elements(&name, count as usize)
-                    .map_err(BindingError::Core)
-            })
-            .map_err(|err| err.into_napi(&env))?;
+        let ids = self.create_element_tokens(&env, &name, count, "createElementTokenBatch")?;
         Ok(self.shared.tokens_for_fresh(&ids))
     }
 
@@ -1574,20 +1538,7 @@ impl DocumentHandle {
         name: String,
         count: u32,
     ) -> napi::Result<u32> {
-        check_affinity(&self.shared, &env)?;
-        if self.shared.is_destroyed() {
-            return Err(BindingError::Destroyed.into_napi(&env));
-        }
-        if count == 0 || count > 4096 {
-            let message = "createElementTokenRange count must be between 1 and 4096";
-            return Err(NapiError::new(Status::InvalidArg, message));
-        }
-        let ids = self
-            .run(|doc| {
-                doc.create_elements(&name, count as usize)
-                    .map_err(BindingError::Core)
-            })
-            .map_err(|err| err.into_napi(&env))?;
+        let ids = self.create_element_tokens(&env, &name, count, "createElementTokenRange")?;
         Ok(self.shared.register_tokens_for_fresh(&ids))
     }
 
@@ -2049,7 +2000,6 @@ impl NodeHandle {
     ///
     /// Dormant until the first M4 extension lands; consumed by downstream
     /// subtasks through the frozen seam, not by current production code.
-    #[allow(dead_code)]
     pub(crate) fn shared(&self) -> &Arc<SharedDocument> {
         &self.shared
     }
@@ -2061,9 +2011,7 @@ impl NodeHandle {
     /// to the owning document and Core rejects foreign or stale ids with a
     /// structured error.
     ///
-    /// Dormant until the first M4 extension lands; consumed by downstream
-    /// subtasks through the frozen seam, not by current production code.
-    #[allow(dead_code)]
+    /// Returns the native id backing this handle.
     pub(crate) fn id(&self) -> NodeId {
         self.id
     }
@@ -2078,7 +2026,7 @@ impl NodeHandle {
         })
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn namespace_uri_inner(&self) -> std::result::Result<Option<String>, BindingError> {
         self.run(|doc| {
             doc.element_namespace_uri(self.id)

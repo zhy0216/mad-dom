@@ -69,17 +69,10 @@
 //! fails loudly in tests instead of silently corrupting the tree.
 
 use crate::arena::NodeId;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
 use super::node::NodeType;
 use super::Document;
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
-}
 
 /// What [`Document::validate_replace_child`] computes for the mutation phase:
 /// the sibling anchors the replacement will sit between, and (for a fragment

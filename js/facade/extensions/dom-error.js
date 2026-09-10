@@ -30,7 +30,7 @@ const DOM_EXCEPTION_CODES = new Set(Object.keys(DOM_EXCEPTION_NAME_BY_CODE));
  * Whether `error` is a degraded DOMException-classed violation from the native
  * binding, identified by its frozen `ERR_MAD_DOM_*` `code`.
  */
-export function isDomError(error) {
+function isDomError(error) {
   return (
     error !== null &&
     typeof error === "object" &&

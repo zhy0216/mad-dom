@@ -33,13 +33,6 @@
 // : args` argument shaping, the `count` / `time` label maps and the group
 // stack.
 
-export const seam = Object.freeze({
-  id: "facade/extensions/virtual-console",
-  owner: "window",
-  gate: "window",
-  status: "implemented",
-});
-
 // --- enums -------------------------------------------------------------------
 
 export const VirtualConsoleLogLevelEnum = Object.freeze({

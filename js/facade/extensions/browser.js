@@ -12,20 +12,18 @@ import { VirtualConsoleLogLevelEnum, VirtualConsolePrinter } from "./virtual-con
 import { Window } from "../window.js";
 import { createBrowserSettings } from "../browser-settings.js";
 import { windowTasks } from "../window-tasks.js";
-import { closeWindow, setWindowCookieContainer } from "./window-platform.js";
+import {
+  HistoryItemList,
+  closeWindow,
+  resolveNavigationURL,
+  setWindowCookieContainer,
+} from "./window-platform.js";
 import { evaluateScripts, replaceDocumentContent } from "./document-write.js";
 
 // The virtual console surface is shared with the Window side
 // (js/facade/extensions/virtual-console.js); re-exported here so the package
 // entry keeps its existing import path and class identity.
 export { VirtualConsoleLogLevelEnum, VirtualConsolePrinter };
-
-export const seam = Object.freeze({
-  id: "facade/extensions/browser",
-  owner: "integration",
-  gate: "integration",
-  status: "implemented",
-});
 
 // The `ctx` handed to `install`; captured so the frame registry and the anchor
 // default-action path can resolve native document handles.
@@ -147,64 +145,6 @@ function frameOfNode(node) {
 // lookup). A detached window (no browser page) has no entry, so `open` on it
 // mints an ad-hoc browser for the child page.
 const WINDOW_TO_FRAME = new WeakMap();
-
-// --- session history (mirrors happy-dom HistoryItemList) ---------------------
-
-/**
- * The frame session history (happy-dom `HistoryItemList` parity): an item
- * list seeded with the `about:blank` entry; `push` truncates any forward
- * branch before appending, `replace` swaps the current item in place.
- */
-class HistoryItemList {
-  constructor() {
-    this.currentItem = {
-      title: "",
-      href: "about:blank",
-      state: null,
-      popState: false,
-      scrollRestoration: "auto",
-      method: "GET",
-      formData: null,
-    };
-    this.items = [this.currentItem];
-  }
-
-  push(historyItem) {
-    const index = this.items.indexOf(this.currentItem);
-    // If the current item is not the last one, remove all items after it.
-    if (index !== this.items.length - 1) {
-      this.items.length = index + 1;
-    }
-    this.items.push(historyItem);
-    this.currentItem = historyItem;
-  }
-
-  replace(historyItem) {
-    const index = this.items.indexOf(this.currentItem);
-    if (index !== this.items.length - 1) {
-      this.items.length = index + 1;
-    }
-    if (index === -1) {
-      throw new Error("Current history item not found");
-    }
-    this.currentItem = historyItem;
-    this.items[index] = historyItem;
-  }
-}
-
-// --- relative URL resolution (mirrors happy-dom BrowserFrameURL) -------------
-
-function resolveFrameURL(currentHref, url) {
-  url = url ? String(url) : "about:blank";
-  if (url.startsWith("about:") || url.startsWith("javascript:")) {
-    return new URL(url);
-  }
-  try {
-    return new URL(url, currentHref);
-  } catch {
-    return new URL("about:blank");
-  }
-}
 
 // --- BrowserFrame -------------------------------------------------------------
 
@@ -458,7 +398,7 @@ export class BrowserFrame {
 
   async #navigate(url, options = {}) {
     const { goToOptions = null, disableHistory = false, method = "GET", formData = null } = options;
-    const targetURL = resolveFrameURL(this.url, url);
+    const targetURL = resolveNavigationURL(this.url, url);
 
     // Hash navigation: same document, only the fragment changes — record a
     // pop-state entry, update the URL, no fetch (happy-dom parity).
@@ -1118,7 +1058,7 @@ function openPage(windowFacade, options) {
   const features = getWindowFeatures(options?.features || "");
   const target = options?.target !== undefined ? String(options.target) : null;
   const parentFrame = WINDOW_TO_FRAME.get(windowFacade) ?? null;
-  const targetURL = resolveFrameURL(windowFacade.location.href, options?.url);
+  const targetURL = resolveNavigationURL(windowFacade.location.href, options?.url);
   let targetFrame;
   if (target === "_self" && parentFrame !== null) {
     targetFrame = parentFrame;

@@ -42,20 +42,13 @@
 //! [`CoreError::Hierarchy`] on a non-`Text` receiver.
 
 use crate::arena::NodeId;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
 use super::node::{NodeData, NodeType};
 use super::Document;
 
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
-    }
-}
-
 /// Returns the number of UTF-16 code units in `s` (the DOM `length` unit).
-fn utf16_len(s: &str) -> usize {
+pub(crate) fn utf16_len(s: &str) -> usize {
     s.encode_utf16().count()
 }
 

@@ -100,17 +100,7 @@ use mad_dom_core::arena::NodeId;
 use mad_dom_core::traversal::{TraversalOp, TraversalStep, FILTER_ACCEPT};
 
 use crate::error::BindingError;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle, SharedDocument};
-
-/// Seam metadata for the M7 `traversal_api` boundary.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "traversal_api",
-    owner: "T35",
-    gate: "T35",
-    status: "implemented",
-};
 
 /// The frozen native `TreeWalker` surface.
 #[allow(dead_code)]

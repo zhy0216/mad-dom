@@ -86,15 +86,6 @@
 //! (`tests/bun/fixtures/native-mutation-insert.contract.json`) and
 //! `tests/bun/mutation-insert-api.test.js` carry the end-to-end evidence.
 
-use crate::extensions::ExtensionSeam;
-
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "mutation_insert_api",
-    owner: "T24A",
-    gate: "T24",
-    status: "placeholder",
-};
-
 /// The frozen native append/insert mutation surface on
 /// [`DocumentHandle`](crate::handle::DocumentHandle).
 ///

@@ -8,13 +8,6 @@
 
 import { Window } from "../window.js";
 
-export const seam = Object.freeze({
-  id: "facade/extensions/web-socket",
-  owner: "integration",
-  gate: "integration",
-  status: "implemented",
-});
-
 export function install(ctx) {
   ctx.defineAccessor(Window.prototype, "WebSocket", function getWebSocket() {
     return globalThis.WebSocket;

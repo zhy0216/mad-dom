@@ -70,7 +70,7 @@
 //! tree relations, so [`Document::check_invariants`] keeps passing.
 
 use crate::arena::NodeId;
-use crate::error::CoreError;
+use crate::error::{hierarchy, CoreError};
 
 use super::document::validate_name;
 use super::Document;
@@ -282,13 +282,6 @@ impl Document {
                 Ok(true)
             }
         }
-    }
-}
-
-/// Builds a [`CoreError::Hierarchy`] with `message`.
-fn hierarchy(message: impl Into<String>) -> CoreError {
-    CoreError::Hierarchy {
-        message: message.into(),
     }
 }
 

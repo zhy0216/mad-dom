@@ -94,17 +94,7 @@ use mad_dom_core::arena::NodeId;
 use mad_dom_core::dom::{Document, EventState, EVENT_PHASE_NONE};
 
 use crate::error::BindingError;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle, SharedDocument};
-
-/// Seam metadata for the M7 `events_api` boundary.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "events_api",
-    owner: "T37",
-    gate: "T37",
-    status: "implemented",
-};
 
 /// The frozen native event surface on
 /// [`DocumentHandle`](crate::handle::DocumentHandle) /

@@ -113,22 +113,7 @@ use mad_dom_core::arena::NodeId;
 
 use crate::error::BindingError;
 use crate::extensions::mutation_observer_api::schedule_pending_observer_deliveries;
-use crate::extensions::ExtensionSeam;
 use crate::handle::{check_affinity, with_document, DocumentHandle, NodeHandle};
-
-/// Seam metadata for the M7 `character_data_api` boundary.
-///
-/// Like the M5 `html_api` / M6 `query_api` seams this constant is not
-/// referenced by the frozen [`REGISTRY`](crate::extensions::REGISTRY) (T33
-/// owns its own integration and there is no separate M7 gate), so it is
-/// allowed to be otherwise unused.
-#[allow(dead_code)]
-pub(crate) const SEAM: ExtensionSeam = ExtensionSeam {
-    id: "character_data_api",
-    owner: "T33",
-    gate: "T33",
-    status: "implemented",
-};
 
 /// The frozen native extended-node surface on
 /// [`DocumentHandle`](crate::handle::DocumentHandle).

@@ -91,10 +91,6 @@ pub enum NodeData {
         /// Whether this is a MathML `annotation-xml` element that is an HTML
         /// integration point (recorded from `ElementFlags` by the parser).
         mathml_annotation_xml_integration_point: bool,
-        /// Whether the tokenizer saw duplicate attributes on this element
-        /// (recorded from `ElementFlags` by the parser; used by CSP nonce
-        /// rules).
-        had_duplicate_attributes: bool,
     },
     /// A `Text` node holding its character data.
     Text { data: String },
@@ -182,18 +178,6 @@ impl NodeData {
                 mathml_annotation_xml_integration_point,
                 ..
             } => Some(*mathml_annotation_xml_integration_point),
-            _ => None,
-        }
-    }
-
-    /// Returns whether the element's token had duplicate attributes, or `None`
-    /// if this is not an element.
-    pub fn element_had_duplicate_attributes(&self) -> Option<bool> {
-        match self {
-            Self::Element {
-                had_duplicate_attributes,
-                ..
-            } => Some(*had_duplicate_attributes),
             _ => None,
         }
     }
