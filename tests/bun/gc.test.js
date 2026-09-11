@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   createDocument,
   isNativeAvailable,
@@ -126,47 +128,27 @@ describe.skipIf(!nativeAvailable)("wrapper identity and GC (T20)", () => {
     doc.destroy();
   });
 
-  test("reads in the collected-but-not-yet-finalized window re-mint instead of returning undefined", async () => {
+  test("reads in the collected-but-not-yet-finalized window re-mint instead of returning undefined", () => {
     // Bun defers napi finalizers to the next event-loop turn, so right after
     // a synchronous GC a collected wrapper's cache entry is still present but
     // stale ("collected but not yet finalized"). wrap_node must detect the
     // dead reference and mint a fresh wrapper instead of handing JavaScript
     // `undefined` (the pre-fix behaviour, which truncated tree walks and
     // crashed chained reads).
-    const doc = createDocument();
-    let parent = null;
-    let wr = null;
-    const spawn = () => {
-      const p = doc.createElement("ul");
-      const child = doc.createElement("li");
-      doc.appendChild(p, child);
-      expect(p.firstChild()).toBe(child); // caches the child wrapper
-      parent = p;
-      wr = new WeakRef(child);
-    };
-    spawn();
-
-    // Collect WITHOUT draining the event loop: the wrapper is collected but
-    // its finalizer has not run yet, so the cache entry is stale.
-    Bun.gc(true);
-    expect(wr.deref()).toBeUndefined();
-
-    const read = (p) => p.firstChild();
-    const fresh = read(parent);
-    expect(fresh).not.toBeUndefined();
-    expect(fresh).not.toBeNull();
-    expect(fresh.nodeName()).toBe("li");
-    // The re-minted wrapper has stable identity for subsequent reads.
-    expect(read(parent)).toBe(fresh);
-
-    const entries = diagnostics.memoryDiagnostics()[2];
-    await collectGarbage();
-    // A late finalizer for the old mint must neither evict nor decrement the
-    // replacement entry. Node-API remains the identity authority after FFI.
-    expect(read(parent)).toBe(fresh);
-    expect(diagnostics.memoryDiagnostics()[2]).toBe(entries);
-
-    doc.destroy();
+    //
+    // The late-finalizer counter check needs an exact process-global
+    // wrapper-cache baseline, and other suites leave deferred finalizers
+    // pending (one event-loop drain does not flush them all), so the scenario
+    // runs in a child process with its own clean counters, on the same Bun
+    // and native image as the parent — same protocol as the other isolated
+    // GC-lifetime checks in this repo.
+    const fixture = fileURLToPath(new URL("./fixtures/native-gc-remint.mjs", import.meta.url));
+    const result = Bun.spawnSync([process.execPath, fixture], {
+      env: { ...process.env, MAD_DOM_NATIVE_PATH: process.env.MAD_DOM_NATIVE_PATH ?? resolve("build/mad-dom.node") },
+      stdout: "pipe", stderr: "pipe",
+    });
+    expect(result.exitCode, result.stderr.toString()).toBe(0);
+    expect(JSON.parse(result.stdout.toString()).bunVersion).toBe(Bun.version);
   });
 
   test("a lone child wrapper keeps its document arena alive", async () => {
