@@ -1,9 +1,9 @@
 # Performance
 
-**2.83× faster core DOM work. 1.57× faster test workflows.** These are the
+**3.24× faster core DOM work. 1.40× faster test workflows.** These are the
 aggregate results of the source-build run below, with matching workload checks
-for both engines. Parsing was 3.19× faster, serialization 4.98×, and mutation
-churn 8.59× in the same run. The full tables include every measured phase.
+for both engines. Parsing was 3.64× faster, serialization 3.01×, and mutation
+churn 17.57× in the same run. The full tables include every measured phase.
 
 mad-dom is compared with **happy-dom 20.11.11** using the same deterministic
 DOM workloads through each engine's public API. The benchmark covers
@@ -12,26 +12,41 @@ DOM workloads through each engine's public API. The benchmark covers
 
 ## Recorded results
 
-The **2026-09-05 source-build run** produced matching workload checks for both
+The **2026-09-12 source-build run** produced matching workload checks for both
 engines and passed all 13 test scenarios (`valid: true`).
 
 | Timed workload | mad-dom | happy-dom | Speedup |
 | --- | ---: | ---: | ---: |
-| Core operations, 16 phases | **141.70 ms** | 401.60 ms | **2.83×** |
-| Test workflows, 13 scenarios | **91.10 ms** | 143.08 ms | **1.57×** |
+| Core operations, 16 phases | **407.14 ms** | 1321.15 ms | **3.24×** |
+| Test workflows, 13 scenarios | **294.31 ms** | 412.66 ms | **1.40×** |
 
-Environment: Apple M3 Max, 48 GiB RAM, macOS 26.6.2 arm64, Bun 1.4.0, Rust
-1.93.1; size 1×, 2 warmup rounds followed by 9 measured rounds per engine.
+Environment: AMD EPYC Processor (8 vCPUs, shared KVM host), 15.6 GiB RAM,
+Ubuntu 24.04 Linux x64, glibc 2.39, Bun 1.4.2 (`744846f84`), Rust 1.93.1;
+size 1×, 2 warmup rounds followed by 9 measured rounds per engine.
+The report date uses America/Los_Angeles; the environment record includes UTC
+timestamps. Bun 1.4.2 was verified as the latest stable release before sampling
+by `bun upgrade` and the official
+[release API](https://api.github.com/repos/oven-sh/bun/releases/latest).
 The code measured was revision
-[`2fda7ea`](https://github.com/zhy0216/mad-dom/commit/2fda7eaf75572a29618f9443527011886a970e0b),
+[`1733855`](https://github.com/zhy0216/mad-dom/commit/173385575039d41181e80b45c2933323ce0f5db8),
 whose package manifest is `0.0.1-alpha.3`. The native artifact was built from
 that checkout and explicitly selected with `MAD_DOM_NATIVE_PATH`; these are
 source-build measurements, not measurements of a downloaded npm binary.
+Node-API ABI 1 and FFI ABI 1 were available, with FFI capability bitset 31 and
+both loaders pointing to the same image. The run uses the default public API
+routing with FFI enabled; availability does not force every operation onto FFI.
 
-[Download the raw report](https://github.com/zhy0216/mad-dom/blob/main/benchmark/results/2026-09-05-dom.json)
+[Download the raw report](https://github.com/zhy0216/mad-dom/blob/main/benchmark/results/2026-09-12-dom.json)
 for all samples, medians, min/p90/MAD, workload metadata, result checks and RSS
 readings. [Benchmark methodology](https://github.com/zhy0216/mad-dom/blob/main/benchmark/README.md)
 documents each workload and how to derive the workflow aggregate.
+The [environment record](https://github.com/zhy0216/mad-dom/blob/main/benchmark/results/2026-09-12-dom-environment.json)
+contains the command, complete Bun revision, host and capability reports, and
+SHA-256 hashes of the runtime, native image, lockfiles and raw report.
+
+The earlier [2026-09-05 macOS/Bun 1.4.0 samples](https://github.com/zhy0216/mad-dom/blob/main/benchmark/results/2026-09-05-dom.json)
+remain available as historical evidence. Hardware, source and runtime differ;
+the two records do not isolate a Bun upgrade or a code change.
 
 Each aggregate above is the **median of per-round sums** of timed phases,
 not the sum of phase medians. Core exposes this as `operations`; the testing
@@ -55,27 +70,27 @@ All times below are **per-phase medians in milliseconds** for the same run.
 
 | Phase | mad-dom (ms) | happy-dom (ms) | Speedup |
 | --- | ---: | ---: | ---: |
-| `parse` | 9.845 | 31.415 | 3.19× |
-| `buildMixed` | 31.152 | 51.809 | 1.66× |
-| `queryHot` | 0.001500 | 0.003458 | 2.31× |
-| `queryCold` | 5.741 | 11.014 | 1.92× |
-| `getById` | 1.029 | 52.569 | 51.10× |
-| `getByTag` | 0.231 | 2.693 | 11.66× |
-| `serialize` | 1.007 | 5.013 | 4.98× |
-| `traverseWarm` | 0.688 | 1.732 | 2.52× |
-| `traverseCold` | 3.238 | 3.460 | 1.07× |
-| `buildCreate` | 6.529 | 7.477 | 1.15× |
-| `buildAttr` | 20.653 | 27.810 | 1.35× |
-| `buildAppend` | 11.895 | 12.700 | 1.07× |
-| `buildText` | 7.293 | 10.388 | 1.42× |
-| `buildBulk` | 27.461 | 99.400 | 3.62× |
-| `readHeavy` | 6.564 | 6.429 | 0.98× |
-| `mutationChurn` | 9.416 | 80.848 | 8.59× |
+| `parse` | 25.700 | 93.445 | 3.64× |
+| `buildMixed` | 93.757 | 143.667 | 1.53× |
+| `queryHot` | 0.004519 | 0.009578 | 2.12× |
+| `queryCold` | 12.881 | 24.103 | 1.87× |
+| `getById` | 2.755 | 195.432 | 70.94× |
+| `getByTag` | 0.775 | 5.094 | 6.58× |
+| `serialize` | 4.152 | 12.491 | 3.01× |
+| `traverseWarm` | 1.161 | 4.099 | 3.53× |
+| `traverseCold` | 12.511 | 5.632 | 0.45× |
+| `buildCreate` | 17.823 | 16.775 | 0.94× |
+| `buildAttr` | 56.801 | 78.476 | 1.38× |
+| `buildAppend` | 29.349 | 39.820 | 1.36× |
+| `buildText` | 17.420 | 13.017 | 0.75× |
+| `buildBulk` | 71.319 | 279.270 | 3.92× |
+| `readHeavy` | 17.848 | 12.631 | 0.71× |
+| `mutationChurn` | 21.629 | 379.921 | 17.57× |
 
-mad-dom had lower medians in 15 of 16 core phases. `readHeavy` was about 2%
-slower in this run. `queryHot` takes only a few microseconds, and happy-dom's
-`queryHot` and `traverseWarm` samples exceeded the report's instability
-threshold (MAD > 20% of the median). Small differences and those unstable
+mad-dom had lower medians in 12 of 16 core phases. `traverseCold`,
+`buildCreate`, `buildText` and `readHeavy` were slower. mad-dom's `traverseCold`
+samples exceeded the report's instability threshold (MAD > 20% of the median).
+`queryHot` takes only a few microseconds. Small differences and unstable
 ratios should not be treated as reliable wins.
 
 `queryHot` reruns the exact selectors after an untimed priming batch.
@@ -93,38 +108,34 @@ the same size. Times are for the **whole batch**, not one case.
 
 | Scenario | Cases / round | mad-dom (ms) | happy-dom (ms) | Speedup |
 | --- | ---: | ---: | ---: | ---: |
-| `fixtureLifecycle` | 100 | 3.327 | 2.956 | 0.89× |
-| `windowLifecycle` | 25 | 0.900 | 35.585 | 39.53× |
-| `testingLibraryText` | 50 | 14.163 | 15.953 | 1.13× |
-| `testingLibraryEvents` | 50 | 2.052 | 1.844 | 0.90× |
-| `testingLibraryRole` | 25 | 15.495 | 16.938 | 1.09× |
-| `testingLibraryLabel` | 25 | 7.177 | 6.979 | 0.97× |
-| `todoInteractions` | 50 | 20.027 | 29.661 | 1.48× |
-| `formSubmission` | 50 | 4.832 | 5.701 | 1.18× |
-| `templateClone` | 50 | 12.243 | 16.549 | 1.35× |
-| `keyedReconcile` | 50 | 5.986 | 5.876 | 0.98× |
-| `asyncObserver` | 25 | 0.914 | 0.723 | 0.79× |
-| `shadowComponent` | 50 | 1.757 | 2.039 | 1.16× |
-| `snapshotRoundTrip` | 50 | 1.893 | 2.338 | 1.24× |
+| `fixtureLifecycle` | 100 | 8.882 | 10.393 | 1.17× |
+| `windowLifecycle` | 25 | 30.650 | 45.725 | 1.49× |
+| `testingLibraryText` | 50 | 45.796 | 54.624 | 1.19× |
+| `testingLibraryEvents` | 50 | 6.576 | 6.615 | 1.01× |
+| `testingLibraryRole` | 25 | 47.720 | 57.575 | 1.21× |
+| `testingLibraryLabel` | 25 | 19.183 | 23.796 | 1.24× |
+| `todoInteractions` | 50 | 54.613 | 91.961 | 1.68× |
+| `formSubmission` | 50 | 13.118 | 20.493 | 1.56× |
+| `templateClone` | 50 | 37.829 | 60.408 | 1.60× |
+| `keyedReconcile` | 50 | 18.056 | 21.092 | 1.17× |
+| `asyncObserver` | 25 | 2.695 | 2.412 | 0.90× |
+| `shadowComponent` | 50 | 5.359 | 7.509 | 1.40× |
+| `snapshotRoundTrip` | 50 | 5.257 | 8.025 | 1.53× |
 
 These exercise fixture/window lifecycle, text/role/label queries, event
 dispatch, Todo updates, forms, template cloning, keyed reconciliation,
 MutationObserver, Shadow DOM and snapshot round trips. Both engines passed
 every scenario with matching case counts and SHA-256 result fingerprints.
 
-mad-dom had lower medians in 8 of 13 scenarios. Shared-window fixture
-lifecycle, Testing Library events and labels, keyed reconciliation and async
-observers were slower. The aggregate includes all five.
+mad-dom had lower medians in 12 of 13 scenarios. `asyncObserver` was slower
+and remains in the aggregate. `testingLibraryEvents` differed by only about
+0.6%, so its 1.01× ratio is effectively a near tie in this single run.
 
-The dated results above used the earlier partial close implementation. They
-remain historical measurements. A second 2026-09-05 run after the lifecycle
-repair uses real task cancellation, scoped cleanup and an idle checkpoint.
-With Bun 1.4.0 on darwin/arm64, size 1 and nine measured rounds, the 25-Window
-lifecycle workload took **29.842 ms** in mad-dom and **34.385 ms** in happy-dom
-20.11.11 (**1.15×**). Both engines passed all correctness checks. The added
-cleanup has a real cost; the old lifecycle speedup is not an acceptance target.
-[Implementation evidence](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/results.md)
-is recorded separately.
+The `windowLifecycle` row measures the current `happyDOM.close()` implementation,
+including task cancellation, scoped cleanup and an idle checkpoint. It
+supersedes the partial-close timing in the historical September 5 snapshot;
+[lifecycle implementation evidence](https://github.com/zhy0216/mad-dom/blob/main/plans/browser-lifecycle-parity/results.md)
+is retained separately.
 
 Fixture mounting, querying, interaction, result reads and DOM cleanup are
 timed. Only `windowLifecycle` also times Window construction and
@@ -139,20 +150,22 @@ The runner starts separate Bun processes for each engine and suite, in fixed
 order: core mad-dom, core happy-dom, testing mad-dom, testing happy-dom.
 It retains all measured samples after warmup and reports median, minimum,
 nearest-rank p90 and median absolute deviation (MAD). This snapshot is one
-machine's run in that order, without an alternating-order audit or confidence
-intervals. Repeat on comparable hardware and inspect variability when a
+shared KVM host's run in that order, without an alternating-order audit or
+confidence intervals. Repeat on comparable hardware and inspect variability when a
 decision depends on a small difference.
 
 Core `total` is pipeline wall time, including fixture preparation, validation,
-explicit GC and event-loop drains. Its medians here were 374.80 ms for mad-dom
-and 3,252.41 ms for happy-dom. The latter was unstable (MAD > 20% of median);
+explicit GC and event-loop drains. Its medians here were 969.86 ms for mad-dom
+and 7,833.87 ms for happy-dom. The latter was unstable (MAD > 20% of median);
 the headline comparison uses the timed `operations` field instead.
 
-The same workers reported these pipeline-end RSS changes:
+The workers reported these RSS changes from their own pre-measurement baselines
+at the end of the last measured round:
 
 | Last measured round, after GC/drain | mad-dom | happy-dom |
 | --- | ---: | ---: |
-| RSS change from the pre-measurement baseline | +242.3 MiB | +3,475.1 MiB |
+| Core worker RSS change | +15.8 MiB | +3362.1 MiB |
+| Testing worker RSS change | +28.1 MiB | +9.0 MiB |
 
 RSS includes accumulated worker state, native allocations, wrappers, caches,
 JIT and runtime GC behavior across the run. It is neither a per-document
@@ -162,26 +175,32 @@ last measured round and `peak` is not an OS high-water mark.
 
 ## Reproduce from source
 
-To reproduce the dated measurements, use the `.bun-version` baseline
-(Bun `1.4.0`) and Rust `1.93.1`. The support floor is `engines.bun >=1.4.0`;
-CI separately validates dynamically resolved latest stable Bun. Preserve the
-actual `Bun.version` in every new benchmark report; baseline and latest
-results must be compared with their runtime and capability settings recorded.
-Neither historical timing results nor an API-presence probe verify external
-ArrayBuffer ownership safety. Caller-owned buffers remain the default.
+Always use the **latest stable Bun** for new measurements: run `bun upgrade`
+before sampling, then record the actual version and revision. This run used
+Bun `1.4.2` and Rust `1.93.1`. `.bun-version` (`1.4.0`) is reserved for dedicated
+baseline checks and historical reproduction; the support floor remains
+`engines.bun >=1.4.0`. Reproducing a dated record requires its source revision,
+dependencies, runtime, hardware and capability settings.
 
 From a repository checkout:
 
 ```sh
+bun upgrade
+bun --version
+bun --revision
 bun install --frozen-lockfile
 bun run dev:build
-MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1
-MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1 --json > dom-bench.json
+export MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node"
+export MAD_DOM_FFI_PATH="$PWD/build/mad-dom.node"
+export MAD_DOM_FFI_DISABLED=0
+bun run report:runtime --require-native > dom-runtime.json
+bun run bench:dom --runs 9 --sizes 1 --json > dom-bench.json
 ```
 
-The last command performs another measurement and retains its raw JSON.
-The environment variable forces the freshly built native artifact even if
-an npm platform package is installed. To explore a group or workload size:
+The last command performs one measurement and retains its raw JSON; omit
+`--json` and the redirection to print tables instead. The environment variables
+select the freshly built native artifact for both loaders even if an npm
+platform package is installed. To explore a group or workload size:
 
 ```sh
 bun run bench:dom --suite testing
@@ -217,7 +236,7 @@ for thresholds and CI baseline behavior.
 The [Bun-native integration measurements](./bun-native-runtime-results.md)
 record Linux Bun 1.4.0/1.4.2 with FFI enabled and disabled, cold/warm boundary
 and host IO samples, GC/heap/RSS pressure, and the corrected signed-RSS gate.
-They are separate from the dated macOS results above.
+They are separate historical measurements from the September 12 comparison above.
 
 ## Bun-native boundary comparison (2026-09-10, plan bun-native-performance)
 

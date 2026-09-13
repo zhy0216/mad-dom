@@ -2,22 +2,25 @@
 
 MAD DOM gives Bun a DOM backed by a Rust memory arena. Use familiar `Window`,
 `document`, and `Browser` APIs for tests, HTML processing, and server-side DOM
-work. The recorded comparison with happy-dom measured **2.83× faster core DOM
-operations** and **1.57× faster test workflows**; see [Performance](/performance)
+work. The recorded comparison with happy-dom measured **3.24× faster core DOM
+operations** and **1.40× faster test workflows**; see [Performance](/performance)
 for the workload, environment, and complete results.
 
 ## Requirements and installation
 
-Use **Bun 1.4.0 or newer** on a supported [platform](/platforms). Published
-platform binaries install as optional dependencies; consumers do not need Rust.
+Use the **latest stable Bun** on a supported [platform](/platforms); the minimum
+supported version is 1.4.0. Published platform binaries install as optional
+dependencies; consumers do not need Rust.
 The current package is alpha. To select the prerelease channel explicitly:
 
 ```sh
 bun add -d mad-dom@next
 ```
 
-For an application dependency, omit `-d`. Repository development uses the exact
-Bun and Rust versions pinned in `.bun-version` and `rust-toolchain.toml`.
+For an application dependency, omit `-d`. Repository development and new
+benchmarks use the latest stable Bun (`bun upgrade`) and Rust `1.93.1`, pinned
+in `rust-toolchain.toml`. `.bun-version` selects the separate compatibility
+baseline for regression diagnosis and historical reproduction.
 
 ## Create your first document
 

@@ -12,6 +12,9 @@
 
 ## CI
 
+- 日常开发与新 benchmark 采样一律用最新稳定版 Bun；运行前执行 `bun upgrade`，记录实际
+  `bun --version` / `bun --revision`。`.bun-version` 仅用于专门的 baseline 验证或历史复现，
+  不作为新 benchmark 的默认版本；更新文档时提交带日期的原始样本与环境信息，保留历史实测记录。
 - Bun 版本分三层：`package.json.engines.bun` 是最低支持版本；`.bun-version`（当前 1.4.0）是可复现 baseline；
   CI latest lane 与 release 用 `oven-sh/setup-bun@v2` 显式 `bun-version: latest`，不得用 baseline 代替 latest。
   baseline lane 单独用 `bun-version-file: .bun-version`；记录实际 Bun version/revision、平台/libc、Node-API ABI、FFI ABI 与 capability。

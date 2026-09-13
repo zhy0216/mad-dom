@@ -4,8 +4,8 @@
 
 **A fast native DOM for Bun, written in Rust, with a happy-dom-style API.**
 
-**2.83× faster core DOM work · 1.57× faster test workflows** in the recorded
-2026-09-05 source-build comparison with happy-dom 20.11.11. See the benchmark
+**3.24× faster core DOM work · 1.40× faster test workflows** in the recorded
+2026-09-12 source-build comparison with happy-dom 20.11.11. See the benchmark
 conditions and full results below.
 
 [Documentation](https://zhy0216.github.io/mad-dom/) ·
@@ -65,38 +65,46 @@ test adaptations are documented in [benchmark/README.md](benchmark/README.md).
 
 The DOM benchmark runs **16 core operations** and **13 test workflows** against
 both engines, including real DOM Testing Library queries and events. In the
-**2026-09-05 source-build run**, all workloads passed and their results matched:
+**2026-09-12 source-build run**, all workloads passed and their results matched:
 
 | Timed workload | mad-dom | happy-dom 20.11.11 | Speedup |
 | --- | ---: | ---: | ---: |
-| Core operations (16 phases) | **141.70 ms** | 401.60 ms | **2.83×** |
-| Test workflows (13 scenarios) | **91.10 ms** | 143.08 ms | **1.57×** |
+| Core operations (16 phases) | **407.14 ms** | 1321.15 ms | **3.24×** |
+| Test workflows (13 scenarios) | **294.31 ms** | 412.66 ms | **1.40×** |
 
-Apple M3 Max, 48 GiB RAM, macOS arm64, Bun 1.4.0, Rust 1.93.1; size 1×,
-2 warmup rounds and 9 measured rounds per engine. Each aggregate is the
+AMD EPYC (8 vCPUs, KVM), 15.6 GiB RAM, Ubuntu 24.04 Linux x64, latest stable
+Bun 1.4.2, Rust 1.93.1; source revision `1733855`, local release build with FFI
+enabled. Size 1×, 2 warmup rounds and 9 measured rounds per engine. Each aggregate is the
 **median of per-round sums** of timed phases; speedup is happy-dom / mad-dom.
 Forced GC, validation and untimed setup are excluded. This measures DOM work,
 including scenario mounting and cleanup, rather than complete test-runner or
 React/Vue application performance.
 
-Performance varies by workload: mad-dom had lower medians in 15/16 core phases
-and 8/13 workflows in this run. The read-heavy core phase and workflows for
-shared-window fixture lifecycle, Testing Library events/labels, keyed updates
-and async observers were slower. See the [full phase tables and measurement
-limits](docs/performance.md), [methodology](benchmark/README.md) and
-[raw samples](benchmark/results/2026-09-05-dom.json).
+Performance varies by workload: mad-dom had lower medians in 12/16 core phases
+and 12/13 workflows in this run. Cold traversal, standalone element/text
+creation, read-heavy work and async observers were slower. See the
+[full phase tables and measurement limits](docs/performance.md),
+[methodology](benchmark/README.md) and
+[raw samples](benchmark/results/2026-09-12-dom.json), with the
+[runtime and environment record](benchmark/results/2026-09-12-dom-environment.json).
 
-Those dated aggregates used the earlier partial close implementation. After
-lifecycle repairs, the 25-Window workload measured 29.842 ms for mad-dom versus
-34.385 ms for happy-dom (1.15×). See the updated
-[performance notes](docs/performance.md) for the separate measurement.
+The current Window lifecycle implementation is included in this run. The
+[September 5 macOS/Bun 1.4.0 samples](benchmark/results/2026-09-05-dom.json)
+remain historical evidence; the different hardware, source and runtime prevent
+a direct before/after comparison.
 
-Reproduce from a source checkout:
+Run new measurements from a source checkout with the latest stable Bun:
 
 ```sh
+bun upgrade
+bun --version
+bun --revision
 bun install --frozen-lockfile
 bun run dev:build
-MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1
+export MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node"
+export MAD_DOM_FFI_PATH="$PWD/build/mad-dom.node"
+export MAD_DOM_FFI_DISABLED=0
+bun run bench:dom --runs 9 --sizes 1
 ```
 
 Use `--suite core` or `--suite testing` to select a group, and `--json` to retain
@@ -161,8 +169,9 @@ but don't run production on it yet.
 - [Compatibility report](docs/compat-report.md) · [Release manual](docs/release.md)
 - [Safety notes](crates/mad-dom-core/SAFETY.md) — the core is `#![forbid(unsafe_code)]`
 
-Development: Rust `1.93.1`; Bun `>=1.4.0` is the support floor.
-`.bun-version` (`1.4.0`) is the reproducible baseline. CI also resolves the
+Development and new benchmarks use the latest stable Bun (`bun upgrade`) and
+Rust `1.93.1`; Bun `>=1.4.0` is the support floor. `.bun-version` (`1.4.0`) is
+reserved for baseline verification and historical reproduction. CI resolves
 latest stable Bun independently on every run; releases require both lanes.
 `bun run validate` runs the repository gate (prepare with
 `bun run compat:hdunit:prepare` on a fresh checkout). See the

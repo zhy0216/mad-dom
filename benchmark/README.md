@@ -9,25 +9,40 @@ This repository provides four kinds of performance measurements:
 | `bun run bench:check` | Internal Rust Core + raw binding metrics | Check mad-dom for large regressions against applicable baselines; see [bench/README.md](../bench/README.md) |
 | `bun run bench:bun-performance` | Frozen-source vs candidate and FFI off vs on, in balanced ABBA new-process groups | Public-API Bun-native boundary comparisons; see [bun-performance runner](bun-performance/README.md) |
 
-## Latest results: 2026-09-05
+## Latest results: 2026-09-12
 
 | Timed workload | mad-dom | happy-dom 20.11.11 | happy-dom / mad-dom |
 | --- | ---: | ---: | ---: |
-| Core: combined operations across 16 phases | **141.70 ms** | 401.60 ms | **2.83×** |
-| Testing: combined workloads across 13 scenarios | **91.10 ms** | 143.08 ms | **1.57×** |
+| Core: combined operations across 16 phases | **407.14 ms** | 1321.15 ms | **3.24×** |
+| Testing: combined workloads across 13 scenarios | **294.31 ms** | 412.66 ms | **1.40×** |
 
-This measurement used an Apple M3 Max, 48 GiB of memory, macOS 26.6.2 arm64, Bun 1.4.0,
-and Rust 1.93.1, at size 1× with 2 warmup rounds and 9 measured rounds.
-The source revision was [`2fda7ea`](https://github.com/zhy0216/mad-dom/commit/2fda7eaf75572a29618f9443527011886a970e0b)
+This measurement used an AMD EPYC Processor (8 vCPUs, shared KVM host), 15.6 GiB
+of memory, Ubuntu 24.04 Linux x64 / glibc 2.39, latest stable Bun 1.4.2
+(`744846f84`), and Rust 1.93.1, at size 1× with 2 warmup rounds and 9 measured rounds.
+The report date uses America/Los_Angeles; the environment record retains UTC timestamps.
+The source revision was [`1733855`](https://github.com/zhy0216/mad-dom/commit/173385575039d41181e80b45c2933323ce0f5db8)
 (`package.json` version `0.0.1-alpha.3`), built with `dev:build` and explicitly loading
 the local native artifact. These numbers measure a source build, not published npm binaries.
+Both loaders used the same native image, with Node-API ABI 1, FFI ABI 1 and
+FFI capability bitset 31 available. Public API operations retain their default
+routing with FFI enabled.
 
-The [raw JSON](results/2026-09-05-dom.json) preserves the complete output;
-the [performance page](../docs/performance.md) lists timings and RSS for all 29 phases.
+The [raw JSON](results/2026-09-12-dom.json) preserves the complete output, and the
+[environment record](results/2026-09-12-dom-environment.json) preserves the latest
+release lookup, full Bun revision, native/runtime/lockfile/report SHA-256 hashes,
+command, timestamps, host and capability reports. The
+[performance page](../docs/performance.md) lists all 29 phase timings and both
+workers' RSS changes.
 Workloads and result validation matched across both engines, all 13 testing scenarios
 passed, and the top-level `valid` field was `true`.
-mad-dom had lower medians in 15/16 core phases and 8/13 testing scenarios.
+mad-dom had lower medians in 12/16 core phases and 12/13 testing scenarios.
 Slower cases are included in the totals; these results do not imply that every type of test gets faster.
+The slower core phases were `traverseCold`, `buildCreate`, `buildText` and
+`readHeavy`; the slower testing scenario was `asyncObserver`.
+
+The [September 5 macOS/Bun 1.4.0 report](results/2026-09-05-dom.json) remains
+unchanged. Hardware, source and Bun version differ, so these dated reports
+cannot isolate a runtime upgrade or a code change.
 
 Each total is calculated by **summing within each round, then taking the median of those round totals**.
 Core JSON provides `operations` directly; the testing runner reports only individual scenarios,
@@ -38,17 +53,30 @@ by scenario weight.
 
 ## Reproducing from source
 
-Run these commands from the repository root with Bun `1.4.0` and Rust `1.93.1`:
+Always use the **latest stable Bun** for new benchmark measurements, with Rust
+`1.93.1`. Run `bun upgrade` before sampling and record the resolved version and
+revision; this run verified Bun `1.4.2` against the official latest-release API.
+`.bun-version` is reserved for baseline checks and historical reproduction.
+Run these commands from the repository root:
 
 ```sh
+bun upgrade
+bun --version
+bun --revision
 bun install --frozen-lockfile
 bun run dev:build
-MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node" bun run bench:dom --runs 9 --sizes 1 --json > dom-bench.json
+export MAD_DOM_NATIVE_PATH="$PWD/build/mad-dom.node"
+export MAD_DOM_FFI_PATH="$PWD/build/mad-dom.node"
+export MAD_DOM_FFI_DISABLED=0
+bun run report:runtime --require-native > dom-runtime.json
+bun run bench:dom --runs 9 --sizes 1 --json > dom-bench.json
 ```
 
-`MAD_DOM_NATIVE_PATH` ensures that the newly built native module is used, even when a
-platform npm package is installed. When comparing source revisions, rebuild each time
-and use the same path override. Other common commands:
+The native and FFI path overrides ensure that both loaders use the newly built
+native image, even when a platform npm package is installed. Keep the runtime
+report alongside the samples, and record CPU/memory, source revision and artifact
+hashes as in the environment record above. When comparing source revisions,
+rebuild each time and use the same overrides. Other common commands:
 
 ```sh
 bun run bench:dom                                     # all; defaults to 5 rounds, size 1×
@@ -56,7 +84,7 @@ bun run bench:dom --suite testing                     # unit-test workflows only
 bun run bench:dom --suite core                        # the 16 operation phases only
 bun run bench:dom --suite core --runs 9 --sizes 0.1,1,2 # scaling curve
 bun run bench:dom --runs 1 --sizes 0.01                # minimal smoke run for both suites
-bun test benchmark/dom-bench                          # fixture, timing, and report validation
+bun run test:native                                  # native binding correctness
 ```
 
 These commands also accept the same native-path prefix. Omitting `--json` prints comparison tables.
@@ -72,7 +100,7 @@ to `dom-bench.json` to summarize your own results:
 ```sh
 bun -e '
 import { summarizeOperations } from "./benchmark/dom-bench/stats.mjs";
-const report = await Bun.file("benchmark/results/2026-09-05-dom.json").json();
+const report = await Bun.file("benchmark/results/2026-09-12-dom.json").json();
 if (!report.valid || !report.testing?.valid) throw new Error("Invalid comparison");
 for (const [suite, reports] of [["core", report.reports], ["testing", report.testing.reports]]) {
   for (const engine of reports) {

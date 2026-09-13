@@ -163,8 +163,10 @@ than a large snapshot. Layout dimensions and screenshots need a real browser.
 
 ## Measuring your tests
 
-The recorded workflow benchmark is **1.57× faster in aggregate**, with 8/13
-scenarios faster in mad-dom. It includes fixture mounting and cleanup, but
-excludes runner startup and framework rendering. Use the same assertion and
+The September 12 benchmark on latest stable Bun 1.4.2 is **1.40× faster in
+aggregate**, with lower medians in 12/13 scenarios for mad-dom. `asyncObserver`
+was slower; Testing Library events were nearly tied. It includes fixture
+mounting and cleanup, but excludes runner startup and framework rendering.
+Use the same assertion and
 cleanup policy on both engines when measuring your own suite. Full conditions
 and results are in [Performance](/performance).

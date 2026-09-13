@@ -16,6 +16,12 @@ install smoke) is in [docs/stable-gate-report.md](./stable-gate-report.md).
 | Reproducible baseline | `.bun-version`, currently `1.4.0` | Regression diagnosis and dated benchmark reproduction |
 | Latest verification | `setup-bun@v2` with explicit `bun-version: latest` | Resolve stable Bun on each CI/release run; record the installed version/revision |
 
+Local development and new benchmark measurements always use the latest stable
+Bun: run `bun upgrade` before collecting samples and record `bun --version` and
+`bun --revision`. The documentation build also resolves `bun-version: latest`.
+Use `.bun-version` only for the dedicated baseline lane or historical
+reproduction; retain the original runtime labels on historical measurements.
+
 The latest and baseline CI lanes both run check, Rust fmt/clippy/tests, native
 build and capability/native tests, compat/types/ledger/hdunit, WPT,
 integration, benchmark sanity, documentation, release draft/checksums and

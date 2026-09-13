@@ -71,7 +71,7 @@ exercise more than simple tree operations. A minimal reproduction should set up
 one document and record the exact differing value or callback sequence.
 
 Once both variants pass, compare multiple runs with identical setup. The
-recorded 2.83× core / 1.57× workflow improvement is a starting point for
+recorded 3.24× core / 1.40× workflow improvement is a starting point for
 evaluation; see [Performance](/performance) for the measured scope. Keep the
 previous dependency and configuration available until the migrated suite passes.
 

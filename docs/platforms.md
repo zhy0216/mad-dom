@@ -74,9 +74,10 @@ an installed platform package cannot take precedence.
 
 ## Build from source
 
-From a repository checkout, use a supported Bun, Rust `1.93.1`, and native
-build tools for your host. `.bun-version` (`1.4.0`) reproduces the baseline;
-the latest CI lane resolves current stable Bun separately:
+From a repository checkout, use the latest stable Bun (`bun upgrade`), Rust
+`1.93.1`, and native build tools for your host. `.bun-version` (`1.4.0`) is
+reserved for baseline verification and historical reproduction; the latest
+CI lane resolves current stable Bun independently:
 
 ```sh
 bun install --frozen-lockfile

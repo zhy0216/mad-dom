@@ -6,21 +6,22 @@ query elements, update components, and serialize results.
 
 ## Faster where DOM work adds up
 
-The **2026-09-05 source-build benchmark** compared identical, validated workloads
+The **2026-09-12 source-build benchmark** compared identical, validated workloads
 with happy-dom 20.11.11:
 
 | Workload | mad-dom | happy-dom | Speedup |
 | --- | ---: | ---: | ---: |
-| Core DOM operations, 16 phases | 141.70 ms | 401.60 ms | **2.83×** |
-| Test workflows, 13 scenarios | 91.10 ms | 143.08 ms | **1.57×** |
-| HTML parsing phase | 9.845 ms | 31.415 ms | **3.19×** |
-| HTML serialization phase | 1.007 ms | 5.013 ms | **4.98×** |
-| Mutation churn phase | 9.416 ms | 80.848 ms | **8.59×** |
+| Core DOM operations, 16 phases | 407.14 ms | 1321.15 ms | **3.24×** |
+| Test workflows, 13 scenarios | 294.31 ms | 412.66 ms | **1.40×** |
+| HTML parsing phase | 25.700 ms | 93.445 ms | **3.64×** |
+| HTML serialization phase | 4.152 ms | 12.491 ms | **3.01×** |
+| Mutation churn phase | 21.629 ms | 379.921 ms | **17.57×** |
 
 The first two rows are medians of per-round sums; the remaining rows are
 individual phase medians and are already included in the core total. Measured
-on Apple M3 Max, 48 GiB RAM, macOS arm64, Bun 1.4.0, Rust 1.93.1; size 1×,
-2 warmup rounds and 9 measured rounds. This measures a source build, not a
+on AMD EPYC (8 vCPUs, KVM), 15.6 GiB RAM, Ubuntu 24.04 Linux x64, latest stable
+Bun 1.4.2, Rust 1.93.1; size 1×, 2 warmup rounds and 9 measured rounds.
+This measures a source build, not a
 downloaded npm binary.
 
 The testing workloads include real DOM Testing Library queries and events,
@@ -62,16 +63,16 @@ layout-sensitive assertions, and complete application navigation.
 
 ## Evaluate the improvement in your suite
 
-The recorded result describes one workload mix. MAD DOM was faster in 15/16
-core phases and 8/13 test workflows; read-heavy work and several small testing
-scenarios were slower. A suite dominated by network latency, a framework
-renderer, or runner startup will have a different result.
+The recorded result describes one workload mix. MAD DOM was faster in 12/16
+core phases and 12/13 test workflows; cold traversal, standalone element/text
+creation, read-heavy work and async observers were slower. A suite dominated
+by network latency, a framework renderer, or runner startup will have a different result.
 
 Run the same tests with each engine, verify that both pass, then compare
 multiple runs on the same machine. Keep dependencies, test selection, fixture
 size, and setup/cleanup policies constant. The benchmark's lifecycle scenario
-uses the current alpha cleanup behavior; future lifecycle fixes will require a
-fresh measurement.
+includes the current `happyDOM.close()` cleanup behavior. Use the latest stable
+Bun for new measurements and record its actual version and revision.
 
 ## Familiar API, explicit coverage
 
