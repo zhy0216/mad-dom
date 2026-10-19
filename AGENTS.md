@@ -12,6 +12,7 @@
 
 ## CI
 
+- 禁止为 GitHub Actions workflow 添加 `schedule` / `cron` 定时触发，除非用户明确要求恢复。
 - 日常开发与新 benchmark 采样一律用最新稳定版 Bun；运行前执行 `bun upgrade`，记录实际
   `bun --version` / `bun --revision`。`.bun-version` 仅用于专门的 baseline 验证或历史复现，
   不作为新 benchmark 的默认版本；更新文档时提交带日期的原始样本与环境信息，保留历史实测记录。
